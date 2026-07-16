@@ -39,8 +39,12 @@ Two components multiply together:
 consistency = (votes for the winning value) / (total data points for that dimension)
 ```
 - A dimension with 3 data points all pointing the same way → consistency = 1.0 (this child's pattern here is clear and reliable).
-- A dimension with 3 data points split 2–1 → consistency = 0.67 (real but wobbly).
-- An anchored dimension answered only at the Gateway (1 data point) → consistency = 1.0 by definition, but see §5 for the confidence caveat this creates.
+- A dimension with 3 data points split 2–1 → consistency = 2/3 (real but wobbly).
+- **A dimension with exactly 1 data point → consistency = 0.5, NOT 1.0.**
+
+> **🔴 The single-data-point rule is load-bearing.** One answer tells you nothing about unanimity — unanimity with a sample of one is undefined, not perfect. Setting it to 1.0 silently declares maximum confidence on minimum evidence. Because `recharge_type` is unanchored and rarely routed to depth, this bug alone forced Recovery to 0.70 ("Strong") for the majority of children, structurally preventing it from ever appearing in `weakest_two`. Use 0.5. It reads as "we don't know," which is the truth.
+
+**Never express consistency as a rounded decimal.** 2 of 3 data points is `2/3`, not `0.67` — and `2/3 < 0.67`, so a `>= 0.67` comparison silently excludes the exact case it was written to include. Compare vote counts (`winning_votes >= 2`) wherever a threshold matters, especially in the honest-path triggers.
 
 **(b) Polarity (0–1): does the winning value sit at the strong or weak end of this axis?**
 Each axis has a defined mapping from dimension-values to a polarity score. "Strong end" = the pattern supports that axis; "weak end" = the pattern undermines it. Full tables in §3.
@@ -86,36 +90,103 @@ Stability polarity = clamp(shape_baseline + friction_modifier, 0.05, 0.95).
 | genuine-interest | 0.70 | only leaves for things genuinely worth it |
 | social | 0.50 | pulled by people specifically |
 | boredom-avoidance / novelty | 0.35 | leaves the moment the current thing dips |
+| **external** | **0.35** | **captured by ambient noise and movement — the competitor isn't more compelling, just present** |
 | task-escape / internal | 0.25 | actively flees difficulty toward the competitor |
+
+> **`external` was missing from this table** while the honest-path spec's Trigger C already depended on it. That was a spec bug, not an implementer's gap. It sits at 0.35 alongside novelty: both describe attention pulled *by the environment* rather than *fleeing the task*, which is what separates them from task-escape at 0.25.
+>
+> **[CALIBRATE] — highest priority in this table.** `external` is the least trait-like value here: it's heavily confounded by the child's actual physical environment (a noisy shared room versus a quiet desk). A child scoring `external` may have an environment problem, not an attention one. Check this against real data before trusting it.
 
 Modifier: if `friction_response` ∈ {avoid, emotional-derail}, −0.10 (internal pull compounds external pull).
 
 ### RECOVERY — fed by `recharge_type` alone
 "Does attention come back after being spent?" Recovery polarity is less about strong/weak and more about *how clearly defined* the child's recharge path is — a clear recharge type = reliable recovery.
 
-| `recharge_type` | Polarity | Reasoning |
-|---|---|---|
-| any single value with high consistency | 0.65–0.75 | a clear, known recharge route = recovers reliably *if the route is available* |
-| low consistency (no clear type) | 0.40 | recovery is unpredictable because the child themselves is unclear |
+**Recovery does NOT use the §2 formula.** It is computed directly, because its polarity *is* consistency — running it through `polarity × (0.5 + 0.5 × consistency)` would double-count the same signal.
 
-**Recovery leans more on the consistency term than polarity** — the insight parents need isn't "high or low" but "here's specifically what recharges them," which is the `recharge_type` *value*, surfaced as the band label, not the number. **[CALIBRATE]** heavily — this is the softest of the four.
+```
+recovery_value = 0.25 + (0.50 × consistency)
+```
+
+| consistency | value | band |
+|---|---|---|
+| 1.00 (all data points agree) | 0.75 | Strong |
+| 2/3 | 0.58 | Mixed |
+| 0.50 (single data point — unknown) | 0.50 | Mixed |
+| 1/3 (three-way split) | 0.42 | Mixed |
+
+**What Recovery actually measures — and what it does not.** `recharge_type` tells us *how* a child recharges (quiet / movement / social / creative). It does not tell us how *well*. No recharge route is better than another, so polarity cannot be read off the value.
+
+What it can honestly measure is **clarity of route**. A child whose answers consistently point to one recharge mode has a reliable, protectable path back. A child whose answers scatter doesn't — and "your child has no dependable way of recovering" is a real, actionable weakness with a real intervention (help them find and protect one route). That is the axis.
+
+**Two consequences to hold onto:**
+- The parent-facing insight is the *value* ("free time with no rules recharges him"), surfaced as the band label and description. The number is only ever used for ranking.
+- **[CALIBRATE] — softest axis of the four.** The honest fix, later, is a dedicated question measuring recovery *quality* ("after a hard day, is he himself again by morning, or does it linger?"). Until that exists, clarity-of-route is a proxy, and should be described as one.
 
 ---
 
 ## 4. From values to what the report actually uses
 
-**Band labels (what shows next to each axis, e.g. "Low"):** **[CALIBRATE] cutoffs**
-- ≥ 0.65 → "Strong" / "Steady" / "Holds well" (axis-appropriate word)
-- 0.40–0.64 → "Mixed" / "Variable"
-- < 0.40 → "Low" / "Fragile" / axis-appropriate
+### 4a. Normalize before you compare anything
 
-The band word matters more than the number for the parent — lead with the word, show the bar as support. (Matches the report's "lead with the word" copy discipline.)
+**The three axes have different achievable ranges.** Ranking their raw values against each other is apples-to-oranges, and it biases the result: Resistance tops out around 0.70 while Stability reaches 0.95, so a child who is *maxed out* on Resistance would still have it flagged as a weakness. That is a scoring artifact presented to a parent as a finding about their child — exactly what §1 forbids.
 
-**The weakest-two selection (drives Section 8 "where to start" AND the roadmap):**
+Every axis is normalized to `[0, 1]` **within its own range** before banding or ranking.
+
 ```
-Rank Stability, Resistance, Recovery by axis value, ascending.
+stability_norm  = (stability_value  - 0.03) / (0.95 - 0.03)
+resistance_norm = (resistance_value - 0.10) / (0.70 - 0.10)
+recovery_norm   = recovery_consistency          // see below
+```
+
+**[CALIBRATE]** — the min/max constants are the theoretical bounds of each formula, not observed bounds. Tighten to observed percentiles once real distributions exist.
+
+**Recovery normalizes from its vote structure, not from raw consistency.** Recovery *is* clarity-of-route (§3). But `winning_votes / data_points` collapses two very different situations onto the same number: one data point (we never asked) and a two-way split (we asked twice and got different answers) both yield 0.5. The first is ignorance. The second is evidence. They must not rank the same.
+
+| data_points | winning_votes | recovery_norm | meaning |
+|---|---|---|---|
+| **1** | 1 | **— (see below)** | **unmeasured** |
+| 2 | 2 | 1.00 | one clear route |
+| 2 | 1 | 0.35 | two different answers — no dependable route |
+| 3 | 3 | 1.00 | clear |
+| 3 | 2 | 0.65 | mostly clear |
+| 3 | 1 | 0.30 | scattered |
+
+> ### 🔴 The eligibility rule
+>
+> **An axis with `data_points == 1` on its primary dimension is INELIGIBLE for `weakest_two`.**
+>
+> Recovery's primary dimension is `recharge_type`. With a single data point we have no evidence the child recovers badly — only evidence that we didn't ask. Ranking that against measured axes recommends a week of work on the basis of our own blind spot.
+>
+> An earlier draft of this section said an unmeasured Recovery should be *"never flagged as a weakness"* while the ranking mechanism happily flagged it. The first real sweep exposed this: Recovery entered `weakest_two` for half of all archetypes at its unmeasured 0.500 value, while the one routing path that actually investigates it returned **Strong**. The system was blind exactly where it was most confident.
+>
+> **An ineligible axis still displays.** Its band and description come from the `recharge_type` *value*, which one answer does tell us ("free time with no rules recharges him"). It simply cannot be selected as a roadmap target.
+
+> ### ⚠️ Consequence, and the required routing change
+>
+> If Recovery is ineligible whenever `recharge_type` has one data point, it is ineligible for roughly three-quarters of children — and `weakest_two` collapses to a fixed `[Stability, Resistance]` for them. The Weeks 2–6 ordering would then be personalized in *content* (each week's move is archetype-specific) but not in *sequence*.
+>
+> **Fix upstream, not downstream: `recharge_type` must receive a second confirming question for every child**, giving it `data_points >= 2` unconditionally. Cost: one question, roughly fifteen seconds, well inside the "under 5 minutes" claim. This is the only change that lets Recovery compete honestly rather than by default.
+>
+> Do not solve this by lowering the eligibility bar. Recommending a week of a parent's life on one unverified answer is worse than admitting the sequence is fixed.
+
+### 4b. Bands and bars — both from the normalized value
+
+**[CALIBRATE] cutoffs**
+- ≥ 0.65 → "Strong" / "Steady" / "Holds well" *(axis-appropriate word)*
+- 0.40–0.64 → "Mixed" / "Variable"
+- < 0.40 → "Low" / "Fragile" *(axis-appropriate)*
+
+Bar width = `normalized × 100%`. The band word matters more than the bar for the parent — lead with the word, show the bar as support. (Matches the report's copy discipline.) **No number is ever printed** (§7).
+
+### 4c. The weakest-two selection
+
+Drives Section 8's "where to start" **and** the Weeks 2–6 roadmap order.
+
+```
+Rank Stability, Resistance, Recovery by NORMALIZED value, ascending.
 The two lowest = the weakest link = the roadmap's first two modules.
-(Direction is excluded — it's the archetype, not a trainable weak axis.)
+Direction is excluded — it is the archetype, not a trainable axis.
 ```
 Storm worked example: Stability low + Resistance low → those two rank lowest → "Start here: Stability and Resistance." This is exactly what the Storm+Pusher report and LMS Week 1/2 already assume. **This spec makes that linkage computed rather than hardcoded** — which was the explicit gap flagged in the report master.
 
@@ -138,9 +209,31 @@ Two required safeguards:
 ## 6. What must happen before this ships vs. after
 
 **Before launch (blocking):**
-- Implement §2 formula + §3 polarity tables + §4 band cutoffs and weakest-two selection.
+- Implement §2 formula + §3 polarity tables + §4 normalization, bands, and weakest-two selection.
 - Replace every invented number in the report artifact (28/22/65 etc.) with computed values.
-- Verify Storm+Pusher worked example: does a plausible Storm answer-set actually produce Stability-low + Resistance-low? (If not, the polarity tables need adjustment before, not after, launch — this is the single most important pre-launch validation of this spec.)
+- Verify Storm+Pusher worked example: does a plausible Storm answer-set actually produce Stability-low + Resistance-low? (If not, the polarity tables need adjustment before, not after, launch.)
+
+**🔴 The axis-profile sweep — a second blocking gate.**
+
+The Storm check passes on a single profile. It cannot detect an axis that is *structurally* incapable of ever being weakest.
+
+> **Do not sweep the 32 archetype × pattern combinations.** `parent_instinct` feeds no axis — Stability comes from `attention_shape` + `friction_response`, Resistance from `attention_competition`, Recovery from `recharge_type`. Across 32 combinations there are only **8 distinct axis profiles**, each counted four times. A sweep over parent patterns inflates the sample without adding a single bit of information, and the first run of this gate did exactly that: it reported 16/32 (50%) where the real figure was 4 of 8 archetypes.
+
+Sweep the **answer space that actually feeds the axes**: `attention_shape` (4) × `friction_response` (4) × `attention_competition` (4) × `recharge_type` (4), restricted to profiles reachable under the routing tree. Report the `weakest_two` distribution over reachable profiles.
+
+**Pass condition:** each of Stability, Resistance, and Recovery appears in `weakest_two` for **at least 15% of reachable profiles** — counting only cases where the axis was **eligible** (§4a).
+
+**Report separately:**
+```
+Recovery ELIGIBLE  in N/M profiles (X%)   // recharge_type data_points >= 2
+Recovery IN weakest_two, given eligible: N/M (X%)
+```
+
+Those two numbers answer different questions. The first says whether routing measures Recovery often enough for it to matter. The second says whether, when measured, it ever turns out to be weak. **Both must clear 15%.** A high second number with a low first is the failure the original gate missed.
+
+**If Recovery is rarely eligible:** the routing change in §4a is required. If it is eligible but never weakest, the axis is genuinely not a differentiator and the Weeks 2–6 sequence claim should be dropped. Either outcome is a product decision to surface — not a constant to nudge.
+
+*(15% is a reasoned floor, not an empirical one: below roughly one in six, an axis contributes nothing to differentiating children.)*
 
 **After launch (the [CALIBRATE] queue, in priority order):**
 1. Band cutoffs (§4) — most visible to parents, tune first against real distributions.

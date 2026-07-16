@@ -45,9 +45,14 @@ All triggers are **OR'd** — any one firing produces the triggered state. Each 
 ```
 FIRES IF:
   friction_response.winning_value == "emotional-derail"
-  AND friction_response.consistency >= 0.67
-  (i.e. at least 2 of the collected data points point to emotional-derail)
+  AND friction_response.winning_votes >= 2
 ```
+
+> **Compare vote counts, never a rounded consistency decimal.** An earlier draft of this spec said `consistency >= 0.67` and glossed it as "at least 2 of the collected data points." Those are not the same condition: 2 of 3 data points is `2/3 = 0.6666…`, which is **strictly less than 0.67** and would have silently failed the exact case the rule was written to catch — a child who described distress on two of three questions, whose parent would then never see the disclosure.
+>
+> A floating-point rounding error has no business sitting between a distressed child and a referral suggestion. `winning_votes >= 2` is unambiguous. Use it.
+>
+> The `winning_votes >= 2` condition also subsumes the old `data_points >= 2` requirement — a single data point cannot produce two votes.
 
 **Why this is defensible:** A child who becomes upset *before attempting* — reported consistently across multiple independent questions — is describing distress, not an attention pattern. The relevant answer options are *"They get upset before they even start trying"* (D3.1) and *"A reason to believe it's worth trying again"* (D3.3). Teaching a parent to hand over ownership does not address a child who is distressed by the prospect of difficulty. Saying so is simply true.
 
