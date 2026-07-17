@@ -410,8 +410,10 @@ body {
 
 /* combo-row-rep base (2-col) — responsive collapse below */
 .combo-row-rep { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 640px; margin-top: 36px; }
+/* stakes-row: inline gridTemplateColumns removed; grid lives here so media query can override it */
+.stakes-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
-@media (max-width: 600px) {
+@media (max-width: 760px) {
   .hero-right { margin-top: 0; }
   .funnel-card { padding: 28px 20px; }
   .price-row { flex-direction: column; }

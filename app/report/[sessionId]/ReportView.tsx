@@ -399,7 +399,7 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
             A fork in the road
           </h2>
 
-          <div className="stakes-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginTop: "8px" }}>
+          <div className="stakes-row" style={{ marginTop: "8px" }}>
             <div style={{ background: "rgba(221,75,55,.08)", border: "1px solid rgba(221,75,55,.25)", borderRadius: "14px", padding: "26px" }}>
               <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: ".1em", fontWeight: 700, color: "#B83A2A", marginBottom: "12px" }}>
                 If nothing changes
@@ -429,11 +429,31 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
           <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "34px", lineHeight: 1.2, color: "var(--paper)", marginBottom: "16px", letterSpacing: "-.01em" }}>
             What deserves {childName}&rsquo;s attention?
           </h2>
-          <p style={{ fontSize: "16px", color: "rgba(246,244,236,.65)", maxWidth: "480px", margin: "0 auto 40px", lineHeight: 1.65 }}>
+          <p style={{ fontSize: "16px", color: "rgba(246,244,236,.65)", maxWidth: "480px", margin: "0 auto 24px", lineHeight: 1.65 }}>
             The program works on{" "}
             <strong style={{ color: "var(--paper)" }}>{(a.weakest_two ?? []).join(" and ")}</strong>
             {" "}— the two axes where {childName} has the most room to move.
           </p>
+
+          {/* What's included — sits above price cards per spec */}
+          <div style={{ maxWidth: "640px", margin: "0 auto 32px", textAlign: "left" }}>
+            <p style={{ fontFamily: BG, fontWeight: 700, fontSize: "14px", color: "var(--paper)", marginBottom: "12px" }}>
+              What&rsquo;s included
+            </p>
+            <ul style={{ display: "flex", flexDirection: "column", gap: "8px", listStyle: "none", padding: 0 }}>
+              {[
+                `Personalized from ${childName}'s exact profile — not a generic plan`,
+                "One practical step each week, built for real, busy homes",
+                "Weekly insights as you go, so you're not guessing whether it's working",
+                "Built directly on the roadmap above — nothing generic bolted on",
+              ].map((item, i) => (
+                <li key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "14px", color: "rgba(246,244,236,.65)", lineHeight: 1.55 }}>
+                  <span style={{ color: "var(--green)", fontWeight: 700, flexShrink: 0 }}>✓</span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
 
           {/* Price cards — client component (triggers Razorpay modal) */}
           <PriceCards
@@ -441,6 +461,16 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
             childName={childName}
             weakestFirst={(a.weakest_two ?? [])[0] ?? "Resistance"}
           />
+
+          {/* How the 6 weeks work — directly after price cards per spec */}
+          <div style={{ maxWidth: "640px", margin: "28px auto 0", background: "rgba(246,244,236,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: "14px", padding: "24px 28px", textAlign: "left" }}>
+            <div style={{ fontSize: "11px", color: "var(--marker)", textTransform: "uppercase", letterSpacing: ".1em", fontWeight: 700, marginBottom: "10px" }}>
+              How the 6 weeks work
+            </div>
+            <p style={{ color: "rgba(246,244,236,.65)", fontSize: "14px", lineHeight: 1.65, margin: 0 }}>
+              Week 1 starts with {(a.weakest_two ?? [])[0] ?? "Resistance"} — the fastest place to see change. Each week after builds directly on what worked (and what didn&rsquo;t) the week before, staying focused on {(a.weakest_two ?? []).join(" and ")} throughout. You&rsquo;ll always know exactly what&rsquo;s coming next, one week at a time — never a 20-item plan dropped on you all at once.
+            </p>
+          </div>
 
           <p style={{ fontSize: "13px", color: "rgba(246,244,236,.6)", marginTop: "20px" }}>
             Less than one month of tuition — for the skill every hour of tuition depends on.
@@ -484,26 +514,6 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
           </div>
           <div style={{ textAlign: "center", fontSize: "12px", color: "rgba(246,244,236,.4)", marginTop: "4px" }}>
             ← Scroll to see more →
-          </div>
-
-          {/* What's included */}
-          <div style={{ maxWidth: "640px", margin: "40px auto 0", textAlign: "left" }}>
-            <p style={{ fontFamily: BG, fontWeight: 700, fontSize: "14px", color: "var(--paper)", marginBottom: "12px" }}>
-              What&rsquo;s included
-            </p>
-            <ul style={{ display: "flex", flexDirection: "column", gap: "8px", listStyle: "none", padding: 0 }}>
-              {[
-                `Personalized from ${childName}'s exact profile — not a generic plan`,
-                "One practical step each week, built for real, busy homes",
-                "Weekly insights as you go, so you're not guessing whether it's working",
-                "Built directly on the roadmap above — nothing generic bolted on",
-              ].map((item, i) => (
-                <li key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start", fontSize: "14px", color: "rgba(246,244,236,.65)", lineHeight: 1.55 }}>
-                  <span style={{ color: "var(--green)", fontWeight: 700, flexShrink: 0 }}>✓</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
           </div>
 
           {/* FAQ — native details/summary accordion */}

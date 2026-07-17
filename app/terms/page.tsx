@@ -11,13 +11,8 @@ export default function TermsPage() {
             Terms of Service
           </h1>
           <p style={{ fontSize: "13px", color: "var(--ink-dim)", marginBottom: "40px" }}>
-            Last updated: [DATE — fill before launch]
+            Last updated: 12-Feb-2026
           </p>
-
-          <div style={{ background: "#FDECEA", border: "1px dashed var(--redpen)", borderRadius: "10px", padding: "16px 20px", fontSize: "13px", color: "#B8382A", marginBottom: "32px", lineHeight: 1.6 }}>
-            <strong style={{ display: "block", marginBottom: "4px" }}>🔴 Requires real legal review before production.</strong>
-            Same standing note as the Privacy Policy — this covers the standard structure for a digital course/assessment product, but the specific liability limitations, governing law clause, and refund-mechanism wording should be confirmed against actual business practice and reviewed by counsel before launch.
-          </div>
 
           <Section title="1. What This Service Is">
             <p style={p}>
@@ -52,7 +47,9 @@ export default function TermsPage() {
           </Section>
 
           <Section title="6. Governing Law">
-            <p style={p}>[Fill in — typically the jurisdiction where the business is legally registered.]</p>
+            <p style={p}>
+              These terms are governed by the laws of India. Any disputes will be subject to the exclusive jurisdiction of the courts of Indore, Madhya Pradesh, India.
+            </p>
           </Section>
 
           <Section title="7. Contact">
@@ -72,7 +69,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   const BG2 = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
   return (
     <div>
-      <h2 style={{ fontFamily: BG2, fontWeight: 700, fontSize: "19px", color: "var(--ink)", margin: "32px 0 12px" }}
+      <h2
+        style={{ fontFamily: BG2, fontWeight: 700, fontSize: "19px", color: "var(--ink)", margin: "32px 0 12px" }}
         dangerouslySetInnerHTML={{ __html: title }}
       />
       {children}

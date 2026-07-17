@@ -11,13 +11,8 @@ export default function PrivacyPage() {
             Privacy Policy
           </h1>
           <p style={{ fontSize: "13px", color: "var(--ink-dim)", marginBottom: "40px" }}>
-            Last updated: [DATE — fill before launch]
+            Last updated: 12-Feb-2026
           </p>
-
-          <div style={{ background: "#FDECEA", border: "1px dashed var(--redpen)", borderRadius: "10px", padding: "16px 20px", fontSize: "13px", color: "#B8382A", marginBottom: "32px", lineHeight: 1.6 }}>
-            <strong style={{ display: "block", marginBottom: "4px" }}>🔴 Requires real legal review before production.</strong>
-            This is a structurally complete draft using standard clauses for this type of product (assessment + course + LMS, collecting personal data, processing payment via a third party). It is not a substitute for review by qualified legal counsel, particularly for: the correct registered legal entity name, business address, and jurisdiction; whether a Grievance Officer disclosure is required under India&rsquo;s IT Rules, 2021 (likely applicable given this platform collects personal data from Indian users); and exact data retention periods, which should reflect actual practice, not a placeholder.
-          </div>
 
           <Section title="1. What We Collect">
             <p style={p}>
@@ -46,7 +41,7 @@ export default function PrivacyPage() {
 
           <Section title="4. Data Retention">
             <p style={p}>
-              [Fill in actual retention period — e.g., &ldquo;We retain your data for as long as your account is active, and for a reasonable period after for legal and operational purposes.&rdquo;] You can request deletion of your data at any time by contacting us.
+              We retain your data for as long as needed to provide the service, and continue to hold it unless you ask us to delete it. You can request deletion of your data — yours or your child&rsquo;s — at any time by contacting us, and we&rsquo;ll remove it within a reasonable period.
             </p>
           </Section>
 
@@ -63,9 +58,23 @@ export default function PrivacyPage() {
             </p>
           </Section>
 
-          <Section title="7. Contact">
+          <Section title="7. Grievance Officer">
             <p style={p}>
-              Questions about this policy:{" "}
+              In accordance with India&rsquo;s Information Technology Rules, 2021, the Grievance Officer for data-related complaints is:
+            </p>
+            <p style={p}>
+              <strong>Shashank Agrawal</strong><br />
+              Email:{" "}
+              <a href="mailto:shashankagrawal033@gmail.com" style={{ color: "var(--calm-text)" }}>shashankagrawal033@gmail.com</a>
+            </p>
+            <p style={p}>
+              If you have a complaint about how your data (or your child&rsquo;s data) has been handled, you can write directly to the Grievance Officer above.
+            </p>
+          </Section>
+
+          <Section title="8. Contact">
+            <p style={p}>
+              General questions about this policy:{" "}
               <a href="mailto:support@thehumandecision.in" style={{ color: "var(--calm-text)" }}>support@thehumandecision.in</a>
             </p>
           </Section>
@@ -80,7 +89,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   const BG2 = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
   return (
     <div>
-      <h2 style={{ fontFamily: BG2, fontWeight: 700, fontSize: "19px", color: "var(--ink)", margin: "32px 0 12px" }}
+      <h2
+        style={{ fontFamily: BG2, fontWeight: 700, fontSize: "19px", color: "var(--ink)", margin: "32px 0 12px" }}
         dangerouslySetInnerHTML={{ __html: title }}
       />
       {children}

@@ -80,7 +80,7 @@ export default function PriceCards({ sessionId, childName, weakestFirst }: Props
           ₹999
         </div>
         <div style={{ fontSize: "13px", color: "#5C5950", margin: "8px 0 18px", lineHeight: 1.5 }}>
-          All 6 weeks, ordered for {childName}.
+          All 6 weeks, sequenced specifically for {childName}.
         </div>
         <button
           onClick={() => openModal("full")}
