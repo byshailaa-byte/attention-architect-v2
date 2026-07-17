@@ -15,10 +15,9 @@ type Tier = keyof typeof TIERS;
 
 export async function POST(req: NextRequest) {
   try {
-    const { sessionId, tier, phone } = (await req.json()) as {
+    const { sessionId, tier } = (await req.json()) as {
       sessionId: string;
       tier: Tier;
-      phone?: string;
     };
 
     if (!sessionId || !tier) {
@@ -58,27 +57,28 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // If phone was provided, upsert user and record purchase
-    if (phone?.trim()) {
-      const normalizedPhone = phone.trim().replace(/\s+/g, "");
-      if (/^(\+91)?[6-9]\d{9}$/.test(normalizedPhone)) {
+    // Upsert user by email (from assessment report gate) and record purchase
+    const emailRows = (await sql`
+      SELECT email FROM assessments WHERE id = ${assessmentId} AND email IS NOT NULL LIMIT 1
+    `) as unknown as { email: string }[];
+
+    if (emailRows.length > 0) {
+      const email = emailRows[0].email.trim().toLowerCase();
+      await sql`
+        INSERT INTO users (email) VALUES (${email})
+        ON CONFLICT (email) WHERE email IS NOT NULL DO NOTHING
+      `;
+      const userRows = (await sql`
+        SELECT id FROM users WHERE email = ${email} LIMIT 1
+      `) as unknown as { id: string }[];
+      if (userRows.length > 0) {
         await sql`
-          INSERT INTO users (phone, email)
-          VALUES (${normalizedPhone}, NULL)
-          ON CONFLICT (phone) DO NOTHING
+          INSERT INTO purchases
+            (user_id, assessment_id, tier, amount_paise, razorpay_order_id, status)
+          VALUES
+            (${userRows[0].id}, ${assessmentId}, ${tier}, ${tierConfig.amount_paise},
+             ${order.id}, 'pending')
         `;
-        const users = (await sql`
-          SELECT id FROM users WHERE phone = ${normalizedPhone} LIMIT 1
-        `) as unknown as { id: string }[];
-        if (users.length > 0) {
-          await sql`
-            INSERT INTO purchases
-              (user_id, assessment_id, tier, amount_paise, razorpay_order_id, status)
-            VALUES
-              (${users[0].id}, ${assessmentId}, ${tier}, ${tierConfig.amount_paise},
-               ${order.id}, 'pending')
-          `;
-        }
       }
     }
 

@@ -1,16 +1,11 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 
-function LoginForm() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const redirectTo = params.get("redirect") ?? "/lms";
-
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -19,24 +14,58 @@ function LoginForm() {
     setLoading(true);
     setError("");
     try {
-      const r = await fetch("/api/auth/login", {
+      const r = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: email.trim() }),
       });
       if (!r.ok) {
         const data = await r.json().catch(() => ({}));
-        setError((data as { error?: string }).error ?? "Login failed. Try again.");
+        setError((data as { error?: string }).error ?? "Request failed. Try again.");
         return;
       }
-      router.push(redirectTo);
-      router.refresh();
+      setSent(true);
     } finally {
       setLoading(false);
     }
   }
 
-  const ready = email.includes("@") && password.length >= 8;
+  const ready = email.includes("@");
+
+  if (sent) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center p-6"
+        style={{ background: "var(--paper)" }}
+      >
+        <div className="w-full max-w-sm text-center">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ background: "#eaf5ea" }}
+          >
+            <span style={{ fontSize: 22 }}>✓</span>
+          </div>
+          <h1
+            className="text-xl font-bold mb-3"
+            style={{ color: "var(--ink)" }}
+          >
+            Check your email
+          </h1>
+          <p className="text-sm mb-6" style={{ color: "var(--ink-dim)" }}>
+            If an account exists for <strong>{email}</strong>, we&rsquo;ve sent a
+            password reset link. Check your inbox — it expires in 1 hour.
+          </p>
+          <Link
+            href="/lms/login"
+            className="text-sm"
+            style={{ color: "var(--calm-text)" }}
+          >
+            ← Back to sign in
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -51,11 +80,14 @@ function LoginForm() {
           The Attention System
         </p>
         <h1
-          className="text-2xl font-bold mb-8"
+          className="text-2xl font-bold mb-2"
           style={{ color: "var(--ink)" }}
         >
-          Sign in to your program
+          Forgot your password?
         </h1>
+        <p className="text-sm mb-8" style={{ color: "var(--ink-dim)" }}>
+          Enter your email and we&rsquo;ll send a reset link. It expires in 1 hour.
+        </p>
 
         <form onSubmit={submit} noValidate>
           <label
@@ -80,37 +112,6 @@ function LoginForm() {
             autoComplete="email"
           />
 
-          <label
-            className="block text-sm font-medium mb-2"
-            style={{ color: "var(--ink)" }}
-          >
-            Password
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Your password"
-            className="w-full rounded-lg px-4 py-3 text-base mb-2"
-            style={{
-              border: "1.5px solid var(--line)",
-              background: "var(--card)",
-              color: "var(--ink)",
-              outline: "none",
-            }}
-            autoComplete="current-password"
-          />
-
-          <div className="flex justify-end mb-4">
-            <Link
-              href="/lms/forgot-password"
-              className="text-sm"
-              style={{ color: "var(--calm-text)" }}
-            >
-              Forgot password?
-            </Link>
-          </div>
-
           {error && (
             <p className="text-sm mb-4" style={{ color: "var(--redpen)" }}>
               {error}
@@ -128,18 +129,16 @@ function LoginForm() {
               cursor: loading || !ready ? "not-allowed" : "pointer",
             }}
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Sending…" : "Send reset link"}
           </button>
         </form>
+
+        <p className="text-sm mt-6 text-center" style={{ color: "var(--ink-dim)" }}>
+          <Link href="/lms/login" style={{ color: "var(--calm-text)" }}>
+            ← Back to sign in
+          </Link>
+        </p>
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
   );
 }

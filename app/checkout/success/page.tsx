@@ -30,21 +30,33 @@ function SuccessContent() {
           Payment confirmed
         </h1>
         <p className="text-sm mb-6" style={{ color: "var(--ink-dim)" }}>
-          We&rsquo;ll send a link to your email once your program access is set
-          up. It usually takes less than a minute.
+          One last step — set a password to access your program. It takes
+          10 seconds.
         </p>
 
-        {sessionId && (
+        {sessionId ? (
           <Link
-            href={`/report/${sessionId}`}
-            className="inline-block px-6 py-3 rounded-lg font-semibold text-sm"
+            href={`/lms/set-password?session=${sessionId}`}
+            className="inline-block w-full px-6 py-3 rounded-lg font-semibold text-sm"
             style={{
               background: "var(--marker)",
               color: "var(--marker-text)",
               textDecoration: "none",
             }}
           >
-            ← Back to your report
+            Set your password and open the program →
+          </Link>
+        ) : (
+          <Link
+            href="/lms/set-password"
+            className="inline-block w-full px-6 py-3 rounded-lg font-semibold text-sm"
+            style={{
+              background: "var(--marker)",
+              color: "var(--marker-text)",
+              textDecoration: "none",
+            }}
+          >
+            Set your password and open the program →
           </Link>
         )}
       </div>

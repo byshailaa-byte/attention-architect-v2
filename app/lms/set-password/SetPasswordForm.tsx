@@ -1,42 +1,47 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-function LoginForm() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const redirectTo = params.get("redirect") ?? "/lms";
+type Props = { sessionId: string; email: string | null };
 
-  const [email, setEmail] = useState("");
+export default function SetPasswordForm({ sessionId, email }: Props) {
+  const router = useRouter();
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const mismatch = confirm.length > 0 && password !== confirm;
+  const ready = password.length >= 8 && password === confirm && !!sessionId;
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!ready) return;
     setLoading(true);
     setError("");
     try {
-      const r = await fetch("/api/auth/login", {
+      const r = await fetch("/api/auth/set-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ sessionId, password }),
       });
+      const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        const data = await r.json().catch(() => ({}));
-        setError((data as { error?: string }).error ?? "Login failed. Try again.");
+        if ((data as { alreadyExists?: boolean }).alreadyExists) {
+          router.push("/lms/login");
+          return;
+        }
+        setError((data as { error?: string }).error ?? "Something went wrong. Try again.");
         return;
       }
-      router.push(redirectTo);
+      router.push("/lms");
       router.refresh();
     } finally {
       setLoading(false);
     }
   }
-
-  const ready = email.includes("@") && password.length >= 8;
 
   return (
     <div
@@ -51,35 +56,18 @@ function LoginForm() {
           The Attention System
         </p>
         <h1
-          className="text-2xl font-bold mb-8"
+          className="text-2xl font-bold mb-2"
           style={{ color: "var(--ink)" }}
         >
-          Sign in to your program
+          Set your password
         </h1>
+        <p className="text-sm mb-8" style={{ color: "var(--ink-dim)" }}>
+          {email
+            ? <>Your account: <strong style={{ color: "var(--ink)" }}>{email}</strong></>
+            : "Create a password to access your program."}
+        </p>
 
         <form onSubmit={submit} noValidate>
-          <label
-            className="block text-sm font-medium mb-2"
-            style={{ color: "var(--ink)" }}
-          >
-            Email address
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="w-full rounded-lg px-4 py-3 text-base mb-4"
-            style={{
-              border: "1.5px solid var(--line)",
-              background: "var(--card)",
-              color: "var(--ink)",
-              outline: "none",
-            }}
-            autoFocus
-            autoComplete="email"
-          />
-
           <label
             className="block text-sm font-medium mb-2"
             style={{ color: "var(--ink)" }}
@@ -90,26 +78,44 @@ function LoginForm() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Your password"
-            className="w-full rounded-lg px-4 py-3 text-base mb-2"
+            placeholder="At least 8 characters"
+            className="w-full rounded-lg px-4 py-3 text-base mb-4"
             style={{
               border: "1.5px solid var(--line)",
               background: "var(--card)",
               color: "var(--ink)",
               outline: "none",
             }}
-            autoComplete="current-password"
+            autoFocus
+            autoComplete="new-password"
           />
 
-          <div className="flex justify-end mb-4">
-            <Link
-              href="/lms/forgot-password"
-              className="text-sm"
-              style={{ color: "var(--calm-text)" }}
-            >
-              Forgot password?
-            </Link>
-          </div>
+          <label
+            className="block text-sm font-medium mb-2"
+            style={{ color: "var(--ink)" }}
+          >
+            Confirm password
+          </label>
+          <input
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder="Same password again"
+            className="w-full rounded-lg px-4 py-3 text-base mb-4"
+            style={{
+              border: mismatch ? "1.5px solid var(--redpen)" : "1.5px solid var(--line)",
+              background: "var(--card)",
+              color: "var(--ink)",
+              outline: "none",
+            }}
+            autoComplete="new-password"
+          />
+
+          {mismatch && (
+            <p className="text-sm mb-4" style={{ color: "var(--redpen)" }}>
+              Passwords don&rsquo;t match.
+            </p>
+          )}
 
           {error && (
             <p className="text-sm mb-4" style={{ color: "var(--redpen)" }}>
@@ -128,18 +134,17 @@ function LoginForm() {
               cursor: loading || !ready ? "not-allowed" : "pointer",
             }}
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Setting up…" : "Set password and open program →"}
           </button>
         </form>
+
+        <p className="text-sm mt-6 text-center" style={{ color: "var(--ink-dim)" }}>
+          Already have an account?{" "}
+          <Link href="/lms/login" style={{ color: "var(--calm-text)" }}>
+            Sign in
+          </Link>
+        </p>
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
   );
 }

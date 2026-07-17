@@ -36,7 +36,12 @@ export async function middleware(req: NextRequest) {
 
   // ── LMS: cookie session ───────────────────────────────────────────────────
   if (pathname.startsWith("/lms")) {
-    if (pathname === "/lms/login") return NextResponse.next();
+    if (
+      pathname === "/lms/login" ||
+      pathname === "/lms/set-password" ||
+      pathname === "/lms/forgot-password" ||
+      pathname === "/lms/reset-password"
+    ) return NextResponse.next();
 
     const token = req.cookies.get(COOKIE_NAME)?.value ?? "";
     const userId = await verifySessionTokenEdge(token);

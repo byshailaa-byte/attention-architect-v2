@@ -51,13 +51,15 @@ async function migrate() {
 
   await sql`
     CREATE TABLE IF NOT EXISTS users (
-      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      phone      TEXT UNIQUE NOT NULL,   -- primary identity key (Razorpay + admin lineage)
-      email      TEXT,
-      city       TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      phone         TEXT UNIQUE,          -- nullable; kept for legacy Razorpay records
+      email         TEXT,
+      password_hash TEXT,
+      city          TEXT,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS purchases (
@@ -89,19 +91,19 @@ async function migrate() {
   await sql`CREATE INDEX IF NOT EXISTS idx_assessments_session ON assessments(session_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_sessions_session ON assessment_sessions(session_id)`;
 
-  // Phase 6 — OTP auth + LMS progress tables
+  // Phase 6 — Password auth + LMS progress tables
 
   await sql`
-    CREATE TABLE IF NOT EXISTS otp_codes (
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
       id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      phone      TEXT NOT NULL,
-      code       TEXT NOT NULL,
+      user_id    UUID NOT NULL REFERENCES users(id),
+      token_hash TEXT NOT NULL UNIQUE,
       expires_at TIMESTAMPTZ NOT NULL,
       used_at    TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `;
-  await sql`CREATE INDEX IF NOT EXISTS idx_otp_phone ON otp_codes (phone)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_prt_user ON password_reset_tokens(user_id)`;
 
   // day 0 = weekend review / week-level completion marker.
   // Using 0 instead of NULL avoids the PostgreSQL unique-index edge case
