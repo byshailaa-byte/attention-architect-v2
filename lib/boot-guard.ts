@@ -7,7 +7,12 @@ const PRODUCTION_HOST = "neon.tech";
 
 export function assertBootGuards() {
   const dbUrl = process.env.DATABASE_URL ?? "";
-  if (dbUrl) {
+  // VERCEL_ENV is set automatically by Vercel to "production" | "preview" | "development".
+  // On a real production deploy the DB endpoint will legitimately point at the production
+  // Neon branch — skip the host check so the build doesn't block itself.
+  // Local dev (VERCEL_ENV unset) still gets the full check.
+  const isVercelProduction = process.env.VERCEL_ENV === "production";
+  if (dbUrl && !isVercelProduction) {
     try {
       const host = new URL(dbUrl).hostname;
       // Block the staging/production Neon branches (ep-spring-pond, ep-wild-frog, etc.)
