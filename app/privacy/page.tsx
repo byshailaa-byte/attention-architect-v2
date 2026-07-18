@@ -76,6 +76,8 @@ export default function PrivacyPage() {
             <p style={p}>
               General questions about this policy:{" "}
               <a href="mailto:support@thehumandecision.in" style={{ color: "var(--calm-text)" }}>support@thehumandecision.in</a>
+              {" "}or call{" "}
+              <a href="tel:9993374923" style={{ color: "var(--calm-text)" }}>9993374923</a>.
             </p>
           </Section>
         </div>

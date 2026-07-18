@@ -478,7 +478,7 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
 
           <div style={{ maxWidth: "640px", margin: "20px auto 0", background: "rgba(63,190,122,.1)", border: "1px solid rgba(63,190,122,.25)", borderRadius: "12px", padding: "16px 20px", fontSize: "14px", color: "var(--green)", textAlign: "left" }}>
             <strong>7 days.</strong>{" "}
-            Email us and we&rsquo;ll refund you in full — no forms, no questions.
+            <a href="mailto:support@thehumandecision.in" style={{ color: "var(--green)", textDecoration: "underline" }}>Email us</a> and we&rsquo;ll refund you in full — no forms, no questions.
           </div>
 
           {/* 3-card testimonial scroll — dark context */}

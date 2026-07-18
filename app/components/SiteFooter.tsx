@@ -31,7 +31,10 @@ export default function SiteFooter() {
               Terms of Service
             </Link>
             <a href="mailto:support@thehumandecision.in" style={{ color: "#9c9aa8", textDecoration: "none", fontSize: "13.5px", fontWeight: 500 }}>
-              Contact Us
+              support@thehumandecision.in
+            </a>
+            <a href="tel:9993374923" style={{ color: "#9c9aa8", textDecoration: "none", fontSize: "13.5px", fontWeight: 500 }}>
+              9993374923
             </a>
           </div>
         </div>
