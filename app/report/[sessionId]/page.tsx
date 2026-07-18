@@ -59,6 +59,13 @@ export default async function ReportPage({ params }: { params: Params }) {
 
   const row = rows[0];
 
+  // Fire-and-forget — UNIQUE(session_id, event_type) prevents double-counting
+  sql`
+    INSERT INTO funnel_events (event_type, session_id)
+    VALUES ('report_viewed', ${sessionId}::uuid)
+    ON CONFLICT (session_id, event_type) DO NOTHING
+  `.catch((e: unknown) => console.warn("[funnel] report_viewed:", (e as Error).message));
+
   if (!row.parent_name) {
     return (
       <>

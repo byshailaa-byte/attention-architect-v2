@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { GATEWAY_QUESTIONS, Question } from "@/lib/engine/questions";
 import { buildQuestionSequence, progressMilestone, GatewayAnswers } from "@/lib/engine/router";
@@ -58,6 +58,18 @@ function AssessmentForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState<string | null>(null);
   const router = useRouter();
+
+  const firedStart = useRef(false);
+  useEffect(() => {
+    if (phase === "questions" && !firedStart.current) {
+      firedStart.current = true;
+      fetch("/api/funnel/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_type: "assessment_started", session_id: sessionId }),
+      }).catch(() => {});
+    }
+  }, [phase, sessionId]);
 
   function startAssessment() {
     if (!childName.trim()) return;

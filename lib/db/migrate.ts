@@ -137,6 +137,18 @@ async function migrate() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_lms_reflections_user ON lms_reflections (user_id, week)`;
 
+  // Phase 7 — Funnel events (one row per session per event type)
+  await sql`
+    CREATE TABLE IF NOT EXISTS funnel_events (
+      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      event_type TEXT NOT NULL CHECK (event_type IN ('assessment_started', 'report_viewed')),
+      session_id UUID NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(session_id, event_type)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_funnel_events_type ON funnel_events(event_type)`;
+
   console.log("Migrations complete.");
 }
 
