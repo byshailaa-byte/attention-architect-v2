@@ -137,6 +137,10 @@ async function migrate() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_lms_reflections_user ON lms_reflections (user_id, week)`;
 
+  // Phase 7a — parent_details_at: when the parent filled in name/email to claim their report.
+  // Nullable, no backfill — historical rows correctly stay NULL.
+  await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS parent_details_at TIMESTAMPTZ`;
+
   // Phase 7 — Funnel events (one row per session per event type)
   await sql`
     CREATE TABLE IF NOT EXISTS funnel_events (

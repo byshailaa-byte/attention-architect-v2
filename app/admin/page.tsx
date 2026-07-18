@@ -139,19 +139,27 @@ export default async function AdminPage() {
     `,
   ]);
 
-  let funnelCounts = { assessment_started: 0, report_viewed: 0 };
+  let funnelCounts = { assessment_started: 0, report_viewed: 0, filled_details: 0 };
   try {
-    const rows = await sql`
-      SELECT event_type, COUNT(DISTINCT session_id)::int AS count
-      FROM funnel_events
-      GROUP BY event_type
-    `;
-    for (const row of rows as { event_type: string; count: number }[]) {
+    const [eventRows, detailRows] = await Promise.all([
+      sql`
+        SELECT event_type, COUNT(DISTINCT session_id)::int AS count
+        FROM funnel_events
+        GROUP BY event_type
+      `,
+      sql`
+        SELECT COUNT(*)::int AS count
+        FROM assessments
+        WHERE parent_details_at IS NOT NULL
+      `,
+    ]);
+    for (const row of eventRows as { event_type: string; count: number }[]) {
       if (row.event_type === "assessment_started") funnelCounts.assessment_started = row.count;
       if (row.event_type === "report_viewed")      funnelCounts.report_viewed      = row.count;
     }
+    funnelCounts.filled_details = (detailRows[0] as { count: number }).count ?? 0;
   } catch {
-    // funnel_events table not yet migrated — show zeros
+    // funnel_events or parent_details_at column not yet migrated — show zeros
   }
 
   type RawAssessment = {

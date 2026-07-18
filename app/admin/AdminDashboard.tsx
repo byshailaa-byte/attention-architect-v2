@@ -64,7 +64,7 @@ export type ActivityItem = {
 
 export type LmsRow = { week: number; day: number; user_count: number };
 
-export type FunnelCounts = { assessment_started: number; report_viewed: number };
+export type FunnelCounts = { assessment_started: number; report_viewed: number; filled_details: number };
 
 export type AdminDashboardProps = {
   kpi: KpiData;
@@ -201,12 +201,24 @@ function AnswersPanel({ assessment, onClose }: { assessment: AssessmentData; onC
                 {assessment.parent_pattern && <Badge text={assessment.parent_pattern} color={C.muted} />}
               </div>
             </div>
-            <button
-              onClick={onClose}
-              style={{ background: "none", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontFamily: MONO, fontSize: 12, flexShrink: 0 }}
-            >
-              Close
-            </button>
+            <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              {assessment.parent_name && (
+                <a
+                  href={`/report/${assessment.session_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ background: "none", border: `1px solid ${C.border}`, color: C.blue, borderRadius: 6, padding: "6px 12px", fontFamily: MONO, fontSize: 12, textDecoration: "none" }}
+                >
+                  View Report →
+                </a>
+              )}
+              <button
+                onClick={onClose}
+                style={{ background: "none", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontFamily: MONO, fontSize: 12 }}
+              >
+                Close
+              </button>
+            </div>
           </div>
 
           {/* Email — always shown, explicit about null */}
@@ -291,11 +303,12 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
   const funnelStages = [
     { label: "Started assessment", count: funnel.assessment_started, note: funnel.assessment_started === 0 ? "instrumentation new" : null },
     { label: "Completed assessment", count: kpi.completed_count, note: null },
+    { label: "Filled details", count: funnel.filled_details, note: funnel.filled_details === 0 ? "0 historical rows — live from now" : null },
     { label: "Viewed report", count: funnel.report_viewed, note: funnel.report_viewed === 0 ? "instrumentation new" : null },
     { label: "Purchased", count: kpi.paid_count, note: null },
   ];
   const funnelMax = Math.max(...funnelStages.map(s => s.count), 1);
-  const funnelColors = [C.blue, C.green, C.yellow, C.yellow];
+  const funnelColors = [C.blue, C.green, C.muted, C.yellow, C.yellow];
 
   // LMS: group by week
   const lmsWeeks = useMemo(() => {
@@ -512,12 +525,26 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
                       </td>
                       <td style={{ padding: "12px 12px 12px 0", color: C.muted, whiteSpace: "nowrap" }}>{fmtDate(a.created_at)}</td>
                       <td style={{ padding: "12px 0 12px 0", whiteSpace: "nowrap" }}>
-                        <button
-                          onClick={() => setViewingId(a.id)}
-                          style={{ background: "none", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 5, padding: "4px 12px", cursor: "pointer", fontFamily: MONO, fontSize: 11 }}
-                        >
-                          Answers →
-                        </button>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            onClick={() => setViewingId(a.id)}
+                            style={{ background: "none", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 5, padding: "4px 12px", cursor: "pointer", fontFamily: MONO, fontSize: 11 }}
+                          >
+                            Answers →
+                          </button>
+                          {a.parent_name ? (
+                            <a
+                              href={`/report/${a.session_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ background: "none", border: `1px solid ${C.border}`, color: C.blue, borderRadius: 5, padding: "4px 12px", fontFamily: MONO, fontSize: 11, textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                            >
+                              Report →
+                            </a>
+                          ) : (
+                            <span style={{ fontFamily: MONO, fontSize: 11, color: C.border, padding: "4px 0" }} title="parent details not yet filled">—</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
