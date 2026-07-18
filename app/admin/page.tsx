@@ -52,7 +52,7 @@ function resolveAnswers(answers: Record<string, string>, childName: string) {
 export default async function AdminPage() {
   const sql = getSql();
 
-  const [kpiRows, archetypeRows, activityRows, assessmentRows, lmsRows] = await Promise.all([
+  const [kpiRows, tierRows, archetypeRows, activityRows, assessmentRows, lmsRows] = await Promise.all([
     sql`
       SELECT
         COALESCE((SELECT SUM(amount_paise) FROM purchases WHERE status = 'paid')::bigint, 0) AS revenue_paise,
@@ -61,6 +61,14 @@ export default async function AdminPage() {
         (SELECT COUNT(*)::int FROM assessments WHERE archetype IS NOT NULL)                    AS completed_count,
         (SELECT archetype FROM assessments WHERE archetype IS NOT NULL
          GROUP BY archetype ORDER BY COUNT(*) DESC LIMIT 1)                                   AS top_archetype
+    `,
+
+    sql`
+      SELECT tier, COUNT(*)::int AS count, COALESCE(SUM(amount_paise), 0)::bigint AS revenue_paise
+      FROM purchases
+      WHERE status = 'paid'
+      GROUP BY tier
+      ORDER BY revenue_paise DESC
     `,
 
     sql`
@@ -198,7 +206,11 @@ export default async function AdminPage() {
     detail: r.detail,
   }));
 
-  const kpi = kpiRows[0] as AdminDashboardProps["kpi"];
+  const kpiRaw = kpiRows[0] as Omit<AdminDashboardProps["kpi"], "tier_breakdown">;
+  const kpi: AdminDashboardProps["kpi"] = {
+    ...kpiRaw,
+    tier_breakdown: (tierRows as { tier: string; count: number; revenue_paise: number }[]),
+  };
 
   return (
     <AdminDashboard

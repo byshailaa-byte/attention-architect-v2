@@ -21,12 +21,15 @@ const MONO = "'JetBrains Mono', 'Fira Code', monospace";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export type TierBreakdown = { tier: string; count: number; revenue_paise: number };
+
 export type KpiData = {
   revenue_paise: number;
   paid_count: number;
   total_purchases: number;
   completed_count: number;
   top_archetype: string | null;
+  tier_breakdown: TierBreakdown[];
 };
 
 export type AssessmentData = {
@@ -181,19 +184,52 @@ function AnswersPanel({ assessment, onClose }: { assessment: AssessmentData; onC
         display: "flex",
         flexDirection: "column",
       }}>
-        <div style={{ padding: "24px 28px 20px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <p style={{ fontFamily: BG, fontWeight: 700, fontSize: 17, color: C.text, margin: "0 0 4px" }}>{assessment.child_name}</p>
-            <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: 0 }}>
-              {assessment.archetype ?? "—"} · {assessment.age_band} · {assessment.email ?? "no email"}
-            </p>
+        <div style={{ padding: "24px 28px 20px", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 14 }}>
+            <div>
+              <p style={{ fontFamily: BG, fontWeight: 700, fontSize: 17, color: C.text, margin: "0 0 8px" }}>
+                {assessment.child_name}
+                {assessment.parent_name && (
+                  <span style={{ fontFamily: MONO, fontWeight: 400, fontSize: 11, color: C.muted, marginLeft: 10 }}>
+                    parent: {assessment.parent_name}
+                  </span>
+                )}
+              </p>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <Badge text={assessment.archetype ?? "no archetype"} color={C.yellow} />
+                <Badge text={assessment.age_band} color={C.blue} />
+                {assessment.parent_pattern && <Badge text={assessment.parent_pattern} color={C.muted} />}
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              style={{ background: "none", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontFamily: MONO, fontSize: 12, flexShrink: 0 }}
+            >
+              Close
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            style={{ background: "none", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontFamily: MONO, fontSize: 12 }}
-          >
-            Close
-          </button>
+
+          {/* Email — always shown, explicit about null */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: (assessment.concerns ?? []).length > 0 ? 12 : 0 }}>
+            <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0 }}>Email</span>
+            {assessment.email ? (
+              <span style={{ fontFamily: MONO, fontSize: 12, color: C.text }}>{assessment.email}</span>
+            ) : (
+              <span style={{ fontFamily: MONO, fontSize: 12, color: C.red }}>Not captured</span>
+            )}
+          </div>
+
+          {/* Concerns as tags */}
+          {(assessment.concerns ?? []).length > 0 && (
+            <div>
+              <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Concerns</span>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 7 }}>
+                {assessment.concerns.map((c, i) => (
+                  <span key={i} style={{ fontFamily: MONO, fontSize: 11, color: C.text, background: C.border, borderRadius: 4, padding: "3px 9px" }}>{c}</span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={{ padding: "20px 28px", flex: 1 }}>
@@ -207,15 +243,6 @@ function AnswersPanel({ assessment, onClose }: { assessment: AssessmentData; onC
             ))
           ) : (
             <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No answers recorded.</p>
-          )}
-
-          {(assessment.concerns ?? []).length > 0 && (
-            <div style={{ marginTop: 8 }}>
-              <p style={{ fontFamily: MONO, fontSize: 10, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 8px" }}>Parent Concerns</p>
-              {assessment.concerns.map((c, i) => (
-                <p key={i} style={{ fontSize: 13, color: C.text, margin: "0 0 4px" }}>· {c}</p>
-              ))}
-            </div>
           )}
 
           {(assessment.tried ?? []).length > 0 && (
@@ -306,8 +333,21 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
 
         {/* KPI Row */}
         <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
-          <KpiCard label="Total Revenue" value={fmtRs(kpi.revenue_paise)} accent />
-          <KpiCard label="Paid Purchases" value={String(kpi.paid_count)} sub={`${kpi.total_purchases} total incl. pending`} />
+          <KpiCard
+            label="Total Revenue"
+            value={fmtRs(kpi.revenue_paise)}
+            sub={kpi.tier_breakdown.length > 0
+              ? kpi.tier_breakdown.map(t => `${TIER_LABEL[t.tier] ?? t.tier} ${fmtRs(t.revenue_paise)}`).join(" · ")
+              : undefined}
+            accent
+          />
+          <KpiCard
+            label="Paid Purchases"
+            value={String(kpi.paid_count)}
+            sub={kpi.tier_breakdown.length > 0
+              ? kpi.tier_breakdown.map(t => `${t.count} ${TIER_LABEL[t.tier] ?? t.tier}`).join(" · ")
+              : `${kpi.total_purchases} total incl. pending`}
+          />
           <KpiCard label="Assessments Done" value={String(kpi.completed_count)} />
           <KpiCard label="Conversion" value={`${conversion}%`} sub="completed → paid" />
           <KpiCard label="Top Archetype" value={kpi.top_archetype ?? "—"} />
@@ -434,7 +474,7 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
               <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                    {["Child", "Parent / Email", "Archetype", "Age", "Purchase", "LMS", "Date", ""].map(h => (
+                    {["Child", "Parent", "Email", "Archetype", "Age", "Purchase", "LMS", "Date", ""].map(h => (
                       <th key={h} style={{ textAlign: "left", padding: "0 12px 10px 0", color: C.muted, fontWeight: 400, letterSpacing: "0.06em", textTransform: "uppercase", fontSize: 10, whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
@@ -443,9 +483,14 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
                   {filtered.map(a => (
                     <tr key={a.id} style={{ borderBottom: `1px solid ${C.border}` }}>
                       <td style={{ padding: "12px 12px 12px 0", color: C.text, fontWeight: 600, whiteSpace: "nowrap" }}>{a.child_name}</td>
-                      <td style={{ padding: "12px 12px 12px 0", color: C.muted, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {a.parent_name && <span style={{ color: C.text }}>{a.parent_name} · </span>}
-                        {a.email ?? "—"}
+                      <td style={{ padding: "12px 12px 12px 0", color: C.muted, whiteSpace: "nowrap" }}>
+                        {a.parent_name ?? <span style={{ color: C.border }}>—</span>}
+                      </td>
+                      <td style={{ padding: "12px 12px 12px 0", whiteSpace: "nowrap" }}>
+                        {a.email
+                          ? <span style={{ color: C.muted, fontFamily: MONO, fontSize: 11 }}>{a.email}</span>
+                          : <span style={{ color: C.red, fontFamily: MONO, fontSize: 11 }}>not captured</span>
+                        }
                       </td>
                       <td style={{ padding: "12px 12px 12px 0", color: C.text, whiteSpace: "nowrap" }}>{a.archetype ?? "—"}</td>
                       <td style={{ padding: "12px 12px 12px 0", color: C.muted }}>{a.age_band}</td>
