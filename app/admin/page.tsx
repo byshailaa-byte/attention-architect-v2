@@ -11,7 +11,7 @@ import {
   type Question,
 } from "@/lib/engine/questions";
 import AdminDashboard from "./AdminDashboard";
-import type { AdminDashboardProps } from "./AdminDashboard";
+import type { AdminDashboardProps, DropOffRow } from "./AdminDashboard";
 
 // ── Question lookup ───────────────────────────────────────────────────────────
 
@@ -139,27 +139,77 @@ export default async function AdminPage() {
     `,
   ]);
 
-  let funnelCounts = { assessment_started: 0, report_viewed: 0, filled_details: 0 };
+  type FunnelEventCounts = {
+    assessment_started: number;
+    assessment_complete: number;
+    generate_lead: number;
+    report_view: number;
+    begin_checkout: number;
+    purchase: number;
+  };
+  let funnelEventCounts: FunnelEventCounts = {
+    assessment_started: 0,
+    assessment_complete: 0,
+    generate_lead: 0,
+    report_view: 0,
+    begin_checkout: 0,
+    purchase: 0,
+  };
+  let dropOffs: DropOffRow[] = [];
+
   try {
-    const [eventRows, detailRows] = await Promise.all([
+    const [eventRows, dropOffRows] = await Promise.all([
       sql`
         SELECT event_type, COUNT(DISTINCT session_id)::int AS count
         FROM funnel_events
+        WHERE event_type IN (
+          'assessment_started','assessment_complete','generate_lead',
+          'report_view','begin_checkout','purchase'
+        )
         GROUP BY event_type
       `,
       sql`
-        SELECT COUNT(*)::int AS count
-        FROM assessments
-        WHERE parent_details_at IS NOT NULL
+        SELECT
+          last_events.session_id,
+          last_events.last_event,
+          last_events.last_seen,
+          EXTRACT(EPOCH FROM (now() - last_events.last_seen))::int AS seconds_since,
+          a.child_name,
+          a.parent_name
+        FROM (
+          SELECT DISTINCT ON (session_id)
+            session_id::text,
+            event_type AS last_event,
+            created_at AS last_seen
+          FROM funnel_events
+          ORDER BY session_id, created_at DESC
+        ) last_events
+        LEFT JOIN assessments a ON a.session_id = last_events.session_id::uuid
+        WHERE NOT EXISTS (
+          SELECT 1 FROM funnel_events fe2
+          WHERE fe2.session_id = last_events.session_id::uuid
+            AND fe2.event_type = 'assessment_complete'
+        )
+        AND last_events.last_seen < now() - INTERVAL '30 minutes'
+        ORDER BY last_events.last_seen DESC
+        LIMIT 50
       `,
     ]);
+
     for (const row of eventRows as { event_type: string; count: number }[]) {
-      if (row.event_type === "assessment_started") funnelCounts.assessment_started = row.count;
-      if (row.event_type === "report_viewed")      funnelCounts.report_viewed      = row.count;
+      const k = row.event_type as keyof FunnelEventCounts;
+      if (k in funnelEventCounts) funnelEventCounts[k] = row.count;
     }
-    funnelCounts.filled_details = (detailRows[0] as { count: number }).count ?? 0;
+    dropOffs = (dropOffRows as unknown as { session_id: string; last_event: string; last_seen: unknown; seconds_since: number; child_name: string | null; parent_name: string | null }[]).map(r => ({
+      session_id: r.session_id,
+      last_event: r.last_event,
+      last_seen: r.last_seen instanceof Date ? r.last_seen.toISOString() : String(r.last_seen),
+      seconds_since: r.seconds_since,
+      child_name: r.child_name,
+      parent_name: r.parent_name,
+    }));
   } catch {
-    // funnel_events or parent_details_at column not yet migrated — show zeros
+    // funnel_events table not yet migrated — show zeros
   }
 
   type RawAssessment = {
@@ -214,7 +264,7 @@ export default async function AdminPage() {
     detail: r.detail,
   }));
 
-  const kpiRaw = kpiRows[0] as Omit<AdminDashboardProps["kpi"], "tier_breakdown">;
+  const kpiRaw = (kpiRows as unknown as Omit<AdminDashboardProps["kpi"], "tier_breakdown">[])[0];
   const kpi: AdminDashboardProps["kpi"] = {
     ...kpiRaw,
     tier_breakdown: (tierRows as { tier: string; count: number; revenue_paise: number }[]),
@@ -227,7 +277,8 @@ export default async function AdminPage() {
       archetypes={archetypeRows as AdminDashboardProps["archetypes"]}
       activity={activity}
       lms={lmsRows as AdminDashboardProps["lms"]}
-      funnel={funnelCounts}
+      funnelEvents={funnelEventCounts}
+      dropOffs={dropOffs}
     />
   );
 }

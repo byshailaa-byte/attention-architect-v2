@@ -153,6 +153,36 @@ async function migrate() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_funnel_events_type ON funnel_events(event_type)`;
 
+  // Phase 8 — Widen funnel_events into a general session event log
+  await sql`ALTER TABLE funnel_events ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'`;
+  // Drop old UNIQUE(session_id, event_type) — too restrictive for multi-fire events like dimension_complete
+  await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_session_id_event_type_key`;
+  // Drop narrow 2-type check before renaming rows (old constraint would reject new names)
+  await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
+  // Rename existing rows BEFORE adding new constraint (ADD CONSTRAINT validates all existing rows)
+  await sql`UPDATE funnel_events SET event_type = 'report_view' WHERE event_type = 'report_viewed'`;
+  // Add expanded constraint with all 12 event types
+  await sql`
+    ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+      'assessment_started',
+      'assessment_dimension_complete',
+      'assessment_complete',
+      'report_gate_view',
+      'generate_lead',
+      'report_view',
+      'view_item',
+      'begin_checkout',
+      'purchase',
+      'lms_day_complete',
+      'lms_reflection_submitted',
+      'scroll_milestone'
+    ))
+  `;
+  // Index for per-session timeline queries (also powers the drop-off view)
+  await sql`CREATE INDEX IF NOT EXISTS idx_funnel_events_session ON funnel_events(session_id, created_at)`;
+  // Dedup scroll milestones: at most one row per (session, page, depth)
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_funnel_scroll_dedup ON funnel_events(session_id, (metadata->>'page'), (metadata->>'depth')) WHERE event_type = 'scroll_milestone'`;
+
   console.log("Migrations complete.");
 }
 

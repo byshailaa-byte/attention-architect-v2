@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 declare global {
   interface Window {
     Razorpay: new (options: Record<string, unknown>) => { open(): void };
+    gtag?: (...args: unknown[]) => void;
   }
 }
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
+
+const TIER_AMOUNT: Record<"module1" | "full", number> = { module1: 499, full: 999 };
 
 type Props = {
   sessionId: string;
@@ -16,7 +19,23 @@ type Props = {
   weakestFirst: string;
 };
 
+function fireGtag(event: string, params?: Record<string, unknown>) {
+  if (typeof window !== "undefined" && typeof window.gtag === "function") {
+    window.gtag("event", event, params ?? {});
+  }
+}
+
+function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
+  fetch("/api/funnel/event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
+  }).catch(() => {});
+}
+
 export default function PriceCards({ sessionId, childName, weakestFirst }: Props) {
+  const firedViewItem = useRef(false);
+
   useEffect(() => {
     const s = document.createElement("script");
     s.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -25,7 +44,24 @@ export default function PriceCards({ sessionId, childName, weakestFirst }: Props
     return () => { document.head.contains(s) && document.head.removeChild(s); };
   }, []);
 
+  useEffect(() => {
+    if (firedViewItem.current) return;
+    firedViewItem.current = true;
+    fireEvent("view_item", sessionId, { tiers: ["module1", "full"] });
+    fireGtag("view_item", {
+      items: [
+        { item_id: "module1", item_name: "Module 1 — Resistance", price: 499, currency: "INR" },
+        { item_id: "full", item_name: "Full 6-Module Roadmap", price: 999, currency: "INR" },
+      ],
+    });
+  }, [sessionId]);
+
   async function openModal(tier: "module1" | "full") {
+    const value = TIER_AMOUNT[tier];
+
+    fireEvent("begin_checkout", sessionId, { tier, value });
+    fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: tier, price: value }] });
+
     const res = await fetch("/api/checkout/order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -49,10 +85,13 @@ export default function PriceCards({ sessionId, childName, weakestFirst }: Props
       name: "Attention Architect",
       description: tier === "module1" ? "Module 1 — Resistance" : "Full 6-Module Roadmap",
       theme: { color: "#F6C63D" },
-      handler: function () {
-        // Client-side confirmation — redirect immediately without waiting for webhook.
-        // Webhook separately marks the purchase paid in the DB; this gives the buyer
-        // an access path even if the webhook is slow or fails.
+      handler: function (response: { razorpay_payment_id: string }) {
+        fireGtag("purchase", {
+          transaction_id: response.razorpay_payment_id,
+          value,
+          currency: "INR",
+          items: [{ item_id: tier, price: value }],
+        });
         window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
       },
     });

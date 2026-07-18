@@ -1,6 +1,7 @@
 import { getSql } from "@/lib/db/client";
 import ReportGate from "./ReportGate";
 import ReportView from "./ReportView";
+import ScrollTracker from "./ScrollTracker";
 import SiteFooter from "@/app/components/SiteFooter";
 import type { AxisResult } from "@/lib/engine/scorer";
 
@@ -59,14 +60,13 @@ export default async function ReportPage({ params }: { params: Params }) {
 
   const row = rows[0];
 
-  // Fire-and-forget — UNIQUE(session_id, event_type) prevents double-counting
-  sql`
-    INSERT INTO funnel_events (event_type, session_id)
-    VALUES ('report_viewed', ${sessionId}::uuid)
-    ON CONFLICT (session_id, event_type) DO NOTHING
-  `.catch((e: unknown) => console.warn("[funnel] report_viewed:", (e as Error).message));
-
   if (!row.parent_name) {
+    // Fire report_gate_view when parent hasn't filled details yet
+    sql`
+      INSERT INTO funnel_events (event_type, session_id, metadata)
+      VALUES ('report_gate_view', ${sessionId}::uuid, '{}'::jsonb)
+    `.catch((e: unknown) => console.warn("[funnel] report_gate_view:", (e as Error).message));
+
     return (
       <>
         <ReportGate sessionId={sessionId} />
@@ -75,8 +75,15 @@ export default async function ReportPage({ params }: { params: Params }) {
     );
   }
 
+  // Fire report_view once parent details are confirmed (fire-and-forget)
+  sql`
+    INSERT INTO funnel_events (event_type, session_id, metadata)
+    VALUES ('report_view', ${sessionId}::uuid, ${JSON.stringify({ archetype: row.archetype })}::jsonb)
+  `.catch((e: unknown) => console.warn("[funnel] report_view:", (e as Error).message));
+
   return (
     <>
+      <ScrollTracker sessionId={sessionId} />
       <ReportView
         assessment={{
           ...row,

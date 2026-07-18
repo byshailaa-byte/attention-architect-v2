@@ -6,6 +6,26 @@ import { GATEWAY_QUESTIONS, Question } from "@/lib/engine/questions";
 import { buildQuestionSequence, progressMilestone, GatewayAnswers } from "@/lib/engine/router";
 import SiteFooter from "@/app/components/SiteFooter";
 
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
+function fireGtag(event: string, params?: Record<string, unknown>) {
+  if (typeof window !== "undefined" && typeof window.gtag === "function") {
+    window.gtag("event", event, params ?? {});
+  }
+}
+
+function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
+  fetch("/api/funnel/event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
+  }).catch(() => {});
+}
+
 function isValidEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
@@ -60,14 +80,12 @@ function AssessmentForm() {
   const router = useRouter();
 
   const firedStart = useRef(false);
+  const firedDimensions = useRef(new Set<string>());
   useEffect(() => {
     if (phase === "questions" && !firedStart.current) {
       firedStart.current = true;
-      fetch("/api/funnel/event", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event_type: "assessment_started", session_id: sessionId }),
-      }).catch(() => {});
+      fireEvent("assessment_started", sessionId);
+      fireGtag("assessment_started", { session_id: sessionId });
     }
   }, [phase, sessionId]);
 
@@ -79,6 +97,13 @@ function AssessmentForm() {
     setPhase("questions");
   }
 
+  function fireDimensionComplete(dimension: string) {
+    if (firedDimensions.current.has(dimension)) return;
+    firedDimensions.current.add(dimension);
+    fireEvent("assessment_dimension_complete", sessionId, { dimension });
+    fireGtag("dimension_complete", { dimension });
+  }
+
   function handleAnswer(questionId: string, value: string) {
     const nextAnswers = { ...answers, [questionId]: value };
     setAnswers(nextAnswers);
@@ -88,12 +113,30 @@ function AssessmentForm() {
       const g: GatewayAnswers = { G1: nextAnswers["G1"], G2: nextAnswers["G2"], G3: nextAnswers["G3"] };
       const fullSeq = buildQuestionSequence(g);
       setQuestions(fullSeq);
+
+      // Gateway-only dimensions: fire complete for any dimension not in post-gateway questions
+      const postDims = new Set(fullSeq.slice(3).map(q => q.dimension));
+      for (const gq of GATEWAY_QUESTIONS) {
+        if (!postDims.has(gq.dimension)) fireDimensionComplete(gq.dimension);
+      }
+    }
+
+    // Post-gateway: detect dimension transitions using full sequence (questions.length > 3 means it's loaded)
+    if (questions.length > 3 && currentIdx >= 3) {
+      const thisQ = questions[currentIdx];
+      const nextQ = questions[next];
+      if (thisQ?.dimension && (!nextQ || nextQ.dimension !== thisQ.dimension)) {
+        fireDimensionComplete(thisQ.dimension);
+      }
     }
 
     if (next >= questions.length && currentIdx >= 2) {
       const g: GatewayAnswers = { G1: nextAnswers["G1"], G2: nextAnswers["G2"], G3: nextAnswers["G3"] };
       const fullSeq = buildQuestionSequence(g);
       if (next >= fullSeq.length) {
+        // Ensure last dimension fires before submit
+        const lastQ = questions[currentIdx];
+        if (lastQ?.dimension) fireDimensionComplete(lastQ.dimension);
         submitAssessment(nextAnswers, fullSeq);
         return;
       }
@@ -120,6 +163,7 @@ function AssessmentForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Submit failed");
       setScoringResult({ archetype: data.archetype, parent_pattern: data.parent_pattern });
+      fireGtag("assessment_complete", { archetype: data.archetype });
       setSubmitting(false);
       setPhase("post-assessment");
     } catch (e) {
@@ -147,6 +191,7 @@ function AssessmentForm() {
         const d = await res.json().catch(() => ({}));
         throw new Error((d as { error?: string }).error ?? "Something went wrong");
       }
+      fireGtag("generate_lead");
       router.push(`/report/${sessionId}`);
     } catch (e) {
       setError((e as Error).message);

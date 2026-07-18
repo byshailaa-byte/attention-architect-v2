@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
-import { storeReflection } from "@/lib/lms/progress";
+import { storeReflection, getActiveAssessmentId } from "@/lib/lms/progress";
+import { getSql } from "@/lib/db/client";
 import type { ReflectionOutcome } from "@/content/types";
 import { assertBootGuards } from "@/lib/boot-guard";
 
@@ -31,6 +32,23 @@ export async function POST(req: NextRequest) {
     }
 
     await storeReflection(userId, week, day, outcome, note);
+
+    // Fire lms_reflection_submitted using assessment session_id if available
+    const assessmentId = await getActiveAssessmentId(userId);
+    if (assessmentId) {
+      const sql = getSql();
+      sql`
+        SELECT session_id::text FROM assessments WHERE id = ${assessmentId}::uuid LIMIT 1
+      `.then((rows) => {
+        const row = (rows as unknown as { session_id: string }[])[0];
+        if (!row?.session_id) return;
+        return sql`
+          INSERT INTO funnel_events (event_type, session_id, metadata)
+          VALUES ('lms_reflection_submitted', ${row.session_id}::uuid, ${JSON.stringify({ week, day, outcome })}::jsonb)
+        `;
+      }).catch((e: unknown) => console.warn("[funnel] lms_reflection_submitted:", (e as Error).message));
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("[api/lms/reflect]", e);

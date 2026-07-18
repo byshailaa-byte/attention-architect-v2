@@ -3,13 +3,21 @@ import { getSql } from "@/lib/db/client";
 
 assertBootGuards();
 
-const ALLOWED = new Set(["assessment_started", "report_viewed"]);
+const ALLOWED = new Set([
+  "assessment_started",
+  "assessment_dimension_complete",
+  "report_gate_view",
+  "view_item",
+  "begin_checkout",
+]);
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const eventType: unknown = body?.event_type;
   const sessionId: unknown = body?.session_id;
+  const metadata: unknown = body?.metadata;
 
   if (
     typeof eventType !== "string" ||
@@ -20,15 +28,15 @@ export async function POST(req: Request) {
     return new Response("bad request", { status: 400 });
   }
 
+  const meta = metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : {};
+
   const sql = getSql();
   try {
     await sql`
-      INSERT INTO funnel_events (event_type, session_id)
-      VALUES (${eventType}, ${sessionId}::uuid)
-      ON CONFLICT (session_id, event_type) DO NOTHING
+      INSERT INTO funnel_events (event_type, session_id, metadata)
+      VALUES (${eventType}, ${sessionId}::uuid, ${JSON.stringify(meta)}::jsonb)
     `;
   } catch (e) {
-    // Table may not exist until migration runs — swallow gracefully
     console.warn("[funnel] insert failed:", (e as Error).message);
   }
 

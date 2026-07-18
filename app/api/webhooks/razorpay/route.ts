@@ -70,6 +70,26 @@ export async function POST(req: NextRequest) {
         `[webhook/razorpay] payment.captured: order=${razorpayOrderId} payment=${razorpayPaymentId}`
       );
 
+      // Fire purchase funnel event (fire-and-forget)
+      sql`
+        SELECT a.session_id::text, p.tier, p.amount_paise
+        FROM purchases p
+        JOIN assessments a ON a.id = p.assessment_id
+        WHERE p.razorpay_order_id = ${razorpayOrderId}
+        LIMIT 1
+      `.then((rows) => {
+        const row = (rows as unknown as { session_id: string; tier: string; amount_paise: number }[])[0];
+        if (!row?.session_id) return;
+        return sql`
+          INSERT INTO funnel_events (event_type, session_id, metadata)
+          VALUES ('purchase', ${row.session_id}::uuid, ${JSON.stringify({
+            tier: row.tier,
+            value: row.amount_paise / 100,
+            razorpay_payment_id: razorpayPaymentId,
+          })}::jsonb)
+        `;
+      }).catch((e: unknown) => console.warn("[funnel] purchase event:", (e as Error).message));
+
       // Fire-and-forget receipt email. Never blocks the 200 response.
       // capturePayment guarantees "processed" is returned exactly once per order,
       // so this block — and the email — runs at most once even if Razorpay retries.

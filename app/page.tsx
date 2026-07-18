@@ -74,6 +74,33 @@ export default function LandingPage() {
   const [showSticky, setShowSticky] = useState(false);
 
   const heroCtaRef = useRef<HTMLButtonElement>(null);
+  // Transient UUID per page load — links scroll milestones to each landing page visit
+  const landingSessionId = useRef(typeof crypto !== "undefined" ? crypto.randomUUID() : "");
+  const firedScrollDepths = useRef(new Set<number>());
+
+  useEffect(() => {
+    function onScroll() {
+      const scrolled = window.scrollY + window.innerHeight;
+      const total = document.documentElement.scrollHeight;
+      const pct = (scrolled / total) * 100;
+      const sid = landingSessionId.current;
+      if (!sid) return;
+      for (const depth of [25, 50, 75, 100] as const) {
+        if (pct >= depth && !firedScrollDepths.current.has(depth)) {
+          firedScrollDepths.current.add(depth);
+          fetch("/api/track/scroll", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sid, page: "landing", depth }),
+          }).catch(() => {});
+          fireGtag("scroll_milestone", { page: "landing", depth });
+        }
+      }
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     const el = heroCtaRef.current;
