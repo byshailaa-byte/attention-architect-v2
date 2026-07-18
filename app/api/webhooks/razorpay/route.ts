@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { verifyWebhookSignature } from "@/lib/razorpay/client";
 import { capturePayment } from "@/lib/razorpay/capture";
+import { sendPurchaseReceipt } from "@/lib/auth/email";
 import { assertBootGuards } from "@/lib/boot-guard";
 
 assertBootGuards();
@@ -67,6 +68,52 @@ export async function POST(req: NextRequest) {
     } else {
       console.log(
         `[webhook/razorpay] payment.captured: order=${razorpayOrderId} payment=${razorpayPaymentId}`
+      );
+
+      // Fire-and-forget receipt email. Never blocks the 200 response.
+      // capturePayment guarantees "processed" is returned exactly once per order,
+      // so this block — and the email — runs at most once even if Razorpay retries.
+      const baseUrl =
+        process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
+
+      sql`
+        SELECT
+          u.email,
+          a.child_name,
+          a.session_id::text  AS session_id,
+          p.amount_paise,
+          p.tier
+        FROM purchases p
+        JOIN assessments a ON a.id = p.assessment_id
+        JOIN users       u ON u.id  = p.user_id
+        WHERE p.razorpay_order_id = ${razorpayOrderId}
+        LIMIT 1
+      `.then((rows) => {
+        const row = (rows as {
+          email: string | null;
+          child_name: string | null;
+          session_id: string | null;
+          amount_paise: number;
+          tier: string;
+        }[])[0];
+        if (!row?.email) {
+          console.warn(`[webhook/razorpay] no email for receipt: order=${razorpayOrderId}`);
+          return;
+        }
+        const setPasswordUrl = row.session_id
+          ? `${baseUrl}/lms/set-password?session=${row.session_id}`
+          : `${baseUrl}/lms/login`;
+        return sendPurchaseReceipt({
+          to: row.email,
+          paymentId: razorpayPaymentId,
+          amount: row.amount_paise,
+          tier: row.tier,
+          paidAt: new Date().toISOString(),
+          childName: row.child_name,
+          setPasswordUrl,
+        });
+      }).catch((err) =>
+        console.error(`[webhook/razorpay] receipt lookup failed: order=${razorpayOrderId}`, err)
       );
     }
   } else if (event === "payment.failed") {
