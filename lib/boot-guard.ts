@@ -30,12 +30,14 @@ export function assertBootGuards() {
     }
   }
 
-  for (const [key, val] of Object.entries(process.env)) {
-    if (key.startsWith("rzp_live_") || (val ?? "").startsWith("rzp_live_")) {
-      throw new Error(
-        `[BOOT GUARD] Live Razorpay key detected in env (${key}). ` +
-          `This process must never run with live payment keys.`
-      );
+  if (!isVercelProduction) {
+    for (const [key, val] of Object.entries(process.env)) {
+      if (key.startsWith("rzp_live_") || (val ?? "").startsWith("rzp_live_")) {
+        throw new Error(
+          `[BOOT GUARD] Live Razorpay key detected in env (${key}). ` +
+            `This process must never run with live payment keys.`
+        );
+      }
     }
   }
 
