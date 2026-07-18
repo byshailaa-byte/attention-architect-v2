@@ -23,15 +23,18 @@ export async function POST(req: NextRequest) {
     const result = (await sql`
       UPDATE assessments
       SET
-        parent_name       = ${parentName.trim()},
-        email             = ${email.trim()},
-        child_gender      = ${gender ?? null},
-        tried             = ${tried ?? []},
-        better            = ${better ?? []},
-        parent_details_at = now()
+        parent_name  = ${parentName.trim()},
+        email        = ${email.trim()},
+        child_gender = ${gender ?? null},
+        tried        = ${tried ?? []},
+        better       = ${better ?? []}
       WHERE session_id = ${sessionId}::uuid
       RETURNING id
     `) as unknown as unknown[];
+
+    // best-effort timestamp — column added in Phase 7a migration; silently skipped if missing
+    sql`UPDATE assessments SET parent_details_at = now() WHERE session_id = ${sessionId}::uuid`
+      .catch((e: unknown) => console.warn("[claim] parent_details_at:", (e as Error).message));
 
     if (result.length === 0) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
