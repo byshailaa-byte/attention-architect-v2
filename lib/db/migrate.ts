@@ -183,6 +183,10 @@ async function migrate() {
   // Dedup scroll milestones: at most one row per (session, page, depth)
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_funnel_scroll_dedup ON funnel_events(session_id, (metadata->>'page'), (metadata->>'depth')) WHERE event_type = 'scroll_milestone'`;
 
+  // Phase 9 — Normalize archetype casing: one legacy test row was written as 'storm'
+  // (the scorer always produces 'The Storm'; this corrects the pre-existing bad row)
+  await sql`UPDATE assessments SET archetype = 'The Storm' WHERE archetype = 'storm'`;
+
   console.log("Migrations complete.");
 }
 

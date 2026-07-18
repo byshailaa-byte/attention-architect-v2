@@ -47,26 +47,60 @@ function resolveAnswers(answers: Record<string, string>, childName: string) {
     });
 }
 
+// ── Date range ────────────────────────────────────────────────────────────────
+
+function getDateBounds(
+  range: string | undefined,
+  from: string | undefined,
+  to: string | undefined
+): { from: string; to: string } {
+  const now = new Date();
+  const toISO = now.toISOString();
+  if (range === "all") return { from: "1970-01-01T00:00:00.000Z", to: toISO };
+  if (range === "7d")  return { from: new Date(now.getTime() - 7 * 86_400_000).toISOString(), to: toISO };
+  if (from && to)      return { from: new Date(from).toISOString(), to: new Date(to + "T23:59:59.999Z").toISOString() };
+  // default: last 30 days
+  return { from: new Date(now.getTime() - 30 * 86_400_000).toISOString(), to: toISO };
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string; from?: string; to?: string }>;
+}) {
+  const params  = await searchParams;
+  const rangeParam = params.range ?? "30d";
+  const fromParam  = params.from  ?? null;
+  const toParam    = params.to    ?? null;
+  const bounds     = getDateBounds(params.range, params.from, params.to);
+  const fromISO    = bounds.from;
+  const toISO      = bounds.to;
+
   const sql = getSql();
 
   const [kpiRows, tierRows, archetypeRows, activityRows, assessmentRows, lmsRows] = await Promise.all([
     sql`
       SELECT
-        COALESCE((SELECT SUM(amount_paise) FROM purchases WHERE status = 'paid')::bigint, 0) AS revenue_paise,
-        (SELECT COUNT(*)::int FROM purchases WHERE status = 'paid')                           AS paid_count,
-        (SELECT COUNT(*)::int FROM purchases)                                                  AS total_purchases,
-        (SELECT COUNT(*)::int FROM assessments WHERE archetype IS NOT NULL)                    AS completed_count,
+        COALESCE((SELECT SUM(amount_paise) FROM purchases WHERE status = 'paid'
+                  AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz)::bigint, 0) AS revenue_paise,
+        (SELECT COUNT(*)::int FROM purchases WHERE status = 'paid'
+         AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz)                      AS paid_count,
+        (SELECT COUNT(*)::int FROM purchases
+         WHERE created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz)                    AS total_purchases,
+        (SELECT COUNT(*)::int FROM assessments WHERE archetype IS NOT NULL
+         AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz)                      AS completed_count,
         (SELECT archetype FROM assessments WHERE archetype IS NOT NULL
-         GROUP BY archetype ORDER BY COUNT(*) DESC LIMIT 1)                                   AS top_archetype
+         AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
+         GROUP BY archetype ORDER BY COUNT(*) DESC LIMIT 1)                                                      AS top_archetype
     `,
 
     sql`
       SELECT tier, COUNT(*)::int AS count, COALESCE(SUM(amount_paise), 0)::bigint AS revenue_paise
       FROM purchases
       WHERE status = 'paid'
+        AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
       GROUP BY tier
       ORDER BY revenue_paise DESC
     `,
@@ -75,6 +109,7 @@ export default async function AdminPage() {
       SELECT archetype, COUNT(*)::int AS count
       FROM assessments
       WHERE archetype IS NOT NULL
+        AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
       GROUP BY archetype
       ORDER BY count DESC
     `,
@@ -83,24 +118,31 @@ export default async function AdminPage() {
       SELECT type, created_at, email, detail FROM (
         SELECT 'purchase'   AS type, p.created_at, u.email,
                p.tier || ' ₹' || (p.amount_paise / 100) AS detail
-        FROM purchases p JOIN users u ON u.id = p.user_id WHERE p.status = 'paid'
+        FROM purchases p JOIN users u ON u.id = p.user_id
+        WHERE p.status = 'paid'
+          AND p.created_at >= ${fromISO}::timestamptz AND p.created_at <= ${toISO}::timestamptz
 
         UNION ALL
 
         SELECT 'assessment' AS type, a.created_at, a.email,
                a.archetype AS detail
-        FROM assessments a WHERE a.archetype IS NOT NULL AND a.email IS NOT NULL
+        FROM assessments a
+        WHERE a.archetype IS NOT NULL AND a.email IS NOT NULL
+          AND a.created_at >= ${fromISO}::timestamptz AND a.created_at <= ${toISO}::timestamptz
 
         UNION ALL
 
         SELECT 'lms'        AS type, lp.completed_at AS created_at, u.email,
                'Week ' || lp.week || ' Day ' || lp.day AS detail
         FROM lms_progress lp JOIN users u ON u.id = lp.user_id
+        WHERE lp.completed_at >= ${fromISO}::timestamptz AND lp.completed_at <= ${toISO}::timestamptz
       ) combined
       ORDER BY created_at DESC
       LIMIT 20
     `,
 
+    // All assessments returned without date filter — in_range computed per-row below
+    // so Users can dim out-of-range rows while User Journeys filters to in-range only
     sql`
       SELECT
         a.id::text,
@@ -134,6 +176,7 @@ export default async function AdminPage() {
     sql`
       SELECT week::int, day::int, COUNT(DISTINCT user_id)::int AS user_count
       FROM lms_progress
+      WHERE completed_at >= ${fromISO}::timestamptz AND completed_at <= ${toISO}::timestamptz
       GROUP BY week, day
       ORDER BY week, day
     `,
@@ -157,8 +200,9 @@ export default async function AdminPage() {
   };
   let dropOffs: DropOffRow[] = [];
 
+  let funnelSince: string | null = null;
   try {
-    const [eventRows, dropOffRows] = await Promise.all([
+    const [eventRows, dropOffRows, sinceRows] = await Promise.all([
       sql`
         SELECT event_type, COUNT(DISTINCT session_id)::int AS count
         FROM funnel_events
@@ -166,6 +210,7 @@ export default async function AdminPage() {
           'assessment_started','assessment_complete','generate_lead',
           'report_view','begin_checkout','purchase'
         )
+        AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
         GROUP BY event_type
       `,
       sql`
@@ -182,19 +227,26 @@ export default async function AdminPage() {
             event_type AS last_event,
             created_at AS last_seen
           FROM funnel_events
+          WHERE created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
           ORDER BY session_id, created_at DESC
         ) last_events
         LEFT JOIN assessments a ON a.session_id = last_events.session_id::uuid
         WHERE NOT EXISTS (
-          SELECT 1 FROM funnel_events fe2
-          WHERE fe2.session_id = last_events.session_id::uuid
-            AND fe2.event_type = 'assessment_complete'
+          SELECT 1 FROM assessments a2
+          WHERE a2.session_id = last_events.session_id::uuid
+            AND a2.archetype IS NOT NULL
         )
         AND last_events.last_seen < now() - INTERVAL '30 minutes'
         ORDER BY last_events.last_seen DESC
         LIMIT 50
       `,
+      sql`SELECT MIN(created_at) AS since FROM funnel_events`,
     ]);
+
+    const sinceRaw = (sinceRows as unknown as { since: unknown }[])[0]?.since;
+    if (sinceRaw) {
+      funnelSince = sinceRaw instanceof Date ? sinceRaw.toISOString() : String(sinceRaw);
+    }
 
     for (const row of eventRows as { event_type: string; count: number }[]) {
       const k = row.event_type as keyof FunnelEventCounts;
@@ -233,28 +285,32 @@ export default async function AdminPage() {
     lms_max_day: number | null;
   };
 
-  const assessments: AdminDashboardProps["assessments"] = (assessmentRows as RawAssessment[]).map(a => ({
-    id: a.id,
-    session_id: a.session_id,
-    child_name: a.child_name,
-    parent_name: a.parent_name,
-    email: a.email,
-    archetype: a.archetype,
-    parent_pattern: a.parent_pattern,
-    age_band: a.age_band,
-    created_at: a.created_at instanceof Date ? a.created_at.toISOString() : String(a.created_at),
-    resolved_answers: resolveAnswers(a.answers ?? {}, a.child_name),
-    concerns: a.concerns ?? [],
-    tried: a.tried ?? null,
-    better: a.better ?? null,
-    purchase_status: a.purchase_status,
-    tier: a.tier,
-    amount_paise: a.amount_paise,
-    purchased_at: a.purchased_at != null
-      ? (a.purchased_at instanceof Date ? a.purchased_at.toISOString() : String(a.purchased_at))
-      : null,
-    lms_max_day: a.lms_max_day,
-  }));
+  const assessments: AdminDashboardProps["assessments"] = (assessmentRows as RawAssessment[]).map(a => {
+    const created_at = a.created_at instanceof Date ? a.created_at.toISOString() : String(a.created_at);
+    return {
+      id: a.id,
+      session_id: a.session_id,
+      child_name: a.child_name,
+      parent_name: a.parent_name,
+      email: a.email,
+      archetype: a.archetype,
+      parent_pattern: a.parent_pattern,
+      age_band: a.age_band,
+      created_at,
+      resolved_answers: resolveAnswers(a.answers ?? {}, a.child_name),
+      concerns: a.concerns ?? [],
+      tried: a.tried ?? null,
+      better: a.better ?? null,
+      purchase_status: a.purchase_status,
+      tier: a.tier,
+      amount_paise: a.amount_paise,
+      purchased_at: a.purchased_at != null
+        ? (a.purchased_at instanceof Date ? a.purchased_at.toISOString() : String(a.purchased_at))
+        : null,
+      lms_max_day: a.lms_max_day,
+      in_range: created_at >= fromISO && created_at <= toISO,
+    };
+  });
 
   type RawActivity = { type: string; created_at: unknown; email: string | null; detail: string | null };
   const activity: AdminDashboardProps["activity"] = (activityRows as RawActivity[]).map(r => ({
@@ -279,6 +335,10 @@ export default async function AdminPage() {
       lms={lmsRows as AdminDashboardProps["lms"]}
       funnelEvents={funnelEventCounts}
       dropOffs={dropOffs}
+      funnelSince={funnelSince}
+      rangeParam={rangeParam}
+      fromParam={fromParam}
+      toParam={toParam}
     />
   );
 }

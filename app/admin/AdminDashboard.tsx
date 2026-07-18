@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -52,6 +53,7 @@ export type AssessmentData = {
   amount_paise: number | null;
   purchased_at: string | null;
   lms_max_day: number | null;
+  in_range: boolean;
 };
 
 export type ArchetypeCount = { archetype: string; count: number };
@@ -99,6 +101,10 @@ export type AdminDashboardProps = {
   lms: LmsRow[];
   funnelEvents: FunnelEventCounts;
   dropOffs: DropOffRow[];
+  funnelSince: string | null;
+  rangeParam: string;
+  fromParam: string | null;
+  toParam: string | null;
   // legacy prop kept for compatibility — not used in new dashboard
   funnel?: FunnelCounts;
 };
@@ -508,6 +514,129 @@ function AnswersPanel({ assessment, onClose }: { assessment: AssessmentData; onC
   );
 }
 
+// ── Date Range Control ────────────────────────────────────────────────────────
+
+function RangeControl({
+  rangeParam,
+  fromParam,
+  toParam,
+}: {
+  rangeParam: string;
+  fromParam: string | null;
+  toParam: string | null;
+}) {
+  const router = useRouter();
+  const [customFrom, setCustomFrom] = useState(fromParam ?? "");
+  const [customTo,   setCustomTo]   = useState(toParam   ?? "");
+  const [showCustom, setShowCustom] = useState(!!(fromParam && toParam));
+
+  useEffect(() => {
+    if (fromParam) setCustomFrom(fromParam);
+    if (toParam)   setCustomTo(toParam);
+  }, [fromParam, toParam]);
+
+  const isCustom    = !!(fromParam && toParam);
+  const activePreset = isCustom ? "custom" : rangeParam;
+
+  const PRESETS = [
+    { key: "7d",  label: "7d"  },
+    { key: "30d", label: "30d" },
+    { key: "all", label: "All" },
+  ] as const;
+
+  function selectPreset(key: string) {
+    setShowCustom(false);
+    router.push(`/admin?range=${key}`);
+  }
+
+  function applyCustom() {
+    if (!customFrom || !customTo) return;
+    router.push(`/admin?from=${customFrom}&to=${customTo}`);
+    setShowCustom(false);
+  }
+
+  const presetBtn = (active: boolean): React.CSSProperties => ({
+    flex: 1,
+    border: "none",
+    borderRadius: 4,
+    padding: "5px 0",
+    fontFamily: MONO,
+    fontSize: 10,
+    cursor: "pointer",
+    background: active ? C.yellow : C.border,
+    color: active ? C.bg : C.muted,
+    fontWeight: active ? 700 : 400,
+  });
+
+  const dateInput: React.CSSProperties = {
+    background: C.border,
+    border: `1px solid ${C.border}`,
+    borderRadius: 4,
+    padding: "4px 8px",
+    fontFamily: MONO,
+    fontSize: 10,
+    color: C.text,
+    outline: "none",
+    width: "100%",
+    boxSizing: "border-box",
+  };
+
+  return (
+    <div style={{ padding: "10px 12px 4px", borderTop: `1px solid ${C.border}` }}>
+      <p style={{ fontFamily: MONO, fontSize: 9, color: C.muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 6px" }}>
+        Date Range
+      </p>
+      <div style={{ display: "flex", gap: 3, marginBottom: showCustom || isCustom ? 6 : 0 }}>
+        {PRESETS.map(p => (
+          <button key={p.key} onClick={() => selectPreset(p.key)} style={presetBtn(activePreset === p.key)}>
+            {p.label}
+          </button>
+        ))}
+        <button
+          onClick={() => setShowCustom(v => !v)}
+          style={{ ...presetBtn(activePreset === "custom"), flex: 1.4 }}
+        >
+          Custom
+        </button>
+      </div>
+
+      {(showCustom || isCustom) && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <input
+            type="date"
+            value={customFrom}
+            onChange={e => setCustomFrom(e.target.value)}
+            style={dateInput}
+          />
+          <input
+            type="date"
+            value={customTo}
+            onChange={e => setCustomTo(e.target.value)}
+            style={dateInput}
+          />
+          <button
+            onClick={applyCustom}
+            disabled={!customFrom || !customTo}
+            style={{
+              background: customFrom && customTo ? C.yellow : C.border,
+              color: customFrom && customTo ? C.bg : C.muted,
+              border: "none",
+              borderRadius: 4,
+              padding: "5px",
+              fontFamily: MONO,
+              fontSize: 10,
+              cursor: customFrom && customTo ? "pointer" : "not-allowed",
+              fontWeight: 700,
+            }}
+          >
+            Apply
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
 type Section = "overview" | "funnel" | "journeys" | "dropoffs" | "lms" | "users" | "archetypes";
@@ -522,7 +651,11 @@ const NAV: { id: Section; label: string }[] = [
   { id: "archetypes", label: "Archetypes" },
 ];
 
-export default function AdminDashboard({ kpi, assessments, archetypes, activity, lms, funnelEvents, dropOffs }: AdminDashboardProps) {
+export default function AdminDashboard({
+  kpi, assessments, archetypes, activity, lms,
+  funnelEvents, dropOffs, funnelSince,
+  rangeParam, fromParam, toParam,
+}: AdminDashboardProps) {
   const [active, setActive] = useState<Section>("overview");
   const [search, setSearch] = useState("");
   const [viewingId, setViewingId] = useState<string | null>(null);
@@ -540,6 +673,9 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
     );
   }, [assessments, search]);
 
+  // For User Journeys: only sessions with activity in the selected date range
+  const filteredInRange = useMemo(() => filtered.filter(a => a.in_range), [filtered]);
+
   const lmsWeeks = useMemo(() => {
     const byWeek: Record<number, { day: number; user_count: number }[]> = {};
     for (const row of lms) {
@@ -554,12 +690,12 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
     : 0;
 
   const funnelStages = [
-    { label: "Started",     count: funnelEvents.assessment_started,  color: C.blue },
-    { label: "Completed",   count: funnelEvents.assessment_complete,  color: C.blue },
-    { label: "Filled details", count: funnelEvents.generate_lead,    color: C.yellow },
-    { label: "Viewed report",  count: funnelEvents.report_view,      color: C.yellow },
-    { label: "Checkout opened", count: funnelEvents.begin_checkout,  color: C.purple },
-    { label: "Purchased",   count: funnelEvents.purchase,            color: C.green },
+    { label: "Started",       count: funnelEvents.assessment_started,  color: C.blue },
+    { label: "Completed",     count: funnelEvents.assessment_complete,  color: C.blue },
+    { label: "Filled details",count: funnelEvents.generate_lead,        color: C.yellow },
+    { label: "Viewed report", count: funnelEvents.report_view,          color: C.yellow },
+    { label: "Checkout",      count: funnelEvents.begin_checkout,       color: C.purple },
+    { label: "Purchased",     count: funnelEvents.purchase,             color: C.green },
   ];
 
   return (
@@ -612,7 +748,9 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
           ))}
         </nav>
 
-        <div style={{ padding: "12px 20px 20px" }}>
+        <RangeControl rangeParam={rangeParam} fromParam={fromParam} toParam={toParam} />
+
+        <div style={{ padding: "10px 20px 20px" }}>
           <a
             href="/admin"
             style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textDecoration: "none", display: "block", textAlign: "center", border: `1px solid ${C.border}`, borderRadius: 6, padding: "6px 0" }}
@@ -654,7 +792,7 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
             <Card style={{ marginBottom: 24 }}>
               <SectionLabel>Recent Activity</SectionLabel>
               {activity.length === 0 ? (
-                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No activity yet.</p>
+                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No activity in this period.</p>
               ) : (
                 activity.map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", padding: "10px 0", borderBottom: i < activity.length - 1 ? `1px solid ${C.border}` : "none" }}>
@@ -703,6 +841,17 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
             <Card>
               <SectionLabel>Funnel Flow</SectionLabel>
               <FunnelChart stages={funnelStages} />
+              {funnelSince && (
+                <p style={{ fontFamily: MONO, fontSize: 10, color: C.muted, margin: "18px 0 0", lineHeight: 1.6, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+                  Event tracking active from{" "}
+                  <span style={{ color: C.text }}>
+                    {new Date(funnelSince).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}
+                  </span>
+                  {". "}
+                  Started / Completed / Filled details / Checkout stages reflect only sessions instrumented after that date.
+                  Viewed report and pre-instrumentation sessions will undercount in those stages.
+                </p>
+              )}
             </Card>
           </div>
         )}
@@ -712,10 +861,10 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
           <div>
             <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 8px" }}>User Journeys</h2>
             <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
-              Click &ldquo;Answers →&rdquo; then open the Event Timeline tab to see per-session events.
+              Sessions with activity in the selected date range. Event Timeline shows the full session history regardless of range.
             </p>
             <AssessmentsTable
-              filtered={filtered}
+              filtered={filteredInRange}
               search={search}
               setSearch={setSearch}
               setViewingId={setViewingId}
@@ -728,11 +877,11 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
           <div>
             <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 8px" }}>Drop-offs</h2>
             <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
-              Sessions that started but have no <code style={{ color: C.yellow }}>assessment_complete</code> event, last active &gt;30 min ago.
+              Sessions with events in the selected range, no <code style={{ color: C.yellow }}>assessment_complete</code>, last active &gt;30 min ago.
             </p>
             <Card>
               {dropOffs.length === 0 ? (
-                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No drop-offs found — or funnel events are still propagating.</p>
+                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No drop-offs in this period.</p>
               ) : (
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
@@ -773,7 +922,7 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
             <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 24px" }}>LMS Activity</h2>
             {lms.length === 0 ? (
               <Card>
-                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No LMS progress recorded yet.</p>
+                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No LMS progress in this period.</p>
               </Card>
             ) : (
               lmsWeeks.map(({ week, days }) => (
@@ -799,12 +948,16 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
         {/* ── USERS ── */}
         {active === "users" && (
           <div>
-            <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 24px" }}>Users</h2>
+            <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 8px" }}>Users</h2>
+            <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
+              All users shown. Dimmed rows are outside the selected date range.
+            </p>
             <AssessmentsTable
               filtered={filtered}
               search={search}
               setSearch={setSearch}
               setViewingId={setViewingId}
+              dimOutOfRange
             />
           </div>
         )}
@@ -816,7 +969,7 @@ export default function AdminDashboard({ kpi, assessments, archetypes, activity,
             <Card>
               <SectionLabel>Distribution</SectionLabel>
               {archetypes.length === 0 ? (
-                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No data yet.</p>
+                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No data in this period.</p>
               ) : (
                 archetypes.map(({ archetype, count }) => (
                   <HBar
@@ -849,11 +1002,13 @@ function AssessmentsTable({
   search,
   setSearch,
   setViewingId,
+  dimOutOfRange = false,
 }: {
   filtered: AssessmentData[];
   search: string;
   setSearch: (v: string) => void;
   setViewingId: (id: string | null) => void;
+  dimOutOfRange?: boolean;
 }) {
   return (
     <Card>
@@ -891,7 +1046,14 @@ function AssessmentsTable({
             </thead>
             <tbody>
               {filtered.map(a => (
-                <tr key={a.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                <tr
+                  key={a.id}
+                  style={{
+                    borderBottom: `1px solid ${C.border}`,
+                    opacity: dimOutOfRange && !a.in_range ? 0.35 : 1,
+                    transition: "opacity 0.15s",
+                  }}
+                >
                   <td style={{ padding: "12px 12px 12px 0", color: C.text, fontWeight: 600, whiteSpace: "nowrap" }}>{a.child_name}</td>
                   <td style={{ padding: "12px 12px 12px 0", color: C.muted, whiteSpace: "nowrap" }}>
                     {a.parent_name ?? <span style={{ color: C.border }}>—</span>}
