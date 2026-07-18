@@ -24,15 +24,27 @@ export function getPublicKeyId(): string {
   return getRazorpayKeys().keyId;
 }
 
+function getWebhookSecret(): string {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET ?? "";
+  if (!secret) {
+    throw new Error(
+      "[Razorpay] RAZORPAY_WEBHOOK_SECRET must be set. " +
+        "Generate a webhook secret in the Razorpay dashboard and copy it here."
+    );
+  }
+  return secret;
+}
+
 // Webhook HMAC-SHA256 signature verification.
-// Returns true if the signature is valid for this payload.
+// Uses RAZORPAY_WEBHOOK_SECRET (the secret set in Razorpay's dashboard webhook config),
+// NOT RAZORPAY_KEY_SECRET. These are two distinct secrets.
 export function verifyWebhookSignature(
   rawBody: string,
   signature: string
 ): boolean {
-  const { keySecret } = getRazorpayKeys();
+  const secret = getWebhookSecret();
   const expected = crypto
-    .createHmac("sha256", keySecret)
+    .createHmac("sha256", secret)
     .update(rawBody)
     .digest("hex");
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));

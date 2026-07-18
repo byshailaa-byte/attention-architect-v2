@@ -49,6 +49,12 @@ export default function PriceCards({ sessionId, childName, weakestFirst }: Props
       name: "Attention Architect",
       description: tier === "module1" ? "Module 1 — Resistance" : "Full 6-Module Roadmap",
       theme: { color: "#F6C63D" },
+      handler: function () {
+        // Client-side confirmation — redirect immediately without waiting for webhook.
+        // Webhook separately marks the purchase paid in the DB; this gives the buyer
+        // an access path even if the webhook is slow or fails.
+        window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
+      },
     });
     rzp.open();
   }
