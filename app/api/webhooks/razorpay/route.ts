@@ -58,7 +58,14 @@ export async function POST(req: NextRequest) {
     const { id: razorpayPaymentId, order_id: razorpayOrderId } = payment;
 
     const sql = getSql();
-    const outcome = await capturePayment(sql, razorpayPaymentId, razorpayOrderId);
+    let outcome: "processed" | "duplicate";
+    try {
+      outcome = await capturePayment(sql, razorpayPaymentId, razorpayOrderId);
+    } catch (e) {
+      // DB error — return 500 so Razorpay retries; do not silently swallow
+      console.error(`[webhook/razorpay] capturePayment failed: order=${razorpayOrderId}`, e);
+      return NextResponse.json({ error: "DB error" }, { status: 500 });
+    }
 
     if (outcome === "duplicate") {
       // Either not found or already processed — both are fine
@@ -140,12 +147,17 @@ export async function POST(req: NextRequest) {
     const payment = payload.payload.payment?.entity;
     if (payment) {
       const sql = getSql();
-      await sql`
-        UPDATE purchases SET status = 'failed'
-        WHERE razorpay_order_id = ${payment.order_id}
-          AND status = 'pending'
-      `;
-      console.log(`[webhook/razorpay] payment.failed: order=${payment.order_id}`);
+      try {
+        await sql`
+          UPDATE purchases SET status = 'failed'
+          WHERE razorpay_order_id = ${payment.order_id}
+            AND status = 'pending'
+        `;
+        console.log(`[webhook/razorpay] payment.failed: order=${payment.order_id}`);
+      } catch (e) {
+        console.error(`[webhook/razorpay] payment.failed DB error: order=${payment.order_id}`, e);
+        return NextResponse.json({ error: "DB error" }, { status: 500 });
+      }
     }
   } else {
     // Acknowledge unknown events without acting on them
