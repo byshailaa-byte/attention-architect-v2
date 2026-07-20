@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
         concerns
       ) VALUES (
         ${sessionId}::uuid,
-        ${childName || null},
+        ${childName || ""},
         ${ageBand},
         ${gender ?? null},
         ${JSON.stringify(answers)}::jsonb,
