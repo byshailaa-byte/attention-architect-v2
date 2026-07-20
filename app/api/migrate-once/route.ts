@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     SELECT is_nullable
     FROM information_schema.columns
     WHERE table_name = 'assessments' AND column_name = 'child_name'
-  `;
+  ` as { is_nullable: string }[];
 
   return NextResponse.json({ child_name_nullable: rows[0]?.is_nullable });
 }
