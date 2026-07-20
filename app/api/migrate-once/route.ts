@@ -3,7 +3,7 @@ import { getSql } from "@/lib/db/client";
 
 export async function POST(req: NextRequest) {
   const auth = req.headers.get("authorization") ?? "";
-  const pw = process.env.ADMIN_PASSWORD;
+  const pw = process.env.MIGRATE_TOKEN;
   if (!pw || auth !== `Bearer ${pw}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
