@@ -187,6 +187,31 @@ async function migrate() {
   // (the scorer always produces 'The Storm'; this corrects the pre-existing bad row)
   await sql`UPDATE assessments SET archetype = 'The Storm' WHERE archetype = 'storm'`;
 
+  // Phase 10a — child_name: make nullable so the form can be submitted without a name.
+  // Empty-string inserts from before this migration are fine; new blank submissions will insert NULL.
+  await sql`ALTER TABLE assessments ALTER COLUMN child_name DROP NOT NULL`;
+
+  // Phase 10b — funnel_events: add exit_intent_shown to the allowed event type set.
+  // Drop + re-add constraint to include the new type (Postgres doesn't support ALTER CONSTRAINT).
+  await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
+  await sql`
+    ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+      'assessment_started',
+      'assessment_dimension_complete',
+      'assessment_complete',
+      'report_gate_view',
+      'generate_lead',
+      'report_view',
+      'view_item',
+      'begin_checkout',
+      'purchase',
+      'lms_day_complete',
+      'lms_reflection_submitted',
+      'scroll_milestone',
+      'exit_intent_shown'
+    ))
+  `;
+
   console.log("Migrations complete.");
 }
 

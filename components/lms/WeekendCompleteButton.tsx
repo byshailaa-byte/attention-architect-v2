@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
+  }
+}
+
 export default function WeekendCompleteButton({
   week,
   alreadyComplete,
@@ -20,6 +27,12 @@ export default function WeekendCompleteButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ week, day: 0 }), // day 0 = weekend review
       });
+      if (typeof window.gtag === "function") {
+        window.gtag("event", "lms_day_complete", { week, day: 0 });
+      }
+      if (typeof window.fbq === "function") {
+        window.fbq("trackCustom", "LmsDayComplete", { week, day: 0 });
+      }
       setDone(true);
     } finally {
       setLoading(false);

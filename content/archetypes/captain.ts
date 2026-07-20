@@ -10,7 +10,7 @@ export const captain: ArchetypeContent = {
 
   // S2
   s2Anecdote:  "Tell {{child_pronoun_obj}} exactly how to organize the project and {{child_pronoun_subj}}'ll slow-walk every step of it, technically compliant, clearly checked out. Say \"your call, tell me what you need\" and the same task gets done in half the time, {{child_pronoun_poss}} way, walking in the door proud of it. Not resisting the work. Resisting being crew on {{child_pronoun_poss}} own ship.",
-  s2Pullquote: "{{child_pronoun_subj}}'ll do almost anything — the second it's actually {{child_pronoun_poss}} to run.",
+  s2Pullquote: "{{child_pronoun_subj|cap}}'ll do almost anything — the second it's actually {{child_pronoun_poss}} to run.",
   s2Strength:  "takes real ownership and drives hard the moment something is genuinely {{child_pronoun_poss}} to run.",
   s2Shadow:    "the instant someone else takes the wheel, even briefly, the drive doesn't just dip — it can disappear entirely.",
 

@@ -12,12 +12,14 @@ import { buildPronounTokens, type Gender } from "@/lib/report/pronouns";
 import { TODO } from "@/lib/content/todo";
 import type { AxisResult } from "@/lib/engine/scorer";
 import PriceCards from "./PriceCards";
+import ReportViewTracker from "./ReportViewTracker";
+import ExitIntentPopup from "./ExitIntentPopup";
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
 type AssessmentRow = {
   session_id: string;
-  child_name: string;
+  child_name: string | null;
   age_band: string;
   child_gender: string | null;
   archetype: string;
@@ -81,7 +83,7 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
   const pattern = patternContent[a.parent_pattern];
   const fit     = getFitContent(a.archetype, a.parent_pattern);
 
-  const childName  = a.child_name;
+  const childName  = a.child_name || "your child";
   const parentName = a.parent_name;
 
   const objectiveKey    = a.concerns?.[0] ?? "";
@@ -122,6 +124,8 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
 
   return (
     <main style={{ background: "var(--ink)", color: "var(--paper)", fontFamily: "var(--font-instrument), 'Instrument Sans', sans-serif" }}>
+      <ReportViewTracker archetype={a.archetype} />
+      <ExitIntentPopup sessionId={a.session_id} />
 
       {/* ── S1: DARK HERO ───────────────────────────────────────────────── */}
       <section className="rep-dark">
@@ -292,7 +296,7 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
           <div style={{ background: "var(--calm-tint)", borderRadius: "14px", padding: "26px 28px", marginBottom: "24px" }}>
             <p style={{ color: "var(--calm-text)", fontSize: "14.5px", lineHeight: 1.65, marginBottom: "12px" }}>
               <strong>Why this matters more than it used to:</strong>{" "}
-              the world {childName} is growing up into asks something different of attention than it used to. Information used to be the hard part to find. Now it&rsquo;s the easiest thing in the world — the hard part is deciding what deserves attention at all.
+              the world{" "}{childName}{" "}is growing up into asks something different of attention than it used to. Information used to be the hard part to find. Now it&rsquo;s the easiest thing in the world — the hard part is deciding what deserves attention at all.
             </p>
             <p style={{ color: "var(--calm-text)", fontSize: "14.5px", lineHeight: 1.65, marginBottom: 0 }}>
               That&rsquo;s not really a knowledge problem anymore. As AI takes over more of the easy thinking, what&rsquo;s left — staying with something long enough for it to matter — is what actually separates kids who thrive from kids who don&rsquo;t. That&rsquo;s not a fixed trait. It&rsquo;s a skill.
@@ -462,8 +466,12 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
             weakestFirst={(a.weakest_two ?? [])[0] ?? "Resistance"}
           />
 
+          <p style={{ fontSize: "13px", color: "rgba(246,244,236,.6)", marginTop: "20px" }}>
+            Less than one month of tuition — for the skill every hour of tuition depends on.
+          </p>
+
           {/* How the 6 weeks work — directly after price cards per spec */}
-          <div style={{ maxWidth: "640px", margin: "28px auto 0", background: "rgba(246,244,236,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: "14px", padding: "24px 28px", textAlign: "left" }}>
+          <div style={{ maxWidth: "640px", margin: "16px auto 0", background: "rgba(246,244,236,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: "14px", padding: "24px 28px", textAlign: "left" }}>
             <div style={{ fontSize: "11px", color: "var(--marker)", textTransform: "uppercase", letterSpacing: ".1em", fontWeight: 700, marginBottom: "10px" }}>
               How the 6 weeks work
             </div>
@@ -471,10 +479,6 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
               Week 1 starts with {(a.weakest_two ?? [])[0] ?? "Resistance"} — the fastest place to see change. Each week after builds directly on what worked (and what didn&rsquo;t) the week before, staying focused on {(a.weakest_two ?? []).join(" and ")} throughout. You&rsquo;ll always know exactly what&rsquo;s coming next, one week at a time — never a 20-item plan dropped on you all at once.
             </p>
           </div>
-
-          <p style={{ fontSize: "13px", color: "rgba(246,244,236,.6)", marginTop: "20px" }}>
-            Less than one month of tuition — for the skill every hour of tuition depends on.
-          </p>
 
           <div style={{ maxWidth: "640px", margin: "20px auto 0", background: "rgba(63,190,122,.1)", border: "1px solid rgba(63,190,122,.25)", borderRadius: "12px", padding: "16px 20px", fontSize: "14px", color: "var(--green)", textAlign: "left" }}>
             <strong>7 days.</strong>{" "}

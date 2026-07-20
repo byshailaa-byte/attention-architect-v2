@@ -7,6 +7,7 @@ import SiteFooter from "@/app/components/SiteFooter";
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
   }
 }
 
@@ -72,6 +73,7 @@ export default function LandingPage() {
   const [concerns, setConcerns] = useState<string[]>([]);
   const [ticked, setTicked] = useState<Set<number>>(new Set());
   const [showSticky, setShowSticky] = useState(false);
+  const [ctaError, setCtaError] = useState<string | null>(null);
 
   const heroCtaRef = useRef<HTMLButtonElement>(null);
   // Transient UUID per page load — links scroll milestones to each landing page visit
@@ -94,6 +96,7 @@ export default function LandingPage() {
             body: JSON.stringify({ session_id: sid, page: "landing", depth }),
           }).catch(() => {});
           fireGtag("scroll_milestone", { page: "landing", depth });
+          if (typeof window.fbq === "function") window.fbq("trackCustom", "ScrollMilestone", { page: "landing", depth });
         }
       }
     }
@@ -134,10 +137,12 @@ export default function LandingPage() {
 
   function selectAge(a: string) {
     setAge(a);
+    setCtaError(null);
     fireGtag(a === "younger" || a === "older" ? "age_out_of_band" : "age_selected", { age_band: a });
   }
 
   function toggleConcern(c: string) {
+    setCtaError(null);
     setConcerns((prev) => {
       if (prev.includes(c)) return prev.filter((x) => x !== c);
       const next = prev.length >= 2 ? [...prev.slice(1), c] : [...prev, c];
@@ -157,13 +162,25 @@ export default function LandingPage() {
 
   function buildCtaUrl() {
     const p = new URLSearchParams();
-    if (age && age !== "younger" && age !== "older") p.set("age", age);
+    if (age) {
+      // younger/older are out-of-band but still conscious selections — map to 10-11 so the gate sees a valid age param
+      p.set("age", (age === "younger" || age === "older") ? "10-11" : age);
+    }
     if (concerns.length > 0) p.set("concerns", concerns.join(","));
     const qs = p.toString();
     return `/pre-assessment${qs ? "?" + qs : ""}`;
   }
 
   function handleCtaClick(location: string) {
+    if (!age) {
+      setCtaError("Select your child's age above to continue.");
+      return;
+    }
+    if (concerns.length === 0) {
+      setCtaError("Pick at least one concern above to continue.");
+      return;
+    }
+    setCtaError(null);
     fireGtag("cta_click", { location });
     router.push(buildCtaUrl());
   }
@@ -225,7 +242,7 @@ export default function LandingPage() {
               <div style={{ marginBottom: "20px" }}>
                 <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "12px" }}>How old is your child?</div>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {[["8–9", "8–9"], ["10–11", "10–11"], ["12–14", "12–14"], ["Younger", "younger"], ["Older", "older"]].map(([label, val]) => (
+                  {[["8–9", "8-9"], ["10–11", "10-11"], ["12–14", "12-14"], ["Younger", "younger"], ["Older", "older"]].map(([label, val]) => (
                     <button
                       key={val}
                       className={`chip-btn${age === val ? " sel" : ""}`}
@@ -271,6 +288,12 @@ export default function LandingPage() {
               >
                 {heroCtaText}
               </button>
+
+              {ctaError && (
+                <p style={{ fontSize: "13px", color: "var(--redpen)", marginTop: "10px", fontWeight: 500 }}>
+                  {ctaError}
+                </p>
+              )}
 
               <ul className="reassure-list">
                 <li>No signup needed</li>

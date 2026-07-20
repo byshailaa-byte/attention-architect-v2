@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
   }
 }
 
@@ -27,6 +28,9 @@ export default function ScrollTracker({ sessionId }: { sessionId: string }) {
           }).catch(() => {});
           if (typeof window.gtag === "function") {
             window.gtag("event", "scroll_milestone", { page: "report", depth });
+          }
+          if (typeof window.fbq === "function") {
+            window.fbq("trackCustom", "ScrollMilestone", { page: "report", depth });
           }
         }
       }

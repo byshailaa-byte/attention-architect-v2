@@ -6,6 +6,7 @@ declare global {
   interface Window {
     Razorpay: new (options: Record<string, unknown>) => { open(): void };
     gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
   }
 }
 
@@ -22,6 +23,12 @@ type Props = {
 function fireGtag(event: string, params?: Record<string, unknown>) {
   if (typeof window !== "undefined" && typeof window.gtag === "function") {
     window.gtag("event", event, params ?? {});
+  }
+}
+
+function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>) {
+  if (typeof window !== "undefined" && typeof window.fbq === "function") {
+    window.fbq(type, event, params ?? {});
   }
 }
 
@@ -54,6 +61,7 @@ export default function PriceCards({ sessionId, childName, weakestFirst }: Props
         { item_id: "full", item_name: "Full 6-Module Roadmap", price: 999, currency: "INR" },
       ],
     });
+    fireFbq("track", "ViewContent", { content_ids: ["module1", "full"], content_type: "product", currency: "INR" });
   }, [sessionId]);
 
   async function openModal(tier: "module1" | "full") {
@@ -61,6 +69,7 @@ export default function PriceCards({ sessionId, childName, weakestFirst }: Props
 
     fireEvent("begin_checkout", sessionId, { tier, value });
     fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: tier, price: value }] });
+    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: tier });
 
     const res = await fetch("/api/checkout/order", {
       method: "POST",
@@ -92,6 +101,7 @@ export default function PriceCards({ sessionId, childName, weakestFirst }: Props
           currency: "INR",
           items: [{ item_id: tier, price: value }],
         });
+        fireFbq("track", "Purchase", { value, currency: "INR", content_name: tier });
         window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
       },
     });
@@ -112,7 +122,7 @@ export default function PriceCards({ sessionId, childName, weakestFirst }: Props
           onClick={() => openModal("module1")}
           style={{ display: "block", width: "100%", background: "var(--ink)", color: "var(--paper)", textAlign: "center", fontFamily: BG, fontWeight: 800, fontSize: "14.5px", padding: "14px", borderRadius: "10px", border: "none", cursor: "pointer" }}
         >
-          Open Module 1 →
+          Get First Module
         </button>
       </div>
 
@@ -131,7 +141,7 @@ export default function PriceCards({ sessionId, childName, weakestFirst }: Props
           onClick={() => openModal("full")}
           style={{ display: "block", width: "100%", background: "var(--marker-ink)", color: "var(--paper)", textAlign: "center", fontFamily: BG, fontWeight: 800, fontSize: "14.5px", padding: "14px", borderRadius: "10px", border: "none", cursor: "pointer" }}
         >
-          Open the Full Roadmap →
+          Invest in the Full Roadmap
         </button>
       </div>
     </div>

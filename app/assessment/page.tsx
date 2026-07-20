@@ -9,12 +9,19 @@ import SiteFooter from "@/app/components/SiteFooter";
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
   }
 }
 
 function fireGtag(event: string, params?: Record<string, unknown>) {
   if (typeof window !== "undefined" && typeof window.gtag === "function") {
     window.gtag("event", event, params ?? {});
+  }
+}
+
+function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>) {
+  if (typeof window !== "undefined" && typeof window.fbq === "function") {
+    window.fbq(type, event, params ?? {});
   }
 }
 
@@ -44,22 +51,35 @@ const GENDER_CHIPS = [
 
 function AssessmentForm() {
   const params    = useSearchParams();
-  const nameParam = params.get("name") ?? "";
-  const ageParam  = params.get("age") as "8-9" | "10-11" | "12-14" | null;
+  const nameParam     = params.get("name") ?? "";
+  const hasNameParam  = params.has("name"); // true even when name=""
+  const ageParam      = params.get("age") as "8-9" | "10-11" | "12-14" | null;
+  const concernsParam = params.get("concerns") ?? "";
+
+  const VALID_AGE_BANDS = ["8-9", "10-11", "12-14"];
+  const gatePass = hasNameParam
+    && VALID_AGE_BANDS.includes(ageParam ?? "")
+    && concernsParam.split(",").filter(Boolean).length > 0;
 
   const [phase, setPhase]       = useState<Phase>("meta");
   const [childName, setChildName] = useState(nameParam);
   const [ageBand, setAgeBand]   = useState<"8-9" | "10-11" | "12-14">(
-    ageParam && ["8-9", "10-11", "12-14"].includes(ageParam) ? ageParam : "10-11"
+    ageParam && VALID_AGE_BANDS.includes(ageParam) ? ageParam : "10-11"
   );
 
   useEffect(() => {
-    if (nameParam.trim()) {
-      setQuestions(GATEWAY_QUESTIONS);
-      setCurrentIdx(0);
-      setAnswers({});
-      setPhase("questions");
+    if (!gatePass) {
+      const p = new URLSearchParams();
+      if (ageParam) p.set("age", ageParam);
+      if (concernsParam) p.set("concerns", concernsParam);
+      const qs = p.toString();
+      router.replace(`/pre-assessment${qs ? "?" + qs : ""}`);
+      return;
     }
+    setQuestions(GATEWAY_QUESTIONS);
+    setCurrentIdx(0);
+    setAnswers({});
+    setPhase("questions");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -86,11 +106,11 @@ function AssessmentForm() {
       firedStart.current = true;
       fireEvent("assessment_started", sessionId);
       fireGtag("assessment_started", { session_id: sessionId });
+      fireFbq("trackCustom", "AssessmentStarted");
     }
   }, [phase, sessionId]);
 
   function startAssessment() {
-    if (!childName.trim()) return;
     setQuestions(GATEWAY_QUESTIONS);
     setCurrentIdx(0);
     setAnswers({});
@@ -101,7 +121,8 @@ function AssessmentForm() {
     if (firedDimensions.current.has(dimension)) return;
     firedDimensions.current.add(dimension);
     fireEvent("assessment_dimension_complete", sessionId, { dimension });
-    fireGtag("dimension_complete", { dimension });
+    fireGtag("assessment_dimension_complete", { dimension });
+    fireFbq("trackCustom", "AssessmentDimensionComplete", { dimension });
   }
 
   function handleAnswer(questionId: string, value: string) {
@@ -158,12 +179,14 @@ function AssessmentForm() {
           gender: null,
           answers: finalAnswers,
           questionSequence: fullSeq.map((q) => ({ id: q.id, dimension: q.dimension })),
+          concerns: concernsParam.split(",").filter(Boolean),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Submit failed");
       setScoringResult({ archetype: data.archetype, parent_pattern: data.parent_pattern });
       fireGtag("assessment_complete", { archetype: data.archetype });
+      fireFbq("trackCustom", "AssessmentComplete", { archetype: data.archetype });
       setSubmitting(false);
       setPhase("post-assessment");
     } catch (e) {
@@ -192,6 +215,7 @@ function AssessmentForm() {
         throw new Error((d as { error?: string }).error ?? "Something went wrong");
       }
       fireGtag("generate_lead");
+      fireFbq("track", "Lead");
       router.push(`/report/${sessionId}`);
     } catch (e) {
       setError((e as Error).message);
@@ -217,9 +241,11 @@ function AssessmentForm() {
     );
   }
 
+  if (!gatePass) return null;
+
   /* ── META PHASE ─────────────────────────────────────────────── */
   if (phase === "meta") {
-    const metaReady = childName.trim().length > 0;
+    const metaReady = true; // name is optional — always allow proceeding
     return (
       <div className="funnel-screen">
         <div className="funnel-card">
@@ -227,7 +253,8 @@ function AssessmentForm() {
             Before You Start
           </div>
           <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: "10px" }}>
-            What&rsquo;s your child&rsquo;s first name?
+            What&rsquo;s your child&rsquo;s first name?{" "}
+            <span style={{ fontWeight: 400, color: "var(--ink-dim)" }}>(optional)</span>
           </label>
           <input
             type="text"
@@ -337,9 +364,10 @@ function AssessmentForm() {
   }
 
   /* ── POST-ASSESSMENT PHASE ──────────────────────────────────── */
-  const emailTouched = email.length > 0;
-  const emailValid   = isValidEmail(email);
-  const postReady    = parentName.trim().length > 0 && emailValid;
+  const emailTouched  = email.length > 0;
+  const emailValid    = isValidEmail(email);
+  const genderTouched = (parentName.trim().length > 0 || emailTouched) && postGender === null;
+  const postReady     = parentName.trim().length > 0 && emailValid && postGender !== null;
 
   return (
     <div className="funnel-screen">
@@ -382,14 +410,14 @@ function AssessmentForm() {
             Almost there.
           </h2>
           <p style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.6, marginBottom: "24px" }}>
-            A couple of optional questions sharpen the report. Only your name and email are needed to see it.
+            Your child&rsquo;s gender, your name, and your email are needed to open the report.
           </p>
 
           {/* Gender — optional */}
           <div style={{ marginBottom: "22px" }}>
             <div style={{ fontSize: "13px", fontWeight: 700, marginBottom: "8px" }}>
               {childName || "Your child"}&rsquo;s gender{" "}
-              <span style={{ fontWeight: 400, color: "var(--ink-dim)" }}>(optional)</span>
+              <span style={{ color: "var(--redpen)", fontWeight: 600, fontSize: "11px" }}>Required</span>
             </div>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               {GENDER_CHIPS.map((chip) => {
@@ -406,6 +434,11 @@ function AssessmentForm() {
                 );
               })}
             </div>
+            {genderTouched && (
+              <div style={{ fontSize: "12px", color: "var(--redpen)", marginTop: "6px" }}>
+                Please select a gender option to continue.
+              </div>
+            )}
           </div>
 
           {/* Parent name — required */}

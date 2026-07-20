@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       gender,
       answers,
       questionSequence,
+      concerns,
     } = body as {
       sessionId: string;
       childName: string;
@@ -34,9 +35,10 @@ export async function POST(req: NextRequest) {
       gender: string | null;
       answers: Record<string, string>;
       questionSequence: Array<{ id: string; dimension: string }>;
+      concerns?: string[];
     };
 
-    if (!sessionId || !childName || !ageBand || !answers || !questionSequence) {
+    if (!sessionId || !ageBand || !answers || !questionSequence) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -73,10 +75,11 @@ export async function POST(req: NextRequest) {
         session_id, child_name, age_band, child_gender, answers, dimensions,
         archetype, parent_pattern,
         axes, weakest_two,
-        honest_flag, honest_trigger
+        honest_flag, honest_trigger,
+        concerns
       ) VALUES (
         ${sessionId}::uuid,
-        ${childName},
+        ${childName || null},
         ${ageBand},
         ${gender ?? null},
         ${JSON.stringify(answers)}::jsonb,
@@ -86,7 +89,8 @@ export async function POST(req: NextRequest) {
         ${JSON.stringify(scoring.axes)}::jsonb,
         ${scoring.weakest_two},
         ${scoring.honest_flag},
-        ${scoring.honest_trigger}
+        ${scoring.honest_trigger},
+        ${concerns ?? []}
       )
     `;
 

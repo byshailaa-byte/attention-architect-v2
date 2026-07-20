@@ -35,7 +35,7 @@ export const explorer: ArchetypeContent = {
   },
 
   // S6
-  s6FutureScene: "Saturday afternoon. {{child_pronoun_subj}} followed one question through four completely different topics, and can walk you through the exact thread that got {{child_pronoun_obj}} there — proud of the whole winding path, not just the destination.",
+  s6FutureScene: "Saturday afternoon. {{child_pronoun_subj|cap}} followed one question through four completely different topics, and can walk you through the exact thread that got {{child_pronoun_obj}} there — proud of the whole winding path, not just the destination.",
 
   // S7/S8 base — composed with pattern clauses
   s7StayPathBase:   "The tangents keep getting treated as the problem instead of the point, and the curiosity that used to connect ideas starts looking for anywhere it's actually welcome — usually not homework.",

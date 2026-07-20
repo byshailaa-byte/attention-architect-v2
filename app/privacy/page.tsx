@@ -35,7 +35,7 @@ export default function PrivacyPage() {
           <Section title="3. Who We Share Data With">
             <ul style={ul}>
               <li style={li}><strong>Razorpay</strong> — for payment processing, if you purchase the course.</li>
-              <li style={li}><strong>[Hosting/database provider — fill in]</strong> — to store your data securely.</li>
+              <li style={li}><strong>Vercel (hosting) and Neon (database)</strong> — to store your data securely.</li>
             </ul>
           </Section>
 

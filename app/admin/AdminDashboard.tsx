@@ -666,7 +666,7 @@ export default function AdminDashboard({
     const q = search.trim().toLowerCase();
     if (!q) return assessments;
     return assessments.filter(a =>
-      a.child_name.toLowerCase().includes(q) ||
+      (a.child_name ?? "").toLowerCase().includes(q) ||
       (a.email ?? "").toLowerCase().includes(q) ||
       (a.parent_name ?? "").toLowerCase().includes(q) ||
       (a.archetype ?? "").toLowerCase().includes(q)

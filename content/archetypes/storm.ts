@@ -10,7 +10,7 @@ export const storm: ArchetypeContent = {
   s1EvidenceObservation: "the way {{child_name}} locks in completely on a game {{child_pronoun_subj}} chose",
 
   // S2
-  s2Anecdote:  "{{child_pronoun_subj}}'ll stay out till dark, replaying the same move on a game {{child_pronoun_subj}} chose — locked in, unstoppable. Ask {{child_pronoun_obj}} to practice the same thing for 20 minutes on someone else's schedule, and {{child_name}} is gone in five. Not defiant. Just gone. {{child_name}} needs it to be {{child_pronoun_poss}} idea, and to matter right now. Both, always.",
+  s2Anecdote:  "{{child_pronoun_subj|cap}}'ll stay out till dark, replaying the same move on a game {{child_pronoun_subj}} chose — locked in, unstoppable. Ask {{child_pronoun_obj}} to practice the same thing for 20 minutes on someone else's schedule, and {{child_name}} is gone in five. Not defiant. Just gone. {{child_name}} needs it to be {{child_pronoun_poss}} idea, and to matter right now. Both, always.",
   s2Pullquote: "Every kid who needs it to be their idea is one real challenge away from unstoppable.",
   s2Strength:  "{{child_pronoun_poss}} own choice turns into real drive.",
   s2Shadow:    "someone else's plan turns that same energy into resistance.",

@@ -6,26 +6,35 @@ import SiteFooter from "@/app/components/SiteFooter";
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
+const VALID_AGE_BANDS = ["8-9", "10-11", "12-14"];
+
 function PreAssessmentForm() {
   const router = useRouter();
   const params = useSearchParams();
   const ageParam  = params.get("age") ?? "";
   const concernsParam = params.get("concerns") ?? "";
 
+  const gatePass = VALID_AGE_BANDS.includes(ageParam) && concernsParam.split(",").filter(Boolean).length > 0;
+
   const [childName, setChildName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!gatePass) {
+      router.replace("/");
+      return;
+    }
     inputRef.current?.focus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  if (!gatePass) return null;
+
   const trimmed = childName.trim();
-  const canBegin = trimmed.length > 0;
 
   function handleBegin() {
-    if (!canBegin) return;
     const p = new URLSearchParams();
-    p.set("name", trimmed);
+    p.set("name", trimmed); // empty string is valid — assessment skips meta phase on any name param
     if (ageParam) p.set("age", ageParam);
     if (concernsParam) p.set("concerns", concernsParam);
     router.push(`/assessment?${p.toString()}`);
@@ -39,7 +48,8 @@ function PreAssessmentForm() {
         </div>
 
         <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: "10px" }}>
-          What&rsquo;s your child&rsquo;s first name?
+          What&rsquo;s your child&rsquo;s first name?{" "}
+          <span style={{ fontWeight: 400, color: "var(--ink-dim)" }}>(optional)</span>
         </label>
         <input
           ref={inputRef}
@@ -87,12 +97,11 @@ function PreAssessmentForm() {
 
         <button
           className="cta-btn"
-          disabled={!canBegin}
           onClick={handleBegin}
           style={{
-            background: canBegin ? "var(--marker)" : "var(--line)",
-            color: canBegin ? "var(--marker-ink)" : "var(--ink-dim)",
-            cursor: canBegin ? "pointer" : "not-allowed",
+            background: "var(--marker)",
+            color: "var(--marker-ink)",
+            cursor: "pointer",
           }}
         >
           Begin →

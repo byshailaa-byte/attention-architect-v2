@@ -37,7 +37,7 @@ export default async function ReportPage({ params }: { params: Params }) {
     LIMIT 1
   `) as unknown as {
     session_id: string;
-    child_name: string;
+    child_name: string | null;
     age_band: string;
     child_gender: string | null;
     archetype: string;

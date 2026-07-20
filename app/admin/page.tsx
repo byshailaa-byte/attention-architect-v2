@@ -297,7 +297,7 @@ export default async function AdminPage({
       parent_pattern: a.parent_pattern,
       age_band: a.age_band,
       created_at,
-      resolved_answers: resolveAnswers(a.answers ?? {}, a.child_name),
+      resolved_answers: resolveAnswers(a.answers ?? {}, a.child_name ?? "your child"),
       concerns: a.concerns ?? [],
       tried: a.tried ?? null,
       better: a.better ?? null,

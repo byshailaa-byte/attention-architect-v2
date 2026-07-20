@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
   }
 }
 
@@ -17,6 +18,9 @@ export default function ReportGate({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     if (typeof window !== "undefined" && typeof window.gtag === "function") {
       window.gtag("event", "report_gate_view");
+    }
+    if (typeof window !== "undefined" && typeof window.fbq === "function") {
+      window.fbq("trackCustom", "ReportGateView");
     }
   }, []);
   const [submitting, setSubmitting] = useState(false);
@@ -42,6 +46,9 @@ export default function ReportGate({ sessionId }: { sessionId: string }) {
       }
       if (typeof window !== "undefined" && typeof window.gtag === "function") {
         window.gtag("event", "generate_lead");
+      }
+      if (typeof window !== "undefined" && typeof window.fbq === "function") {
+        window.fbq("track", "Lead");
       }
       router.refresh();
     } catch (err) {

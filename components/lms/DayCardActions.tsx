@@ -4,6 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ReflectionOutcome } from "@/content/types";
 
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
+  }
+}
+
 type Props = {
   week: number;
   day: number;
@@ -56,6 +63,12 @@ export default function DayCardActions({
         setStep("idle");
         return;
       }
+      if (typeof window.gtag === "function") {
+        window.gtag("event", "lms_day_complete", { week, day });
+      }
+      if (typeof window.fbq === "function") {
+        window.fbq("trackCustom", "LmsDayComplete", { week, day });
+      }
       if (reflectionPrompt) {
         setStep("reflecting");
       } else {
@@ -76,6 +89,12 @@ export default function DayCardActions({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ week, day, outcome, note: note || null }),
       });
+      if (typeof window.gtag === "function") {
+        window.gtag("event", "lms_reflection_submitted", { week, day, outcome });
+      }
+      if (typeof window.fbq === "function") {
+        window.fbq("trackCustom", "LmsReflectionSubmitted", { week, day, outcome });
+      }
       setStep("done");
     } catch {
       setStep("reflecting");
