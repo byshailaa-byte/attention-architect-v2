@@ -174,10 +174,12 @@ export default function LandingPage() {
   function handleCtaClick(location: string) {
     if (!age) {
       setCtaError("Select your child's age above to continue.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     if (concerns.length === 0) {
       setCtaError("Pick at least one concern above to continue.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     setCtaError(null);

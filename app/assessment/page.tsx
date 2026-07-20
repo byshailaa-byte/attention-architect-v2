@@ -330,7 +330,7 @@ function AssessmentForm() {
               {currentIdx + 1} of {questions.length}
             </div>
             <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "26px", lineHeight: 1.3, marginBottom: "32px", color: "var(--ink)" }}>
-              {q.text.replace(/\{name\}/g, childName)}
+              {q.text.replace(/\{name\}/g, childName || "your child")}
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {q.options.map((opt) => (
