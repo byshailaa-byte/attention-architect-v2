@@ -52,15 +52,19 @@ function resolveAnswers(answers: Record<string, string>, childName: string) {
 function getDateBounds(
   range: string | undefined,
   from: string | undefined,
-  to: string | undefined
+  to: string | undefined,
+  campaignLaunchAt: string | null,
+  showArchive: boolean,
 ): { from: string; to: string } {
   const now = new Date();
   const toISO = now.toISOString();
   if (range === "all") return { from: "1970-01-01T00:00:00.000Z", to: toISO };
   if (range === "7d")  return { from: new Date(now.getTime() - 7 * 86_400_000).toISOString(), to: toISO };
+  if (range === "30d") return { from: new Date(now.getTime() - 30 * 86_400_000).toISOString(), to: toISO };
   if (from && to)      return { from: new Date(from).toISOString(), to: new Date(to + "T23:59:59.999Z").toISOString() };
-  // default: last 30 days
-  return { from: new Date(now.getTime() - 30 * 86_400_000).toISOString(), to: toISO };
+  // default: since campaign launch (or epoch when archived or no marker set)
+  if (!showArchive && campaignLaunchAt) return { from: campaignLaunchAt, to: toISO };
+  return { from: "1970-01-01T00:00:00.000Z", to: toISO };
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -68,17 +72,28 @@ function getDateBounds(
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ range?: string; from?: string; to?: string; archive?: string }>;
 }) {
-  const params  = await searchParams;
-  const rangeParam = params.range ?? "30d";
-  const fromParam  = params.from  ?? null;
-  const toParam    = params.to    ?? null;
-  const bounds     = getDateBounds(params.range, params.from, params.to);
-  const fromISO    = bounds.from;
-  const toISO      = bounds.to;
+  const params      = await searchParams;
+  const rangeParam  = params.range ?? null;
+  const fromParam   = params.from  ?? null;
+  const toParam     = params.to    ?? null;
+  const showArchive = params.archive === "1";
 
   const sql = getSql();
+
+  // Fetch campaign launch marker (graceful fallback if table not yet migrated)
+  let campaignLaunchAt: string | null = null;
+  try {
+    const settingsRows = await sql`SELECT value FROM app_settings WHERE key = 'campaign_launch_at'` as { value: string }[];
+    campaignLaunchAt = settingsRows[0]?.value ?? null;
+  } catch {
+    // app_settings not yet created — use defaults
+  }
+
+  const bounds  = getDateBounds(params.range, params.from, params.to, campaignLaunchAt, showArchive);
+  const fromISO = bounds.from;
+  const toISO   = bounds.to;
 
   const [kpiRows, tierRows, archetypeRows, activityRows, assessmentRows, lmsRows] = await Promise.all([
     sql`
@@ -339,6 +354,8 @@ export default async function AdminPage({
       rangeParam={rangeParam}
       fromParam={fromParam}
       toParam={toParam}
+      campaignLaunchAt={campaignLaunchAt}
+      showArchive={showArchive}
     />
   );
 }

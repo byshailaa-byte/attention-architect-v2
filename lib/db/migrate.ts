@@ -212,6 +212,22 @@ async function migrate() {
     ))
   `;
 
+  // Phase 11 — app_settings: key-value store for operational markers.
+  // campaign_launch_at is the Meta campaign live time; admin dashboard defaults to showing only
+  // data on/after this timestamp, keeping the default view clean of pre-launch test data.
+  await sql`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key        TEXT PRIMARY KEY,
+      value      TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`
+    INSERT INTO app_settings (key, value)
+    VALUES ('campaign_launch_at', '2026-07-20T12:15:00.000Z')
+    ON CONFLICT (key) DO NOTHING
+  `;
+
   console.log("Migrations complete.");
 }
 

@@ -21,6 +21,19 @@ const C = {
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 const MONO = "'JetBrains Mono', 'Fira Code', monospace";
 
+// ── Responsive helper ─────────────────────────────────────────────────────────
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type TierBreakdown = { tier: string; count: number; revenue_paise: number };
@@ -102,9 +115,11 @@ export type AdminDashboardProps = {
   funnelEvents: FunnelEventCounts;
   dropOffs: DropOffRow[];
   funnelSince: string | null;
-  rangeParam: string;
+  rangeParam: string | null;
   fromParam: string | null;
   toParam: string | null;
+  campaignLaunchAt: string | null;
+  showArchive: boolean;
   // legacy prop kept for compatibility — not used in new dashboard
   funnel?: FunnelCounts;
 };
@@ -206,7 +221,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
   return (
-    <Card style={{ flex: 1, minWidth: 0 }}>
+    <Card style={{ flex: "1 1 160px", minWidth: 0 }}>
       <p style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: C.muted, margin: "0 0 10px" }}>{label}</p>
       <p style={{ fontFamily: BG, fontSize: 28, fontWeight: 800, color: accent ? C.yellow : C.text, margin: "0 0 4px", lineHeight: 1 }}>{value}</p>
       {sub && <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: 0 }}>{sub}</p>}
@@ -520,10 +535,14 @@ function RangeControl({
   rangeParam,
   fromParam,
   toParam,
+  campaignLaunchAt,
+  showArchive,
 }: {
-  rangeParam: string;
+  rangeParam: string | null;
   fromParam: string | null;
   toParam: string | null;
+  campaignLaunchAt: string | null;
+  showArchive: boolean;
 }) {
   const router = useRouter();
   const [customFrom, setCustomFrom] = useState(fromParam ?? "");
@@ -535,8 +554,8 @@ function RangeControl({
     if (toParam)   setCustomTo(toParam);
   }, [fromParam, toParam]);
 
-  const isCustom    = !!(fromParam && toParam);
-  const activePreset = isCustom ? "custom" : rangeParam;
+  const isCustom     = !!(fromParam && toParam);
+  const activePreset = isCustom ? "custom" : (rangeParam ?? "launch");
 
   const PRESETS = [
     { key: "7d",  label: "7d"  },
@@ -544,15 +563,27 @@ function RangeControl({
     { key: "all", label: "All" },
   ] as const;
 
+  function buildUrl(extra: string) {
+    return showArchive ? `/admin?archive=1&${extra}` : `/admin?${extra}`;
+  }
+
   function selectPreset(key: string) {
     setShowCustom(false);
-    router.push(`/admin?range=${key}`);
+    router.push(buildUrl(`range=${key}`));
   }
 
   function applyCustom() {
     if (!customFrom || !customTo) return;
-    router.push(`/admin?from=${customFrom}&to=${customTo}`);
+    router.push(buildUrl(`from=${customFrom}&to=${customTo}`));
     setShowCustom(false);
+  }
+
+  function toggleArchive() {
+    if (showArchive) {
+      router.push("/admin");
+    } else {
+      router.push("/admin?archive=1");
+    }
   }
 
   const presetBtn = (active: boolean): React.CSSProperties => ({
@@ -586,7 +617,7 @@ function RangeControl({
       <p style={{ fontFamily: MONO, fontSize: 9, color: C.muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 6px" }}>
         Date Range
       </p>
-      <div style={{ display: "flex", gap: 3, marginBottom: showCustom || isCustom ? 6 : 0 }}>
+      <div style={{ display: "flex", gap: 3, marginBottom: showCustom || isCustom ? 6 : 4 }}>
         {PRESETS.map(p => (
           <button key={p.key} onClick={() => selectPreset(p.key)} style={presetBtn(activePreset === p.key)}>
             {p.label}
@@ -601,7 +632,7 @@ function RangeControl({
       </div>
 
       {(showCustom || isCustom) && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 4 }}>
           <input
             type="date"
             value={customFrom}
@@ -633,6 +664,29 @@ function RangeControl({
           </button>
         </div>
       )}
+
+      {campaignLaunchAt && (
+        <button
+          onClick={toggleArchive}
+          style={{
+            display: "block",
+            width: "100%",
+            background: showArchive ? `${C.red}18` : "none",
+            border: `1px solid ${showArchive ? C.red + "50" : C.border}`,
+            borderRadius: 4,
+            color: showArchive ? C.red : C.muted,
+            fontFamily: MONO,
+            fontSize: 9,
+            padding: "5px 8px",
+            cursor: "pointer",
+            textAlign: "left",
+            letterSpacing: "0.04em",
+            marginBottom: 4,
+          }}
+        >
+          {showArchive ? "✕ Hide pre-launch data" : "⊞ Show archived data"}
+        </button>
+      )}
     </div>
   );
 }
@@ -655,10 +709,18 @@ export default function AdminDashboard({
   kpi, assessments, archetypes, activity, lms,
   funnelEvents, dropOffs, funnelSince,
   rangeParam, fromParam, toParam,
+  campaignLaunchAt, showArchive,
 }: AdminDashboardProps) {
   const [active, setActive] = useState<Section>("overview");
   const [search, setSearch] = useState("");
   const [viewingId, setViewingId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  function handleNav(section: Section) {
+    setActive(section);
+    if (isMobile) setSidebarOpen(false);
+  }
 
   const viewingAssessment = viewingId ? assessments.find(a => a.id === viewingId) ?? null : null;
 
@@ -698,34 +760,97 @@ export default function AdminDashboard({
     { label: "Purchased",     count: funnelEvents.purchase,             color: C.green },
   ];
 
+  const sidebarStyle: React.CSSProperties = isMobile ? {
+    position: "fixed",
+    top: 0,
+    left: sidebarOpen ? 0 : -220,
+    bottom: 0,
+    width: 220,
+    zIndex: 101,
+    background: C.card,
+    borderRight: `1px solid ${C.border}`,
+    display: "flex",
+    flexDirection: "column",
+    overflowY: "auto",
+    transition: "left 0.25s ease",
+  } : {
+    width: 200,
+    flexShrink: 0,
+    background: C.card,
+    borderRight: `1px solid ${C.border}`,
+    display: "flex",
+    flexDirection: "column",
+    position: "sticky",
+    top: 0,
+    height: "100vh",
+    overflowY: "auto",
+  };
+
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: C.bg, fontFamily: BG, color: C.text }}>
 
-      {/* Left Sidebar */}
-      <aside style={{
-        width: 200,
-        flexShrink: 0,
-        background: C.card,
-        borderRight: `1px solid ${C.border}`,
-        display: "flex",
-        flexDirection: "column",
-        position: "sticky",
-        top: 0,
-        height: "100vh",
-        overflowY: "auto",
-      }}>
-        <div style={{ padding: "24px 20px 16px" }}>
-          <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: C.muted, margin: "0 0 4px" }}>
+      {/* Mobile top bar */}
+      {isMobile && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0,
+          zIndex: 80,
+          height: 48,
+          background: C.card,
+          borderBottom: `1px solid ${C.border}`,
+          display: "flex",
+          alignItems: "center",
+          padding: "0 16px",
+          gap: 14,
+        }}>
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            aria-label="Open menu"
+            style={{ background: "none", border: "none", color: C.text, cursor: "pointer", fontSize: 20, lineHeight: 1, padding: "4px 0", flexShrink: 0 }}
+          >
+            ☰
+          </button>
+          <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: C.muted }}>
             Attention Architect
-          </p>
-          <p style={{ fontFamily: BG, fontWeight: 800, fontSize: 15, color: C.text, margin: 0 }}>Admin</p>
+          </span>
+          <span style={{ fontFamily: BG, fontWeight: 700, fontSize: 14, color: C.text, marginLeft: "auto" }}>
+            {NAV.find(n => n.id === active)?.label ?? "Admin"}
+          </span>
+        </div>
+      )}
+
+      {/* Sidebar backdrop (mobile only) */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100 }}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside style={sidebarStyle}>
+        <div style={{ padding: isMobile ? "16px 20px 12px" : "24px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: C.muted, margin: "0 0 4px" }}>
+              Attention Architect
+            </p>
+            <p style={{ fontFamily: BG, fontWeight: 800, fontSize: 15, color: C.text, margin: 0 }}>Admin</p>
+          </div>
+          {isMobile && (
+            <button
+              onClick={() => setSidebarOpen(false)}
+              style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 4 }}
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         <nav style={{ flex: 1, padding: "4px 12px" }}>
           {NAV.map(({ id, label }) => (
             <button
               key={id}
-              onClick={() => setActive(id)}
+              onClick={() => handleNav(id)}
               style={{
                 display: "block",
                 width: "100%",
@@ -748,7 +873,13 @@ export default function AdminDashboard({
           ))}
         </nav>
 
-        <RangeControl rangeParam={rangeParam} fromParam={fromParam} toParam={toParam} />
+        <RangeControl
+          rangeParam={rangeParam}
+          fromParam={fromParam}
+          toParam={toParam}
+          campaignLaunchAt={campaignLaunchAt}
+          showArchive={showArchive}
+        />
 
         <div style={{ padding: "10px 20px 20px" }}>
           <a
@@ -761,7 +892,34 @@ export default function AdminDashboard({
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, minWidth: 0, padding: "32px 32px 64px", overflowX: "hidden" }}>
+      <main style={{ flex: 1, minWidth: 0, padding: isMobile ? "64px 16px 80px" : "32px 32px 64px", overflowX: "hidden" }}>
+
+        {/* Archive banner */}
+        {showArchive && campaignLaunchAt && (
+          <div style={{
+            background: `${C.red}10`,
+            border: `1px solid ${C.red}30`,
+            borderRadius: 8,
+            padding: "10px 16px",
+            marginBottom: 24,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}>
+            <span style={{ color: C.red, fontSize: 14 }}>⚠</span>
+            <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>
+              Viewing archived data from before campaign launch —{" "}
+              <span style={{ color: C.text }}>
+                {new Date(campaignLaunchAt).toLocaleString("en-IN", {
+                  day: "numeric", month: "short", year: "numeric",
+                  hour: "2-digit", minute: "2-digit",
+                  timeZone: "Asia/Kolkata",
+                })} IST
+              </span>
+              . This includes test data. Row counts are unchanged — no data was deleted.
+            </span>
+          </div>
+        )}
 
         {/* ── OVERVIEW ── */}
         {active === "overview" && (
@@ -1012,7 +1170,7 @@ function AssessmentsTable({
 }) {
   return (
     <Card>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
         <SectionLabel>Assessments ({filtered.length})</SectionLabel>
         <input
           type="text"
@@ -1028,7 +1186,8 @@ function AssessmentsTable({
             fontSize: 12,
             color: C.text,
             outline: "none",
-            width: 240,
+            width: "min(240px, 100%)",
+            boxSizing: "border-box",
           }}
         />
       </div>
