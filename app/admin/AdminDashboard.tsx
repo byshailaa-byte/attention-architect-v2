@@ -53,6 +53,7 @@ export type AssessmentData = {
   child_name: string;
   parent_name: string | null;
   email: string | null;
+  phone: string | null;
   archetype: string | null;
   parent_pattern: string | null;
   age_band: string;
@@ -442,10 +443,19 @@ function AnswersPanel({ assessment, onClose }: { assessment: AssessmentData; onC
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: (assessment.concerns ?? []).length > 0 ? 12 : 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
             <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0 }}>Email</span>
             {assessment.email ? (
               <span style={{ fontFamily: MONO, fontSize: 12, color: C.text }}>{assessment.email}</span>
+            ) : (
+              <span style={{ fontFamily: MONO, fontSize: 12, color: C.red }}>Not captured</span>
+            )}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: (assessment.concerns ?? []).length > 0 ? 12 : 0 }}>
+            <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0 }}>Phone</span>
+            {assessment.phone ? (
+              <span style={{ fontFamily: MONO, fontSize: 12, color: C.text }}>{assessment.phone}</span>
             ) : (
               <span style={{ fontFamily: MONO, fontSize: 12, color: C.red }}>Not captured</span>
             )}
@@ -1198,7 +1208,7 @@ function AssessmentsTable({
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                {["Child", "Parent", "Email", "Archetype", "Age", "Purchase", "LMS", "Date", ""].map(h => (
+                {["Child", "Parent", "Email", "Phone", "Archetype", "Age", "Purchase", "LMS", "Date", ""].map(h => (
                   <th key={h} style={{ textAlign: "left", padding: "0 12px 10px 0", color: C.muted, fontWeight: 400, letterSpacing: "0.06em", textTransform: "uppercase", fontSize: 10, whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
@@ -1221,6 +1231,12 @@ function AssessmentsTable({
                     {a.email
                       ? <span style={{ color: C.muted }}>{a.email}</span>
                       : <span style={{ color: C.red }}>not captured</span>
+                    }
+                  </td>
+                  <td style={{ padding: "12px 12px 12px 0", whiteSpace: "nowrap" }}>
+                    {a.phone
+                      ? <span style={{ color: C.muted }}>{a.phone}</span>
+                      : <span style={{ color: C.border }}>—</span>
                     }
                   </td>
                   <td style={{ padding: "12px 12px 12px 0", color: C.text, whiteSpace: "nowrap" }}>{a.archetype ?? "—"}</td>

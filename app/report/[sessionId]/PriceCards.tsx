@@ -18,6 +18,9 @@ type Props = {
   sessionId: string;
   childName: string;
   weakestFirst: string;
+  parentName: string;
+  email: string;
+  phone: string;
 };
 
 function fireGtag(event: string, params?: Record<string, unknown>) {
@@ -40,7 +43,7 @@ function fireEvent(eventType: string, sessionId: string, metadata?: Record<strin
   }).catch(() => {});
 }
 
-export default function PriceCards({ sessionId, childName, weakestFirst }: Props) {
+export default function PriceCards({ sessionId, childName, weakestFirst, parentName, email, phone }: Props) {
   const firedViewItem = useRef(false);
 
   useEffect(() => {
@@ -93,6 +96,11 @@ export default function PriceCards({ sessionId, childName, weakestFirst }: Props
       order_id: orderId,
       name: "Attention Architect",
       description: tier === "module1" ? "Module 1 — Resistance" : "Full 6-Module Roadmap",
+      prefill: {
+        name: parentName,
+        email: email,
+        contact: phone,
+      },
       theme: { color: "#F6C63D" },
       handler: function (response: { razorpay_payment_id: string }) {
         fireGtag("purchase", {

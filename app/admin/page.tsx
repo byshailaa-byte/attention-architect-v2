@@ -165,6 +165,7 @@ export default async function AdminPage({
         a.child_name,
         a.parent_name,
         a.email,
+        a.phone,
         a.archetype,
         a.parent_pattern,
         a.age_band,
@@ -285,6 +286,7 @@ export default async function AdminPage({
     child_name: string;
     parent_name: string | null;
     email: string | null;
+    phone: string | null;
     archetype: string | null;
     parent_pattern: string | null;
     age_band: string;
@@ -308,6 +310,7 @@ export default async function AdminPage({
       child_name: a.child_name,
       parent_name: a.parent_name,
       email: a.email,
+      phone: a.phone,
       archetype: a.archetype,
       parent_pattern: a.parent_pattern,
       age_band: a.age_band,

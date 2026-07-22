@@ -31,6 +31,8 @@ type AssessmentRow = {
   };
   weakest_two: string[];
   parent_name: string;
+  email: string | null;
+  phone: string | null;
   concerns: string[];
   tried: string[] | null;
   better: string[] | null;
@@ -464,6 +466,9 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
             sessionId={a.session_id}
             childName={childName}
             weakestFirst={(a.weakest_two ?? [])[0] ?? "Resistance"}
+            parentName={parentName}
+            email={a.email ?? ""}
+            phone={a.phone ?? ""}
           />
 
           <p style={{ fontSize: "13px", color: "rgba(246,244,236,.6)", marginTop: "20px" }}>

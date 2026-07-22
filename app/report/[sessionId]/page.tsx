@@ -29,6 +29,8 @@ export default async function ReportPage({ params }: { params: Params }) {
       axes,
       weakest_two,
       parent_name,
+      email,
+      phone,
       concerns,
       tried,
       better
@@ -49,6 +51,8 @@ export default async function ReportPage({ params }: { params: Params }) {
     };
     weakest_two: string[];
     parent_name: string | null;
+    email: string | null;
+    phone: string | null;
     concerns: string[];
     tried: string[] | null;
     better: string[] | null;
