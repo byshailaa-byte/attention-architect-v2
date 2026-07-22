@@ -228,6 +228,10 @@ async function migrate() {
     ON CONFLICT (key) DO NOTHING
   `;
 
+  // Phase 12 — phone number capture on assessments.
+  // Nullable at DB level (enforced required at form layer).
+  await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS phone TEXT`;
+
   console.log("Migrations complete.");
 }
 

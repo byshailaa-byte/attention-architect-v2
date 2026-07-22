@@ -135,6 +135,28 @@ export const lmsWeek1Content: Record<string, LmsWeekContent> = {
   "The All-In Kid": allInKidWeek1,
 };
 
+// ── LMS Week 2 ────────────────────────────────────────────────────────────────
+
+import { weekContent as stormWeek2 }     from "./lms/week-2/storm";
+import { weekContent as glueWeek2 }      from "./lms/week-2/glue";
+import { weekContent as captainWeek2 }   from "./lms/week-2/captain";
+import { weekContent as inventorWeek2 }  from "./lms/week-2/inventor";
+import { weekContent as explorerWeek2 }  from "./lms/week-2/explorer";
+import { weekContent as magnetWeek2 }    from "./lms/week-2/magnet";
+import { weekContent as liveWireWeek2 }  from "./lms/week-2/live-wire";
+import { weekContent as allInKidWeek2 }  from "./lms/week-2/all-in-kid";
+
+export const lmsWeek2Content: Record<string, LmsWeekContent> = {
+  "The Storm":      stormWeek2,
+  "The Glue":       glueWeek2,
+  "The Captain":    captainWeek2,
+  "The Inventor":   inventorWeek2,
+  "The Explorer":   explorerWeek2,
+  "The Magnet":     magnetWeek2,
+  "The Live Wire":  liveWireWeek2,
+  "The All-In Kid": allInKidWeek2,
+};
+
 // ── Phrase tables ─────────────────────────────────────────────────────────────
 
 export { objectivePhrases } from "./phrases/objective";

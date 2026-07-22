@@ -37,6 +37,16 @@ function isValidEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
 
+function normalizePhone(raw: string): string {
+  let s = raw.replace(/[\s\-.()+]/g, "");
+  if (s.startsWith("91") && s.length === 12) s = s.slice(2);
+  return s;
+}
+
+function isValidPhone(raw: string): boolean {
+  return /^[6-9]\d{9}$/.test(normalizePhone(raw));
+}
+
 type Phase = "meta" | "questions" | "post-assessment";
 type ScoringResult = { archetype: string; parent_pattern: string };
 
@@ -94,6 +104,8 @@ function AssessmentForm() {
   const [postGender, setPostGender] = useState<string | null>(null);
   const [parentName, setParentName] = useState("");
   const [email, setEmail]           = useState("");
+  const [phone, setPhone]           = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState<string | null>(null);
@@ -196,7 +208,12 @@ function AssessmentForm() {
   }
 
   async function submitPostAssessment() {
-    if (!parentName.trim() || !email.trim()) return;
+    if (!parentName.trim() || !email.trim() || !phone.trim()) return;
+    setPhoneError(null);
+    if (!isValidPhone(phone)) {
+      setPhoneError("Enter a valid 10-digit Indian mobile number.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -207,6 +224,7 @@ function AssessmentForm() {
           sessionId,
           parentName: parentName.trim(),
           email: email.trim(),
+          phone: normalizePhone(phone),
           gender: postGender,
         }),
       });
@@ -367,7 +385,7 @@ function AssessmentForm() {
   const emailTouched  = email.length > 0;
   const emailValid    = isValidEmail(email);
   const genderTouched = (parentName.trim().length > 0 || emailTouched) && postGender === null;
-  const postReady     = parentName.trim().length > 0 && emailValid && postGender !== null;
+  const postReady     = parentName.trim().length > 0 && emailValid && postGender !== null && phone.trim().length > 0;
 
   return (
     <div className="funnel-screen">
@@ -410,7 +428,7 @@ function AssessmentForm() {
             Almost there.
           </h2>
           <p style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.6, marginBottom: "24px" }}>
-            Your child&rsquo;s gender, your name, and your email are needed to open the report.
+            Your child&rsquo;s gender, your name, email, and WhatsApp number are needed to open the report.
           </p>
 
           {/* Gender — optional */}
@@ -492,6 +510,38 @@ function AssessmentForm() {
             {emailTouched && !emailValid && (
               <div style={{ fontSize: "12px", color: "var(--redpen)", marginTop: "6px" }}>
                 Enter a valid email address (e.g. you@gmail.com)
+              </div>
+            )}
+          </div>
+
+          {/* WhatsApp number — required */}
+          <div style={{ marginBottom: "8px" }}>
+            <label style={{ fontSize: "13px", fontWeight: 700, display: "block", marginBottom: "8px" }}>
+              WhatsApp number{" "}
+              <span style={{ color: "var(--redpen)", fontWeight: 600, fontSize: "11px" }}>Required</span>
+            </label>
+            <input
+              type="tel"
+              placeholder="98765 43210"
+              value={phone}
+              onChange={(e) => { setPhone(e.target.value); setPhoneError(null); }}
+              style={{
+                width: "100%",
+                padding: "14px 16px",
+                fontSize: "15px",
+                border: `2px solid ${phoneError ? "var(--redpen)" : "var(--marker)"}`,
+                borderRadius: "12px",
+                fontFamily: "inherit",
+                background: "var(--paper)",
+                color: "var(--ink)",
+                outline: "none",
+              }}
+            />
+            {phoneError ? (
+              <div style={{ fontSize: "12px", color: "var(--redpen)", marginTop: "6px" }}>{phoneError}</div>
+            ) : (
+              <div style={{ fontSize: "12px", color: "var(--ink-dim)", marginTop: "6px" }}>
+                We&rsquo;ll send your report to this number on WhatsApp — we won&rsquo;t share it elsewhere.
               </div>
             )}
           </div>

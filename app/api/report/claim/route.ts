@@ -6,16 +6,17 @@ assertBootGuards();
 
 export async function POST(req: NextRequest) {
   try {
-    const { sessionId, parentName, email, gender, tried, better } = (await req.json()) as {
+    const { sessionId, parentName, email, phone, gender, tried, better } = (await req.json()) as {
       sessionId: string;
       parentName: string;
       email: string;
+      phone: string;
       gender?: string | null;
       tried?: string[];
       better?: string[];
     };
 
-    if (!sessionId || !parentName?.trim() || !email?.trim()) {
+    if (!sessionId || !parentName?.trim() || !email?.trim() || !phone?.trim()) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
       SET
         parent_name  = ${parentName.trim()},
         email        = ${email.trim()},
+        phone        = ${phone.trim()},
         child_gender = ${gender ?? null},
         tried        = ${tried ?? []},
         better       = ${better ?? []}
