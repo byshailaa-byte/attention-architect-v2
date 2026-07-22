@@ -232,6 +232,13 @@ async function migrate() {
   // Nullable at DB level (enforced required at form layer).
   await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS phone TEXT`;
 
+  // Phase 13 — whatsapp_report_sent_at: dedup guard for the "report ready" WhatsApp send.
+  // First-writer-wins: the claim route atomically sets this with
+  //   UPDATE ... SET whatsapp_report_sent_at = NOW() WHERE ... AND whatsapp_report_sent_at IS NULL
+  // Only the UPDATE that returns a row fires the send — prevents double-sending when both
+  // the primary gate and the ReportGate fallback hit the route close together.
+  await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS whatsapp_report_sent_at TIMESTAMPTZ`;
+
   console.log("Migrations complete.");
 }
 

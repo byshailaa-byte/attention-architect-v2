@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
+import { sendWhatsAppReport } from "@/lib/whatsapp";
 
 assertBootGuards();
 
@@ -47,6 +48,28 @@ export async function POST(req: NextRequest) {
       INSERT INTO funnel_events (event_type, session_id, metadata)
       VALUES ('generate_lead', ${sessionId}::uuid, '{}'::jsonb)
     `.catch((e: unknown) => console.warn("[funnel] generate_lead:", (e as Error).message));
+
+    // Atomic dedup: first caller to claim whatsapp_report_sent_at wins the send.
+    // If both gates fire near-simultaneously, only one UPDATE returns a row.
+    // Phase 13 column — silently skipped if migration hasn't run yet.
+    sql`
+      UPDATE assessments
+      SET whatsapp_report_sent_at = NOW()
+      WHERE session_id = ${sessionId}::uuid
+        AND whatsapp_report_sent_at IS NULL
+      RETURNING child_name, parent_name, phone
+    `.then((rows: unknown) => {
+      const claimed = rows as { child_name: string | null; parent_name: string | null; phone: string | null }[];
+      if (claimed.length > 0) {
+        const row = claimed[0];
+        sendWhatsAppReport({
+          parentName:  row.parent_name  ?? parentName.trim(),
+          childName:   row.child_name   ?? "your child",
+          sessionId,
+          rawPhone:    row.phone        ?? phone.trim(),
+        });
+      }
+    }).catch((e: unknown) => console.warn("[whatsapp] dedup update:", (e as Error).message));
 
     return NextResponse.json({ ok: true });
   } catch (e) {
