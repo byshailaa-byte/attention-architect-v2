@@ -44,4 +44,6 @@ export const live_wire: ArchetypeContent = {
     "Building real stakes into ordinary tasks — a clock, a challenge, something on the line.",
     "Telling the difference between {{child_pronoun_poss}} not trying and the task genuinely offering nothing to switch on for.",
   ],
+
+  beatFitChild: "Shows up fully when something real is actually at stake, and fades fast when it isn't.",
 };

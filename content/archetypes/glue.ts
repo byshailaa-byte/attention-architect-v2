@@ -44,4 +44,6 @@ export const glue: ArchetypeContent = {
     "Reading when the real blocker is emotional, not academic.",
     "A quick way to clear the air before asking {{child_pronoun_obj}} to concentrate.",
   ],
+
+  beatFitChild: "Can't concentrate until the people around {{child_pronoun_obj}} feel connected and okay first.",
 };

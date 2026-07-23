@@ -44,4 +44,6 @@ export const magnet: ArchetypeContent = {
     "Building in real presence, without it turning into hovering.",
     "Where independence genuinely helps {{child_pronoun_obj}} — and where it's just isolating {{child_pronoun_obj}}.",
   ],
+
+  beatFitChild: "Draws focus from someone simply being present, not from being managed or corrected.",
 };

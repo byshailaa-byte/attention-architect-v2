@@ -44,4 +44,6 @@ export const explorer: ArchetypeContent = {
     "Building a real channel for the tangent, instead of fighting it.",
     "A way back to the task that doesn't feel like getting caught.",
   ],
+
+  beatFitChild: "Pulled toward whatever's genuinely interesting right now — a channel for that pull, not a cage around it, is what holds {{child_pronoun_obj}}.",
 };

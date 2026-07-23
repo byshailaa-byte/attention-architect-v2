@@ -44,4 +44,6 @@ export const inventor: ArchetypeContent = {
     "Giving {{child_pronoun_obj}} room to get it wrong {{child_pronoun_poss}} own way before stepping in.",
     "Where correction actually helps — and where it just shuts the building down.",
   ],
+
+  beatFitChild: "Locks in when the approach is genuinely {{child_pronoun_poss}} own, drifts the moment it feels like someone else's method.",
 };

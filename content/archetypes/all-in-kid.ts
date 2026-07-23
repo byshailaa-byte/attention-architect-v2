@@ -44,4 +44,6 @@ export const all_in_kid: ArchetypeContent = {
     "Protecting real blocks of uninterrupted time, without it costing everyone else's schedule.",
     "Reading the difference between {{child_pronoun_poss}} needing a break and {{child_pronoun_poss}} needing to not be broken out of something.",
   ],
+
+  beatFitChild: "Goes all the way in when the moment is truly protected, and scatters the instant it isn't.",
 };

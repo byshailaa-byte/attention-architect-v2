@@ -45,4 +45,6 @@ export const storm: ArchetypeContent = {
     "Real ownership, without losing structure.",
     "How to assign things without triggering resistance.",
   ],
+
+  beatFitChild: "Attention switches on with real ownership, off the moment something feels handed to {{child_pronoun_obj}}.",
 };

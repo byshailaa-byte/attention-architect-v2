@@ -52,6 +52,9 @@ export type ArchetypeContent = {
   s7StayPathBase: string;            // child.stayPathBase — what continues for THIS archetype if nothing changes
   s7ChangePathBase: string;          // child.changePathBase — the shape of change for THIS archetype
   s8RoadmapBullets: [string, string]; // child.roadmapBullets[2] — first 2 bullets, archetype-driven
+
+  // Beat 3 fit-block — one sentence describing how this archetype's attention works in relation to the parent
+  beatFitChild?: string;
 };
 
 // ── Report content per parent pattern (×4) ───────────────────────────────────
@@ -77,6 +80,9 @@ export type PatternContent = {
   s7StayPathClause: string;         // pattern.stayPathClause — what THIS pattern's instinct adds to the stay scenario
   s7ChangePathClause: string;       // pattern.changePathClause — what THIS pattern's shift makes possible
   s8RoadmapClause: string;          // pattern.roadmapClause — bullet 3, pattern-driven
+
+  // Beat 3 fit-block — one sentence describing this parent pattern's instinct in relation to the child
+  beatFitParent?: string;
 };
 
 // ── Fit content (archetype × parent combination, 32 total) ───────────────────
@@ -107,6 +113,24 @@ export type TriedPhrase = {
 
 export type BetterPhrase = {
   display: string;   // used in S6 "you told us X is what you're hoping for"
+};
+
+// ── Report conversion content (new sections) ─────────────────────────────────
+
+export type TonightTip = {
+  instead: string;
+  try: string;
+  why: string;
+};
+
+export type TimelineScene = {
+  today: string;
+  wk1: string;
+  wk2: string;
+  wk3: string;
+  wk4: string;
+  wk5: string;
+  wk6: string;
 };
 
 // ── LMS content ───────────────────────────────────────────────────────────────

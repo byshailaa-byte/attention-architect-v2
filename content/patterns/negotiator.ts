@@ -22,4 +22,6 @@ export const negotiator: PatternContent = {
   s7StayPathClause:   "and with a Negotiator's instinct unchanged, the deal-making keeps working right up until there's nothing left to trade — and then it stops working at all.",
   s7ChangePathClause: "and a Negotiator who learns to let some things matter without a trade attached becomes the parent whose kid starts doing things because they're worth doing, not because something's on offer.",
   s8RoadmapClause:    "Where Negotiator helps — and where the deal is quietly doing the opposite of what it's meant to.",
+
+  beatFitParent: "Instinct is to trade — get through the hard part first, then the reward.",
 };

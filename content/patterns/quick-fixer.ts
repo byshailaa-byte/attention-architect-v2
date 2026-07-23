@@ -22,4 +22,6 @@ export const quick_fixer: PatternContent = {
   s7StayPathClause:   "and with a Quick Fixer's instinct unchanged, every stall gets rescued before it can turn into real friction — which also means it never turns into real capability, either.",
   s7ChangePathClause: "and a Quick Fixer who learns to wait one beat longer before stepping in becomes the parent who lets struggle do its actual job, instead of the one who keeps quietly ending it early.",
   s8RoadmapClause:    "Where Quick Fixer helps — and the exact moment to let the stall run a little longer.",
+
+  beatFitParent: "Instinct is to step in and solve it before the struggle can begin.",
 };

@@ -44,4 +44,6 @@ export const captain: ArchetypeContent = {
     "Finding real pieces {{child_pronoun_subj}} can actually lead, inside the structure that still has to exist.",
     "Where \"{{child_pronoun_poss}} call\" can genuinely mean {{child_pronoun_poss}} call, not a managed illusion of one.",
   ],
+
+  beatFitChild: "Attention holds when a Captain is leading, not just following someone else's plan.",
 };

@@ -22,4 +22,6 @@ export const steady_hand: PatternContent = {
   s7StayPathClause:   "and with a Steady Hand's instinct unchanged, the calm keeps holding the line without ever quite giving it anything new to hold onto — steady, but static.",
   s7ChangePathClause: "and a Steady Hand who adds one small, deliberate shift to the steadiness becomes the parent whose calm finally has somewhere to go, instead of just somewhere to wait.",
   s8RoadmapClause:    "Where Steady Hand already works — and the one small addition that turns holding the line into moving it.",
+
+  beatFitParent: "Instinct is to stay calm and hold steady, even when stepping in might feel like it would help faster.",
 };

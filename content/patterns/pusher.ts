@@ -24,4 +24,6 @@ export const pusher: PatternContent = {
   s7StayPathClause:   "and with a Pusher's instinct unchanged, the harder push meets the harder fight, and the loop tightens instead of loosening.",
   s7ChangePathClause: "and a Pusher who learns when to lean in and when to step back becomes the parent who makes that ownership possible, not the one competing with it.",
   s8RoadmapClause:    "Where Pusher helps — and where to ease off.",
+
+  beatFitParent: "Instinct is to push harder the moment a stall shows up.",
 };
