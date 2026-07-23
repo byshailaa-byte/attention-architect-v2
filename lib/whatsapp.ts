@@ -40,8 +40,8 @@ export async function sendWhatsAppReport({
           {
             type: "body",
             parameters: [
-              { type: "text", text: parentName },
-              { type: "text", text: childName },
+              { type: "text", parameter_name: "parent_name", text: parentName },
+              { type: "text", parameter_name: "child_name", text: childName },
             ],
           },
           {
@@ -49,7 +49,7 @@ export async function sendWhatsAppReport({
             sub_type: "url",
             index: "0",
             parameters: [
-              { type: "text", text: sessionId },
+              { type: "text", text: `report/${sessionId}` },
             ],
           },
         ],
