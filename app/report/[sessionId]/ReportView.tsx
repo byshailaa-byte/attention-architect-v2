@@ -271,10 +271,6 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
           <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "22px", lineHeight: 1.2, color: "#f2f1ed", marginBottom: "12px" }}>
             A different first move
           </h2>
-          <p style={{ color: "#c9c7d1", fontSize: "15px", marginBottom: "24px" }}>
-            This isn&rsquo;t fixed, and it doesn&rsquo;t need an overhaul — just a different starting point. One small, real choice, offered before the pushing instinct kicks in, tends to change what happens next. Not guaranteed. Just real, and reachable.
-          </p>
-
           <div style={{ borderTop: "1px solid rgba(255,255,255,.09)", paddingTop: "20px" }}>
             <div style={{ fontSize: "11.5px", color: "#9c9aa8", textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 700, marginBottom: "14px" }}>
               How it typically unfolds — {a.archetype}
@@ -297,7 +293,7 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
               </div>
             ))}
             <p style={{ marginTop: "14px", fontSize: "11.5px", color: "#6a6874", fontStyle: "italic" }}>
-              Individual results vary. This is what the pattern looks like when it works — not a guarantee.
+              Not guaranteed, and not the same for every child. This is what&rsquo;s possible — the actual pace depends on {childName}, and on the week.
             </p>
           </div>
         </div>
@@ -347,7 +343,7 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
             </div>
           </div>
           <div style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.55 }}>
-            &ldquo;This program comes from studying how people actually build focus and habits — then applying it to how children learn, not from a lesson-plan template.&rdquo;
+            &ldquo;I built Attention Architect because I realized parents are often trying harder when what they actually need is a better map.&rdquo;
           </div>
         </div>
       </section>
@@ -366,23 +362,23 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
             {[
               {
                 num: "1",
-                title: "The framework came first",
+                title: "Design the attention framework",
                 desc: "Built from studying how attention and habit actually form in children — before a single question was written.",
               },
               {
                 num: "2",
-                title: "Every question is deliberately designed",
-                desc: "Each question isolates one specific, real signal — tested and refined, not generated on the fly.",
+                title: "Map the behavioral dimensions",
+                desc: "Identifying the distinct, observable signals that actually differ from child to child.",
               },
               {
                 num: "3",
-                title: "Your answers are matched to a fixed system",
-                desc: "What you get back comes from mapping your specific answers onto that framework — software doing matching, not an AI improvising about your child.",
+                title: "Build the assessment",
+                desc: "Each question isolates one specific signal — tested and refined, not generated on the fly.",
               },
               {
                 num: "4",
                 title: "Generate the personalized plan",
-                desc:  "Your answers are matched against that fixed framework — software doing matching, not an AI improvising about your child.",
+                desc: "Your answers are matched against that fixed framework — software doing matching, not an AI improvising about your child.",
               },
             ].map(({ num, title, desc }, i) => (
               <div key={num} style={{ display: "flex", gap: "14px", padding: "14px 0", borderTop: i === 0 ? "none" : "1px solid rgba(255,255,255,.09)" }}>
@@ -404,6 +400,37 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
           <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "24px", color: "#f2f1ed", marginBottom: "24px", letterSpacing: "-.01em" }}>
             What deserves {childName}&rsquo;s attention?
           </h2>
+          {/* Unlock checklist */}
+          <div style={{ marginBottom: "24px" }}>
+            {[
+              `A personalized 6-week roadmap, sequenced for ${childName} specifically`,
+              `One weekly step — never a 20-item plan dropped on you at once`,
+              `Environment and routine changes specific to ${tokens.child_pronoun_obj}`,
+              `The reasoning behind each step, not just instructions`,
+              `Yours to keep and revisit, no expiry`,
+            ].map((item) => (
+              <div key={item} style={{ display: "flex", gap: "10px", padding: "9px 0", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
+                <span style={{ color: "var(--marker)", fontWeight: 700, flexShrink: 0 }}>✓</span>
+                <span style={{ fontSize: "14px", color: "#c9c7d1", lineHeight: 1.5 }}>{item}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Value comparison */}
+          <div style={{ display: "flex", gap: "12px", marginBottom: "28px", flexWrap: "wrap" }}>
+            {[
+              { label: "Month of Tuition", price: "₹3–8K", what: "Teaches one subject", highlight: false },
+              { label: "Behavior Consult",  price: "₹1,500+", what: "One conversation",   highlight: false },
+              { label: "Full Roadmap",      price: "₹999",   what: `Six weeks, ${tokens.child_pronoun_poss}`, highlight: true  },
+            ].map(({ label, price, what, highlight }) => (
+              <div key={label} style={{ flex: "1 1 130px", background: highlight ? "rgba(240,197,80,.08)" : "rgba(255,255,255,.05)", border: highlight ? "1px solid rgba(240,197,80,.3)" : "1px solid rgba(255,255,255,.09)", borderRadius: "12px", padding: "16px", minWidth: "0" }}>
+                <div style={{ fontSize: "11.5px", color: highlight ? "var(--marker)" : "#9c9aa8", fontWeight: highlight ? 700 : 400, marginBottom: "4px" }}>{label}</div>
+                <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "18px", color: "#f2f1ed", marginBottom: "4px" }}>{price}</div>
+                <div style={{ fontSize: "12px", color: "#a8a6b0" }}>{what}</div>
+              </div>
+            ))}
+          </div>
+
           <PriceCards
             sessionId={a.session_id}
             childName={childName}
@@ -423,21 +450,31 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
           </h3>
           {[
             {
-              quote: "We believed our son just needed more discipline. This completely changed our perspective. A few simple changes reduced the daily arguments, and studying no longer feels like a battle.",
-              who: "— Sandeel Shukla, Parent of a 14-year-old Son · Raipur",
+              before: "We believed our son just needed more discipline.",
+              after:  "This completely changed our perspective. A few simple changes reduced the daily arguments, and studying no longer feels like a battle.",
+              who:    "Sandeel Shukla, Parent of a 14-year-old Son · Raipur",
             },
             {
-              quote: "We thought our son was just being lazy or spending too much time on screens. This helped us understand what was really happening. Homework became much calmer, and so did our evenings.",
-              who: "— Manya Gangele, Parent of an 11-year-old Son · Indore",
+              before: "We thought our son was just being lazy or spending too much time on screens.",
+              after:  "This helped us understand what was really happening. Homework became much calmer, and so did our evenings.",
+              who:    "Manya Gangele, Parent of an 11-year-old Son · Indore",
             },
             {
-              quote: "I was constantly reminding my daughter to stay on task. Small changes in how we approached things at home made a huge difference. She's much more independent now.",
-              who: "— Suchitra Mehta, Parent of an 8-year-old Daughter · Mumbai",
+              before: "I was constantly reminding my daughter to stay on task.",
+              after:  "Small changes in how we approached things at home made a huge difference. She’s much more independent now.",
+              who:    "Suchitra Mehta, Parent of an 8-year-old Daughter · Mumbai",
             },
-          ].map(({ quote, who }) => (
+          ].map(({ before, after, who }) => (
             <div key={who} style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.09)", borderRadius: "14px", padding: "20px", marginBottom: "14px" }}>
-              <p style={{ color: "#e5e3ea", fontSize: "14px", fontStyle: "italic", marginBottom: "12px" }}>&ldquo;{quote}&rdquo;</p>
-              <div style={{ color: "#9c9aa8", fontSize: "12.5px", fontWeight: 600 }}>{who}</div>
+              <div style={{ marginBottom: "12px" }}>
+                <div style={{ fontSize: "10.5px", color: "#6a6874", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "5px" }}>Before</div>
+                <p style={{ color: "#a8a6b0", fontSize: "13.5px", fontStyle: "italic", marginBottom: 0 }}>&ldquo;{before}&rdquo;</p>
+              </div>
+              <div style={{ borderTop: "1px solid rgba(255,255,255,.09)", paddingTop: "12px", marginBottom: "10px" }}>
+                <div style={{ fontSize: "10.5px", color: "var(--marker)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "5px" }}>After</div>
+                <p style={{ color: "#e5e3ea", fontSize: "14px", fontStyle: "italic", marginBottom: 0 }}>&ldquo;{after}&rdquo;</p>
+              </div>
+              <div style={{ color: "#9c9aa8", fontSize: "12.5px", fontWeight: 600 }}>— {who}</div>
             </div>
           ))}
         </div>
@@ -515,8 +552,14 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
       </section>
 
       {/* ── §12 FINAL CTA ─────────────────────────────────────────────── */}
-      <section style={{ background: "var(--ink)", padding: "8px 0 48px" }}>
+      <section style={{ background: "var(--ink)", padding: "48px 0" }}>
         <div className="rep-shell">
+          <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "24px", color: "#f2f1ed", marginBottom: "10px", letterSpacing: "-.01em" }}>
+            Nobody has explained {childName} like this before.
+          </h2>
+          <p style={{ color: "#c9c7d1", fontSize: "15px", marginBottom: "28px" }}>
+            The report was Chapter One. This is where the story keeps going.
+          </p>
           <ClosingCtaButton
             sessionId={a.session_id}
             childName={childName}
@@ -524,6 +567,9 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
             email={a.email ?? ""}
             phone={a.phone ?? ""}
           />
+          <p style={{ fontSize: "13px", color: "#6a6874", textAlign: "center", marginTop: "20px", fontStyle: "italic" }}>
+            Whatever you decide — you already understand {childName} a little better than you did when you started.
+          </p>
         </div>
       </section>
 
