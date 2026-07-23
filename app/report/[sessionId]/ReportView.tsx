@@ -63,6 +63,10 @@ function firstSentence(filled: string): string {
   return dot === -1 ? plain.trim() : plain.slice(0, dot + 1).trim();
 }
 
+function stripMd(s: string): string {
+  return s.replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1");
+}
+
 function Eyebrow({ text }: { text: string }) {
   return (
     <div style={{ fontSize: "11px", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--marker)", fontWeight: 600, marginBottom: "14px" }}>
@@ -145,6 +149,14 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
   const axisResistance = firstSentence(fill(arch?.s5AxisDescriptions?.resistance ?? TODO("archetypes/s5AxisDescriptions.resistance")));
   const axisRecovery   = firstSentence(fill(arch?.s5AxisDescriptions?.recovery   ?? TODO("archetypes/s5AxisDescriptions.recovery")));
 
+  // §4 WHY THIS HAPPENS — full axis descriptions keyed by name
+  const axisFullStability  = stripMd(fill(arch?.s5AxisDescriptions?.stability  ?? TODO("archetypes/s5AxisDescriptions.stability")));
+  const axisFullResistance = stripMd(fill(arch?.s5AxisDescriptions?.resistance ?? TODO("archetypes/s5AxisDescriptions.resistance")));
+  const axisFullRecovery   = stripMd(fill(arch?.s5AxisDescriptions?.recovery   ?? TODO("archetypes/s5AxisDescriptions.recovery")));
+  const axisFullMap: Record<string, string> = { Stability: axisFullStability, Resistance: axisFullResistance, Recovery: axisFullRecovery };
+  const whyParagraph = axisFullMap[(a.weakest_two ?? [])[0] ?? "Stability"];
+  const whyPullquote = firstSentence(axisFullMap[(a.weakest_two ?? [])[1] ?? "Resistance"]);
+
   const fitContent = getFitContent(a.archetype, a.parent_pattern);
   const reliefMsg = fill(reliefMessages[a.parent_pattern] ?? TODO(`relief/${a.parent_pattern}`));
   const tip       = tonightTips[a.archetype];
@@ -221,9 +233,20 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
       {/* ── §3 RELIEF ─────────────────────────────────────────────────── */}
       <section style={{ background: "var(--paper)", padding: "44px 0", borderTop: "1px solid rgba(28,28,36,.1)", borderBottom: "1px solid rgba(28,28,36,.1)" }}>
         <div className="rep-shell">
-          <EyebrowLight text="A NOTE FOR YOU" />
-          <p style={{ fontSize: "16px", color: "var(--ink)", lineHeight: 1.7, fontStyle: "italic" }}>
+          <EyebrowLight text="BEFORE ANYTHING ELSE" />
+          <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "22px", lineHeight: 1.2, color: "var(--ink)", marginBottom: "14px" }}>
+            You are not failing. {childName} is not broken.
+          </h2>
+          <p style={{ fontSize: "15px", color: "var(--ink)", lineHeight: 1.7, fontStyle: "italic", marginBottom: "16px" }}>
             {reliefMsg}
+          </p>
+          <div style={{ background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.5)", borderRadius: "12px", padding: "14px 18px" }}>
+            <p style={{ fontSize: "14px", color: "var(--ink)", fontWeight: 600, margin: 0 }}>
+              You just haven&rsquo;t had the map yet. This is that map.
+            </p>
+          </div>
+          <p style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.6, marginTop: "14px" }}>
+            Every parent who&rsquo;s tried reward charts, routines, and gentle-parenting advice and still felt stuck — this is usually why.
           </p>
         </div>
       </section>
@@ -231,48 +254,32 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
       {/* ── §4 UNDERSTANDING ──────────────────────────────────────────── */}
       <section style={{ padding: "44px 0", borderBottom: "1px dashed rgba(255,255,255,.12)" }}>
         <div className="rep-shell">
-          <Eyebrow text="THE DIMENSIONS" />
-          <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "22px", lineHeight: 1.2, color: "#f2f1ed", marginBottom: "12px" }}>
-            Not a score. A map.
+          <Eyebrow text="WHY THIS HAPPENS" />
+          <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "22px", lineHeight: 1.2, color: "#f2f1ed", marginBottom: "16px" }}>
+            The inconsistency isn&rsquo;t random. It&rsquo;s the clue.
           </h2>
-
-          <div style={{ padding: "8px 0 18px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <span style={{ fontSize: "14.5px", fontWeight: 700, color: "#e5e3ea" }}>Direction</span>
-              <span style={{ background: "rgba(255,255,255,.08)", color: "#c9c7d1", fontSize: "10.5px", fontWeight: 700, padding: "3px 10px", borderRadius: "20px", textTransform: "uppercase", letterSpacing: ".03em" }}>
-                {a.archetype}
-              </span>
-            </div>
-            <p style={{ fontSize: "13px", color: "#b8b6c0", lineHeight: 1.5 }}>The core attention type. Everything else radiates from here.</p>
-          </div>
-
-          <AxisRow label="Stability"   axis={a.axes.stability}   description={axisStability}  showBar />
-          <AxisRow label="Resistance"  axis={a.axes.resistance}  description={axisResistance} showBar />
-          <AxisRow
-            label="Recovery"
-            axis={a.axes.recovery}
-            description={a.axes.recovery.eligible ? axisRecovery : "Not enough data to score this axis reliably."}
-            showBar={false}
-          />
-
-          <div style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", borderRadius: "12px", padding: "16px 18px", marginTop: "8px" }}>
-            <div style={{ fontSize: "10.5px", color: "#9c9aa8", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: "6px" }}>Where the program focuses</div>
-            <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "16px", color: "var(--marker)" }}>
-              {(a.weakest_two ?? []).join(" + ")}
-            </div>
+          <p style={{ color: "#c9c7d1", fontSize: "15px", lineHeight: 1.65, marginBottom: "20px" }}>
+            {whyParagraph}
+          </p>
+          <div style={{ borderLeft: "3px solid var(--marker)", paddingLeft: "16px" }}>
+            <p style={{ color: "#e5e3ea", fontSize: "15px", fontStyle: "italic", lineHeight: 1.6, margin: 0 }}>
+              &ldquo;{whyPullquote}&rdquo;
+            </p>
           </div>
         </div>
       </section>
 
       {/* ── §5 HOPE / TIMELINE ────────────────────────────────────────── */}
-      <section style={{ background: "var(--ink2)", padding: "44px 0" }}>
+      <section style={{ background: "var(--paper)", padding: "44px 0", borderTop: "1px solid rgba(28,28,36,.1)", borderBottom: "1px solid rgba(28,28,36,.1)" }}>
         <div className="rep-shell">
-          <Eyebrow text="WHAT'S POSSIBLE" />
-          <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "22px", lineHeight: 1.2, color: "#f2f1ed", marginBottom: "12px" }}>
-            A different first move
+          <div style={{ fontSize: "11px", letterSpacing: ".14em", textTransform: "uppercase", color: "#b8862e", fontWeight: 600, marginBottom: "14px" }}>
+            THE NEXT SIX WEEKS
+          </div>
+          <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "22px", lineHeight: 1.2, color: "var(--ink)", marginBottom: "12px" }}>
+            Not a course. A different kind of evening.
           </h2>
-          <div style={{ borderTop: "1px solid rgba(255,255,255,.09)", paddingTop: "20px" }}>
-            <div style={{ fontSize: "11.5px", color: "#9c9aa8", textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 700, marginBottom: "14px" }}>
+          <div style={{ borderTop: "1px solid rgba(28,28,36,.08)", paddingTop: "20px" }}>
+            <div style={{ fontSize: "11.5px", color: "#7a7870", textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 700, marginBottom: "14px" }}>
               How it typically unfolds — {a.archetype}
             </div>
             {[
@@ -286,13 +293,13 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
             ].map(({ label, text }, i, arr) => (
               <div
                 key={label}
-                style={{ display: "flex", gap: "14px", padding: "12px 0", borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,.07)" : "none", alignItems: "baseline" }}
+                style={{ display: "flex", gap: "14px", padding: "12px 0", borderBottom: i < arr.length - 1 ? "1px solid rgba(28,28,36,.07)" : "none", alignItems: "baseline" }}
               >
-                <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--marker)", width: "52px", flexShrink: 0, textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
-                <div style={{ fontSize: "13.5px", color: "#b8b6c0", lineHeight: 1.55 }}>{text}</div>
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "#b8862e", width: "52px", flexShrink: 0, textTransform: "uppercase", letterSpacing: ".04em" }}>{label}</div>
+                <div style={{ fontSize: "13.5px", color: "#3d3a30", lineHeight: 1.55 }}>{text}</div>
               </div>
             ))}
-            <p style={{ marginTop: "14px", fontSize: "11.5px", color: "#6a6874", fontStyle: "italic" }}>
+            <p style={{ marginTop: "14px", fontSize: "11.5px", color: "#7a7870", fontStyle: "italic" }}>
               Not guaranteed, and not the same for every child. This is what&rsquo;s possible — the actual pace depends on {childName}, and on the week.
             </p>
           </div>
@@ -304,7 +311,7 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
         <div className="rep-shell">
           <Eyebrow text="TRY THIS TONIGHT" />
           <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "22px", lineHeight: 1.2, color: "#f2f1ed", marginBottom: "20px" }}>
-            One thing that works for {a.archetype.replace("The ", "")}s
+            One small thing, before you decide anything else.
           </h2>
 
           {[
@@ -323,7 +330,7 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
       {/* ── §7 FOUNDER ────────────────────────────────────────────────── */}
       <section style={{ background: "var(--paper)", padding: "48px 0", borderTop: "1px solid rgba(28,28,36,.1)", borderBottom: "1px solid rgba(28,28,36,.1)" }}>
         <div className="rep-shell">
-          <div style={{ display: "flex", gap: "20px", alignItems: "center", marginBottom: "14px" }}>
+          <div style={{ display: "flex", gap: "20px", alignItems: "center", marginBottom: "16px" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={founderSrc}
@@ -331,20 +338,22 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
               style={{ width: "76px", height: "76px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
             />
             <div>
-              <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "19px", color: "var(--ink)" }}>Shashank Agrawal</div>
-              <div style={{ fontSize: "13px", color: "var(--marker-text)", fontWeight: 600, marginTop: "2px" }}>Founder &amp; Attention Systems Designer</div>
-              <div style={{ fontSize: "12.5px", color: "var(--ink-dim)", marginTop: "1px" }}>Creator of Attention Architect™</div>
-              <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "10px", flexWrap: "wrap" }}>
+              <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "16px", color: "var(--ink)", lineHeight: 1.3 }}>
+                Shashank Agrawal · Founder, Attention Architect™
+              </div>
+              <div style={{ marginTop: "8px" }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", borderRadius: "999px", padding: "3px 10px", fontSize: "11.5px", fontWeight: 600, color: "#9a7c10" }}>
                   🎓 IIM Rohtak Alumnus
                 </span>
-                <span style={{ fontSize: "12px", color: "var(--ink-dim)" }}>· 10+ years building human-centered systems</span>
               </div>
             </div>
           </div>
-          <div style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.55 }}>
+          <div style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.55, fontStyle: "italic", marginBottom: "12px" }}>
             &ldquo;I built Attention Architect because I realized parents are often trying harder when what they actually need is a better map.&rdquo;
           </div>
+          <p style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.6, margin: 0 }}>
+            This started as an obsession, not a business plan — years spent trying to understand why the same advice works for one child and does nothing for another.
+          </p>
         </div>
       </section>
 
@@ -396,9 +405,9 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
       {/* ── §9 PRICING ────────────────────────────────────────────────── */}
       <section className="rep-price" style={{ background: "var(--ink)", padding: "48px 0" }}>
         <div className="rep-shell">
-          <Eyebrow text="YOUR NEXT MOVE" />
+          <Eyebrow text="CHAPTER TWO" />
           <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "24px", color: "#f2f1ed", marginBottom: "24px", letterSpacing: "-.01em" }}>
-            What deserves {childName}&rsquo;s attention?
+            The report showed you {childName}&rsquo;s pattern. This is where you use it.
           </h2>
           {/* Unlock checklist */}
           <div style={{ marginBottom: "24px" }}>

@@ -108,7 +108,7 @@ export default function ClosingCtaButton({ sessionId, childName, parentName, ema
       >
         Begin {childName}&rsquo;s Next Chapter
       </button>
-      <div style={{ fontSize: "12px", color: "#9c9aa8", marginTop: "12px", textAlign: "center" }}>✓ Not a diagnosis — a practical guide</div>
+      <div style={{ fontSize: "12px", color: "#9c9aa8", marginTop: "12px", textAlign: "center" }}>✓ 7-day money-back guarantee</div>
     </div>
   );
 }
