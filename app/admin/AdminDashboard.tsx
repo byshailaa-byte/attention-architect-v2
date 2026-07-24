@@ -185,6 +185,7 @@ const EVENT_LABEL: Record<string, string> = {
   lms_day_complete: "LMS day complete",
   lms_reflection_submitted: "LMS reflection",
   scroll_milestone: "Scroll milestone",
+  whatsapp_sent: "WhatsApp report sent",
 };
 
 const EVENT_COLOR: Record<string, string> = {
@@ -200,6 +201,7 @@ const EVENT_COLOR: Record<string, string> = {
   lms_day_complete: C.blue,
   lms_reflection_submitted: C.blue,
   scroll_milestone: C.muted,
+  whatsapp_sent: C.green,
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -361,7 +363,9 @@ function SessionTimeline({ sessionId }: { sessionId: string }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ fontFamily: MONO, fontSize: 11, color: C.text }}>
-                    {EVENT_LABEL[ev.event_type] ?? ev.event_type}
+                    {ev.event_type === "scroll_milestone" && typeof ev.metadata?.depth === "number"
+                      ? `Scroll milestone — ${ev.metadata.depth}%`
+                      : (EVENT_LABEL[ev.event_type] ?? ev.event_type)}
                   </span>
                   <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted, whiteSpace: "nowrap" }}>
                     {fmtDateTime(ev.created_at)}
