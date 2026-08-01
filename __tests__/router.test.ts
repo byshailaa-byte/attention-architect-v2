@@ -39,10 +39,10 @@ describe("Router — all 64 gateway combinations", () => {
           expect(slots.length).toBeLessThanOrEqual(3);
         });
 
-        it(`${label} — question count in [9,12]`, () => {
+        it(`${label} — question count in [10,13]`, () => {
           const qs = buildQuestionSequence({ G1, G2, G3 });
-          expect(qs.length).toBeGreaterThanOrEqual(9);
-          expect(qs.length).toBeLessThanOrEqual(12);
+          expect(qs.length).toBeGreaterThanOrEqual(10);
+          expect(qs.length).toBeLessThanOrEqual(13);
         });
 
         it(`${label} — no duplicate question IDs`, () => {

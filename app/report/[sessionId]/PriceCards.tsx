@@ -28,9 +28,13 @@ function fireGtag(event: string, params?: Record<string, unknown>) {
   }
 }
 
-function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>) {
+function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>, eventId?: string) {
   if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    window.fbq(type, event, params ?? {});
+    if (eventId) {
+      window.fbq(type, event, params ?? {}, { eventID: eventId });
+    } else {
+      window.fbq(type, event, params ?? {});
+    }
   }
 }
 
@@ -68,9 +72,15 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
 
   async function openModal(tier: "module1" | "full") {
     const value = TIER_AMOUNT[tier];
+    const initiateEventId = `${sessionId}:initiate_checkout:${tier}`;
     fireEvent("begin_checkout", sessionId, { tier, value });
     fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: tier, price: value }] });
-    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: tier });
+    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: tier }, initiateEventId);
+    fetch("/api/meta/initiate-checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, tier, eventId: initiateEventId }),
+    }).catch(() => {});
 
     const res = await fetch("/api/checkout/order", {
       method: "POST",
@@ -97,8 +107,10 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
       prefill: { name: parentName, email, contact: phone },
       theme: { color: "#F6C63D" },
       handler: function (response: { razorpay_payment_id: string }) {
+        // event_id matches server-side CAPI Purchase call in /api/webhooks/razorpay
+        const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
         fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR", items: [{ item_id: tier, price: value }] });
-        fireFbq("track", "Purchase", { value, currency: "INR", content_name: tier });
+        fireFbq("track", "Purchase", { value, currency: "INR", content_name: tier }, purchaseEventId);
         window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
       },
     }).open();
@@ -123,9 +135,8 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
           onClick={() => openModal("full")}
           style={{ display: "block", width: "100%", background: "#1a1a1f", color: "var(--paper)", textAlign: "center", fontFamily: BG, fontWeight: 800, fontSize: "14px", padding: "13px", borderRadius: "10px", border: "none", cursor: "pointer" }}
         >
-          Begin {childName}&rsquo;s Next Chapter
+          Open {childName}&rsquo;s Roadmap
         </button>
-        <div style={{ fontSize: "11.5px", color: "#7a7870", marginTop: "10px", textAlign: "center" }}>✓ 7-day money-back guarantee</div>
       </div>
 
       {/* Plain secondary ₹499 block */}
@@ -137,11 +148,6 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
         >
           See Week One Only — ₹499
         </button>
-      </div>
-
-      {/* Guarantee block */}
-      <div style={{ background: "rgba(63,190,122,.1)", border: "1px solid rgba(63,190,122,.25)", borderRadius: "10px", padding: "12px 16px", marginTop: "4px", fontSize: "13px", color: "#8fe0b6", lineHeight: 1.5 }}>
-        7-day money-back guarantee. Email us and we&rsquo;ll refund — no forms, no questions.
       </div>
 
       {/* Trust row */}

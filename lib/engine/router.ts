@@ -10,6 +10,7 @@ import {
   P1, P2,
   D5_1, D5_2,
   D6_1, D6_2, D6_3, D6_CONFIRM,
+  S1,
 } from "./questions";
 
 export type GatewayAnswers = {
@@ -66,10 +67,12 @@ const DEPTH_QUESTIONS: Record<string, Question[]> = {
 };
 
 // Single confirming question for unanchored dimensions not selected for depth.
+// support_response has no depth variant — S1 always acts as its single question.
 const CONFIRM_QUESTIONS: Record<string, Question> = {
   reward_driver: D2_CONFIRM,
   friction_response: D3_CONFIRM,
   recharge_type: D6_CONFIRM,
+  support_response: S1,
 };
 
 export function buildQuestionSequence(g: GatewayAnswers): Question[] {
@@ -98,6 +101,7 @@ export function buildQuestionSequence(g: GatewayAnswers): Question[] {
     "parent_instinct",
     "attention_competition",
     "recharge_type",
+    "support_response",
   ];
 
   // Gateway-anchored dimensions already answered by G1/G2/G3 — no further questions if not in depth.

@@ -4,18 +4,22 @@ import type { ReflectionOutcome } from "@/content/types";
 export type WeekTrend = "mostly_worked" | "mixed" | "mostly_didnt_land";
 
 export type LmsProgress = {
-  completedDays: Set<number>; // day values that have a row in lms_progress (0 = weekend)
+  completedDays: Set<number>;    // day values that have a row in lms_progress (0 = weekend)
+  completionTimes: Map<number, Date>; // day → when lms_progress row was created
   reflections: Map<number, ReflectionOutcome>; // day 2–5 → outcome
 };
+
+// Rolling 24-hour delay from actual completion — not from purchase date, not from midnight.
+export const UNLOCK_DELAY_MS = 24 * 60 * 60 * 1000;
 
 export async function getUserProgress(userId: string, week: number): Promise<LmsProgress> {
   const sql = getSql();
 
   const [progressRows, reflectionRows] = await Promise.all([
     sql`
-      SELECT day FROM lms_progress
+      SELECT day, completed_at FROM lms_progress
       WHERE user_id = ${userId} AND week = ${week}
-    ` as unknown as Promise<{ day: number }[]>,
+    ` as unknown as Promise<{ day: number; completed_at: Date }[]>,
     sql`
       SELECT day, outcome FROM lms_reflections
       WHERE user_id = ${userId} AND week = ${week}
@@ -23,18 +27,51 @@ export async function getUserProgress(userId: string, week: number): Promise<Lms
   ]);
 
   return {
-    completedDays: new Set((progressRows as { day: number }[]).map((r) => r.day)),
-    reflections: new Map((reflectionRows as { day: number; outcome: ReflectionOutcome }[]).map((r) => [r.day, r.outcome])),
+    completedDays: new Set(progressRows.map((r) => r.day)),
+    completionTimes: new Map(progressRows.map((r) => [r.day, new Date(r.completed_at)])),
+    reflections: new Map(reflectionRows.map((r) => [r.day, r.outcome])),
   };
 }
 
-// day === 1 is always unlocked.
-// day === 0 (weekend review) unlocks when days 1–5 are all complete.
-// All other days unlock when day - 1 is complete.
-export function isDayUnlocked(day: number, progress: LmsProgress): boolean {
-  if (day === 1) return true;
-  if (day === 0) return [1, 2, 3, 4, 5].every((d) => progress.completedDays.has(d));
-  return progress.completedDays.has(day - 1);
+// Gate rule:
+//   Week 1 Day 1 → always unlocked (program entry point).
+//   Week N Day 1 (N > 1) → previous week's Day 5 complete AND 24h elapsed.
+//   Day 0 (weekend) → all 5 days complete AND 24h since Day 5.
+//   Day N (2–5) → Day N-1 complete AND 24h elapsed since Day N-1 completed_at.
+//
+// prevWeekProgress is required when week > 1 && day === 1; ignored otherwise.
+// now is injectable for testing; defaults to Date.now().
+export function isDayUnlocked(
+  day: number,
+  week: number,
+  progress: LmsProgress,
+  prevWeekProgress: LmsProgress | null = null,
+  now: Date = new Date(),
+): boolean {
+  if (day === 1 && week === 1) return true;
+
+  if (day === 1 && week > 1) {
+    if (!prevWeekProgress) return false;
+    const t = prevWeekProgress.completionTimes.get(5);
+    return (
+      prevWeekProgress.completedDays.has(5) &&
+      !!t &&
+      now.getTime() - t.getTime() >= UNLOCK_DELAY_MS
+    );
+  }
+
+  if (day === 0) {
+    const allDone = [1, 2, 3, 4, 5].every((d) => progress.completedDays.has(d));
+    const t = progress.completionTimes.get(5);
+    return allDone && !!t && now.getTime() - t.getTime() >= UNLOCK_DELAY_MS;
+  }
+
+  const t = progress.completionTimes.get(day - 1);
+  return (
+    progress.completedDays.has(day - 1) &&
+    !!t &&
+    now.getTime() - t.getTime() >= UNLOCK_DELAY_MS
+  );
 }
 
 // Where the user should land next inside a given week.

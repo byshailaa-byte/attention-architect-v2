@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { tallyDimension, scoreAssessment, Dimensions } from "@/lib/engine/scorer";
+import { buildHdg } from "@/lib/graph/hdg";
+import { buildBehaviourGraph } from "@/lib/graph/behaviour-graph";
+import { buildBehaviourSignature } from "@/lib/graph/signature";
+import { buildConfidenceVector } from "@/lib/graph/confidence";
 import { assertBootGuards } from "@/lib/boot-guard";
 
 assertBootGuards();
@@ -63,10 +67,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const scoring = scoreAssessment(dimensions, MAX_DATA_POINTS);
+    const hdg = buildHdg(answers);
+    const bg  = buildBehaviourGraph(hdg);
+    const sig = buildBehaviourSignature(hdg, bg);
+    const cv  = buildConfidenceVector(hdg, bg, sig);
 
-    // data_richness is internal only — logged, never returned to client
-    console.log(`[assessment] session=${sessionId} data_richness=${scoring.data_richness.toFixed(3)}`);
+    const scoring = scoreAssessment(dimensions, MAX_DATA_POINTS, cv.overall_confidence);
+
+    // data_richness and confidence are internal only — logged, never returned to client
+    console.log(`[assessment] session=${sessionId} data_richness=${scoring.data_richness.toFixed(3)} overall_confidence=${cv.overall_confidence.toFixed(3)}`);
 
     const sql = getSql();
 
@@ -74,8 +83,10 @@ export async function POST(req: NextRequest) {
       INSERT INTO assessments (
         session_id, child_name, age_band, child_gender, answers, dimensions,
         archetype, parent_pattern,
+        archetype_fit_tier, parent_instinct_fit_tier,
         axes, weakest_two,
         honest_flag, honest_trigger,
+        confidence_vector,
         concerns
       ) VALUES (
         ${sessionId}::uuid,
@@ -86,10 +97,13 @@ export async function POST(req: NextRequest) {
         ${JSON.stringify(dimensions)}::jsonb,
         ${scoring.archetype},
         ${scoring.parent_pattern},
+        ${scoring.archetype_fit_tier},
+        ${scoring.parent_instinct_fit_tier},
         ${JSON.stringify(scoring.axes)}::jsonb,
         ${scoring.weakest_two},
         ${scoring.honest_flag},
         ${scoring.honest_trigger},
+        ${JSON.stringify(cv)}::jsonb,
         ${concerns ?? []}
       )
     `;

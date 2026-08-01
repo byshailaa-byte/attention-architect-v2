@@ -26,9 +26,13 @@ function fireGtag(event: string, params?: Record<string, unknown>) {
   }
 }
 
-function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>) {
+function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>, eventId?: string) {
   if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    window.fbq(type, event, params ?? {});
+    if (eventId) {
+      window.fbq(type, event, params ?? {}, { eventID: eventId });
+    } else {
+      window.fbq(type, event, params ?? {});
+    }
   }
 }
 
@@ -62,9 +66,15 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
     setTimeout(() => { openedRef.current = false; }, 3000);
 
     const value = 999;
+    const initiateEventId = `${sessionId}:initiate_checkout:full`;
     fireEvent("begin_checkout", sessionId, { tier: "full", value, source: "sticky_cta" });
     fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: "full", price: value }] });
-    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: "full" });
+    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: "full" }, initiateEventId);
+    fetch("/api/meta/initiate-checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, tier: "full", eventId: initiateEventId }),
+    }).catch(() => {});
 
     if (!document.querySelector('script[src*="checkout.razorpay"]')) {
       const s = document.createElement("script");
@@ -94,8 +104,9 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
       prefill: { name: parentName, email, contact: phone },
       theme: { color: "#F6C63D" },
       handler: function (response: { razorpay_payment_id: string }) {
+        const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
         fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR" });
-        fireFbq("track", "Purchase", { value, currency: "INR", content_name: "full" });
+        fireFbq("track", "Purchase", { value, currency: "INR", content_name: "full" }, purchaseEventId);
         window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
       },
     }).open();
@@ -136,10 +147,10 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
             cursor: "pointer",
           }}
         >
-          Begin {childName}&rsquo;s Next Chapter
+          Open {childName}&rsquo;s Roadmap
         </button>
         <div style={{ textAlign: "center", fontSize: "11.5px", color: "#7a7870", marginTop: "6px" }}>
-          Full 6-week program · ₹999 · 7-day guarantee
+          Full 6-week program · ₹999
         </div>
       </div>
     </>

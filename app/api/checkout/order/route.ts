@@ -30,18 +30,27 @@ export async function POST(req: NextRequest) {
 
     const sql = getSql();
 
-    // Look up the assessment
+    // Look up the assessment — fetch email now so we can gate before Razorpay
     const assessments = (await sql`
-      SELECT id FROM assessments
+      SELECT id, email FROM assessments
       WHERE session_id = ${sessionId}::uuid
       LIMIT 1
-    `) as unknown as { id: string }[];
+    `) as unknown as { id: string; email: string | null }[];
 
     if (assessments.length === 0) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    const assessmentId = assessments[0].id;
+    const { id: assessmentId, email: rawEmail } = assessments[0];
+
+    if (!rawEmail) {
+      return NextResponse.json(
+        { error: "No email on file for this session — please re-enter your email to continue." },
+        { status: 400 }
+      );
+    }
+
+    const email = rawEmail.trim().toLowerCase();
 
     // Create Razorpay order
     const rzp = getRazorpayClient();
@@ -57,29 +66,22 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Upsert user by email (from assessment report gate) and record purchase
-    const emailRows = (await sql`
-      SELECT email FROM assessments WHERE id = ${assessmentId} AND email IS NOT NULL LIMIT 1
-    `) as unknown as { email: string }[];
-
-    if (emailRows.length > 0) {
-      const email = emailRows[0].email.trim().toLowerCase();
+    // Upsert user and record purchase — email is guaranteed non-null by the guard above
+    await sql`
+      INSERT INTO users (email) VALUES (${email})
+      ON CONFLICT (email) WHERE email IS NOT NULL DO NOTHING
+    `;
+    const userRows = (await sql`
+      SELECT id FROM users WHERE email = ${email} LIMIT 1
+    `) as unknown as { id: string }[];
+    if (userRows.length > 0) {
       await sql`
-        INSERT INTO users (email) VALUES (${email})
-        ON CONFLICT (email) WHERE email IS NOT NULL DO NOTHING
+        INSERT INTO purchases
+          (user_id, assessment_id, tier, amount_paise, razorpay_order_id, status)
+        VALUES
+          (${userRows[0].id}, ${assessmentId}, ${tier}, ${tierConfig.amount_paise},
+           ${order.id}, 'pending')
       `;
-      const userRows = (await sql`
-        SELECT id FROM users WHERE email = ${email} LIMIT 1
-      `) as unknown as { id: string }[];
-      if (userRows.length > 0) {
-        await sql`
-          INSERT INTO purchases
-            (user_id, assessment_id, tier, amount_paise, razorpay_order_id, status)
-          VALUES
-            (${userRows[0].id}, ${assessmentId}, ${tier}, ${tierConfig.amount_paise},
-             ${order.id}, 'pending')
-        `;
-      }
     }
 
     return NextResponse.json({

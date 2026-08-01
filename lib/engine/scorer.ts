@@ -3,6 +3,9 @@
 //
 // Spec-defined constants tagged [CALIBRATE] are reasoned starting values, not empirical.
 
+import { resolveArchetypeFitTier, resolveParentInstinctFitTier, type FitTier } from "@/lib/graph/resolver";
+export type { FitTier };
+
 export type DimensionResult = {
   value: string;
   consistency: number;   // winning_votes / data_points; 0.5 for single data point (§2)
@@ -22,6 +25,8 @@ export type AxisResult = {
 export type ScoringOutput = {
   archetype: string;
   parent_pattern: string;
+  archetype_fit_tier: FitTier;
+  parent_instinct_fit_tier: FitTier;
   axes: {
     stability: AxisResult;
     resistance: AxisResult;
@@ -263,10 +268,21 @@ function computeHonestPath(dims: Dimensions): { honest_flag: boolean; honest_tri
 
 export function scoreAssessment(
   dims: Dimensions,
-  maxPossibleDataPoints = 18
+  maxPossibleDataPoints = 18,
+  overallConfidence?: number,
 ): ScoringOutput {
-  const archetype     = deriveArchetype(dims.attention_shape.value, dims.reward_driver.value);
+  const archetype      = deriveArchetype(dims.attention_shape.value, dims.reward_driver.value);
   const parent_pattern = deriveParentPattern(dims.parent_instinct.value);
+
+  const archetype_fit_tier = resolveArchetypeFitTier(
+    archetype,
+    dims.attention_shape,
+    dims.reward_driver,
+    dims.friction_response?.value,
+    overallConfidence,
+  );
+
+  const parent_instinct_fit_tier = resolveParentInstinctFitTier(dims.parent_instinct, overallConfidence);
 
   const stability  = computeStability(dims);
   const resistance = computeResistance(dims);
@@ -280,7 +296,7 @@ export function scoreAssessment(
   const data_richness   = totalDataPoints / maxPossibleDataPoints;
 
   return {
-    archetype, parent_pattern,
+    archetype, parent_pattern, archetype_fit_tier, parent_instinct_fit_tier,
     axes: { stability, resistance, recovery },
     weakest_two, honest_flag, honest_trigger, data_richness,
   };

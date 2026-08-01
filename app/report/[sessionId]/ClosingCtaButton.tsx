@@ -26,9 +26,13 @@ function fireGtag(event: string, params?: Record<string, unknown>) {
   }
 }
 
-function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>) {
+function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>, eventId?: string) {
   if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    window.fbq(type, event, params ?? {});
+    if (eventId) {
+      window.fbq(type, event, params ?? {}, { eventID: eventId });
+    } else {
+      window.fbq(type, event, params ?? {});
+    }
   }
 }
 
@@ -52,9 +56,15 @@ export default function ClosingCtaButton({ sessionId, childName, parentName, ema
 
   async function open() {
     const value = 999;
+    const initiateEventId = `${sessionId}:initiate_checkout:full`;
     fireEvent("begin_checkout", sessionId, { tier: "full", value });
     fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: "full", price: value }] });
-    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: "full" });
+    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: "full" }, initiateEventId);
+    fetch("/api/meta/initiate-checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, tier: "full", eventId: initiateEventId }),
+    }).catch(() => {});
 
     const res = await fetch("/api/checkout/order", {
       method: "POST",
@@ -81,8 +91,9 @@ export default function ClosingCtaButton({ sessionId, childName, parentName, ema
       prefill: { name: parentName, email, contact: phone },
       theme: { color: "#F6C63D" },
       handler: function (response: { razorpay_payment_id: string }) {
+        const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
         fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR", items: [{ item_id: "full", price: value }] });
-        fireFbq("track", "Purchase", { value, currency: "INR", content_name: "full" });
+        fireFbq("track", "Purchase", { value, currency: "INR", content_name: "full" }, purchaseEventId);
         window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
       },
     }).open();
@@ -106,9 +117,8 @@ export default function ClosingCtaButton({ sessionId, childName, parentName, ema
         onClick={open}
         style={{ display: "block", width: "100%", background: "#1a1a1f", color: "var(--paper)", textAlign: "center", fontFamily: BG, fontWeight: 800, fontSize: "16px", padding: "16px", borderRadius: "12px", border: "none", cursor: "pointer" }}
       >
-        Begin {childName}&rsquo;s Next Chapter
+        Open {childName}&rsquo;s Roadmap
       </button>
-      <div style={{ fontSize: "12px", color: "#9c9aa8", marginTop: "12px", textAlign: "center" }}>✓ 7-day money-back guarantee</div>
     </div>
   );
 }

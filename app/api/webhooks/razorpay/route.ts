@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { verifyWebhookSignature } from "@/lib/razorpay/client";
 import { capturePayment } from "@/lib/razorpay/capture";
 import { sendPurchaseReceipt } from "@/lib/auth/email";
 import { assertBootGuards } from "@/lib/boot-guard";
+import { sendCapiEvents } from "@/lib/meta/capi";
 
 assertBootGuards();
 
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
     const { id: razorpayPaymentId, order_id: razorpayOrderId } = payment;
 
     const sql = getSql();
-    let outcome: "processed" | "duplicate";
+    let outcome: "processed" | "duplicate" | "not_found";
     try {
       outcome = await capturePayment(sql, razorpayPaymentId, razorpayOrderId);
     } catch (e) {
@@ -67,15 +68,63 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "DB error" }, { status: 500 });
     }
 
-    if (outcome === "duplicate") {
-      // Either not found or already processed — both are fine
+    if (outcome === "not_found") {
+      // No purchases row for this order — payment captured by Razorpay but unrecorded in DB.
+      // This should be unreachable now that checkout gates on non-null email, but if it
+      // happens it means money was collected with no purchase record: manual reconciliation needed.
+      console.error(
+        `[webhook/razorpay] UNMATCHED PAYMENT — no purchases row found: order=${razorpayOrderId} payment=${razorpayPaymentId}. Manual reconciliation required.`
+      );
+      // Return 200 so Razorpay stops retrying; retrying would always get the same result
+    } else if (outcome === "duplicate") {
       console.log(
-        `[webhook/razorpay] Skipped duplicate or unknown order: ${razorpayOrderId}`
+        `[webhook/razorpay] Duplicate webhook, already processed: ${razorpayOrderId}`
       );
     } else {
       console.log(
         `[webhook/razorpay] payment.captured: order=${razorpayOrderId} payment=${razorpayPaymentId}`
       );
+
+      // CAPI Purchase — event_id matches client-side fbq call: `purchase:${razorpayPaymentId}`
+      // after() guarantees execution completes even after the 200 response is sent
+      after(async () => {
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
+          const rows = await sql`
+            SELECT a.session_id::text, p.tier, p.amount_paise, a.email, a.phone
+            FROM purchases p
+            JOIN assessments a ON a.id = p.assessment_id
+            WHERE p.razorpay_order_id = ${razorpayOrderId}
+            LIMIT 1
+          ` as unknown as {
+            session_id: string;
+            tier: string;
+            amount_paise: number;
+            email: string | null;
+            phone: string | null;
+          }[];
+          const row = rows[0];
+          if (!row) return;
+          await sendCapiEvents([{
+            event_name: "Purchase",
+            event_time: Math.floor(Date.now() / 1000),
+            event_id: `purchase:${razorpayPaymentId}`,
+            event_source_url: `${baseUrl}/report/${row.session_id}`,
+            action_source: "website",
+            userData: { email: row.email, phone: row.phone },
+            custom_data: {
+              value: row.amount_paise / 100,
+              currency: "INR",
+              content_name: row.tier,
+              content_ids: [row.tier],
+              content_type: "product",
+              num_items: 1,
+            },
+          }]);
+        } catch (e: unknown) {
+          console.warn("[capi] purchase:", (e as Error).message);
+        }
+      });
 
       // Fire purchase funnel event (fire-and-forget)
       sql`

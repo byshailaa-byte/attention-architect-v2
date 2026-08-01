@@ -78,6 +78,7 @@ export default function SetPasswordForm({ sessionId, email }: Props) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onInput={(e) => setPassword((e.currentTarget as HTMLInputElement).value)}
             placeholder="At least 8 characters"
             className="w-full rounded-lg px-4 py-3 text-base mb-4"
             style={{
@@ -100,6 +101,7 @@ export default function SetPasswordForm({ sessionId, email }: Props) {
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
+            onInput={(e) => setConfirm((e.currentTarget as HTMLInputElement).value)}
             placeholder="Same password again"
             className="w-full rounded-lg px-4 py-3 text-base mb-4"
             style={{

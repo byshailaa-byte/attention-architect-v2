@@ -26,7 +26,9 @@ export async function POST(req: NextRequest) {
     }
 
     const progress = await getUserProgress(userId, week);
-    if (!isDayUnlocked(day, progress)) {
+    const prevWeekProgress =
+      week > 1 && day === 1 ? await getUserProgress(userId, week - 1) : null;
+    if (!isDayUnlocked(day, week, progress, prevWeekProgress)) {
       return NextResponse.json({ error: "Day not yet unlocked" }, { status: 403 });
     }
 

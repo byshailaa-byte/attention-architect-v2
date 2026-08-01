@@ -239,6 +239,75 @@ async function migrate() {
   // the primary gate and the ReportGate fallback hit the route close together.
   await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS whatsapp_report_sent_at TIMESTAMPTZ`;
 
+  // Phase 14 — reports table: generate-once/store/version HDG-derived report content.
+  //
+  // Column split by audience:
+  //   Parent-facing (behaviour_signature, archetype*, narrative_moments, family_attention_loop)
+  //     — qualitative only, no numeric confidence values allowed.
+  //   Internal-only (confidence_vector) — numeric, must never be serialised into parent-facing
+  //     API responses. Guard test: __tests__/signature.test.ts "Confidence guardrail".
+  //
+  // Versioning: when a report is regenerated, the old row's superseded_by is set to the new
+  // row's id. Active report = superseded_by IS NULL + desired status.
+  await sql`
+    CREATE TABLE IF NOT EXISTS reports (
+      id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      assessment_id         UUID NOT NULL REFERENCES assessments(id),
+
+      -- Qualitative parent-facing content (no numeric confidence fields)
+      behaviour_signature   JSONB NOT NULL DEFAULT '{}',
+      archetype             TEXT,
+      archetype_fit_tier    TEXT CHECK (archetype_fit_tier IN ('primary','secondary','weak','no_clear_fit')),
+      parent_instinct       TEXT,
+      narrative_moments     JSONB NOT NULL DEFAULT '[]',
+      family_attention_loop JSONB NOT NULL DEFAULT '{}',
+
+      -- Internal only: numeric confidence; never served to parents directly
+      confidence_vector     JSONB,
+
+      -- Lifecycle
+      status                TEXT NOT NULL DEFAULT 'draft'
+                              CHECK (status IN ('draft','preview','published')),
+      generated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+      schema_version        INTEGER NOT NULL DEFAULT 1,
+
+      -- Versioning: non-null means this row has been superseded by a newer report
+      superseded_by         UUID REFERENCES reports(id),
+
+      created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_reports_assessment ON reports(assessment_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_reports_active ON reports(assessment_id, status) WHERE superseded_by IS NULL`;
+
+  // Phase 15 — archetype_fit_tier, parent_instinct_fit_tier, confidence_vector on assessments.
+  // confidence_vector: internal-only, never served to parents — same rule as the reports table.
+  // archetype_fit_tier and parent_instinct_fit_tier are computed at submit time so every new
+  // assessment row carries them; historical rows stay NULL (backfill via admin script if needed).
+  await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS archetype_fit_tier TEXT CHECK (archetype_fit_tier IN ('primary','secondary','weak','no_clear_fit'))`;
+  await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS parent_instinct_fit_tier TEXT CHECK (parent_instinct_fit_tier IN ('primary','secondary','weak','no_clear_fit'))`;
+  await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS confidence_vector JSONB`;
+
+  // Phase 16 — quality_check_results on reports.
+  // Stores the full QualityResult (passed bool + failure array) from the Quality Engine.
+  // Queryable by admin tooling when deciding whether to promote a draft to published.
+  // NULL means the report predates the Quality Engine (generated before Phase 6).
+  await sql`ALTER TABLE reports ADD COLUMN IF NOT EXISTS quality_check_results JSONB`;
+
+  // Phase 17 — generation_attempts on assessments.
+  // Counts total generation attempts per assessment — incremented AFTER composeReport returns,
+  // so billing/auth/429 failures that never reach the model do not consume the attempt budget.
+  // Quality failures and successful generations both count (both required the model to be called).
+  // Caps cost from retry loops that keep hitting quality failures.
+  await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS generation_attempts INTEGER NOT NULL DEFAULT 0`;
+
+  // Phase 18 — parent_instinct_fit_tier on reports.
+  // Mirrors archetype_fit_tier: stores the scorer-computed fit tier for the parent instinct so
+  // admin tooling can see what tier drove the Loop section prompt, without re-running the scorer.
+  // NULL for reports generated before this migration.
+  await sql`ALTER TABLE reports ADD COLUMN IF NOT EXISTS parent_instinct_fit_tier TEXT CHECK (parent_instinct_fit_tier IN ('primary','secondary','weak','no_clear_fit'))`;
+
   console.log("Migrations complete.");
 }
 

@@ -67,8 +67,9 @@ export default function ReportGate({ sessionId }: { sessionId: string }) {
       if (typeof window !== "undefined" && typeof window.gtag === "function") {
         window.gtag("event", "generate_lead");
       }
+      // event_id matches server-side CAPI Lead call in /api/report/claim
       if (typeof window !== "undefined" && typeof window.fbq === "function") {
-        window.fbq("track", "Lead");
+        window.fbq("track", "Lead", {}, { eventID: `lead:${sessionId}` });
       }
       router.refresh();
     } catch (err) {

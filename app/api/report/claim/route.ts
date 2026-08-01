@@ -2,6 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { sendWhatsAppReport } from "@/lib/whatsapp";
+import { sendCapiEvents } from "@/lib/meta/capi";
 
 assertBootGuards();
 
@@ -49,11 +50,9 @@ export async function POST(req: NextRequest) {
       VALUES ('generate_lead', ${sessionId}::uuid, '{}'::jsonb)
     `.catch((e: unknown) => console.warn("[funnel] generate_lead:", (e as Error).message));
 
-    // Atomic dedup: first caller to claim whatsapp_report_sent_at wins the send.
-    // If both gates fire near-simultaneously, only one UPDATE returns a row.
-    // Phase 13 column — silently skipped if migration hasn't run yet.
-    // after() keeps the serverless function alive until the scheduled work completes.
+    // after() keeps the serverless function alive until scheduled work completes.
     after(async () => {
+      // WhatsApp: atomic dedup via whatsapp_report_sent_at — only first caller sends
       try {
         const rows = await sql`
           UPDATE assessments
@@ -73,6 +72,24 @@ export async function POST(req: NextRequest) {
         }
       } catch (e: unknown) {
         console.warn("[whatsapp] dedup update:", (e as Error).message);
+      }
+
+      // CAPI Lead — event_id matches client-side fbq call: `lead:${sessionId}`
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
+      try {
+        await sendCapiEvents([{
+          event_name: "Lead",
+          event_time: Math.floor(Date.now() / 1000),
+          event_id: `lead:${sessionId}`,
+          event_source_url: `${baseUrl}/report/${sessionId}`,
+          action_source: "website",
+          userData: {
+            email: email.trim(),
+            phone: phone.trim(),
+          },
+        }]);
+      } catch (e: unknown) {
+        console.warn("[capi] lead:", (e as Error).message);
       }
     });
 

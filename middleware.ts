@@ -5,7 +5,8 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // ── Admin: HTTP Basic Auth ────────────────────────────────────────────────
-  if (pathname.startsWith("/admin")) {
+  // Covers both the dashboard UI (/admin/*) and the admin API (/api/admin/*).
+  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
     const password = process.env.ADMIN_PASSWORD;
     if (!password) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -58,5 +59,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/lms/:path*"],
+  matcher: ["/admin/:path*", "/api/admin/:path*", "/lms/:path*"],
 };

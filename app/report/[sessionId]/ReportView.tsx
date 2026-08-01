@@ -349,7 +349,7 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
             </div>
           </div>
           <div style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.55, fontStyle: "italic", marginBottom: "12px" }}>
-            &ldquo;I built Attention Architect because I realized parents are often trying harder when what they actually need is a better map.&rdquo;
+            &ldquo;I built Attention Architect because I realised parents are often trying harder when what they actually need is a better map.&rdquo;
           </div>
           <p style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.6, margin: 0 }}>
             This started as an obsession, not a business plan — years spent trying to understand why the same advice works for one child and does nothing for another.
@@ -527,10 +527,6 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
             {
               q: "Is my payment and data secure?",
               a: "Payments are processed by Razorpay. Your data is never sold or shared with third parties.",
-            },
-            {
-              q: "What if this doesn't work for us?",
-              a: "7-day money-back guarantee, no forms, no questions — just email us.",
             },
             {
               q: "What if my child is already seeing a therapist?",

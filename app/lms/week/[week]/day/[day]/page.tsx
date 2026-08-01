@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getLmsUserContext } from "@/lib/lms/user-context";
 import { getLmsWeekContent, getDayCard } from "@/lib/lms/content";
-import { getUserProgress, isDayUnlocked } from "@/lib/lms/progress";
+import { getUserProgress, isDayUnlocked, UNLOCK_DELAY_MS } from "@/lib/lms/progress";
 import { renderMarkdown, fillLmsContent } from "@/lib/lms/render";
 import DayCardActions from "@/components/lms/DayCardActions";
 import type { ReflectionOutcome } from "@/content/types";
@@ -21,8 +21,14 @@ export default async function DayCardPage({ params }: Props) {
   const dayCard = getDayCard(content, day);
   if (!dayCard) notFound();
 
+  const now = new Date();
   const progress = await getUserProgress(ctx.userId, week);
-  const unlocked = isDayUnlocked(day, progress);
+
+  // For week boundaries (Week N Day 1, N > 1), also need the previous week's progress.
+  const prevWeekProgress =
+    week > 1 && day === 1 ? await getUserProgress(ctx.userId, week - 1) : null;
+
+  const unlocked = isDayUnlocked(day, week, progress, prevWeekProgress, now);
   const alreadyComplete = progress.completedDays.has(day);
   const existingReflection = progress.reflections.get(day) ?? null;
 
@@ -50,6 +56,31 @@ export default async function DayCardPage({ params }: Props) {
   }
 
   if (!unlocked) {
+    // Determine why: is the prerequisite day incomplete, or just not yet 24h?
+    const prevDay = day === 1 ? 5 : day - 1; // week-boundary: prereq is prev week's Day 5
+    const prereqProg = day === 1 && week > 1 ? prevWeekProgress : progress;
+    const prereqComplete = prereqProg?.completedDays.has(prevDay) ?? false;
+
+    let heading: string;
+    let subtext: string;
+    if (!prereqComplete) {
+      heading = day === 1
+        ? `Complete Week ${week - 1} first`
+        : `Day ${prevDay} isn’t complete yet`;
+      subtext = "Complete the previous day to continue.";
+    } else {
+      const prereqTime = prereqProg?.completionTimes.get(prevDay);
+      const remainingMs = prereqTime
+        ? UNLOCK_DELAY_MS - (now.getTime() - prereqTime.getTime())
+        : UNLOCK_DELAY_MS;
+      const remainingHours = Math.ceil(remainingMs / (60 * 60 * 1000));
+      heading = `Day ${day} isn’t available yet`;
+      subtext =
+        remainingHours <= 1
+          ? "This unlocks in less than an hour — check back soon."
+          : `This unlocks in about ${remainingHours} hour${remainingHours === 1 ? "" : "s"}.`;
+    }
+
     return (
       <div
         className="min-h-screen px-5 py-10 mx-auto"
@@ -63,10 +94,10 @@ export default async function DayCardPage({ params }: Props) {
           style={{ background: "var(--card)", border: "1.5px solid var(--line)" }}
         >
           <p className="text-lg font-semibold mb-2" style={{ color: "var(--ink)" }}>
-            Day {day} isn&apos;t unlocked yet
+            {heading}
           </p>
           <p className="text-sm mb-4" style={{ color: "var(--ink-dim)" }}>
-            Complete the previous day first.
+            {subtext}
           </p>
           <Link
             href="/lms"

@@ -20,7 +20,7 @@ export default async function WeekendReviewPage({ params }: Props) {
   if (!content) notFound();
 
   const progress = await getUserProgress(ctx.userId, week);
-  const unlocked = isDayUnlocked(0, progress);
+  const unlocked = isDayUnlocked(0, week, progress);
   const alreadyComplete = progress.completedDays.has(0);
 
   if (!unlocked) {
