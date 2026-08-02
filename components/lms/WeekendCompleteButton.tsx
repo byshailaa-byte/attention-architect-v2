@@ -12,9 +12,15 @@ declare global {
 export default function WeekendCompleteButton({
   week,
   alreadyComplete,
+  nextWeek,
+  nextWeekUnlocked,
+  nextWeekUnlockHours,
 }: {
   week: number;
   alreadyComplete: boolean;
+  nextWeek: number | null;     // null = no more content after this week
+  nextWeekUnlocked: boolean;
+  nextWeekUnlockHours: number; // hours remaining until unlock (ignored if unlocked)
 }) {
   const [done, setDone] = useState(alreadyComplete);
   const [loading, setLoading] = useState(false);
@@ -25,7 +31,7 @@ export default function WeekendCompleteButton({
       await fetch("/api/lms/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ week, day: 0 }), // day 0 = weekend review
+        body: JSON.stringify({ week, day: 0 }),
       });
       if (typeof window.gtag === "function") {
         window.gtag("event", "lms_day_complete", { week, day: 0 });
@@ -40,6 +46,47 @@ export default function WeekendCompleteButton({
   }
 
   if (done) {
+    if (!nextWeek) {
+      return (
+        <div
+          className="rounded-xl p-5 text-center"
+          style={{ background: "var(--card)", border: "1.5px solid var(--line)" }}
+        >
+          <p className="font-semibold mb-1" style={{ color: "var(--ink)" }}>
+            Week {week} complete.
+          </p>
+          <p className="text-sm" style={{ color: "var(--ink-dim)" }}>
+            You&rsquo;ve finished the programme. Well done.
+          </p>
+        </div>
+      );
+    }
+
+    if (nextWeekUnlocked) {
+      return (
+        <div
+          className="rounded-xl p-5 text-center"
+          style={{ background: "var(--card)", border: "1.5px solid var(--line)" }}
+        >
+          <p className="font-semibold mb-2" style={{ color: "var(--ink)" }}>
+            Week {week} complete.
+          </p>
+          <a
+            href="/lms"
+            className="inline-block rounded-lg px-5 py-2 text-sm font-semibold"
+            style={{ background: "var(--ink)", color: "#fff", textDecoration: "none" }}
+          >
+            Start Week {nextWeek} →
+          </a>
+        </div>
+      );
+    }
+
+    const hoursText =
+      nextWeekUnlockHours <= 1
+        ? "less than an hour"
+        : `about ${nextWeekUnlockHours} hour${nextWeekUnlockHours === 1 ? "" : "s"}`;
+
     return (
       <div
         className="rounded-xl p-5 text-center"
@@ -49,7 +96,7 @@ export default function WeekendCompleteButton({
           Week {week} complete.
         </p>
         <p className="text-sm" style={{ color: "var(--ink-dim)" }}>
-          Week 2 will be available soon.
+          Week {nextWeek} opens in {hoursText} — check back soon.
         </p>
       </div>
     );
@@ -67,7 +114,7 @@ export default function WeekendCompleteButton({
         cursor: loading ? "not-allowed" : "pointer",
       }}
     >
-      {loading ? "Saving…" : "Mark Week 1 complete →"}
+      {loading ? "Saving…" : `Mark Week ${week} complete →`}
     </button>
   );
 }

@@ -885,6 +885,20 @@ export default function AdminDashboard({
               {label}
             </button>
           ))}
+          {/* External tools */}
+          <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 8, paddingTop: 8 }}>
+            <a
+              href="/admin/lms-user"
+              style={{
+                display: "block", width: "100%", textAlign: "left",
+                background: "none", borderRadius: 6, color: C.muted,
+                fontFamily: MONO, fontSize: 12, padding: "9px 12px",
+                textDecoration: "none", marginBottom: 2, letterSpacing: "0.04em",
+              }}
+            >
+              View as user →
+            </a>
+          </div>
         </nav>
 
         <RangeControl

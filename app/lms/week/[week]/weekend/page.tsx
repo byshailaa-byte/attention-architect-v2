@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getLmsUserContext } from "@/lib/lms/user-context";
 import { getLmsWeekContent } from "@/lib/lms/content";
-import { getUserProgress, isDayUnlocked, computeWeekTrend } from "@/lib/lms/progress";
+import { getUserProgress, isDayUnlocked, computeWeekTrend, UNLOCK_DELAY_MS } from "@/lib/lms/progress";
 import { renderWeekendContent, renderMarkdown, fillLmsContent } from "@/lib/lms/render";
 import WeekendCompleteButton from "@/components/lms/WeekendCompleteButton";
 import { getSql } from "@/lib/db/client";
@@ -19,9 +19,21 @@ export default async function WeekendReviewPage({ params }: Props) {
   const content = getLmsWeekContent(ctx.archetype, week);
   if (!content) notFound();
 
+  const now = new Date();
   const progress = await getUserProgress(ctx.userId, week);
-  const unlocked = isDayUnlocked(0, week, progress);
+  const unlocked = isDayUnlocked(0, week, progress, null, now);
   const alreadyComplete = progress.completedDays.has(0);
+
+  // Determine next-week state for the button's done-state messaging
+  const nextWeek = week + 1;
+  const nextWeekHasContent = getLmsWeekContent(ctx.archetype, nextWeek) !== null;
+  const nextWeekUnlocked = nextWeekHasContent &&
+    isDayUnlocked(1, nextWeek, { completedDays: new Set(), completionTimes: new Map(), reflections: new Map() }, progress, now);
+  const day5Time = progress.completionTimes.get(5);
+  const remainingMs = day5Time
+    ? Math.max(0, UNLOCK_DELAY_MS - (now.getTime() - day5Time.getTime()))
+    : UNLOCK_DELAY_MS;
+  const nextWeekUnlockHours = Math.ceil(remainingMs / (60 * 60 * 1000));
 
   if (!unlocked) {
     return (
@@ -163,7 +175,13 @@ export default async function WeekendReviewPage({ params }: Props) {
       </div>
 
       {/* Complete button */}
-      <WeekendCompleteButton week={week} alreadyComplete={alreadyComplete} />
+      <WeekendCompleteButton
+        week={week}
+        alreadyComplete={alreadyComplete}
+        nextWeek={nextWeekHasContent ? nextWeek : null}
+        nextWeekUnlocked={nextWeekUnlocked}
+        nextWeekUnlockHours={nextWeekUnlockHours}
+      />
     </div>
   );
 }
