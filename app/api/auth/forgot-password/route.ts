@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const user = await getUserByEmail(email);
     if (user?.password_hash) {
       const baseUrl =
-        process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3007";
+        process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
       const raw = await createResetToken(user.id);
       const resetUrl = `${baseUrl}/lms/reset-password?token=${raw}`;
       await sendPasswordResetEmail(email.trim().toLowerCase(), resetUrl);
