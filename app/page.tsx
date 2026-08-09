@@ -208,6 +208,13 @@ export default function LandingPage() {
   const [otherText, setOtherText] = useState("");
   const [showSticky, setShowSticky] = useState(false);
 
+  // Out-of-band popup state
+  const [oobPopup, setOobPopup]         = useState<"younger" | "older" | null>(null);
+  const [oobName, setOobName]           = useState("");
+  const [oobPhone, setOobPhone]         = useState("");
+  const [oobSubmitting, setOobSubmitting] = useState(false);
+  const [oobResult, setOobResult]       = useState<{ wa_sent: boolean } | null>(null);
+
   const revealRef   = useRef<HTMLDivElement>(null);
   const heroCTARef  = useRef<HTMLButtonElement>(null);
   const landSid     = useRef(typeof crypto !== "undefined" ? crypto.randomUUID() : "");
@@ -271,7 +278,34 @@ export default function LandingPage() {
 
   function selectAge(a: string) {
     setAge(a);
-    fireGtag(a === "younger" || a === "older" ? "age_out_of_band" : "age_selected", { age_band: a });
+    fireGtag("age_selected", { age_band: a });
+  }
+
+  function openOobPopup(band: "younger" | "older") {
+    setOobPopup(band);
+    setOobName("");
+    setOobPhone("");
+    setOobSubmitting(false);
+    setOobResult(null);
+    fireGtag("age_out_of_band", { age_band: band });
+  }
+
+  async function submitOobPopup() {
+    if (!oobName.trim() || !oobPhone.trim() || !oobPopup) return;
+    setOobSubmitting(true);
+    try {
+      const res = await fetch("/api/handbook-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: oobName.trim(), phone: oobPhone.trim(), ageBand: oobPopup }),
+      });
+      const data = await res.json().catch(() => ({})) as { wa_sent?: boolean };
+      setOobResult({ wa_sent: data.wa_sent ?? false });
+    } catch {
+      setOobResult({ wa_sent: false });
+    } finally {
+      setOobSubmitting(false);
+    }
   }
 
   function selectConcern(c: string) {
@@ -309,12 +343,12 @@ export default function LandingPage() {
     router.push(buildCtaUrl());
   }
 
-  const isOob      = age === "younger" || age === "older";
   const step1Ready = !!age && !!concern;
 
   // ── STEP 1 ────────────────────────────────────────────────────────────────
   if (stage === "step1") {
     return (
+      <>
       <div className="funnel-screen">
         <div className="funnel-card">
 
@@ -337,7 +371,7 @@ export default function LandingPage() {
               Your child&rsquo;s age
             </div>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              {[["8–9", "8-9"], ["10–11", "10-11"], ["12–14", "12-14"], ["Younger", "younger"], ["Older", "older"]].map(([label, val]) => (
+              {[["8–9", "8-9"], ["10–11", "10-11"], ["12–14", "12-14"]].map(([label, val]) => (
                 <button
                   key={val}
                   className={`chip-btn${age === val ? " sel" : ""}`}
@@ -346,12 +380,9 @@ export default function LandingPage() {
                   {label}
                 </button>
               ))}
+              <button className="chip-btn" onClick={() => openOobPopup("younger")}>Younger</button>
+              <button className="chip-btn" onClick={() => openOobPopup("older")}>Older</button>
             </div>
-            {isOob && age && (
-              <div style={{ marginTop: "10px", background: "var(--calm-tint)", border: "1px solid rgba(110,95,176,.3)", borderRadius: "10px", padding: "10px 14px", fontSize: "13px", color: "var(--calm-text)", lineHeight: 1.5 }}>
-                {OOB_NOTES[age]}
-              </div>
-            )}
           </div>
 
           {/* Concern grid — 2-col cards with emoji + full phrase */}
@@ -431,6 +462,86 @@ export default function LandingPage() {
 
         </div>
       </div>
+
+      {/* Out-of-band popup */}
+      {oobPopup && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+          onClick={(e) => { if (e.target === e.currentTarget && !oobSubmitting) setOobPopup(null); }}
+        >
+          <div style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: "18px", padding: "32px 28px", maxWidth: "400px", width: "100%", boxShadow: "0 24px 60px rgba(0,0,0,.22)", position: "relative" }}>
+            <button
+              onClick={() => setOobPopup(null)}
+              style={{ position: "absolute", top: "16px", right: "18px", background: "none", border: "none", fontSize: "20px", color: "var(--ink-dim)", cursor: "pointer", lineHeight: 1, padding: "4px" }}
+              aria-label="Close"
+            >×</button>
+
+            {!oobResult ? (
+              <>
+                <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "18px", color: "var(--ink)", lineHeight: 1.3, marginBottom: "12px" }}>
+                  {oobPopup === "younger"
+                    ? "The assessment is built for children between 8 and 14."
+                    : "The assessment is built for children between 8 and 14."}
+                </div>
+                <p style={{ fontSize: "14px", color: "var(--ink-dim)", lineHeight: 1.6, marginBottom: "22px" }}>
+                  {oobPopup === "younger"
+                    ? "We're building a version for younger children. In the meantime, get the free Attention Handbook — the same principles explained clearly, with six things you can try tonight."
+                    : "A dedicated version for older teens is coming. The free Attention Handbook covers the same foundations and gives you practical tools you can use right now."}
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "18px" }}>
+                  <input
+                    type="text"
+                    placeholder="Your name"
+                    value={oobName}
+                    onChange={(e) => setOobName(e.target.value)}
+                    style={{ border: "1.5px solid var(--line)", borderRadius: "10px", padding: "12px 14px", fontSize: "14.5px", fontFamily: "inherit", color: "var(--ink)", background: "var(--paper)", outline: "none", width: "100%" }}
+                  />
+                  <input
+                    type="tel"
+                    placeholder="WhatsApp number"
+                    value={oobPhone}
+                    onChange={(e) => setOobPhone(e.target.value)}
+                    style={{ border: "1.5px solid var(--line)", borderRadius: "10px", padding: "12px 14px", fontSize: "14.5px", fontFamily: "inherit", color: "var(--ink)", background: "var(--paper)", outline: "none", width: "100%" }}
+                  />
+                </div>
+                <button
+                  onClick={submitOobPopup}
+                  disabled={!oobName.trim() || !oobPhone.trim() || oobSubmitting}
+                  style={{
+                    width: "100%", background: "var(--marker)", color: "var(--marker-ink)", border: "none", borderRadius: "10px",
+                    padding: "14px 20px", fontWeight: 700, fontSize: "15px", cursor: oobName.trim() && oobPhone.trim() && !oobSubmitting ? "pointer" : "not-allowed",
+                    opacity: oobName.trim() && oobPhone.trim() && !oobSubmitting ? 1 : 0.55, fontFamily: "inherit",
+                  }}
+                >
+                  {oobSubmitting ? "Sending…" : "Send me the Handbook →"}
+                </button>
+                <div style={{ marginTop: "12px", fontSize: "12px", color: "var(--ink-dim)", textAlign: "center" }}>
+                  Free. No spam. Unsubscribe anytime.
+                </div>
+              </>
+            ) : (
+              <div style={{ textAlign: "center", padding: "8px 0" }}>
+                <div style={{ fontSize: "32px", marginBottom: "16px" }}>✓</div>
+                <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "18px", color: "var(--ink)", marginBottom: "10px" }}>
+                  {oobResult.wa_sent ? "Handbook sent to your WhatsApp." : "You're on the list."}
+                </div>
+                <p style={{ fontSize: "14px", color: "var(--ink-dim)", lineHeight: 1.6 }}>
+                  {oobResult.wa_sent
+                    ? "Check your WhatsApp — the link is on its way."
+                    : "We'll send you the Attention Handbook on WhatsApp in 1–2 days, once our messaging setup is live."}
+                </p>
+                <button
+                  onClick={() => setOobPopup(null)}
+                  style={{ marginTop: "20px", background: "none", border: "1.5px solid var(--line)", borderRadius: "10px", padding: "10px 22px", fontSize: "13.5px", fontWeight: 600, color: "var(--ink-dim)", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      </>
     );
   }
 
