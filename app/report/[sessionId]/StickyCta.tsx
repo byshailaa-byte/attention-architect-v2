@@ -47,19 +47,19 @@ function fireEvent(eventType: string, sessionId: string, metadata?: Record<strin
 export default function StickyCta({ sessionId, childName, parentName, email, phone }: Props) {
   const [visible, setVisible] = useState(false);
   const openedRef = useRef(false);
+  const priceSeenRef = useRef(false);
 
   useEffect(() => {
     const showEl = document.getElementById("sticky-show-sentinel");
     const hideEl = document.getElementById("sticky-hide-sentinel");
     let pastShow = false;
-    let priceVisible = false;
-    function update() { setVisible(pastShow && !priceVisible); }
+    function update() { setVisible(pastShow && !priceSeenRef.current); }
     const showObs = new IntersectionObserver(([entry]) => {
       pastShow = !entry.isIntersecting && entry.boundingClientRect.top < 0;
       update();
     }, { threshold: 0 });
     const hideObs = new IntersectionObserver(([entry]) => {
-      priceVisible = entry.isIntersecting;
+      if (entry.isIntersecting) priceSeenRef.current = true; // latch: once price cards visible, stay hidden
       update();
     }, { threshold: 0 });
     if (showEl) showObs.observe(showEl);
