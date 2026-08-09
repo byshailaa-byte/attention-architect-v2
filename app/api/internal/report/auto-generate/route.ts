@@ -79,7 +79,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ skipped: true, reason: "pipeline_disabled" });
   }
 
-  // Fetch assessment (must have parent_name set — report claimed)
+  // Fetch assessment — no parent_name gate: generation now triggers immediately on assessment
+  // submit (before the data-collection form), so parent_name may be null at this point.
+  // parent_name is used only as metadata in the FAMILY CONTEXT block; prose always uses "you".
   const rows = (await sql`
     SELECT
       id,
@@ -98,14 +100,13 @@ export async function POST(req: NextRequest) {
       generation_attempts
     FROM assessments
     WHERE session_id = ${sessionId}::uuid
-      AND parent_name IS NOT NULL
     LIMIT 1
   `) as unknown as {
     id: string;
     child_name: string | null;
     age_band: string;
     child_gender: string | null;
-    parent_name: string;
+    parent_name: string | null;
     archetype: string;
     parent_pattern: string;
     archetype_fit_tier: string | null;
@@ -118,8 +119,7 @@ export async function POST(req: NextRequest) {
   }[];
 
   if (rows.length === 0) {
-    // Parent hasn't claimed the report yet — will retry when they do (or skip entirely).
-    return NextResponse.json({ skipped: true, reason: "not_claimed" });
+    return NextResponse.json({ skipped: true, reason: "session_not_found" });
   }
 
   const row = rows[0];
@@ -202,7 +202,7 @@ export async function POST(req: NextRequest) {
       child_name: row.child_name,
       age_band: row.age_band,
       child_gender: row.child_gender,
-      parent_name: row.parent_name,
+      parent_name: row.parent_name ?? "Parent",
       archetype: row.archetype,
       archetype_fit_tier: row.archetype_fit_tier ?? scoring.archetype_fit_tier,
       parent_pattern: row.parent_pattern,
@@ -255,7 +255,11 @@ export async function POST(req: NextRequest) {
   const promotedAt  = shouldAutoPublish ? new Date().toISOString() : null;
   const promotedBy  = shouldAutoPublish ? "auto-pipeline" : null;
 
-  const [reportRow] = (await sql`
+  // Conditional INSERT: only writes if no non-superseded report already exists.
+  // Guards against the concurrent-trigger race: early trigger (fires at submit) and
+  // claim-time trigger can both be in-flight for the same session. The loser of the
+  // INSERT race sees 0 rows from RETURNING, undoes its attempt increment, and exits.
+  const insertedRows = (await sql`
     INSERT INTO reports (
       assessment_id,
       behaviour_signature,
@@ -272,7 +276,8 @@ export async function POST(req: NextRequest) {
       auto_generated,
       promoted_at,
       promoted_by
-    ) VALUES (
+    )
+    SELECT
       ${row.id}::uuid,
       ${JSON.stringify(sig)}::jsonb,
       ${composed.archetype},
@@ -288,9 +293,27 @@ export async function POST(req: NextRequest) {
       true,
       ${promotedAt},
       ${promotedBy}
+    WHERE NOT EXISTS (
+      SELECT 1 FROM reports
+      WHERE assessment_id = ${row.id}::uuid
+        AND superseded_by IS NULL
     )
     RETURNING id
   `) as unknown as { id: string }[];
+
+  if (insertedRows.length === 0) {
+    // Another concurrent call already wrote the report. Undo our attempt increment so
+    // the customer doesn't lose one of their five real attempts to a spurious race.
+    await sql`
+      UPDATE assessments
+      SET generation_attempts = generation_attempts - 1
+      WHERE id = ${row.id}::uuid
+    `;
+    console.log(`[auto-generate] session=${sessionId} concurrent write lost — attempt decremented, skipping`);
+    return NextResponse.json({ skipped: true, reason: "report_exists_concurrent" });
+  }
+
+  const reportRow = insertedRows[0];
 
   // For drafts: bump the pending_narrative_reviews counter in app_settings for the admin badge
   if (finalStatus === "draft") {
