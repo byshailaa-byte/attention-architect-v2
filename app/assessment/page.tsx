@@ -60,15 +60,6 @@ const BrainIcon = (
   </svg>
 );
 
-const ChartIcon = (
-  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-    <rect x="4" y="19" width="5" height="9" rx="1.5" stroke="#F6C63D" strokeWidth="1.8"/>
-    <rect x="13" y="13" width="5" height="15" rx="1.5" stroke="#F6C63D" strokeWidth="1.8"/>
-    <rect x="22" y="6" width="5" height="22" rx="1.5" stroke="#F6C63D" strokeWidth="1.8"/>
-    <path d="M6 17l8-8 8 4 6-9" stroke="#F6C63D" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
 const HeartIcon = (
   <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
     <path d="M16 27S5 20 5 12a6 6 0 0112 0 6 6 0 0112 0c0 8-11 15-11 15z" stroke="#F6C63D" strokeWidth="1.8" strokeLinejoin="round"/>
@@ -81,12 +72,6 @@ const ENGAGEMENT_SCREENS = [
     headline: () => "Most parents think this is about discipline.",
     body: "Your answers suggest something more interesting.",
     cta: "Continue →",
-  },
-  {
-    icon: ChartIcon,
-    headline: (name: string) => `We're beginning to see patterns in what keeps ${name}'s attention going —`,
-    body: "and what pulls it away.",
-    cta: "Keep going →",
   },
   {
     icon: HeartIcon,
@@ -233,10 +218,10 @@ function AssessmentForm() {
       }
     }
 
-    // Show engagement screen at ~1/3 and ~2/3 through the full sequence
+    // Show engagement screens at ~40% and ~75% through the full sequence
     if (questions.length > 3) {
       const nextPct = (next + 1) / questions.length;
-      const THRESHOLDS = [0.33, 0.66, 0.88] as const;
+      const THRESHOLDS = [0.40, 0.75] as const;
       for (let i = 0; i < THRESHOLDS.length; i++) {
         if (nextPct >= THRESHOLDS[i] && !shownEngagements.current.has(i)) {
           shownEngagements.current.add(i);
@@ -355,7 +340,7 @@ function AssessmentForm() {
               {screen.icon}
             </div>
             <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "22px", lineHeight: 1.3, marginBottom: "14px", color: "#F6F4EC" }}>
-              {screen.headline(childName || "your child")}
+              {screen.headline()}
             </h2>
             <p style={{ fontSize: "15px", color: "rgba(246,244,236,.6)", lineHeight: 1.65, marginBottom: "40px" }}>
               {screen.body}
@@ -505,35 +490,35 @@ function AssessmentForm() {
     <div className="funnel-screen">
       <div className="post-grid">
 
-        {/* Left: dark teaser */}
+        {/* Left: report preview */}
         <div className="teaser-col">
-          <div style={{ fontSize: "11px", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--marker)", fontWeight: 700, marginBottom: "20px" }}>
-            Your Results Are Ready
+          <div style={{ fontSize: "11px", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--marker)", fontWeight: 700, marginBottom: "18px" }}>
+            What&rsquo;s in your report
           </div>
-
-          {/* Revealed: archetype */}
-          <div style={{ background: "var(--marker-tint)", border: "1.5px solid var(--marker)", borderRadius: "12px", padding: "18px 20px", marginBottom: "14px" }}>
-            <div style={{ fontSize: "11px", color: "var(--ink-dim)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: "6px" }}>
-              {childName || "Your child"}&rsquo;s Type
-            </div>
-            <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "20px", color: "var(--ink)" }}>
-              {scoringResult?.archetype ?? "—"}
-            </div>
-          </div>
-
-          {/* Locked: parent pattern */}
-          <div style={{ background: "rgba(246,244,236,.06)", border: "1.5px dashed rgba(246,244,236,.25)", borderRadius: "12px", padding: "18px 20px", marginBottom: "0" }}>
-            <div style={{ fontSize: "11px", color: "rgba(246,244,236,.5)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: "6px" }}>
-              Your Pattern
-            </div>
-            <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "20px", color: "rgba(246,244,236,.35)" }}>
-              ? · One of 4
-            </div>
-          </div>
-
-          <p style={{ fontSize: "13px", color: "rgba(246,244,236,.7)", lineHeight: 1.6, marginTop: "20px" }}>
-            One of 8 attention types, confirmed. There&rsquo;s also a pattern in your own answers — and a specific way the two connect that most parents don&rsquo;t see coming.
+          <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "20px", lineHeight: 1.3, color: "var(--paper)", marginBottom: "8px" }}>
+            Six sections. All built from your answers.
+          </h2>
+          <p style={{ fontSize: "13px", color: "rgba(246,244,236,.5)", lineHeight: 1.6, marginBottom: "24px", fontStyle: "italic" }}>
+            Nothing in your report is invented. Every sentence traces back to something you told us.
           </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {([
+              ["Recognition",              "A moment you'll almost certainly recognize — described before anything gets explained."],
+              ["The Pattern",              "What's actually going on underneath that moment, named plainly, with the evidence behind it."],
+              ["The Loop",                 "The specific way your instinct and your child's pattern meet — shown, not implied."],
+              ["What This Explains",       "A few things you've probably believed, and what your answers actually suggest instead."],
+              ["Where We're Less Certain", "What we're honestly not sure about yet — stated directly, not hidden."],
+              ["Hope, and the Roadmap",    "Why none of this is fixed — and what six weeks, built around your child specifically, could look like."],
+            ] as [string, string][]).map(([title, desc], i) => (
+              <div key={title} style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
+                <div style={{ fontSize: "11px", fontWeight: 800, color: "var(--marker)", minWidth: "18px", paddingTop: "3px", flexShrink: 0 }}>{i + 1}</div>
+                <div>
+                  <div style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--paper)", marginBottom: "3px" }}>{title}</div>
+                  <div style={{ fontSize: "12px", color: "rgba(246,244,236,.55)", lineHeight: 1.55 }}>{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Right: form */}

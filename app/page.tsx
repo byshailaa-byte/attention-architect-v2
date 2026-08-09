@@ -35,83 +35,113 @@ const AGE_LABELS: Record<string, string> = {
 };
 
 const CONCERN_LABELS: Record<string, string> = {
-  focus:      "focus",
+  homework:   "homework battles",
+  reminders:  "focus reminders",
   screens:    "screen time",
   confidence: "confidence",
-  emotions:   "emotional intensity",
-  school:     "school friction",
-  potential:  "untapped potential",
+  giveup:     "giving up easily",
+  finish:     "not finishing things",
+  other:      "something else",
 };
 
-type FollowUpOption = { label: string; echo: string };
+const CONCERN_CARDS: { key: string; emoji: string | null; label: string; wide?: boolean }[] = [
+  { key: "homework",   emoji: "📖", label: "Homework turns into a battle" },
+  { key: "reminders",  emoji: "🎯", label: "I keep reminding them to focus" },
+  { key: "screens",    emoji: "📱", label: "Screens always win" },
+  { key: "confidence", emoji: "👤", label: "They've lost confidence" },
+  { key: "giveup",     emoji: "🌱", label: "They give up too easily" },
+  { key: "finish",     emoji: "📝", label: "They start everything and finish nothing" },
+  { key: "other",      emoji: null,  label: "Something else…", wide: true },
+];
 
-const FOLLOW_UP: Record<string, { question: string; options: FollowUpOption[] }> = {
-  focus: {
-    question: "What does the focus problem actually look like?",
+type FollowUpOption = { label: string; echo: string };
+type FollowUpConfig =
+  | { question: string; options: FollowUpOption[] }
+  | { question: string; isText: true };
+
+const FOLLOW_UP: Record<string, FollowUpConfig> = {
+  homework: {
+    question: "When homework time starts, what usually happens first?",
     options: [
-      { label: "Starts fine but drifts off after 5–10 minutes",             echo: "Starts fine — then drifts off" },
-      { label: "Goes deep on things they love — blank for everything else",  echo: "All-in on loved things, absent from everything else" },
-      { label: "Can't get started, even when they want to",                  echo: "Can't start, even when they want to" },
+      { label: "They delay starting as long as possible",              echo: "They delay starting as long as possible" },
+      { label: "They start, but stop again within minutes",             echo: "They start, then stop within minutes" },
+      { label: "They get upset or overwhelmed before really trying",   echo: "They get upset before really trying" },
+      { label: "They rush through it just to be done",                 echo: "They rush through it just to be done" },
+      { label: "It depends on the subject",                            echo: "It depends on the subject" },
+    ],
+  },
+  reminders: {
+    question: "When you remind your child to focus, what usually happens next?",
+    options: [
+      { label: "They focus for a few minutes, then drift away again",  echo: "They focus briefly, then drift" },
+      { label: "They say \"Okay\" but don't really start",              echo: "They say Okay but don't start" },
+      { label: "They get irritated or argue",                           echo: "They get irritated or argue" },
+      { label: "They genuinely try but can't stay with it",             echo: "They genuinely try but can't stay" },
+      { label: "It depends on the day",                                 echo: "It depends on the day" },
     ],
   },
   screens: {
-    question: "What happens when screen time ends?",
+    question: "When it's time to put the screen down, what usually happens?",
     options: [
-      { label: "Meltdown or argument — every single time",          echo: "Full meltdown, every single time" },
-      { label: "Negotiates 'just five more minutes' on loop",        echo: "Endless five-more-minutes negotiation" },
-      { label: "Complies, then shuts down completely for a while",   echo: "Complies — then goes dark for 30 minutes" },
+      { label: "A small negotiation turns into a bigger one",           echo: "A small negotiation turns into a bigger one" },
+      { label: "They get irritable or upset",                           echo: "They get irritable or upset" },
+      { label: "They agree, but \"just five more minutes\" keeps happening", echo: "Just five more minutes — keeps happening" },
+      { label: "They put it down fine, but can't settle into anything else", echo: "They put it down but can't settle" },
+      { label: "It depends on what they were doing",                   echo: "It depends on what they were doing" },
     ],
   },
   confidence: {
-    question: "Where does the gap show up most?",
+    question: "When something feels hard for them, what do you usually see first?",
     options: [
-      { label: "Won't try if there's any chance of failing",                        echo: "Won't try if there's a chance of failing" },
-      { label: "Gives up sooner than you'd expect from how capable they are",       echo: "Gives up faster than they should" },
-      { label: "Compares themselves to other kids constantly",                      echo: "Constant comparison to other kids" },
+      { label: "They say \"I can't\" before really trying",             echo: "They say I can't before trying" },
+      { label: "They get frustrated and give up quickly",               echo: "They get frustrated and give up quickly" },
+      { label: "They ask you to do it for them",                        echo: "They ask you to do it for them" },
+      { label: "They avoid starting at all",                            echo: "They avoid starting at all" },
+      { label: "It depends on the day",                                 echo: "It depends on the day" },
     ],
   },
-  emotions: {
-    question: "How do hard moments usually land?",
+  giveup: {
+    question: "When they hit something difficult, how long before they stop trying?",
     options: [
-      { label: "Shuts down — goes quiet and unreachable",        echo: "Goes quiet and unreachable" },
-      { label: "Escalates fast — anger or tears, no warning",    echo: "Escalates fast, no warning" },
-      { label: "Seems fine, then carries it for hours after",    echo: "Carries it for hours afterward" },
+      { label: "Almost immediately",                  echo: "Almost immediately" },
+      { label: "After one real attempt",              echo: "After one real attempt" },
+      { label: "Only after getting visibly upset",    echo: "Only after getting visibly upset" },
+      { label: "It varies a lot",                     echo: "It varies a lot" },
     ],
   },
-  school: {
-    question: "What's the main friction at school?",
+  finish: {
+    question: "When they move on to something new mid-task, what happens to the first thing?",
     options: [
-      { label: "Homework takes three times longer than it should",           echo: "Homework takes three times longer than it should" },
-      { label: "Fine in class — completely different child at home",         echo: "Different child at home than at school" },
-      { label: "Teachers say 'not working to potential'",                    echo: "Teachers say 'not reaching potential'" },
+      { label: "It just sits there, forgotten",                         echo: "It just sits there, forgotten" },
+      { label: "They say they'll come back to it — and don't",          echo: "They say they'll come back — they don't" },
+      { label: "You have to remind them to finish it",                  echo: "You have to remind them to finish" },
+      { label: "Sometimes they do circle back on their own",            echo: "Sometimes they circle back" },
     ],
   },
-  potential: {
-    question: "What makes you feel the potential is there?",
-    options: [
-      { label: "Intense focus on what they love — absent everywhere else",    echo: "Intense when interested, absent when not" },
-      { label: "Sharp in conversation — that doesn't show up in grades",      echo: "Sharp in conversation, not in grades" },
-      { label: "You've watched them do it when motivated — they just won't",  echo: "You've seen them do it. They just won't." },
-    ],
+  other: {
+    question: "Tell us a little more about what's going on.",
+    isText: true,
   },
 };
 
 const REVEAL_HEADLINES: Record<string, string> = {
-  focus:      "That's not a focus problem. It's a specific attention shape.",
-  screens:    "That's not screen addiction. It's what happens when the stimulation gap gets too wide.",
-  confidence: "That's not low confidence. It's a calibration problem.",
-  emotions:   "That's not overreacting. It's how this pattern processes pressure.",
-  school:     "That's not laziness. It's what the wrong structure looks like on a capable kid.",
-  potential:  "You're not imagining it. The potential is real — and it only fires under specific conditions.",
+  homework:   "Why does homework become a battle every evening?",
+  reminders:  "Why do reminders to focus stop working, no matter how many times you say it?",
+  screens:    "Why do screens always win the fight?",
+  confidence: "Why has your child's confidence quietly gone missing?",
+  giveup:     "Why do they give up before they've really started?",
+  finish:     "Why does your child start everything, and finish nothing?",
+  other:      "Let's figure out what's actually going on.",
 };
 
 const REVEAL_INSIGHTS: Record<string, string> = {
-  focus:      "That gap — wherever it shows up — is one of three specific attention shapes. Once the type is mapped, you know where the friction comes from and what actually reaches it.",
-  screens:    "The screen problem is almost always a proxy. What it's measuring is how far the gap is between your child's attention pattern and everything that isn't a screen — and that gap is addressable.",
-  confidence: "Confidence at this age almost always traces to what a child's attention pattern predicts will happen when they try something new. That's different from self-esteem — and responds to different things.",
-  emotions:   "The emotional response is tied directly to the attention shape. Different types absorb pressure differently, reach their limit differently, and recover differently. This is mappable.",
-  school:     "School friction in a capable child is almost always a structure mismatch, not a capability gap. The data shows which structure this child actually runs on.",
-  potential:  "The potential is real. The gap between capability and output is almost always explained by a mismatch in environment — one of eight specific patterns. This assessment finds it.",
+  homework:   "That nightly battle has a shape — and the shape tells us something specific about how this child's attention works under low-interest conditions. One of 8 attention types explains it directly, and the six-week roadmap responds to it.",
+  reminders:  "Reminders wear out because they're the wrong signal for this attention type. Once the type is mapped, you'll understand why repetition doesn't reach this child — and what actually does.",
+  screens:    "Screens win because they're engineered to. But the specific way your child responds when the screen goes off tells us which attention type is underneath. That gap is addressable once it's named.",
+  confidence: "Confidence gaps at this age trace almost directly to what a child's attention type predicts will happen when they try something new. That's a mismatch problem — and mismatch problems respond to different things than self-esteem problems do.",
+  giveup:     "The speed of giving up is a signal, not a character trait. It maps to a specific place in one of 8 attention patterns — and once it's named, the six-week plan addresses it at exactly that point.",
+  finish:     "Starting-without-finishing is one of the clearest signals in the attention type data. It almost always maps to a specific pattern — and that pattern has a roadmap that actually fits it.",
+  other:      "Whatever you're seeing is a signal. This assessment maps 6 dimensions of how your child's attention works, alongside 4 parent instinct patterns — and what you're living with is almost certainly visible in those dimensions.",
 };
 
 const CHILD_ARCHETYPES = [
@@ -149,14 +179,33 @@ const TESTIMONIALS = [
 
 type Stage = "step1" | "step2" | "reveal";
 
+// ── Shared brand mark used at top of step1 and step2 ────────────────────────
+
+function BrandMark({ mb }: { mb?: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: mb ?? "32px" }}>
+      <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--marker)", flexShrink: 0 }} />
+      <div>
+        <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "14.5px", color: "var(--ink)", lineHeight: 1.2 }}>
+          Attention Architect
+        </div>
+        <div style={{ fontSize: "11px", color: "var(--ink-dim)", fontWeight: 600, marginTop: "2px", lineHeight: 1.3 }}>
+          Become the Architect of your child&rsquo;s Attention Health
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
   const router = useRouter();
-  const [stage, setStage]     = useState<Stage>("step1");
-  const [age, setAge]         = useState<string | null>(null);
-  const [concern, setConcern] = useState<string | null>(null);
+  const [stage, setStage]       = useState<Stage>("step1");
+  const [age, setAge]           = useState<string | null>(null);
+  const [concern, setConcern]   = useState<string | null>(null);
   const [followUp, setFollowUp] = useState<FollowUpOption | null>(null);
+  const [otherText, setOtherText] = useState("");
   const [showSticky, setShowSticky] = useState(false);
 
   const revealRef   = useRef<HTMLDivElement>(null);
@@ -242,6 +291,11 @@ export default function LandingPage() {
     setTimeout(() => setStage("reveal"), 250);
   }
 
+  function submitOther() {
+    const echo = otherText.trim() || "Something specific — hard to describe in a word.";
+    selectFollowUp({ label: echo, echo });
+  }
+
   function buildCtaUrl() {
     const p = new URLSearchParams();
     const ageMapped = age === "younger" || age === "older" ? "10-11" : age ?? "10-11";
@@ -255,151 +309,223 @@ export default function LandingPage() {
     router.push(buildCtaUrl());
   }
 
-  const isOob    = age === "younger" || age === "older";
+  const isOob      = age === "younger" || age === "older";
   const step1Ready = !!age && !!concern;
 
   // ── STEP 1 ────────────────────────────────────────────────────────────────
   if (stage === "step1") {
     return (
-      <div style={{ background: "var(--paper)", minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
-          <div style={{ width: "100%", maxWidth: 520 }}>
+      <div className="funnel-screen">
+        <div className="funnel-card">
 
-            <div style={{ fontSize: "11px", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--ink-dim)", fontWeight: 700, marginBottom: "28px" }}>
-              Attention Architect · For Parents
-            </div>
+          <BrandMark />
 
-            <h1 style={{ fontFamily: BG, fontWeight: 800, fontSize: "clamp(28px,6vw,44px)", lineHeight: 1.15, letterSpacing: "-.01em", color: "var(--ink)", marginBottom: "32px" }}>
-              Smart kid.<br />
-              Somehow still not listening.<br />
-              <span className="mark">Sound familiar?</span>
-            </h1>
-
-            {/* Age selection */}
-            <div style={{ marginBottom: "24px" }}>
-              <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)", marginBottom: "10px" }}>
-                How old is your child?
-              </div>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                {[["8–9", "8-9"], ["10–11", "10-11"], ["12–14", "12-14"], ["Younger", "younger"], ["Older", "older"]].map(([label, val]) => (
-                  <button
-                    key={val}
-                    className={`chip-btn${age === val ? " sel" : ""}`}
-                    onClick={() => selectAge(val)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {isOob && age && (
-                <div style={{ marginTop: "10px", background: "var(--calm-tint)", border: "1px solid rgba(110,95,176,.3)", borderRadius: "10px", padding: "10px 14px", fontSize: "13px", color: "var(--calm-text)", lineHeight: 1.5 }}>
-                  {OOB_NOTES[age]}
-                </div>
-              )}
-            </div>
-
-            {/* Concern selection */}
-            <div style={{ marginBottom: "32px" }}>
-              <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)", marginBottom: "10px" }}>
-                What&rsquo;s the main friction right now?
-              </div>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                {(["Focus", "Screens", "Confidence", "Emotions", "School", "Potential"] as const).map((c) => {
-                  const val = c.toLowerCase();
-                  return (
-                    <button
-                      key={val}
-                      className={`chip-btn${concern === val ? " sel" : ""}`}
-                      onClick={() => selectConcern(val)}
-                    >
-                      {c}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <button
-              className="cta-btn"
-              disabled={!step1Ready}
-              onClick={goToStep2}
-              style={{
-                background: step1Ready ? "var(--marker)" : "var(--line)",
-                color: step1Ready ? "var(--marker-ink)" : "var(--ink-dim)",
-                cursor: step1Ready ? "pointer" : "not-allowed",
-              }}
-            >
-              {step1Ready
-                ? `Continue — ${AGE_LABELS[age!]} with ${CONCERN_LABELS[concern!]} →`
-                : "Select age and concern above to continue"}
-            </button>
-
-            <div style={{ display: "flex", gap: "16px", marginTop: "16px", fontSize: "12px", color: "var(--ink-dim)" }}>
-              <span>Free</span>
-              <span>·</span>
-              <span>Under 5 minutes</span>
-              <span>·</span>
-              <span>No sign-up needed</span>
-            </div>
-
+          <div style={{ fontSize: "11px", letterSpacing: ".13em", textTransform: "uppercase", fontWeight: 700, color: "var(--calm-text)", marginBottom: "10px" }}>
+            Step 1 of 2
           </div>
+
+          <h1 style={{ fontFamily: BG, fontWeight: 800, fontSize: "clamp(21px,3vw,27px)", lineHeight: 1.35, color: "var(--ink)", marginBottom: "8px" }}>
+            What&rsquo;s worrying you the most right now?
+          </h1>
+          <div style={{ fontSize: "14px", color: "var(--ink-dim)", marginBottom: "26px" }}>
+            Choose what feels closest to your situation.
+          </div>
+
+          {/* Age selection */}
+          <div style={{ marginBottom: "22px" }}>
+            <div style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--ink)", marginBottom: "8px" }}>
+              Your child&rsquo;s age
+            </div>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {[["8–9", "8-9"], ["10–11", "10-11"], ["12–14", "12-14"], ["Younger", "younger"], ["Older", "older"]].map(([label, val]) => (
+                <button
+                  key={val}
+                  className={`chip-btn${age === val ? " sel" : ""}`}
+                  onClick={() => selectAge(val)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {isOob && age && (
+              <div style={{ marginTop: "10px", background: "var(--calm-tint)", border: "1px solid rgba(110,95,176,.3)", borderRadius: "10px", padding: "10px 14px", fontSize: "13px", color: "var(--calm-text)", lineHeight: 1.5 }}>
+                {OOB_NOTES[age]}
+              </div>
+            )}
+          </div>
+
+          {/* Concern grid — 2-col cards with emoji + full phrase */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
+            {CONCERN_CARDS.map(({ key, emoji, label, wide }) => {
+              const selected = concern === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => selectConcern(key)}
+                  style={{
+                    gridColumn: wide ? "1 / -1" : undefined,
+                    background: selected
+                      ? "var(--calm-tint)"
+                      : wide
+                      ? "transparent"
+                      : "var(--paper)",
+                    border: selected
+                      ? "2px solid var(--calm)"
+                      : wide
+                      ? "1.5px dashed var(--line)"
+                      : "2px solid transparent",
+                    outline: "none",
+                    borderRadius: "14px",
+                    padding: wide ? "14px 18px" : "18px 14px",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    transition: "all .12s",
+                    display: "flex",
+                    flexDirection: wide ? "row" : "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: wide ? "8px" : "0",
+                  }}
+                >
+                  {emoji && (
+                    <span style={{ fontSize: "24px", marginBottom: wide ? 0 : "8px", display: "block", lineHeight: 1 }}>
+                      {emoji}
+                    </span>
+                  )}
+                  <span style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--ink)", lineHeight: 1.35 }}>
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Reassure */}
+          <div style={{ background: "var(--calm-tint)", borderRadius: "10px", padding: "11px 15px", fontSize: "13px", color: "var(--calm-text)", display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
+            🛡️ Your answer helps us personalise the next questions and your report.
+          </div>
+
+          <button
+            className="cta-btn"
+            disabled={!step1Ready}
+            onClick={goToStep2}
+            style={{
+              background: step1Ready ? "var(--marker)" : "var(--line)",
+              color: step1Ready ? "var(--marker-ink)" : "var(--ink-dim)",
+              cursor: step1Ready ? "pointer" : "not-allowed",
+            }}
+          >
+            {step1Ready
+              ? `Continue — ${AGE_LABELS[age!]} with ${CONCERN_LABELS[concern!]} →`
+              : "Select age and concern to continue"}
+          </button>
+
+          <div style={{ display: "flex", gap: "16px", marginTop: "16px", fontSize: "12px", color: "var(--ink-dim)" }}>
+            <span>Free</span>
+            <span>·</span>
+            <span>Under 5 minutes</span>
+            <span>·</span>
+            <span>No sign-up needed</span>
+          </div>
+
         </div>
-        <SiteFooter />
       </div>
     );
   }
 
   // ── STEP 2 ────────────────────────────────────────────────────────────────
   if (stage === "step2") {
-    const fu = concern ? FOLLOW_UP[concern] : null;
+    const fuConfig = concern ? FOLLOW_UP[concern] : null;
+    const isText = fuConfig !== null && "isText" in fuConfig && fuConfig.isText;
+    const hasOptions = fuConfig !== null && "options" in fuConfig;
+
     return (
-      <div style={{ background: "var(--paper)", minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
-          <div style={{ width: "100%", maxWidth: 520 }}>
+      <div className="funnel-screen">
+        <div className="funnel-card">
 
-            {/* Step summary */}
-            <button
-              onClick={() => setStage("step1")}
-              style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", color: "var(--calm-text)", fontWeight: 600, marginBottom: "28px", padding: 0, display: "flex", alignItems: "center", gap: "6px" }}
-            >
-              ← {AGE_LABELS[age!]} · {CONCERN_LABELS[concern!]}
-            </button>
+          <BrandMark mb="28px" />
 
-            <div style={{ fontSize: "11px", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--ink-dim)", fontWeight: 700, marginBottom: "20px" }}>
-              One more thing
+          <button
+            onClick={() => setStage("step1")}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", color: "var(--calm-text)", fontWeight: 600, marginBottom: "20px", padding: 0, display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            ← {AGE_LABELS[age!]} · {CONCERN_LABELS[concern!]}
+          </button>
+
+          <div style={{ fontSize: "11px", letterSpacing: ".13em", textTransform: "uppercase", fontWeight: 700, color: "var(--calm-text)", marginBottom: "10px" }}>
+            Step 2 of 2 · No assumptions
+          </div>
+
+          <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "clamp(20px,3vw,25px)", lineHeight: 1.3, color: "var(--ink)", marginBottom: "24px" }}>
+            {fuConfig?.question}
+          </h2>
+
+          {hasOptions && (
+            <div style={{ fontSize: "13.5px", color: "var(--ink-dim)", marginBottom: "16px" }}>
+              Select what feels true. There&rsquo;s no right or wrong answer.
             </div>
+          )}
 
-            <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "clamp(22px,5vw,32px)", lineHeight: 1.2, color: "var(--ink)", marginBottom: "28px" }}>
-              {fu?.question}
-            </h2>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {fu?.options.map((opt) => (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {isText ? (
+              <>
+                <textarea
+                  value={otherText}
+                  onChange={(e) => setOtherText(e.target.value)}
+                  placeholder="Type freely — a sentence or two is plenty."
+                  rows={4}
+                  style={{
+                    width: "100%",
+                    border: "1.5px solid var(--line)",
+                    borderRadius: "12px",
+                    padding: "14px 16px",
+                    fontFamily: "inherit",
+                    fontSize: "15px",
+                    resize: "vertical",
+                    color: "var(--ink)",
+                    background: "var(--paper)",
+                    outline: "none",
+                    marginBottom: "8px",
+                  }}
+                />
+                <button className="cta-btn" onClick={submitOther}>
+                  See what this tells us →
+                </button>
+              </>
+            ) : (
+              (fuConfig as { question: string; options: FollowUpOption[] }).options.map((opt) => (
                 <button
                   key={opt.echo}
                   onClick={() => selectFollowUp(opt)}
                   style={{
-                    background: followUp?.echo === opt.echo ? "var(--marker-tint)" : "var(--card)",
-                    border: followUp?.echo === opt.echo ? "2px solid var(--marker)" : "1.5px solid var(--line)",
+                    background: followUp?.echo === opt.echo ? "var(--calm-tint)" : "var(--paper)",
+                    border: followUp?.echo === opt.echo ? "1.5px solid var(--calm)" : "1.5px solid var(--line)",
                     borderRadius: "12px",
-                    padding: "18px 20px",
-                    fontSize: "15px",
+                    padding: "14px 16px",
+                    fontSize: "14px",
                     fontWeight: 500,
                     color: "var(--ink)",
                     cursor: "pointer",
                     textAlign: "left",
                     fontFamily: "inherit",
                     transition: "border-color .1s, background .1s",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "12px",
                   }}
                 >
-                  {opt.label}
+                  <span>{opt.label}</span>
+                  {followUp?.echo === opt.echo && (
+                    <span style={{ width: 20, height: 20, borderRadius: 5, background: "var(--calm)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>✓</span>
+                  )}
                 </button>
-              ))}
-            </div>
-
+              ))
+            )}
           </div>
+
         </div>
-        <SiteFooter />
       </div>
     );
   }
@@ -582,7 +708,6 @@ export default function LandingPage() {
             Before You Start
           </div>
 
-          {/* Trust line */}
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "32px" }}>
             {["Free", "Under 5 minutes", "No sign-up", "Your data stays private"].map((t) => (
               <div key={t} style={{ background: "var(--marker-tint)", border: "1px solid var(--marker)", borderRadius: "8px", padding: "6px 14px", fontSize: "13px", fontWeight: 600, color: "var(--marker-text)" }}>
@@ -591,7 +716,6 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* Is / isn't */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "28px" }}>
             <div style={{ borderRadius: "12px", padding: "22px", background: "var(--green-tint)", border: "1px solid var(--green)" }}>
               <div style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--green)", marginBottom: "14px" }}>This is</div>
@@ -615,7 +739,6 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Loop expectation line */}
           <div style={{ background: "var(--calm-tint)", border: "1px solid var(--calm)", borderRadius: "12px", padding: "18px 22px", fontSize: "15px", color: "var(--calm-text)", lineHeight: 1.6 }}>
             At the end, you&rsquo;ll see your child&rsquo;s attention type, your own instinct pattern — and how the two create the friction you&rsquo;re living right now.
           </div>
