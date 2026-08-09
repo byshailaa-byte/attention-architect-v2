@@ -6,6 +6,10 @@ import { sendCapiEvents } from "@/lib/meta/capi";
 
 assertBootGuards();
 
+// Generation takes ~48s avg; WhatsApp + CAPI add ~3s. 300s gives ~6× headroom.
+// Must be declared here — no global maxDuration is set for this project.
+export const maxDuration = 300;
+
 export async function POST(req: NextRequest) {
   try {
     const { sessionId, parentName, email, phone, gender, tried, better } = (await req.json()) as {
@@ -29,7 +33,7 @@ export async function POST(req: NextRequest) {
         parent_name  = ${parentName.trim()},
         email        = ${email.trim()},
         phone        = ${phone.trim()},
-        child_gender = ${gender ?? null},
+        child_gender = COALESCE(${gender ?? null}, child_gender),
         tried        = ${tried ?? []},
         better       = ${better ?? []}
       WHERE session_id = ${sessionId}::uuid
@@ -50,9 +54,34 @@ export async function POST(req: NextRequest) {
       VALUES ('generate_lead', ${sessionId}::uuid, '{}'::jsonb)
     `.catch((e: unknown) => console.warn("[funnel] generate_lead:", (e as Error).message));
 
-    // after() keeps the serverless function alive until scheduled work completes.
+    // Single after() block: generate report first, then send WhatsApp once it's ready.
+    // Previously two concurrent after() calls caused a race — WhatsApp fired ~1s after claim
+    // while generation takes ~48s, so parents clicked into the old static report.
+    const autoGenUrl = new URL("/api/internal/report/auto-generate", req.nextUrl.origin).toString();
+    const internalSecret = process.env.INTERNAL_API_SECRET ?? "";
     after(async () => {
-      // WhatsApp: atomic dedup via whatsapp_report_sent_at — only first caller sends
+      // Step 1: wait for narrative generation to complete (~48s avg).
+      // Race against a 240s hard cap so WhatsApp always sends even on a slow generation —
+      // parent gets the link and sees the static fallback at worst, not silence.
+      try {
+        const genTimeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("generation timeout after 240s")), 240_000),
+        );
+        await Promise.race([
+          fetch(autoGenUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Internal-Secret": internalSecret },
+            body: JSON.stringify({ sessionId }),
+          }),
+          genTimeout,
+        ]);
+      } catch (e: unknown) {
+        console.warn("[auto-generate] trigger failed or timed out:", (e as Error).message);
+        // Fall through — WhatsApp still sends with the report link.
+        // If generation didn't finish, parent lands on static view; if it did, they see the narrative.
+      }
+
+      // Step 2: send WhatsApp — always fires, even if generation above failed/timed out
       try {
         const rows = await sql`
           UPDATE assessments

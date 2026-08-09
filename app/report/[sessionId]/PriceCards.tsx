@@ -128,9 +128,22 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
         <div style={{ fontSize: "13px", color: "#5C5950", margin: "8px 0 4px", lineHeight: 1.5 }}>
           All 6 weeks, sequenced specifically for {childName}.
         </div>
-        <div style={{ fontSize: "12px", color: "#7a7870", marginBottom: "18px", lineHeight: 1.5 }}>
+        <div style={{ fontSize: "12px", color: "#7a7870", marginBottom: "14px", lineHeight: 1.5 }}>
           Everything {childName} needs over the next six weeks.
         </div>
+        <ul style={{ margin: "0 0 18px", padding: "0", listStyle: "none" }}>
+          {[
+            `A personalized six-week roadmap, sequenced around ${childName}'s own answers`,
+            "One weekly step — never a 20-item list dropped on you at once",
+            "The reasoning behind each step, not just instructions",
+            "Yours to keep and revisit, no expiry",
+          ].map((item) => (
+            <li key={item} style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginBottom: "7px", fontSize: "12.5px", color: "#5C5950", lineHeight: 1.5 }}>
+              <span style={{ color: "#34503F", fontWeight: 700, flexShrink: 0 }}>✓</span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
         <button
           onClick={() => openModal("full")}
           style={{ display: "block", width: "100%", background: "#1a1a1f", color: "var(--paper)", textAlign: "center", fontFamily: BG, fontWeight: 800, fontSize: "14px", padding: "13px", borderRadius: "10px", border: "none", cursor: "pointer" }}
@@ -141,31 +154,46 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
 
       {/* Plain secondary ₹499 block */}
       <div style={{ textAlign: "center", padding: "4px 0 20px" }}>
-        <div style={{ fontSize: "13.5px", color: "#9c9aa8", marginBottom: "10px" }}>Not ready for all six weeks yet?</div>
+        <div style={{ fontSize: "13.5px", color: "#5B5648", marginBottom: "10px" }}>Not ready for all six weeks yet?</div>
         <button
           onClick={() => openModal("module1")}
-          style={{ background: "transparent", border: "1.5px solid rgba(255,255,255,.25)", borderRadius: "10px", color: "#c9c7d1", fontFamily: BG, fontWeight: 700, fontSize: "13.5px", padding: "10px 20px", cursor: "pointer" }}
+          style={{ background: "transparent", border: "1.5px solid rgba(32,30,25,0.22)", borderRadius: "10px", color: "#5B5648", fontFamily: BG, fontWeight: 700, fontSize: "13.5px", padding: "10px 20px", cursor: "pointer" }}
         >
           See Week One Only — ₹499
         </button>
       </div>
 
+      {/* Comparison anchor */}
+      <div style={{ margin: "4px 0 20px", padding: "12px 14px", background: "rgba(32,30,25,0.04)", borderRadius: "10px" }}>
+        {[
+          { label: "Month of tuition", price: "₹3,000–8,000", note: "teaches one subject" },
+          { label: "Behaviour consult", price: "₹1,500+", note: "one conversation" },
+          { label: "Full roadmap", price: "₹999", note: `six weeks, built around ${childName}` },
+        ].map(({ label, price, note }, i, arr) => (
+          <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "5px 0", borderBottom: i < arr.length - 1 ? "1px solid rgba(32,30,25,0.06)" : "none" }}>
+            <span style={{ fontSize: "12px", color: "#5B5648" }}>{label}</span>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "#201E19", padding: "0 8px" }}>{price}</span>
+            <span style={{ fontSize: "11px", color: "#8B8570", textAlign: "right" }}>{note}</span>
+          </div>
+        ))}
+      </div>
+
       {/* Trust row */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "14px", flexWrap: "wrap" }}>
-        <span style={{ fontSize: "12px", color: "#9c9aa8" }}>🔒 Secured by Razorpay</span>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px", flexWrap: "wrap" }}>
+        <span style={{ fontSize: "12px", color: "#8B8570" }}>🔒 Secured by Razorpay</span>
         {["UPI", "Cards", "Netbanking"].map((m) => (
-          <span key={m} style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "6px", fontSize: "11px", color: "#9c9aa8", padding: "2px 8px" }}>{m}</span>
+          <span key={m} style={{ background: "rgba(32,30,25,0.05)", border: "1px solid rgba(32,30,25,0.12)", borderRadius: "6px", fontSize: "11px", color: "#5B5648", padding: "2px 8px" }}>{m}</span>
         ))}
       </div>
 
       {/* WhatsApp share */}
-      <div style={{ marginTop: "20px", textAlign: "center", fontSize: "13px", color: "#9c9aa8" }}>
+      <div style={{ marginTop: "20px", textAlign: "center", fontSize: "13px", color: "#8B8570" }}>
         Want to discuss with your partner first?{" "}
         <a
           href={waShareUrl}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: "#c9c7d1", textDecoration: "underline", textUnderlineOffset: "2px" }}
+          style={{ color: "#34503F", textDecoration: "underline", textUnderlineOffset: "2px" }}
         >
           Share this report
         </a>

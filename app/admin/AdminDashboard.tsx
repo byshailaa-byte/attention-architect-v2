@@ -121,6 +121,7 @@ export type AdminDashboardProps = {
   toParam: string | null;
   campaignLaunchAt: string | null;
   showArchive: boolean;
+  pendingNarrativeReviews: number;
   // legacy prop kept for compatibility — not used in new dashboard
   funnel?: FunnelCounts;
 };
@@ -724,6 +725,7 @@ export default function AdminDashboard({
   funnelEvents, dropOffs, funnelSince,
   rangeParam, fromParam, toParam,
   campaignLaunchAt, showArchive,
+  pendingNarrativeReviews,
 }: AdminDashboardProps) {
   const [active, setActive] = useState<Section>("overview");
   const [search, setSearch] = useState("");
@@ -885,6 +887,39 @@ export default function AdminDashboard({
               {label}
             </button>
           ))}
+          {/* Pending narrative reviews badge */}
+          {pendingNarrativeReviews > 0 && (
+            <div style={{
+              margin:       "8px 0",
+              padding:      "8px 12px",
+              background:   "rgba(246, 198, 61, 0.1)",
+              border:       `1px solid rgba(246, 198, 61, 0.3)`,
+              borderRadius: 6,
+              display:      "flex",
+              alignItems:   "center",
+              gap:          8,
+            }}>
+              <span style={{
+                background:   C.yellow,
+                color:        "#000",
+                borderRadius: "50%",
+                width:        20,
+                height:       20,
+                display:      "inline-flex",
+                alignItems:   "center",
+                justifyContent: "center",
+                fontSize:     11,
+                fontWeight:   800,
+                flexShrink:   0,
+              }}>
+                {pendingNarrativeReviews}
+              </span>
+              <span style={{ fontFamily: MONO, fontSize: 11, color: C.yellow, lineHeight: 1.3 }}>
+                report{pendingNarrativeReviews === 1 ? "" : "s"} pending review
+              </span>
+            </div>
+          )}
+
           {/* External tools */}
           <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 8, paddingTop: 8 }}>
             <a

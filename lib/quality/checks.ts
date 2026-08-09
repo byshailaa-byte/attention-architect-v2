@@ -79,13 +79,17 @@ export function checkHypothesisHedge(moments: AttentionMoment[]): CheckFailure |
 }
 
 // ── Check 3: Label once ───────────────────────────────────────────────────────
-// Archetype label: at most once in all prose; if present, not in the Recognition section.
+// Archetype label: must NOT appear anywhere in generated moment.content.
+// The Behaviour Pattern template (NarrativeReportView BehaviourPatternSection) injects
+// "We call this pattern {archetype} — ..." as a hardcoded JSX label line — that is the
+// one canonical occurrence. Any mention in LLM prose creates a visible duplicate that
+// the quality check would otherwise miss, because the template is outside moment.content.
+//
 // Parent instinct label:
 //   - primary / secondary: must appear exactly once, in the correct section
 //     (Family Attention Loop if that section exists; otherwise What This Explains)
 //   - weak: may be absent; if present must not appear more than once
 //   - no_clear_fit: must not appear at all
-// Fit-tier-specific must-appear rules for archetype are in checkFitTierCompliance.
 export function checkLabelOnce(
   moments: AttentionMoment[],
   archetypeLabel: string,
@@ -95,42 +99,16 @@ export function checkLabelOnce(
   const failures: CheckFailure[] = [];
   const allContent = moments.map(m => m.content).join("\n");
 
+  // Archetype label must be absent from all moment.content — the template adds it.
   const archetypeCount = countLabel(allContent, archetypeLabel);
-  if (archetypeCount > 1) {
-    // The one allowed occurrence is in Behaviour Pattern. Any other moment containing the
-    // label is the offending one — give it a moment_id so the engine can regenerate it
-    // surgically rather than blocking the whole report.
-    const extraMoments = moments.filter(
-      m => m.section !== "Behaviour Pattern" && countLabel(m.content, archetypeLabel) > 0,
-    );
-    if (extraMoments.length > 0) {
-      for (const m of extraMoments) {
-        failures.push({
-          check: "label_once",
-          moment_id: m.moment_id,
-          reason: `Archetype label "${archetypeLabel}" must appear only in Behaviour Pattern — found extra occurrence here`,
-        });
-      }
-    } else {
-      // Label appears multiple times within Behaviour Pattern itself
-      const bp = moments.find(m => m.section === "Behaviour Pattern");
+  if (archetypeCount > 0) {
+    // Find the moment(s) containing the label so the engine can regenerate surgically.
+    const offendingMoments = moments.filter(m => countLabel(m.content, archetypeLabel) > 0);
+    for (const m of offendingMoments) {
       failures.push({
         check: "label_once",
-        moment_id: bp?.moment_id ?? null,
-        reason: `Archetype label "${archetypeLabel}" appears ${archetypeCount} times in Behaviour Pattern — must appear at most once`,
-      });
-    }
-  }
-
-  // If the archetype label appears exactly once, verify it's not in the Recognition section
-  // (which precedes Behaviour Pattern — the label must come after its supporting pattern)
-  if (archetypeCount === 1) {
-    const recognitionMoment = moments.find(m => m.section === "Recognition");
-    if (recognitionMoment && countLabel(recognitionMoment.content, archetypeLabel) > 0) {
-      failures.push({
-        check: "label_once",
-        moment_id: recognitionMoment.moment_id,
-        reason: `Archetype label appears in Recognition (before its supporting pattern)`,
+        moment_id: m.moment_id,
+        reason: `Archetype label "${archetypeLabel}" must not appear in generated prose — the template provides it as a label line. Found in "${m.section}".`,
       });
     }
   }
@@ -215,50 +193,28 @@ export function checkLabelOnce(
 // ── Check 4: fit_tier compliance ──────────────────────────────────────────────
 // Inspects actual generated prose (not the prompt instruction) for tier compliance.
 //   no_clear_fit  → archetype name must not appear anywhere in the rendered text
-//   weak          → if the name appears, hedge language must accompany it in the same section
-//   secondary     → archetype name must appear in the Behaviour Pattern section
-//   primary       → archetype name must appear in the Behaviour Pattern section
+//   weak          → archetype name must not appear in prose (template omits label line for weak)
+//   secondary     → archetype name must NOT appear in prose (template provides the label line)
+//   primary       → archetype name must NOT appear in prose (template provides the label line)
+//
+// The label-line ("We call this pattern {archetype}…") is rendered by the template for
+// primary/secondary/weak tiers, not by the LLM. checkLabelOnce enforces absence from prose.
+// This check only needs to handle no_clear_fit (label forbidden everywhere).
 export function checkFitTierCompliance(
   moments: AttentionMoment[],
   archetypeLabel: string,
   fitTier: string,
 ): CheckFailure | null {
-  const behaviourPattern = moments.find(m => m.section === "Behaviour Pattern");
+  if (fitTier !== "no_clear_fit") return null;
+
   const allContent = moments.map(m => m.content).join("\n");
   const labelInFull = countLabel(allContent, archetypeLabel) > 0;
-  const labelInPattern = behaviourPattern
-    ? countLabel(behaviourPattern.content, archetypeLabel) > 0
-    : false;
-
-  if (fitTier === "no_clear_fit") {
-    if (labelInFull) {
-      return {
-        check: "fit_tier_compliance",
-        moment_id: behaviourPattern?.moment_id ?? null,
-        reason: `no_clear_fit: archetype label "${archetypeLabel}" must not appear anywhere in the prose`,
-      };
-    }
-    return null;
-  }
-
-  if (fitTier === "weak") {
-    // Label is optional (instruction says "You may name it"), but if present, must be hedged
-    if (labelInPattern && !hasHedge(behaviourPattern!.content)) {
-      return {
-        check: "fit_tier_compliance",
-        moment_id: behaviourPattern!.moment_id,
-        reason: `weak fit: archetype label present in Behaviour Pattern but no hedge language found`,
-      };
-    }
-    return null;
-  }
-
-  // secondary or primary: label must appear in Behaviour Pattern
-  if (!labelInPattern) {
+  if (labelInFull) {
+    const offending = moments.find(m => countLabel(m.content, archetypeLabel) > 0);
     return {
       check: "fit_tier_compliance",
-      moment_id: behaviourPattern?.moment_id ?? null,
-      reason: `${fitTier} fit: archetype label "${archetypeLabel}" must appear in Behaviour Pattern section`,
+      moment_id: offending?.moment_id ?? null,
+      reason: `no_clear_fit: archetype label "${archetypeLabel}" must not appear anywhere in the prose`,
     };
   }
   return null;

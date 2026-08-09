@@ -186,42 +186,52 @@ describe("checkHypothesisHedge", () => {
 // ── Check 3: Label once ───────────────────────────────────────────────────────
 
 describe("checkLabelOnce", () => {
-  it("passes when archetype label appears exactly once (in Behaviour Pattern)", () => {
+  // ── Archetype label — now must appear 0 times in content ─────────────────────
+  // The BehaviourPatternSection template injects "We call this pattern {archetype}…"
+  // as a hardcoded JSX label line. Any LLM prose occurrence creates a visible duplicate
+  // that the check would otherwise miss (template JSX is outside moment.content).
+
+  it("passes when archetype label is absent from all content (template provides it)", () => {
     const moments = [
       makeM({ moment_id: "m_01", section: "Recognition", content: "He locks in completely." }),
-      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: `This is The All-In Kid pattern.` }),
+      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "He disappears into what absorbs him." }),
     ];
     expect(checkLabelOnce(moments, ARCHETYPE, PARENT_INSTINCT)).toHaveLength(0);
   });
 
-  it("fails when archetype label appears more than once within Behaviour Pattern — flags BP moment_id", () => {
+  it("fails when archetype label appears once in Behaviour Pattern — template already provides it", () => {
+    const moments = [
+      makeM({ moment_id: "m_01", section: "Recognition", content: "He locks in completely." }),
+      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: `This is The All-In Kid pattern.` }),
+    ];
+    const failures = checkLabelOnce(moments, ARCHETYPE, PARENT_INSTINCT);
+    expect(failures.some(f => f.check === "label_once")).toBe(true);
+    expect(failures.some(f => f.moment_id === "m_02")).toBe(true);
+  });
+
+  it("fails when archetype label appears twice in Behaviour Pattern — both instances flagged", () => {
     const moments = [
       makeM({ moment_id: "m_01", section: "Recognition", content: "He locks in completely." }),
       makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: `The All-In Kid pattern is clear. The All-In Kid drives all engagement.` }),
     ];
     const failures = checkLabelOnce(moments, ARCHETYPE, PARENT_INSTINCT);
     expect(failures.some(f => f.check === "label_once")).toBe(true);
-    expect(failures.some(f => f.reason.includes("2 times"))).toBe(true);
-    // Duplicates within BP — the BP moment itself is the offending one
     expect(failures.some(f => f.moment_id === "m_02")).toBe(true);
   });
 
-  it("identifies the non-BP moment when label appears in Behaviour Pattern AND another section", () => {
+  it("fails when archetype label appears in Behaviour Pattern AND another section — both moments flagged", () => {
     const moments = [
       makeM({ moment_id: "m_01", section: "Recognition", content: "He locks in completely." }),
       makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "The All-In Kid pattern is clear here." }),
       makeM({ moment_id: "m_04", section: "What This Explains", content: "This is why The All-In Kid resists structure." }),
     ];
     const failures = checkLabelOnce(moments, ARCHETYPE, PARENT_INSTINCT);
-    // Exactly one failure — the extra occurrence in m_04, not a report-level null
-    expect(failures).toHaveLength(1);
-    expect(failures[0].check).toBe("label_once");
-    expect(failures[0].moment_id).toBe("m_04");
-    expect(failures[0].moment_id).not.toBeNull();
-    expect(failures[0].reason).toContain("must appear only in Behaviour Pattern");
+    // Both offending moments are flagged
+    expect(failures.some(f => f.moment_id === "m_02")).toBe(true);
+    expect(failures.some(f => f.moment_id === "m_04")).toBe(true);
   });
 
-  it("fails when archetype label appears in the Recognition section (before supporting pattern)", () => {
+  it("fails when archetype label appears in the Recognition section", () => {
     const moments = [
       makeM({ moment_id: "m_01", section: "Recognition", content: `The All-In Kid was visible here.` }),
       makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "The pattern is clear." }),
@@ -249,7 +259,7 @@ describe("checkLabelOnce", () => {
   it("fails when parent instinct label is absent and tier is primary (no-loop report)", () => {
     const moments = [
       makeM({ moment_id: "m_01", section: "Recognition", content: "He locks in completely." }),
-      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "The All-In Kid pattern is clear." }),
+      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "He disappears into absorbing challenges." }),
       makeM({ moment_id: "m_04", section: "What This Explains", content: "This explains the homework standoffs." }),
     ];
     const failures = checkLabelOnce(moments, ARCHETYPE, PARENT_INSTINCT, "primary");
@@ -259,7 +269,7 @@ describe("checkLabelOnce", () => {
 
   it("fails when parent instinct label is absent and tier is primary (loop report)", () => {
     const moments = [
-      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "The All-In Kid pattern is clear." }),
+      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "He disappears into absorbing challenges." }),
       makeM({ moment_id: "m_03", section: "Family Attention Loop", content: "The loop repeats." }),
       makeM({ moment_id: "m_04", section: "What This Explains", content: "This explains the standoffs." }),
     ];
@@ -270,7 +280,7 @@ describe("checkLabelOnce", () => {
 
   it("passes when parent instinct label appears once in What This Explains (no-loop, primary tier)", () => {
     const moments = [
-      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "The All-In Kid pattern is clear." }),
+      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "He disappears into absorbing challenges." }),
       makeM({ moment_id: "m_04", section: "What This Explains", content: `The kind of instinct we'd call ${PARENT_INSTINCT} — stepping in when it fires.` }),
     ];
     expect(checkLabelOnce(moments, ARCHETYPE, PARENT_INSTINCT, "primary")).toHaveLength(0);
@@ -278,7 +288,7 @@ describe("checkLabelOnce", () => {
 
   it("passes when parent instinct label appears once in Family Attention Loop (loop, primary tier)", () => {
     const moments = [
-      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "The All-In Kid pattern is clear." }),
+      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "He disappears into absorbing challenges." }),
       makeM({ moment_id: "m_03", section: "Family Attention Loop", content: `The Quick Fixer steps in — that's the loop.` }),
       makeM({ moment_id: "m_04", section: "What This Explains", content: "This explains the standoffs." }),
     ];
@@ -287,7 +297,7 @@ describe("checkLabelOnce", () => {
 
   it("fails when parent instinct label appears in wrong section (loop report expects FAL, found in WTE)", () => {
     const moments = [
-      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "The All-In Kid pattern." }),
+      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "He disappears into absorbing challenges." }),
       makeM({ moment_id: "m_03", section: "Family Attention Loop", content: "The loop repeats without the label." }),
       makeM({ moment_id: "m_04", section: "What This Explains", content: `The Quick Fixer fires here.` }),
     ];
@@ -331,25 +341,10 @@ describe("checkFitTierCompliance", () => {
     expect(checkFitTierCompliance(moments, ARCHETYPE, "no_clear_fit")).toBeNull();
   });
 
-  it("weak: fails if label is present but without hedge language", () => {
-    const moments = [
-      makeM({ moment_id: "m_01", section: "Recognition", content: "He locks in completely." }),
-      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: `Arjun matches The All-In Kid pattern exactly.` }),
-    ];
-    const result = checkFitTierCompliance(moments, ARCHETYPE, "weak");
-    expect(result).not.toBeNull();
-    expect(result!.check).toBe("fit_tier_compliance");
-  });
-
-  it("weak: passes if label present with hedge language", () => {
-    const moments = [
-      makeM({ moment_id: "m_01", section: "Recognition", content: "He locks in completely." }),
-      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: `It appears that Arjun might match The All-In Kid pattern.` }),
-    ];
-    expect(checkFitTierCompliance(moments, ARCHETYPE, "weak")).toBeNull();
-  });
-
-  it("weak: passes if label is absent (label is optional for weak tier)", () => {
+  // For weak/primary/secondary: checkFitTierCompliance no longer enforces label
+  // presence or hedge requirements — checkLabelOnce now catches any archetype label
+  // in prose content (since the template provides the label line unconditionally).
+  it("weak: returns null regardless of label presence (checkLabelOnce handles prose occurrences)", () => {
     const moments = [
       makeM({ moment_id: "m_01", section: "Recognition", content: "He locks in completely." }),
       makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "The pattern shows chosen-task engagement." }),
@@ -357,31 +352,19 @@ describe("checkFitTierCompliance", () => {
     expect(checkFitTierCompliance(moments, ARCHETYPE, "weak")).toBeNull();
   });
 
-  it("primary: fails if archetype label missing from Behaviour Pattern", () => {
+  it("primary: returns null (template provides label line; checkLabelOnce enforces prose absence)", () => {
     const moments = [
       makeM({ moment_id: "m_01", section: "Recognition", content: "He locks in completely." }),
       makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "The pattern shows deep engagement." }),
     ];
-    const result = checkFitTierCompliance(moments, ARCHETYPE, "primary");
-    expect(result).not.toBeNull();
-    expect(result!.check).toBe("fit_tier_compliance");
-  });
-
-  it("primary: passes if archetype label present in Behaviour Pattern", () => {
-    const moments = [
-      makeM({ moment_id: "m_01", section: "Recognition", content: "He locks in completely." }),
-      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: `Arjun is The All-In Kid. This means chosen tasks consume him.` }),
-    ];
     expect(checkFitTierCompliance(moments, ARCHETYPE, "primary")).toBeNull();
   });
 
-  it("secondary: fails if archetype label missing from Behaviour Pattern", () => {
+  it("secondary: returns null (template provides label line; checkLabelOnce enforces prose absence)", () => {
     const moments = [
       makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "Deep engagement with chosen tasks." }),
     ];
-    const result = checkFitTierCompliance(moments, ARCHETYPE, "secondary");
-    expect(result).not.toBeNull();
-    expect(result!.check).toBe("fit_tier_compliance");
+    expect(checkFitTierCompliance(moments, ARCHETYPE, "secondary")).toBeNull();
   });
 });
 

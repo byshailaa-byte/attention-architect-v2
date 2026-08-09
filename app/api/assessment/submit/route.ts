@@ -114,6 +114,20 @@ export async function POST(req: NextRequest) {
       VALUES ('assessment_complete', ${sessionId}::uuid, ${JSON.stringify({ archetype: scoring.archetype })}::jsonb)
     `.catch((e: unknown) => console.warn("[funnel] assessment_complete:", (e as Error).message));
 
+    // Eager auto-generation: trigger the narrative report pipeline (fire-and-forget).
+    // The auto-generate route checks the master switch, phase gate, and generation cap —
+    // so calling it unconditionally here is safe. Errors are swallowed; the parent still
+    // sees the static ReportView if generation fails or is disabled.
+    const autoGenUrl = new URL("/api/internal/report/auto-generate", req.nextUrl.origin);
+    fetch(autoGenUrl.toString(), {
+      method:  "POST",
+      headers: {
+        "Content-Type":      "application/json",
+        "X-Internal-Secret": process.env.INTERNAL_API_SECRET ?? "",
+      },
+      body: JSON.stringify({ sessionId }),
+    }).catch((e: unknown) => console.warn("[auto-generate] trigger failed:", (e as Error).message));
+
     // Return scoring (but NEVER honest_flag or honest_trigger — Gate 3)
     return NextResponse.json({
       archetype: scoring.archetype,

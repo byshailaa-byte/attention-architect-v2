@@ -65,30 +65,30 @@ describe("Quality Engine — label_once incremental regeneration", () => {
     vi.mocked(generateMoment).mockReset();
   });
 
-  it("regenerates only the offending non-BP moment when the archetype label bleeds outside Behaviour Pattern", async () => {
-    // Situation: label appears in m_02 (Behaviour Pattern — allowed) AND m_04 (What This Explains — extra).
-    // The old check returned moment_id=null for this case → engine skipped regeneration → report blocked.
-    // The new check returns moment_id="m_04" → engine regenerates m_04 surgically.
-    const originalM04 = makeM({
-      moment_id: "m_04",
-      section: "What This Explains",
-      content: "This is why The Explorer resists being told what to do.",
+  it("regenerates the moment when archetype label appears in Behaviour Pattern (template-duplicate scenario)", async () => {
+    // Situation: LLM wrote "The Explorer" in BP prose. The template ALSO injects
+    // "We call this pattern The Explorer…" as a label line → user sees it twice.
+    // checkLabelOnce now returns moment_id="m_02" → engine regenerates m_02.
+    const originalM02 = makeM({
+      moment_id: "m_02",
+      section: "Behaviour Pattern",
+      content: "The Explorer pattern is unmistakable here. She goes all the way in.",
     });
 
     const moments: AttentionMoment[] = [
       makeM({ moment_id: "m_01", section: "Recognition",        content: "Shailaa locks in when the task is hers." }),
-      makeM({ moment_id: "m_02", section: "Behaviour Pattern",  content: "The Explorer pattern is unmistakable here." }),
-      originalM04,
+      originalM02,
+      makeM({ moment_id: "m_04", section: "What This Explains", content: "This is why she resists being told what to do." }),
       makeM({ moment_id: "m_06", section: "Hope",               content: "There is a real path forward." }),
     ];
 
-    // Mock: when called for m_04, return a clean version with the label removed
-    const cleanM04 = makeM({
-      moment_id: "m_04",
-      section: "What This Explains",
-      content: "This is why she resists being told what to do.",
+    // Mock: clean version of BP with the prose label removed
+    const cleanM02 = makeM({
+      moment_id: "m_02",
+      section: "Behaviour Pattern",
+      content: "She goes all the way in and won't surface until it's done.",
     });
-    vi.mocked(generateMoment).mockResolvedValueOnce(cleanM04);
+    vi.mocked(generateMoment).mockResolvedValueOnce(cleanM02);
 
     const specs: Record<string, MomentSpec> = {
       m_01: makeSpec("m_01", "Recognition"),
@@ -109,29 +109,26 @@ describe("Quality Engine — label_once incremental regeneration", () => {
       ctx: {} as NarrativeContext,
     });
 
-    // Engine called generateMoment exactly once — for m_04, not m_02, not null
+    // Engine called generateMoment exactly once — for m_02
     expect(vi.mocked(generateMoment)).toHaveBeenCalledTimes(1);
     const calledSpec = vi.mocked(generateMoment).mock.calls[0][0] as MomentSpec;
-    expect(calledSpec.momentId).toBe("m_04");
+    expect(calledSpec.momentId).toBe("m_02");
 
     // Final report passes — no remaining failures
     expect(result.qualityResult.passed).toBe(true);
     expect(result.qualityResult.failures).toHaveLength(0);
 
-    // The regenerated moment replaced m_04
-    const finalM04 = result.moments.find(m => m.moment_id === "m_04");
-    expect(finalM04?.content).toBe(cleanM04.content);
-    expect(finalM04?.content).not.toContain("The Explorer");
-
-    // m_02 (Behaviour Pattern) was NOT touched — still carries the label
+    // The regenerated moment replaced m_02 and no longer contains the label
     const finalM02 = result.moments.find(m => m.moment_id === "m_02");
-    expect(finalM02?.content).toContain("The Explorer");
+    expect(finalM02?.content).toBe(cleanM02.content);
+    expect(finalM02?.content).not.toContain("The Explorer");
   });
 
-  it("does not call generateMoment when there is no duplicate label", async () => {
+  it("does not call generateMoment when archetype label is absent from all content", async () => {
+    // Template provides the label line; LLM prose must not echo it.
     const moments: AttentionMoment[] = [
-      makeM({ moment_id: "m_01", section: "Recognition",       content: "Shailaa locks in when the task is hers." }),
-      makeM({ moment_id: "m_02", section: "Behaviour Pattern", content: "The Explorer pattern is unmistakable here." }),
+      makeM({ moment_id: "m_01", section: "Recognition",        content: "Shailaa locks in when the task is hers." }),
+      makeM({ moment_id: "m_02", section: "Behaviour Pattern",  content: "She goes all the way in and won't surface until it's done." }),
       makeM({ moment_id: "m_04", section: "What This Explains", content: "This is why she resists being told what to do." }),
     ];
 

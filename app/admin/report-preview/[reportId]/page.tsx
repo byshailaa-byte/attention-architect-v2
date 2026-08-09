@@ -1,6 +1,5 @@
 // Admin-only — protected by middleware HTTP Basic Auth on /admin/*
-// Renders a single preview report for manual review.
-// Read-only: no promotions, no emails, not visible to the parent.
+// Renders a single report for review and promotion.
 //
 // confidence_vector is never fetched or rendered here.
 // honest_flag and honest_trigger are never fetched — Gate 3.
@@ -13,6 +12,7 @@ import type { Gender } from "@/lib/report/pronouns";
 import type { AttentionMoment } from "@/lib/narrative/types";
 import type { FamilyAttentionLoop } from "@/lib/graph/loop";
 import type { CheckFailure } from "@/lib/quality/types";
+import { PublishButton } from "./PublishButton";
 
 type Params = Promise<{ reportId: string }>;
 
@@ -99,9 +99,14 @@ export default async function ReportPreviewDetailPage({ params }: { params: Para
         flexWrap: "wrap",
       }}>
         <span style={{ fontWeight: 700, color: "#ffd700", letterSpacing: ".05em" }}>
-          ⚠ ADMIN PREVIEW — NOT VISIBLE TO PARENT
+          ⚠ ADMIN PREVIEW
         </span>
-        <span style={{ color: row.status === "draft" ? "#ff9f40" : "#7fff7f", fontSize: "12px", fontWeight: 600, textTransform: "uppercase" }}>
+        <span style={{
+          color:         row.status === "published" ? "#7fff7f" : row.status === "draft" ? "#ff9f40" : "#e0e0e0",
+          fontSize:      "12px",
+          fontWeight:    600,
+          textTransform: "uppercase",
+        }}>
           {row.status}
         </span>
         <span>
@@ -119,8 +124,15 @@ export default async function ReportPreviewDetailPage({ params }: { params: Para
         <span style={{ color: "#aaa" }}>
           Parent instinct: <strong style={{ color: "#fff" }}>{row.parent_instinct}</strong>
         </span>
-        <span style={{ color: "#666", fontSize: "11px", marginLeft: "auto" }}>
+        <span style={{ color: "#666", fontSize: "11px" }}>
           {new Date(row.generated_at).toLocaleString()}
+        </span>
+        <span style={{ marginLeft: "auto" }}>
+          <PublishButton
+            reportId={row.id}
+            initialStatus={row.status}
+            qualityPassed={row.quality_passed}
+          />
         </span>
       </div>
 
@@ -155,6 +167,8 @@ export default async function ReportPreviewDetailPage({ params }: { params: Para
         familyLoop={row.family_attention_loop}
         childName={row.child_name ?? ""}
         parentName={row.parent_name}
+        email=""
+        phone=""
         concerns={row.concerns ?? []}
         sessionId={row.session_id}
         pronouns={pronouns}

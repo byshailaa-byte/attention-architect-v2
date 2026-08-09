@@ -1,4 +1,5 @@
 // NarrativeReportView — renders a generated narrative report from stored AttentionMoments.
+// TestimonialsCarousel is a "use client" component imported here (server components can import client components).
 //
 // Design tokens frozen per §12 of the Report Engine Architecture:
 //   Paper:       #EDE6D6  Paper-deep: #E3D9C3  Surface: #FBF9F3
@@ -15,6 +16,8 @@ import fs from "fs";
 import path from "path";
 import type { AttentionMoment } from "@/lib/narrative/types";
 import type { FamilyAttentionLoop } from "@/lib/graph/loop";
+import { TestimonialsCarousel } from "./TestimonialsCarousel";
+import PriceCards from "./PriceCards";
 
 // ── Frozen tokens ─────────────────────────────────────────────────────────────
 const T = {
@@ -204,9 +207,11 @@ function MomentContent({ content, color = T.inkSoft }: { content: string; color?
 function CoverSection({
   childName,
   parentName,
+  heroLine,
 }: {
   childName: string;
   parentName: string;
+  heroLine?: string;
 }) {
   return (
     <section style={{ background: T.surface, padding: "60px 0 52px" }}>
@@ -231,7 +236,7 @@ function CoverSection({
           margin: "0 0 22px",
           letterSpacing: "-0.01em",
         }}>
-          We think we understand what&rsquo;s actually happening between you and {childName}.
+          {heroLine ?? `We think we understand what’s actually happening between you and ${childName}.`}
         </h1>
         <p style={{
           fontFamily: PUBLIC_SANS,
@@ -241,7 +246,7 @@ function CoverSection({
           margin: "0 0 44px",
           maxWidth: "46ch",
         }}>
-          Not a personality quiz. Not a diagnosis. A closer look at what&rsquo;s actually happening — built entirely from what you told us, not a category we sorted {childName} into — what we call their Attention Health.
+          Not a personality quiz. Not a diagnosis. A closer look at what&rsquo;s actually happening — built entirely from what you told us, not a category we sorted {childName} into — what we call their attention health.
         </p>
         <div style={{ display: "flex", gap: "28px", flexWrap: "wrap", fontFamily: PUBLIC_SANS, fontSize: "12.5px", color: T.inkFaint }}>
           <div>
@@ -423,9 +428,10 @@ function LoopSvg({
 
   const labels = LOOP_LABELS[tp.mechanism] ?? LOOP_LABELS.misaligned_response;
 
-  // Truncate names to fit inside circles (r=56, effective text width ~80px)
-  const cName = childName.length > 9 ? childName.slice(0, 8) + "…" : childName;
-  const pName = parentName.length > 9 ? parentName.slice(0, 8) + "…" : parentName;
+  // Responsive font size: shrink for longer names rather than truncating silently.
+  // Circle r=56; usable text width ~84px. Fraunces ≈ 8px/char at 14px.
+  const nameFontSize = (name: string) =>
+    name.length <= 9 ? 14 : name.length <= 12 ? 11 : 9.5;
 
   return (
     <svg
@@ -441,11 +447,17 @@ function LoopSvg({
       </defs>
       {/* Child circle (left) */}
       <circle cx="130" cy="70" r="56" fill="#FBF9F3" stroke="#34503F" strokeWidth="1.5" />
-      <text x="130" y="65" textAnchor="middle" fontFamily="Fraunces, serif" fontSize="14" fill="#201E19" fontWeight="500">{cName}</text>
+      <text x="130" y="65" textAnchor="middle" fontFamily="Fraunces, serif" fontSize={nameFontSize(childName)} fill="#201E19" fontWeight="500">
+        <title>{childName}</title>
+        {childName}
+      </text>
       <text x="130" y="83" textAnchor="middle" fontFamily="Public Sans, sans-serif" fontSize="10.5" fill="#5B5648">{labels.childBehavior}</text>
       {/* Parent circle (right) */}
       <circle cx="590" cy="70" r="56" fill="#FBF9F3" stroke="#34503F" strokeWidth="1.5" />
-      <text x="590" y="65" textAnchor="middle" fontFamily="Fraunces, serif" fontSize="14" fill="#201E19" fontWeight="500">{pName}</text>
+      <text x="590" y="65" textAnchor="middle" fontFamily="Fraunces, serif" fontSize={nameFontSize(parentName)} fill="#201E19" fontWeight="500">
+        <title>{parentName}</title>
+        {parentName}
+      </text>
       <text x="590" y="83" textAnchor="middle" fontFamily="Public Sans, sans-serif" fontSize="10.5" fill="#5B5648">{labels.parentBehavior}</text>
       {/* Top path: child → parent (solid green) */}
       <path d="M186,58 C 300,8 420,8 534,58" fill="none" stroke="#34503F" strokeWidth="1.5" markerEnd="url(#loop-arrow)" />
@@ -753,7 +765,7 @@ function HopeSection({ moment, sectionN, childName }: { moment: AttentionMoment 
           lineHeight: 1.7,
           margin: "20px 0 0",
         }}>
-          This is what {childName}&rsquo;s Attention Health looks like right now — and, like any skill, it&rsquo;s trainable.
+          This is what {childName}&rsquo;s attention health looks like right now — and, like any skill, it&rsquo;s trainable.
         </p>
         <div style={{ display: "flex", gap: "10px", marginTop: "28px", flexWrap: "wrap" }}>
           {HOPE_PILLARS.map((pillar) => (
@@ -1037,24 +1049,6 @@ function FounderSection({ sectionN }: { sectionN: number }) {
 }
 
 function TestimonialsSection() {
-  const testimonials = [
-    {
-      before: "We believed our son just needed more discipline.",
-      after: "This completely changed our perspective. A few simple changes reduced the daily arguments, and studying no longer feels like a battle.",
-      who: "Sandeel Shukla, Parent of a 14-year-old Son · Raipur",
-    },
-    {
-      before: "We thought our son was just being lazy or spending too much time on screens.",
-      after: "This helped us understand what was really happening. Homework became much calmer, and so did our evenings.",
-      who: "Manya Gangele, Parent of an 11-year-old Son · Indore",
-    },
-    {
-      before: "I was constantly reminding my daughter to stay on task.",
-      after: "Small changes in how we approached things at home made a huge difference. She's much more independent now.",
-      who: "Suchitra Mehta, Parent of an 8-year-old Daughter · Mumbai",
-    },
-  ];
-
   return (
     <section style={{ background: T.paper, padding: "52px 0" }}>
       <Divider />
@@ -1082,39 +1076,8 @@ function TestimonialsSection() {
           }}>
             Not different outcomes. Different clarity.
           </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {testimonials.map(({ before, after, who }) => (
-              <div
-                key={who}
-                style={{
-                  background: T.surface,
-                  border: `1px solid ${T.paperDeep}`,
-                  borderRadius: "12px",
-                  padding: "20px 22px",
-                }}
-              >
-                <div style={{ marginBottom: "14px" }}>
-                  <div style={{ fontFamily: PUBLIC_SANS, fontSize: "10px", color: T.inkFaint, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: "6px" }}>
-                    Before
-                  </div>
-                  <p style={{ fontFamily: PUBLIC_SANS, fontSize: "14px", color: T.inkFaint, fontStyle: "italic", margin: 0, lineHeight: 1.6 }}>
-                    &ldquo;{before}&rdquo;
-                  </p>
-                </div>
-                <div style={{ borderTop: `1px solid ${T.paperDeep}`, paddingTop: "14px", marginBottom: "10px" }}>
-                  <div style={{ fontFamily: PUBLIC_SANS, fontSize: "10px", color: T.accent, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", marginBottom: "6px" }}>
-                    After
-                  </div>
-                  <p style={{ fontFamily: PUBLIC_SANS, fontSize: "14px", color: T.ink, fontStyle: "italic", margin: 0, lineHeight: 1.6 }}>
-                    &ldquo;{after}&rdquo;
-                  </p>
-                </div>
-                <div style={{ fontFamily: PUBLIC_SANS, fontSize: "12px", color: T.inkFaint, fontWeight: 600 }}>
-                  — {who}
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Client component handles auto-advance, pause-on-hover, prefers-reduced-motion */}
+          <TestimonialsCarousel />
         </div>
       </Shell>
     </section>
@@ -1216,7 +1179,19 @@ function FaqSection({ childName, pronouns }: { childName: string; pronouns: { po
   );
 }
 
-function FinalInvitationSection({ sessionId, childName }: { sessionId: string; childName: string }) {
+function FinalInvitationSection({
+  sessionId,
+  childName,
+  parentName,
+  email,
+  phone,
+}: {
+  sessionId: string;
+  childName: string;
+  parentName: string;
+  email: string;
+  phone: string;
+}) {
   return (
     <section style={{ background: T.paper, padding: "64px 0" }}>
       <Divider />
@@ -1253,79 +1228,14 @@ function FinalInvitationSection({ sessionId, childName }: { sessionId: string; c
             Not a generic plan. This one — built from {childName}&rsquo;s own answers.
           </p>
 
-          {/* Price card */}
-          <div style={{
-            background: T.surface,
-            borderRadius: "20px",
-            padding: "36px 32px",
-            boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
-            border: `1px solid ${T.paperDeep}`,
-            marginBottom: "18px",
-          }}>
-            <div style={{
-              fontFamily: FRAUNCES,
-              fontSize: "44px",
-              fontWeight: 600,
-              color: T.ink,
-              lineHeight: 1,
-            }}>
-              ₹999
-            </div>
-            <div style={{
-              fontFamily: PUBLIC_SANS,
-              fontSize: "13px",
-              color: T.inkFaint,
-              marginTop: "4px",
-              marginBottom: "26px",
-            }}>
-              All six weeks, sequenced specifically for {childName}
-            </div>
-            <a
-              href={`/checkout?session=${sessionId}`}
-              style={{
-                display: "block",
-                background: T.accent,
-                color: "#fff",
-                fontFamily: PUBLIC_SANS,
-                fontWeight: 700,
-                fontSize: "16px",
-                padding: "16px 24px",
-                borderRadius: "8px",
-                textDecoration: "none",
-                textAlign: "center",
-                letterSpacing: ".01em",
-                marginBottom: "16px",
-              }}
-            >
-              Open {childName}&rsquo;s Roadmap
-            </a>
-          </div>
-
-          {/* ₹499 alt link */}
-          <p style={{
-            fontFamily: PUBLIC_SANS,
-            fontSize: "14px",
-            color: T.inkSoft,
-            margin: "0 0 12px",
-          }}>
-            Not ready for all six weeks yet?{" "}
-            <a
-              href={`/checkout?session=${sessionId}&week=1`}
-              style={{ color: T.accent, fontWeight: 600, textDecoration: "underline" }}
-            >
-              Open Week One only — ₹499
-            </a>
-          </p>
-
-          {/* Razorpay security line */}
-          <p style={{
-            fontFamily: PUBLIC_SANS,
-            fontSize: "13px",
-            color: T.inkFaint,
-            margin: 0,
-          }}>
-            🔒 Secured by Razorpay · UPI · Cards · Netbanking
-          </p>
+          <PriceCards
+            sessionId={sessionId}
+            childName={childName}
+            parentName={parentName}
+            email={email}
+            phone={phone}
+            weakestFirst=""
+          />
         </div>
       </Shell>
     </section>
@@ -1360,6 +1270,8 @@ export default function NarrativeReportView({
   familyLoop,
   childName: childNameRaw,
   parentName,
+  email,
+  phone,
   concerns: _concerns,
   sessionId,
   pronouns,
@@ -1371,6 +1283,8 @@ export default function NarrativeReportView({
   familyLoop: FamilyAttentionLoop | null;
   childName: string;
   parentName: string;
+  email: string;
+  phone: string;
   concerns: string[];
   sessionId: string;
   pronouns: { subj: string; obj: string; poss: string; reflexive: string };
@@ -1403,10 +1317,11 @@ export default function NarrativeReportView({
         color: T.ink,
         minHeight: "100vh",
       }}>
-        {/* Cover */}
+        {/* Cover — heroLine from generated Cover moment if present; falls back to static copy */}
         <CoverSection
           childName={childName}
           parentName={parentName}
+          heroLine={bySection.get("Cover")?.content}
         />
 
         {/* 01 — Recognition */}
@@ -1475,7 +1390,7 @@ export default function NarrativeReportView({
         <FaqSection childName={childName} pronouns={pronouns} />
 
         {/* Final Invitation */}
-        <FinalInvitationSection sessionId={sessionId} childName={childName} />
+        <FinalInvitationSection sessionId={sessionId} childName={childName} parentName={parentName} email={email} phone={phone} />
 
         {/* Footer */}
         <FooterSection />

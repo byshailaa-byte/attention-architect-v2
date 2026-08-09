@@ -159,14 +159,15 @@ describe("composeReport — no loop", () => {
     vi.clearAllMocks();
   });
 
-  it("produces exactly 10 moments (6 narrative + 4 roadmap beats) when loop is not detected", async () => {
+  it("produces exactly 11 moments (1 cover + 6 narrative + 4 roadmap beats) when loop is not detected", async () => {
     const { composeReport } = await import("@/lib/narrative/compose-report");
     const ctx = makeBaseCtx();
     const result = await composeReport(ctx);
+    // 1 cover: Cover
     // 6 narrative: Recognition, Behaviour Pattern, What This Explains,
     //              Where We Are Less Certain, Hope, Future Story
     // 4 roadmap beats: b1–b4
-    expect(result.report.moments).toHaveLength(10);
+    expect(result.report.moments).toHaveLength(11);
   });
 
   it("never produces a Roadmap section named 'Week N'", async () => {
@@ -240,9 +241,11 @@ describe("composeReport — with loop", () => {
       },
     });
     const result = await composeReport(ctx);
-    // 7 narrative: +Family Attention Loop over no-loop case
+    // 1 cover: Cover
+    // 7 narrative: Recognition, Behaviour Pattern, Family Attention Loop, What This Explains,
+    //              Where We Are Less Certain, Hope, Future Story
     // 4 roadmap beats: b1–b4
-    expect(result.report.moments).toHaveLength(11);
+    expect(result.report.moments).toHaveLength(12);
   });
 
   it("includes a Family Attention Loop moment when loop is detected", async () => {

@@ -52,6 +52,50 @@ type ScoringResult = { archetype: string; parent_pattern: string };
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
+// ── Engagement screen icon SVGs ──────────────────────────────────────────────
+const BrainIcon = (
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+    <path d="M12 6C9.8 6 8 7.8 8 10c0 .7.2 1.4.5 2C6.6 12.5 5 14.1 5 16c0 1.5.8 2.9 2 3.7C7 20.1 7 20.6 7 21c0 2.2 1.8 4 4 4h10c2.2 0 4-1.8 4-4 0-.4 0-.9-.1-1.3 1.2-.8 2-2.2 2-3.7 0-1.9-1.6-3.5-3.5-4 .3-.6.5-1.3.5-2 0-2.2-1.8-4-4-4-1 0-1.9.4-2.6 1-.6-.6-1.5-1-2.3-1z" stroke="#F6C63D" strokeWidth="1.8" strokeLinejoin="round"/>
+    <path d="M16 6v19M11 12h10M11 20h10" stroke="#F6C63D" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
+const ChartIcon = (
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+    <rect x="4" y="19" width="5" height="9" rx="1.5" stroke="#F6C63D" strokeWidth="1.8"/>
+    <rect x="13" y="13" width="5" height="15" rx="1.5" stroke="#F6C63D" strokeWidth="1.8"/>
+    <rect x="22" y="6" width="5" height="22" rx="1.5" stroke="#F6C63D" strokeWidth="1.8"/>
+    <path d="M6 17l8-8 8 4 6-9" stroke="#F6C63D" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const HeartIcon = (
+  <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+    <path d="M16 27S5 20 5 12a6 6 0 0112 0 6 6 0 0112 0c0 8-11 15-11 15z" stroke="#F6C63D" strokeWidth="1.8" strokeLinejoin="round"/>
+  </svg>
+);
+
+const ENGAGEMENT_SCREENS = [
+  {
+    icon: BrainIcon,
+    headline: () => "Most parents think this is about discipline.",
+    body: "Your answers suggest something more interesting.",
+    cta: "Continue →",
+  },
+  {
+    icon: ChartIcon,
+    headline: (name: string) => `We're beginning to see patterns in what keeps ${name}'s attention going —`,
+    body: "and what pulls it away.",
+    cta: "Keep going →",
+  },
+  {
+    icon: HeartIcon,
+    headline: () => "One final section.",
+    body: "How children recover from effort often explains more than how they begin.",
+    cta: "Finish →",
+  },
+] as const;
+
 const GENDER_CHIPS = [
   { label: "Boy",               value: "boy" },
   { label: "Girl",              value: "girl" },
@@ -65,6 +109,7 @@ function AssessmentForm() {
   const hasNameParam  = params.has("name"); // true even when name=""
   const ageParam      = params.get("age") as "8-9" | "10-11" | "12-14" | null;
   const concernsParam = params.get("concerns") ?? "";
+  const genderParam   = params.get("gender") ?? null; // collected at pre-assessment
 
   const VALID_AGE_BANDS = ["8-9", "10-11", "12-14"];
   const gatePass = hasNameParam
@@ -98,6 +143,9 @@ function AssessmentForm() {
   const [answers, setAnswers]       = useState<Record<string, string>>({});
   const [sessionId] = useState(() => crypto.randomUUID());
 
+  const [engagementScreen, setEngagementScreen] = useState<{ screenIdx: number; nextQIdx: number } | null>(null);
+  const shownEngagements = useRef(new Set<number>());
+
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
 
   // Post-assessment fields
@@ -121,6 +169,16 @@ function AssessmentForm() {
       fireFbq("trackCustom", "AssessmentStarted");
     }
   }, [phase, sessionId]);
+
+  // Auto-advance engagement screens after 4.5s; tap still advances immediately
+  useEffect(() => {
+    if (engagementScreen === null) return;
+    const t = setTimeout(() => {
+      setEngagementScreen(null);
+      setCurrentIdx(engagementScreen.nextQIdx);
+    }, 4500);
+    return () => clearTimeout(t);
+  }, [engagementScreen]);
 
   function startAssessment() {
     setQuestions(GATEWAY_QUESTIONS);
@@ -175,6 +233,19 @@ function AssessmentForm() {
       }
     }
 
+    // Show engagement screen at ~1/3 and ~2/3 through the full sequence
+    if (questions.length > 3) {
+      const nextPct = (next + 1) / questions.length;
+      const THRESHOLDS = [0.33, 0.66, 0.88] as const;
+      for (let i = 0; i < THRESHOLDS.length; i++) {
+        if (nextPct >= THRESHOLDS[i] && !shownEngagements.current.has(i)) {
+          shownEngagements.current.add(i);
+          setEngagementScreen({ screenIdx: i, nextQIdx: next });
+          return;
+        }
+      }
+    }
+
     setCurrentIdx(next);
   }
 
@@ -188,7 +259,7 @@ function AssessmentForm() {
           sessionId,
           childName,
           ageBand,
-          gender: null,
+          gender: genderParam,
           answers: finalAnswers,
           questionSequence: fullSeq.map((q) => ({ id: q.id, dimension: q.dimension })),
           concerns: concernsParam.split(",").filter(Boolean),
@@ -225,7 +296,7 @@ function AssessmentForm() {
           parentName: parentName.trim(),
           email: email.trim(),
           phone: normalizePhone(phone),
-          gender: postGender,
+          gender: null, // collected at pre-assessment, already stored via assessment/submit
         }),
       });
       if (!res.ok) {
@@ -234,7 +305,7 @@ function AssessmentForm() {
       }
       fireGtag("generate_lead");
       fireFbq("track", "Lead");
-      router.push(`/report/${sessionId}`);
+      router.push(`/report/generating/${sessionId}?name=${encodeURIComponent(childName || "")}&archetype=${encodeURIComponent(scoringResult?.archetype || "")}`);
     } catch (e) {
       setError((e as Error).message);
       setSubmitting(false);
@@ -260,6 +331,50 @@ function AssessmentForm() {
   }
 
   if (!gatePass) return null;
+
+  /* ── ENGAGEMENT SCREEN ───────────────────────────────────────── */
+  if (phase === "questions" && engagementScreen !== null) {
+    const screen = ENGAGEMENT_SCREENS[engagementScreen.screenIdx];
+    const pct = Math.round((engagementScreen.nextQIdx / questions.length) * 100);
+    return (
+      <div className="funnel-screen" style={{ background: "var(--ink)" }}>
+        <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          {/* Progress bar — gold on dark */}
+          <div style={{ width: "100%", maxWidth: 640, height: 3, background: "rgba(246,198,61,.2)", borderRadius: 2, marginBottom: 48, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${pct}%`, background: "#F6C63D", borderRadius: 2, transition: "width .3s ease" }} />
+          </div>
+          <div className="q-wrap" style={{ textAlign: "center" }}>
+            {/* Gold icon on dark card */}
+            <div style={{
+              width: 56, height: 56, borderRadius: 14,
+              background: "rgba(246,198,61,.12)",
+              border: "1px solid rgba(246,198,61,.25)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 28px",
+            }}>
+              {screen.icon}
+            </div>
+            <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "22px", lineHeight: 1.3, marginBottom: "14px", color: "#F6F4EC" }}>
+              {screen.headline(childName || "your child")}
+            </h2>
+            <p style={{ fontSize: "15px", color: "rgba(246,244,236,.6)", lineHeight: 1.65, marginBottom: "40px" }}>
+              {screen.body}
+            </p>
+            <button
+              className="cta-btn"
+              onClick={() => {
+                setEngagementScreen(null);
+                setCurrentIdx(engagementScreen.nextQIdx);
+              }}
+              style={{ background: "#F6C63D", color: "#23242c" }}
+            >
+              {screen.cta}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   /* ── META PHASE ─────────────────────────────────────────────── */
   if (phase === "meta") {
@@ -384,8 +499,7 @@ function AssessmentForm() {
   /* ── POST-ASSESSMENT PHASE ──────────────────────────────────── */
   const emailTouched  = email.length > 0;
   const emailValid    = isValidEmail(email);
-  const genderTouched = (parentName.trim().length > 0 || emailTouched) && postGender === null;
-  const postReady     = parentName.trim().length > 0 && emailValid && postGender !== null && phone.trim().length > 0;
+  const postReady     = parentName.trim().length > 0 && emailValid && phone.trim().length > 0;
 
   return (
     <div className="funnel-screen">
@@ -425,39 +539,8 @@ function AssessmentForm() {
         {/* Right: form */}
         <div className="form-col">
           <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "20px", color: "var(--ink)", marginBottom: "8px" }}>
-            Almost there.
+            One last step before we open {childName || "your child"}&rsquo;s report.
           </h2>
-          <p style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.6, marginBottom: "24px" }}>
-            Your child&rsquo;s gender, your name, email, and WhatsApp number are needed to open the report.
-          </p>
-
-          {/* Gender — optional */}
-          <div style={{ marginBottom: "22px" }}>
-            <div style={{ fontSize: "13px", fontWeight: 700, marginBottom: "8px" }}>
-              {childName || "Your child"}&rsquo;s gender{" "}
-              <span style={{ color: "var(--redpen)", fontWeight: 600, fontSize: "11px" }}>Required</span>
-            </div>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              {GENDER_CHIPS.map((chip) => {
-                const sel = postGender === chip.value;
-                return (
-                  <button
-                    key={chip.value}
-                    className={`chip-btn${sel ? " sel" : ""}`}
-                    style={{ fontSize: "13px", padding: "9px 14px" }}
-                    onClick={() => setPostGender(sel ? null : chip.value)}
-                  >
-                    {chip.label}
-                  </button>
-                );
-              })}
-            </div>
-            {genderTouched && (
-              <div style={{ fontSize: "12px", color: "var(--redpen)", marginTop: "6px" }}>
-                Please select a gender option to continue.
-              </div>
-            )}
-          </div>
 
           {/* Parent name — required */}
           <div style={{ marginBottom: "16px" }}>
@@ -541,7 +624,7 @@ function AssessmentForm() {
               <div style={{ fontSize: "12px", color: "var(--redpen)", marginTop: "6px" }}>{phoneError}</div>
             ) : (
               <div style={{ fontSize: "12px", color: "var(--ink-dim)", marginTop: "6px" }}>
-                We&rsquo;ll send your report to this number on WhatsApp — we won&rsquo;t share it elsewhere.
+                Used only to send your report and your six-week reminders — never sold, never spammed.
               </div>
             )}
           </div>

@@ -308,6 +308,24 @@ async function migrate() {
   // NULL for reports generated before this migration.
   await sql`ALTER TABLE reports ADD COLUMN IF NOT EXISTS parent_instinct_fit_tier TEXT CHECK (parent_instinct_fit_tier IN ('primary','secondary','weak','no_clear_fit'))`;
 
+  // Phase 19 — Admin promote tracking on reports.
+  // promoted_at / promoted_by: recorded when an admin moves a report from draft/preview → published.
+  // auto_generated: true when the report was created by the auto-generation pipeline (triggered on
+  //   assessment completion), false when created via the manual /api/report/generate admin route.
+  await sql`ALTER TABLE reports ADD COLUMN IF NOT EXISTS promoted_at TIMESTAMPTZ`;
+  await sql`ALTER TABLE reports ADD COLUMN IF NOT EXISTS promoted_by TEXT`;
+  await sql`ALTER TABLE reports ADD COLUMN IF NOT EXISTS auto_generated BOOLEAN NOT NULL DEFAULT false`;
+
+  // Phase 20 — Auto-generation pipeline settings in app_settings.
+  // auto_generate_enabled: 'true' / 'false' — master switch; pipeline ignores submit hook when false.
+  // auto_generate_pipeline_start_at: ISO timestamp when the pipeline first ran.
+  //   Used to compute the 48-hour gating window (draft+alert until either 20 reports generated or 48h elapsed).
+  await sql`
+    INSERT INTO app_settings (key, value)
+    VALUES ('auto_generate_enabled', 'false')
+    ON CONFLICT (key) DO NOTHING
+  `;
+
   console.log("Migrations complete.");
 }
 

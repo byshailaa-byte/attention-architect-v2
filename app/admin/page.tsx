@@ -344,6 +344,20 @@ export default async function AdminPage({
     tier_breakdown: (tierRows as { tier: string; count: number; revenue_paise: number }[]),
   };
 
+  // Pending narrative reviews: count auto-generated draft reports not yet promoted
+  let pendingNarrativeReviews = 0;
+  try {
+    const pendingRows = await sql`
+      SELECT COUNT(*)::int AS n FROM reports
+      WHERE auto_generated = true
+        AND status = 'draft'
+        AND superseded_by IS NULL
+    ` as unknown as { n: number }[];
+    pendingNarrativeReviews = pendingRows[0]?.n ?? 0;
+  } catch {
+    // reports table may not yet have auto_generated column (pre-migration) — safe to show 0
+  }
+
   return (
     <AdminDashboard
       kpi={kpi}
@@ -359,6 +373,7 @@ export default async function AdminPage({
       toParam={toParam}
       campaignLaunchAt={campaignLaunchAt}
       showArchive={showArchive}
+      pendingNarrativeReviews={pendingNarrativeReviews}
     />
   );
 }

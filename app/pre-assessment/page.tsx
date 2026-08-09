@@ -8,6 +8,13 @@ const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
 const VALID_AGE_BANDS = ["8-9", "10-11", "12-14"];
 
+const GENDER_CHIPS = [
+  { label: "Boy",               value: "boy" },
+  { label: "Girl",              value: "girl" },
+  { label: "Non-binary",        value: "non-binary" },
+  { label: "Prefer not to say", value: "prefer-not-to-say" },
+] as const;
+
 function PreAssessmentForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -17,6 +24,7 @@ function PreAssessmentForm() {
   const gatePass = VALID_AGE_BANDS.includes(ageParam) && concernsParam.split(",").filter(Boolean).length > 0;
 
   const [childName, setChildName] = useState("");
+  const [childGender, setChildGender] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -37,6 +45,7 @@ function PreAssessmentForm() {
     p.set("name", trimmed); // empty string is valid — assessment skips meta phase on any name param
     if (ageParam) p.set("age", ageParam);
     if (concernsParam) p.set("concerns", concernsParam);
+    if (childGender) p.set("gender", childGender);
     router.push(`/assessment?${p.toString()}`);
   }
 
@@ -71,6 +80,28 @@ function PreAssessmentForm() {
             outline: "none",
           }}
         />
+
+        <div style={{ marginBottom: "20px" }}>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--ink)", marginBottom: "9px" }}>
+            {trimmed ? `${trimmed}'s` : "Your child's"} gender{" "}
+            <span style={{ fontWeight: 400, color: "var(--ink-dim)" }}>(optional)</span>
+          </div>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {GENDER_CHIPS.map((chip) => {
+              const sel = childGender === chip.value;
+              return (
+                <button
+                  key={chip.value}
+                  className={`chip-btn${sel ? " sel" : ""}`}
+                  style={{ fontSize: "13px", padding: "9px 14px" }}
+                  onClick={() => setChildGender(sel ? null : chip.value)}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <h1 style={{ fontFamily: BG, fontWeight: 800, fontSize: "25px", lineHeight: 1.3, color: "var(--ink)", marginBottom: "20px" }}>
           Answer honestly.<br />That&rsquo;s the only rule.

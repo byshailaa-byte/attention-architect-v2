@@ -9,7 +9,7 @@
 //
 // Node IDs stored in Moments are for the Quality Engine. They never appear in prose.
 
-import { generateMoment, type MomentSpec } from "./generate-moment";
+import { generateMoment, generateRoadmapBatch, type MomentSpec } from "./generate-moment";
 import type { NarrativeContext } from "./context";
 import { hdgNodesForQuestions, bgNodeIdsForDims } from "./context";
 import { effectiveTier } from "@/lib/graph/signature";
@@ -67,40 +67,76 @@ export async function composeReport(ctx: NarrativeContext): Promise<ComposeOutpu
     return spec;
   }
 
-  // ── 1. Recognition ────────────────────────────────────────────────────────
-  // Purpose: make the parent recognise a specific, lived scene before interpretation.
-  // Evidence: gateway answers (G1, G2) — the most direct, observed behaviours.
+  // ── 0. Cover + 1. Recognition — run in parallel (neither uses priorContext) ──
+  // Cover: personalized 1–2 sentence hero hook from G1+G2 evidence only.
+  // Recognition: first full narrative section; also scoped to G1+G2.
   {
     const relevantQ = ["G1", "G2"];
-    const moment = await generateMoment(
-      track({
-        momentId: "m_01",
-        momentType: "recognition",
-        section: "Recognition",
-        purpose: "make the parent recognise a specific, lived scene before any interpretation is offered",
-        emotionalObjective: "recognition, not persuasion",
-        confidenceTier: bestTierFor(ctx, ["attention_shape", "attention_competition"]),
-        behaviourNodeRefs: bgNodeIdsForDims(ctx, ["attention_shape", "attention_competition"]),
-        humanDecisionRefs: hdgNodesForQuestions(ctx, relevantQ).map(n => n.id),
-        evidenceText: evidenceLines(ctx, relevantQ),
-        additionalInstruction:
-          `Begin your response with: TITLE: [a short evocative phrase naming what the parent recognises — e.g. "The kind of gone that isn't really gone"]\n\n` +
-          `Then write the recognition prose across THREE distinct paragraphs:\n\n` +
-          `Paragraph 1 — Open with a specific scene the parent has actually lived. Draw directly from the evidence text above, using near-verbatim language from the answers. Name what ${ctx.childName} does in concrete, observable terms. No explanation yet — just the scene.\n\n` +
-          `Paragraph 2 — Develop the observation. Show a second angle or moment that extends the picture from paragraph 1. What else does the parent see? What is the shape of it from another vantage point? Still no interpretation — more scene.\n\n` +
-          `Paragraph 3 — Near the close, name the parent's stated concerns by their exact words (bold them using **word** format). ` +
-          (ctx.concerns.length >= 2
-            ? `The concerns are: ${ctx.concerns.slice(0, 2).map(c => `"${c}"`).join(" and ")}. ` +
-              `Write: "You've watched this often enough that **${ctx.concerns[0]}** and **${ctx.concerns[1]}** are the two words you brought here." Then add 1–2 sentences showing why those words are understandable from the observed scene — without resolving them yet.`
-            : ctx.concerns.length === 1
-            ? `The concern is: "${ctx.concerns[0]}". Name it directly by that word (bolded), then add 1–2 sentences showing why that word is understandable from the observed scene.`
-            : `Name the most central observed behaviour as the parent's implicit concern, then show why it's understandable from the scene.`) +
-          `\n\nThen, on its own line after a blank line, a single short anchor sentence that reframes everything above as a pattern — not a diagnosis, not an explanation. Format: [anchor sentence standing alone, < 200 characters]`,
-        wordTarget: "180–250 words total (including anchor line) — three distinct paragraphs. Do not compress into fewer than three paragraphs.",
-      }),
-      ctx,
-    );
-    moments.push(moment);
+    const coverTier = bestTierFor(ctx, ["attention_shape", "attention_competition"]);
+    const hedgeNote = coverTier === "hypothesis"
+      ? `- The evidence here is uncertain — use hedge language ("tends to", "it appears", "might") rather than asserting as fact.\n`
+      : "";
+    const concernsHint = ctx.concerns.length > 0
+      ? `The parent came here with these concerns: ${ctx.concerns.slice(0, 2).join(", ")}. The hook should make those feel implicitly answered — named obliquely, not repeated verbatim.\n`
+      : "";
+
+    const coverSpec = track({
+      momentId:          "m_cover",
+      momentType:        "recognition",
+      section:           "Cover",
+      purpose:           "open the report with the single sharpest observation from the assessment — hook the parent with precise recognition before any interpretation",
+      emotionalObjective: "immediate recognition, not generic welcome",
+      confidenceTier:    coverTier,
+      behaviourNodeRefs: bgNodeIdsForDims(ctx, ["attention_shape", "attention_competition"]),
+      humanDecisionRefs: hdgNodesForQuestions(ctx, relevantQ).map(n => n.id),
+      evidenceText:      evidenceLines(ctx, relevantQ),
+      additionalInstruction:
+        `Write EXACTLY 1–2 sentences — no more, no less.\n\n` +
+        `From the evidence above, identify the ONE most specific, observable behavior or pattern. ` +
+        `Name it in terms a parent of this child would immediately recognize — the specific thing they have watched happen, not a category or explanation.\n\n` +
+        `Rules:\n` +
+        `- Do NOT name the archetype or any type label. No categories, no labels. This is the hook before any explanation.\n` +
+        `- Be specific to THIS family's evidence. A sentence that could describe any child's parent fails this test.\n` +
+        `- Name the behavior, not the reason behind it. The explanation comes later.\n` +
+        `- Use ${ctx.childName}'s name and draw directly from the trigger/choice language in the evidence.\n` +
+        `- Do not open with "We" or "You" — start with ${ctx.childName}'s name or the behavior itself.\n` +
+        hedgeNote +
+        concernsHint +
+        `The sentence(s) replace a generic "We think we understand what's happening." They must earn that slot with specificity.`,
+      wordTarget: "20–40 words — 1–2 sentences only. Do not exceed 2 sentences.",
+    });
+
+    const m01Spec = track({
+      momentId: "m_01",
+      momentType: "recognition",
+      section: "Recognition",
+      purpose: "make the parent recognise a specific, lived scene before any interpretation is offered",
+      emotionalObjective: "recognition, not persuasion",
+      confidenceTier: bestTierFor(ctx, ["attention_shape", "attention_competition"]),
+      behaviourNodeRefs: bgNodeIdsForDims(ctx, ["attention_shape", "attention_competition"]),
+      humanDecisionRefs: hdgNodesForQuestions(ctx, relevantQ).map(n => n.id),
+      evidenceText: evidenceLines(ctx, relevantQ),
+      additionalInstruction:
+        `Begin your response with: TITLE: [a short evocative phrase naming what the parent recognises — e.g. "The kind of gone that isn't really gone"]\n\n` +
+        `Then write the recognition prose across THREE distinct paragraphs:\n\n` +
+        `Paragraph 1 — Open with a specific scene the parent has actually lived. Draw directly from the evidence text above, using near-verbatim language from the answers. Name what ${ctx.childName} does in concrete, observable terms. No explanation yet — just the scene.\n\n` +
+        `Paragraph 2 — Develop the observation. Show a second angle or moment that extends the picture from paragraph 1. What else does the parent see? What is the shape of it from another vantage point? Still no interpretation — more scene.\n\n` +
+        `Paragraph 3 — Near the close, name the parent's stated concerns by their exact words (bold them using **word** format). ` +
+        (ctx.concerns.length >= 2
+          ? `The concerns are: ${ctx.concerns.slice(0, 2).map(c => `"${c}"`).join(" and ")}. ` +
+            `Write: "You've watched this often enough that **${ctx.concerns[0]}** and **${ctx.concerns[1]}** are the two words you brought here." Then add 1–2 sentences showing why those words are understandable from the observed scene — without resolving them yet.`
+          : ctx.concerns.length === 1
+          ? `The concern is: "${ctx.concerns[0]}". Name it directly by that word (bolded), then add 1–2 sentences showing why that word is understandable from the observed scene.`
+          : `Name the most central observed behaviour as the parent's implicit concern, then show why it's understandable from the scene.`) +
+        `\n\nThen, on its own line after a blank line, a single short anchor sentence that reframes everything above as a pattern — not a diagnosis, not an explanation. Format: [anchor sentence standing alone, < 200 characters]`,
+      wordTarget: "180–250 words total (including anchor line) — three distinct paragraphs. Do not compress into fewer than three paragraphs.",
+    });
+
+    const [coverMoment, m01Moment] = await Promise.all([
+      generateMoment(coverSpec, ctx),
+      generateMoment(m01Spec, ctx),
+    ]);
+    moments.push(coverMoment, m01Moment);
   }
 
   // ── 2. Behaviour Pattern ──────────────────────────────────────────────────
@@ -117,17 +153,18 @@ export async function composeReport(ctx: NarrativeContext): Promise<ComposeOutpu
           `what drives ${ctx.pronouns.obj}, what friction looks like — without forcing a label onto it. ` +
           `The parent should come away with a clearer picture of the behaviour, not a named category.`
         : tier === "weak"
-        ? `Describe the observed behaviours from the evidence first — what ${ctx.childName} does, what matters to ${ctx.pronouns.obj}, what drains ${ctx.pronouns.obj}. ` +
-          `At the very end (final sentence only), you may name the pattern loosely: "The closest pattern we'd point to is ${ctx.archetype}" or "what the evidence most points toward is ${ctx.archetype}." ` +
-          `Frame it as approximate, not a confident identification.`
+        ? `Describe the observed behaviours from the evidence — what ${ctx.childName} does, what matters to ${ctx.pronouns.obj}, what drains ${ctx.pronouns.obj}. ` +
+          `Do NOT name the archetype ("${ctx.archetype}") anywhere in your prose. ` +
+          `The label will be displayed automatically below your section — your job is to make the pattern legible through behaviour alone.`
         : tier === "secondary"
-        ? `Describe the behavior thoroughly from the evidence first — what ${ctx.childName} does when engaged, what ${ctx.pronouns.subj} is protecting, how ${ctx.pronouns.subj} recovers. ` +
-          `At the very end (final sentence), name the pattern: "This is ${ctx.childName}'s version of ${ctx.archetype} — [brief clause from the evidence]." ` +
-          `The fit is genuine but not the strongest possible — you may note this briefly.`
+        ? `Describe the behavior thoroughly from the evidence — what ${ctx.childName} does when engaged, what ${ctx.pronouns.subj} is protecting, how ${ctx.pronouns.subj} recovers. ` +
+          `Do NOT write the archetype name ("${ctx.archetype}") anywhere in your prose. ` +
+          `The label is displayed automatically by the template below your section. Write the final sentence as a concrete behavioural observation, not a naming sentence.`
         : /* primary */
-          `Describe the behavior thoroughly from the evidence first — what ${ctx.childName} does when engaged, what ${ctx.pronouns.subj} is protecting, how ${ctx.pronouns.subj} recovers. ` +
-          `At the very end (final sentence), name the pattern as a natural conclusion: "This is ${ctx.childName}'s version of ${ctx.archetype} — [brief clause from the evidence]." ` +
-          `The label is a shorthand, not a verdict.`;
+          `Describe the behavior thoroughly from the evidence — what ${ctx.childName} does when engaged, what ${ctx.pronouns.subj} is protecting, how ${ctx.pronouns.subj} recovers. ` +
+          `Do NOT write the archetype name ("${ctx.archetype}") anywhere in your prose — not in the final sentence, not anywhere. ` +
+          `The template displays "We call this pattern ${ctx.archetype}" automatically below your section. ` +
+          `Close with a concrete behavioural observation instead.`;
 
     const moment = await generateMoment(
       track({
@@ -501,38 +538,33 @@ export async function composeReport(ctx: NarrativeContext): Promise<ComposeOutpu
     },
   ];
 
-  for (const { beatId, beatLabel, instruction } of roadmapBeats) {
-    const priorRoadmapContent = moments
-      .filter(m => m.section.startsWith("Roadmap"))
-      .slice(-1)
-      .map(m => `[${m.section}]: ${m.content.slice(0, 150)}…`)
-      .join("");
+  // Build all 4 specs, then batch into a single API call (saves ~15s vs. sequential loop).
+  const priorForRoadmap = summarisePrior(moments.slice(-2));
+  const roadmapSpecs = roadmapBeats.map(({ beatId, beatLabel, instruction }) =>
+    track({
+      momentId: beatId,
+      momentType: "action",
+      section: `Roadmap — ${beatLabel}`,
+      purpose: `roadmap beat: ${beatLabel.toLowerCase()} — outcome description, not curriculum step`,
+      emotionalObjective: "concrete possibility, not promise",
+      confidenceTier: bestTierFor(ctx, [loopDim, "attention_shape"]),
+      behaviourNodeRefs: bgNodeIdsForDims(ctx, [loopDim, "attention_shape"]),
+      humanDecisionRefs: hdgNodesForQuestions(ctx, ["G1", "G3"]).map(n => n.id),
+      evidenceText: roadmapContextLines,
+      priorContext: priorForRoadmap,
+      additionalInstruction:
+        `ROADMAP BEAT: "${beatLabel}"\n` +
+        `${instruction}\n\n` +
+        `CRITICAL FORMAT RULE: Do NOT write "Week 1", "Week 2", or any week-number structure. ` +
+        `Do NOT describe what the parent should do or try. Describe what they will notice or experience. ` +
+        `This is an outcome description, not an instruction. Prose only — no lists, no bullets, no headings.\n` +
+        `CRITICAL LENGTH RULE: One or two SHORT sentences maximum. A tight outcome phrase — not a paragraph, not an essay.`,
+      wordTarget: "25–45 words — one crisp outcome phrase or two short sentences. Do NOT write more.",
+    })
+  ) as [MomentSpec, MomentSpec, MomentSpec, MomentSpec];
 
-    const moment = await generateMoment(
-      track({
-        momentId: beatId,
-        momentType: "action",
-        section: `Roadmap — ${beatLabel}`,
-        purpose: `roadmap beat: ${beatLabel.toLowerCase()} — outcome description, not curriculum step`,
-        emotionalObjective: "concrete possibility, not promise",
-        confidenceTier: bestTierFor(ctx, [loopDim, "attention_shape"]),
-        behaviourNodeRefs: bgNodeIdsForDims(ctx, [loopDim, "attention_shape"]),
-        humanDecisionRefs: hdgNodesForQuestions(ctx, ["G1", "G3"]).map(n => n.id),
-        evidenceText: roadmapContextLines,
-        priorContext: priorRoadmapContent || summarisePrior(moments.slice(-2)),
-        additionalInstruction:
-          `ROADMAP BEAT: "${beatLabel}"\n` +
-          `${instruction}\n\n` +
-          `CRITICAL FORMAT RULE: Do NOT write "Week 1", "Week 2", or any week-number structure. ` +
-          `Do NOT describe what the parent should do or try. Describe what they will notice or experience. ` +
-          `This is an outcome description, not an instruction. Prose only — no lists, no bullets, no headings.\n` +
-          `CRITICAL LENGTH RULE: One or two SHORT sentences maximum. A tight outcome phrase — not a paragraph, not an essay.`,
-        wordTarget: "25–45 words — one crisp outcome phrase or two short sentences. Do NOT write more.",
-      }),
-      ctx,
-    );
-    moments.push(moment);
-  }
+  const roadmapMoments = await generateRoadmapBatch(roadmapSpecs, ctx);
+  moments.push(...roadmapMoments);
 
   return {
     report: {

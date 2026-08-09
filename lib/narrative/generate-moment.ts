@@ -85,7 +85,7 @@ Write ONLY the prose. No headings, no JSON, no bullet points unless the section 
     model: MODEL,
     max_tokens: 600,
     messages: [{ role: "user", content: userPrompt }],
-    system: WRITING_ENGINE_SYSTEM_PROMPT,
+    system: [{ type: "text", text: WRITING_ENGINE_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
   });
 
   const raw = response.content
@@ -118,4 +118,82 @@ Write ONLY the prose. No headings, no JSON, no bullet points unless the section 
     content,
     ...(title !== undefined ? { title } : {}),
   };
+}
+
+// Batch all 4 Roadmap beats into a single API call.
+// Saves ~3 call round-trips (~15s) vs. the previous sequential loop.
+// Continuity across beats is handled by the LLM within the single response.
+export async function generateRoadmapBatch(
+  specs: [MomentSpec, MomentSpec, MomentSpec, MomentSpec],
+  ctx: NarrativeContext,
+): Promise<[AttentionMoment, AttentionMoment, AttentionMoment, AttentionMoment]> {
+  const client = getClient();
+  const familyContext = serialiseContext(ctx, new Set(specs[0].humanDecisionRefs));
+
+  const evidenceBlock = specs[0].evidenceText.length > 0
+    ? `EVIDENCE FOR ALL BEATS (draw on these for every beat):\n${specs[0].evidenceText.map(e => `  - ${e}`).join("\n")}`
+    : "EVIDENCE: Use the most relevant context from above.";
+
+  const priorSummary = specs[0].priorContext
+    ? `WHAT HAS BEEN WRITTEN SO FAR (do not repeat; the roadmap must build on this, not restate it):\n${specs[0].priorContext}`
+    : "";
+
+  const beatBlock = specs.map((spec, i) => {
+    // Strip the "ROADMAP BEAT: ..." header since we structure it ourselves
+    const instr = (spec.additionalInstruction ?? "").replace(/^ROADMAP BEAT:[^\n]*\n/, "").trim();
+    return `BEAT_${i + 1} — "${spec.section.replace("Roadmap — ", "")}":\n${instr}`;
+  }).join("\n\n");
+
+  const userPrompt = `${familyContext}
+
+${evidenceBlock}
+${priorSummary}
+GENERATE EXACTLY FOUR ROADMAP BEATS. Output each beat starting with its marker on its own line ("BEAT_1:", "BEAT_2:", "BEAT_3:", "BEAT_4:"), followed immediately by the beat prose. No other text before, between, or after.
+
+${beatBlock}
+
+CRITICAL RULES FOR ALL BEATS:
+- Do NOT write "Week 1", "Week 2", or any week-number structure.
+- Do NOT describe what the parent should do. Describe what they will notice or experience.
+- Prose only — no lists, no bullets, no numbered steps, no headings.
+- Each beat: 25–45 words maximum. One or two short sentences.
+- Each beat must name a DIFFERENT outcome — no repeated observations across beats.`;
+
+  const response = await client.messages.create({
+    model: MODEL,
+    max_tokens: 700,
+    messages: [{ role: "user", content: userPrompt }],
+    system: [{ type: "text", text: WRITING_ENGINE_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+  });
+
+  const raw = response.content
+    .filter(b => b.type === "text")
+    .map(b => (b as { type: "text"; text: string }).text)
+    .join("")
+    .trim();
+
+  // Parse BEAT_N: blocks — slice from after marker to before next marker
+  const segments: string[] = [];
+  const pattern = /^BEAT_[1-4]:/gm;
+  const markers: { at: number; after: number }[] = [];
+  let m;
+  while ((m = pattern.exec(raw)) !== null) markers.push({ at: m.index, after: m.index + m[0].length });
+  for (let i = 0; i < 4; i++) {
+    const start = markers[i]?.after ?? raw.length;
+    const end   = markers[i + 1]?.at ?? raw.length;
+    segments.push(raw.slice(start, end).trim());
+  }
+
+  return specs.map((spec, i) => ({
+    moment_id: spec.momentId,
+    moment_type: spec.momentType,
+    section: spec.section,
+    purpose: spec.purpose,
+    evidence_source: spec.humanDecisionRefs,
+    confidence_tier: spec.confidenceTier,
+    emotional_objective: spec.emotionalObjective,
+    behaviour_node_refs: spec.behaviourNodeRefs,
+    human_decision_refs: spec.humanDecisionRefs,
+    content: segments[i] || `[roadmap beat ${i + 1} parse error]`,
+  })) as [AttentionMoment, AttentionMoment, AttentionMoment, AttentionMoment];
 }

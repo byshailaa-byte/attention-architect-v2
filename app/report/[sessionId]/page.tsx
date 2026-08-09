@@ -115,6 +115,8 @@ export default async function ReportPage({ params }: { params: Params }) {
           familyLoop={nr.family_attention_loop}
           childName={row.child_name || "your child"}
           parentName={row.parent_name}
+          email={row.email ?? ""}
+          phone={row.phone ?? ""}
           concerns={row.concerns ?? []}
           sessionId={sessionId}
           pronouns={pronouns}
