@@ -49,15 +49,22 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
   const openedRef = useRef(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollable = document.body.scrollHeight - window.innerHeight;
-      if (scrollable <= 0) return;
-      const pct = window.scrollY / scrollable;
-      setVisible(pct >= 0.4);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+    const showEl = document.getElementById("sticky-show-sentinel");
+    const hideEl = document.getElementById("sticky-hide-sentinel");
+    let pastShow = false;
+    let priceVisible = false;
+    function update() { setVisible(pastShow && !priceVisible); }
+    const showObs = new IntersectionObserver(([entry]) => {
+      pastShow = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+      update();
+    }, { threshold: 0 });
+    const hideObs = new IntersectionObserver(([entry]) => {
+      priceVisible = entry.isIntersecting;
+      update();
+    }, { threshold: 0 });
+    if (showEl) showObs.observe(showEl);
+    if (hideEl) hideObs.observe(hideEl);
+    return () => { showObs.disconnect(); hideObs.disconnect(); };
   }, []);
 
   async function open() {
@@ -147,10 +154,10 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
             cursor: "pointer",
           }}
         >
-          Open {childName}&rsquo;s Roadmap
+          Open {childName}&rsquo;s Roadmap — ₹999 →
         </button>
         <div style={{ textAlign: "center", fontSize: "11.5px", color: "#7a7870", marginTop: "6px" }}>
-          Full 6-week program · ₹999
+          Full 6-week program
         </div>
       </div>
     </>

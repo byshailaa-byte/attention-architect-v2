@@ -18,6 +18,7 @@ import type { AttentionMoment } from "@/lib/narrative/types";
 import type { FamilyAttentionLoop } from "@/lib/graph/loop";
 import { TestimonialsCarousel } from "./TestimonialsCarousel";
 import PriceCards from "./PriceCards";
+import StickyCta from "./StickyCta";
 
 // ── Frozen tokens ─────────────────────────────────────────────────────────────
 const T = {
@@ -1336,6 +1337,9 @@ export default function NarrativeReportView({
           pronouns={pronouns}
         />
 
+        {/* Sentinel: sticky CTA appears once this scrolls off the top (after Recognition + Pattern) */}
+        <div id="sticky-show-sentinel" />
+
         {/* 03 — Family Attention Loop (conditional) */}
         {hasLoop && (
           <FamilyLoopSection
@@ -1389,12 +1393,16 @@ export default function NarrativeReportView({
         {/* FAQ */}
         <FaqSection childName={childName} pronouns={pronouns} />
 
+        {/* Sentinel: sticky CTA hides once the PriceCards section enters view */}
+        <div id="sticky-hide-sentinel" />
+
         {/* Final Invitation */}
         <FinalInvitationSection sessionId={sessionId} childName={childName} parentName={parentName} email={email} phone={phone} />
 
         {/* Footer */}
         <FooterSection />
       </main>
+      <StickyCta sessionId={sessionId} childName={childName} parentName={parentName} email={email} phone={phone} />
     </>
   );
 }

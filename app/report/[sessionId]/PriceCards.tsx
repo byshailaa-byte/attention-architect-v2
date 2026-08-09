@@ -122,6 +122,22 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
 
   return (
     <div style={{ maxWidth: "480px", margin: "0 auto" }}>
+
+      {/* Comparison anchor — shapes perception before the price ask */}
+      <div style={{ margin: "0 0 16px", padding: "12px 14px", background: "rgba(32,30,25,0.04)", borderRadius: "10px" }}>
+        {[
+          { label: "Month of tuition", price: "₹3,000–8,000", note: "teaches one subject" },
+          { label: "Behaviour consult", price: "₹1,500+", note: "one conversation" },
+          { label: "Full roadmap", price: "₹999", note: `six weeks, built around ${childName}` },
+        ].map(({ label, price, note }, i, arr) => (
+          <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "5px 0", borderBottom: i < arr.length - 1 ? "1px solid rgba(32,30,25,0.06)" : "none" }}>
+            <span style={{ fontSize: "12px", color: "#5B5648" }}>{label}</span>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: "#201E19", padding: "0 8px" }}>{price}</span>
+            <span style={{ fontSize: "11px", color: "#8B8570", textAlign: "right" }}>{note}</span>
+          </div>
+        ))}
+      </div>
+
       {/* Primary ₹999 card */}
       <div style={{ background: "#f5e6c3", borderRadius: "16px", padding: "24px 20px", textAlign: "left", marginBottom: "16px" }}>
         <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "26px", color: "var(--ink)" }}>₹999</div>
@@ -144,6 +160,12 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
             </li>
           ))}
         </ul>
+        <div style={{ borderTop: "1px solid rgba(32,30,25,0.10)", paddingTop: "14px", marginBottom: "14px" }}>
+          <p style={{ fontFamily: BG, fontSize: "12.5px", color: "#5C5950", fontStyle: "italic", margin: "0 0 5px", lineHeight: 1.55 }}>
+            &ldquo;A few simple changes reduced the daily arguments, and studying no longer feels like a battle.&rdquo;
+          </p>
+          <div style={{ fontSize: "11px", color: "#7a7870" }}>— Sandeel Shukla, Parent of a 14-year-old Son · Raipur</div>
+        </div>
         <button
           onClick={() => openModal("full")}
           style={{ display: "block", width: "100%", background: "#1a1a1f", color: "var(--paper)", textAlign: "center", fontFamily: BG, fontWeight: 800, fontSize: "14px", padding: "13px", borderRadius: "10px", border: "none", cursor: "pointer" }}
@@ -152,7 +174,7 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
         </button>
       </div>
 
-      {/* Plain secondary ₹499 block */}
+      {/* Plain secondary ₹499 block — framing unchanged */}
       <div style={{ textAlign: "center", padding: "4px 0 20px" }}>
         <div style={{ fontSize: "13.5px", color: "#5B5648", marginBottom: "10px" }}>Not ready for all six weeks yet?</div>
         <button
@@ -161,21 +183,6 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
         >
           See Week One Only — ₹499
         </button>
-      </div>
-
-      {/* Comparison anchor */}
-      <div style={{ margin: "4px 0 20px", padding: "12px 14px", background: "rgba(32,30,25,0.04)", borderRadius: "10px" }}>
-        {[
-          { label: "Month of tuition", price: "₹3,000–8,000", note: "teaches one subject" },
-          { label: "Behaviour consult", price: "₹1,500+", note: "one conversation" },
-          { label: "Full roadmap", price: "₹999", note: `six weeks, built around ${childName}` },
-        ].map(({ label, price, note }, i, arr) => (
-          <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "5px 0", borderBottom: i < arr.length - 1 ? "1px solid rgba(32,30,25,0.06)" : "none" }}>
-            <span style={{ fontSize: "12px", color: "#5B5648" }}>{label}</span>
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "#201E19", padding: "0 8px" }}>{price}</span>
-            <span style={{ fontSize: "11px", color: "#8B8570", textAlign: "right" }}>{note}</span>
-          </div>
-        ))}
       </div>
 
       {/* Trust row */}
