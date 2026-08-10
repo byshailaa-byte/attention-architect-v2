@@ -108,8 +108,8 @@ export async function POST(req: NextRequest) {
       )
     `;
 
-    // Fire assessment_complete event (fire-and-forget)
-    sql`
+    // Awaited — fire-and-forget caused 22% event loss and multi-minute delays
+    await sql`
       INSERT INTO funnel_events (event_type, session_id, metadata)
       VALUES ('assessment_complete', ${sessionId}::uuid, ${JSON.stringify({ archetype: scoring.archetype })}::jsonb)
     `.catch((e: unknown) => console.warn("[funnel] assessment_complete:", (e as Error).message));
