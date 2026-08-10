@@ -57,7 +57,7 @@ export default function ClosingCtaButton({ sessionId, childName, parentName, ema
   async function open() {
     const value = 999;
     const initiateEventId = `${sessionId}:initiate_checkout:full`;
-    fireEvent("begin_checkout", sessionId, { tier: "full", value });
+    fireEvent("begin_checkout", sessionId, { tier: "full", value, source: "closing_cta" });
     fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: "full", price: value }] });
     fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: "full" }, initiateEventId);
     fetch("/api/meta/initiate-checkout", {

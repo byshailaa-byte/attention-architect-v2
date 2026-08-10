@@ -73,7 +73,7 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
   async function openModal(tier: "module1" | "full") {
     const value = TIER_AMOUNT[tier];
     const initiateEventId = `${sessionId}:initiate_checkout:${tier}`;
-    fireEvent("begin_checkout", sessionId, { tier, value });
+    fireEvent("begin_checkout", sessionId, { tier, value, source: "price_cards" });
     fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: tier, price: value }] });
     fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: tier }, initiateEventId);
     fetch("/api/meta/initiate-checkout", {
