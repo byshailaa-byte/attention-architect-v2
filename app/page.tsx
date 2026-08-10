@@ -789,7 +789,7 @@ export default function LandingPage() {
           {/* Bridge line naming Attention Health */}
           <p style={{ fontSize: "16px", lineHeight: 1.7, color: "var(--ink-dim)", maxWidth: 520, marginBottom: "32px" }}>
             These aren&rsquo;t behaviour issues. They&rsquo;re signs of how your child&rsquo;s{" "}
-            <strong style={{ color: "var(--ink)" }}>Attention Health</strong> is currently working — and it&rsquo;s never actually been measured, the way height or marks have.
+            <strong style={{ color: "var(--ink)" }}>Attention Health</strong>{" "}is currently working — and it&rsquo;s never actually been measured, the way height or marks have.
           </p>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", margin: "0 0 28px" }}>
