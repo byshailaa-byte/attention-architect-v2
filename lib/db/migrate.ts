@@ -326,6 +326,27 @@ async function migrate() {
     ON CONFLICT (key) DO NOTHING
   `;
 
+  // Phase 21 — funnel_events: add generating_page_view to the allowed event type set.
+  await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
+  await sql`
+    ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+      'assessment_started',
+      'assessment_dimension_complete',
+      'assessment_complete',
+      'report_gate_view',
+      'generating_page_view',
+      'generate_lead',
+      'report_view',
+      'view_item',
+      'begin_checkout',
+      'purchase',
+      'lms_day_complete',
+      'lms_reflection_submitted',
+      'scroll_milestone',
+      'exit_intent_shown'
+    ))
+  `;
+
   console.log("Migrations complete.");
 }
 
