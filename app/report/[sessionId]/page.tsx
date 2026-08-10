@@ -81,8 +81,7 @@ export default async function ReportPage({
   const row = rows[0];
 
   if (!row.parent_name) {
-    // Fire report_gate_view when parent hasn't filled details yet
-    sql`
+    await sql`
       INSERT INTO funnel_events (event_type, session_id, metadata)
       VALUES ('report_gate_view', ${sessionId}::uuid, '{}'::jsonb)
     `.catch((e: unknown) => console.warn("[funnel] report_gate_view:", (e as Error).message));
@@ -120,8 +119,7 @@ export default async function ReportPage({
   }
 
   if (nr !== null) {
-    // Fire report_view only when the parent is actually seeing the report (fire-and-forget)
-    sql`
+    await sql`
       INSERT INTO funnel_events (event_type, session_id, metadata)
       VALUES ('report_view', ${sessionId}::uuid, ${JSON.stringify({ archetype: row.archetype })}::jsonb)
     `.catch((e: unknown) => console.warn("[funnel] report_view:", (e as Error).message));

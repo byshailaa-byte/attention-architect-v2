@@ -7,6 +7,7 @@ const ALLOWED = new Set([
   "assessment_started",
   "assessment_dimension_complete",
   "report_gate_view",
+  "generating_page_view",
   "view_item",
   "begin_checkout",
 ]);

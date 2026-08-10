@@ -88,6 +88,15 @@ function GeneratingScreen() {
   const [visible, setVisible]   = useState(true);
   const redirectedRef           = useRef(false);
 
+  useEffect(() => {
+    if (!sessionId) return;
+    fetch("/api/funnel/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_type: "generating_page_view", session_id: sessionId, metadata: {} }),
+    }).catch(() => {});
+  }, [sessionId]);
+
   // Rotate messages every 18s with a brief fade
   useEffect(() => {
     if (messages.length <= 1) return;
