@@ -105,10 +105,11 @@ function GeneratingScreen() {
     if (!sessionId) return;
     let attempts = 0;
 
-    function redirect() {
+    function redirect(hardCap = false) {
       if (redirectedRef.current) return;
       redirectedRef.current = true;
-      router.replace(`/report/${sessionId}`);
+      // hardCap=true adds ?f=1 so the report page knows not to bounce back here
+      router.replace(`/report/${sessionId}${hardCap ? "?f=1" : ""}`);
     }
 
     async function poll() {
@@ -119,12 +120,12 @@ function GeneratingScreen() {
         if (data.ready) { redirect(); return; }
       } catch { /* network hiccup — keep polling */ }
       attempts++;
-      if (attempts >= 30) { redirect(); return; }
+      if (attempts >= 30) { redirect(true); return; }
       setTimeout(poll, 4000);
     }
 
     const init = setTimeout(poll, 8000);
-    const hard = setTimeout(redirect, 120_000);
+    const hard = setTimeout(() => redirect(true), 120_000);
     return () => { clearTimeout(init); clearTimeout(hard); };
   }, [sessionId, router]);
 

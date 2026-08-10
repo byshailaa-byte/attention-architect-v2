@@ -753,13 +753,46 @@ export default function LandingPage() {
         {/* ── WE MEASURE EVERYTHING EXCEPT THIS ────────────────────────── */}
         <section className="land-section" data-section="measure">
           <div style={{ fontSize: "11.5px", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--ink-dim)", fontWeight: 700, marginBottom: "20px" }}>
-            What We Actually Measure
+            What&rsquo;s really going on
           </div>
-          <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "36px", lineHeight: 1.18, letterSpacing: "-.01em", color: "var(--ink)", marginBottom: "20px" }}>
-            Most assessments measure{" "}
-            <span className="mark">the wrong thing.</span>
+          <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "36px", lineHeight: 1.18, letterSpacing: "-.01em", color: "var(--ink)", marginBottom: "28px" }}>
+            We measure everything about our children. Except this.
           </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", margin: "28px 0" }}>
+
+          {/* Report-card checklist */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0", marginBottom: "24px", maxWidth: "320px" }}>
+            {[
+              { tick: "✓", label: "Height", missing: false },
+              { tick: "✓", label: "Weight", missing: false },
+              { tick: "✓", label: "Marks", missing: false },
+              { tick: "?", label: "Attention Health", missing: true },
+            ].map(({ tick, label, missing }) => (
+              <div
+                key={label}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "14px",
+                  padding: "10px 14px",
+                  borderBottom: "1px solid var(--line)",
+                  background: missing ? "var(--marker-tint)" : "transparent",
+                  borderRadius: missing ? "8px" : "0",
+                  marginBottom: missing ? "0" : "0",
+                }}
+              >
+                <span style={{ fontWeight: 800, fontSize: "15px", color: missing ? "var(--marker-text)" : "var(--calm-text)", width: "18px", flexShrink: 0 }}>{tick}</span>
+                <span style={{ fontSize: "15px", fontWeight: missing ? 700 : 400, color: missing ? "var(--ink)" : "var(--ink-dim)" }}>{label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Bridge line naming Attention Health */}
+          <p style={{ fontSize: "16px", lineHeight: 1.7, color: "var(--ink-dim)", maxWidth: 520, marginBottom: "32px" }}>
+            These aren&rsquo;t behaviour issues. They&rsquo;re signs of how your child&rsquo;s{" "}
+            <strong style={{ color: "var(--ink)" }}>Attention Health</strong> is currently working — and it&rsquo;s never actually been measured, the way height or marks have.
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", margin: "0 0 28px" }}>
             <div style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: "12px", padding: "22px" }}>
               <div style={{ fontSize: "10.5px", letterSpacing: ".12em", textTransform: "uppercase", fontWeight: 700, color: "var(--ink-dim)", marginBottom: "14px" }}>What gets measured everywhere</div>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, fontSize: "14px", lineHeight: 2, color: "var(--ink-dim)" }}>
