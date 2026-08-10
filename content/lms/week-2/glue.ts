@@ -3,6 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "glue",
   week: 2,
+  weekTitle: "Connection Before Screens",
 
   weeklyReading: {
     introShared: `For {{child_name}}, a screen often isn't really about the content — it's a way to disappear from a feeling that hasn't been addressed yet. This is the same connection-before-concentration pattern from Week 1, showing up in a new place: when the room feels tense and unresolved, screens become the exit. This week doesn't fight that exit by blocking it harder. It addresses what's actually driving the reach for it — real connection, offered before the tension gets a chance to send {{child_pronoun_obj}} looking for an escape.`,

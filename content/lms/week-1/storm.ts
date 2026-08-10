@@ -9,46 +9,35 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "storm",
   week: 1,
+  weekTitle: "The Opening Choice",
 
   weeklyReading: {
-    introShared: `This is the first week of a program built specifically for this combination. It's not a course you sit and watch. It's a small set of things you try in real life — starting this week — and pay attention to what happens.
+    introShared: `This is the first week of a program built specifically for a Storm. It's not a course you sit and watch. It's a small set of things you try in real life — starting this week — and pay attention to what happens.
 
 **One short read to start the week (this page — about 12 minutes).**
 **One tiny action each day (5 minutes or less, in a moment that already happens anyway).**
 
 That's it. If you do nothing else this week except the daily action, this program still works. The reading is here to explain *why* — but the change comes from the doing, not the reading.
 
-A word before we start, because it matters for you specifically: you're a Pusher. Your instinct, when something isn't working, is to lean in harder — more effort, more reminders, more push. That instinct is a strength; it's why you care enough to be here. But this week is going to ask you to do something that feels backwards: **in a few specific moments, do less, not more.** If that feels uncomfortable, that's not a sign it's wrong. That's the whole point.
-
 **Quick recap: what your report found**
 
-You don't need to re-read the whole report. Just these three things, because everything this week builds on them:
+You don't need to re-read the whole report. Just this, because everything this week builds on it:
 
-- **Your child is a Storm.** Their attention is real and powerful — you've seen them lock in completely on something they chose. It's not missing. It just switches *off* the moment something stops feeling like their own idea.
-- **You're a Pusher.** When their focus drops, your instinct is to step in harder. It often works in the short term. With a Storm, it often backfires in the long term — because the harder you push, the less it feels like their choice.
-- **The fit between you is the real issue.** Not your child alone. Not you alone. The specific way a Storm's need for ownership meets a Pusher's instinct to take charge — that's what's behind most of the nightly friction.
-
-This week, we work on exactly one place where that fit shows up most: **the start of homework.**
+**Your child is a Storm.** Their attention is real and powerful — you've seen them lock in completely on something they chose. It's not missing. It just switches *off* the moment something stops feeling like their own idea. That one fact is the lever everything else turns on.
 
 **Why we start here**
 
-Think about where the worst friction happens. For almost every Storm + Pusher household, it's not the middle of homework — it's *getting started.* The stand-off. The "just sit down and do it." The fifteen minutes of resistance before a single line gets written.
+Think about where the worst friction happens. For most Storm households, it's not the middle of homework — it's *getting started.* The stand-off. The "just sit down and do it." The fifteen minutes of resistance before a single line gets written.
 
 Here's what's actually happening in that moment, underneath:
 
-Your Storm doesn't resist the work itself. They resist being *told.* The instant homework feels like something happening *to* them — on someone else's timing, someone else's terms — their attention switches off. Not to be difficult. That's just how a Storm is wired: ownership is the on-switch.
-
-And here's the Pusher's part, said plainly and without blame: when you see them stalling, your instinct fires — *"come on, sit down, let's go."* Completely reasonable. But to a Storm, that instinct lands as *"this is not your choice."* And that's the exact thing that keeps the switch off.
-
-So you get a loop. They stall because it doesn't feel like theirs. You push because they're stalling. The push makes it feel even less like theirs. Round and round — every single night.
-
-We're going to break the loop at one point: **we're going to hand the Storm a real choice at the start, so the work feels like theirs before your instinct to push ever gets triggered.**
-
-Not a fake choice. Not "do you want to do homework or not." A real, small, genuine choice about *how* it starts.
+Your Storm doesn't resist the work itself. They resist being *placed into it* — on someone else's timing, someone else's terms. The instant homework feels like something happening *to* them, their attention switches off. Not to be difficult. That's just how a Storm is wired: ownership is the on-switch. Without it, the engine doesn't run.
 
 **This week's one move: The Opening Choice**
 
-Here's the whole thing. Before homework starts each day, you hand your child real ownership over *how* it begins — so the work feels like theirs before your instinct to push ever gets triggered.`,
+Here's the whole thing. Before homework starts each day, you hand your child real ownership over *how* it begins — so the work feels like theirs before any resistance can build.
+
+Not a fake choice. Not "do you want to do homework or not." A real, small, genuine choice about *how* it starts.`,
 
     moveCalibration: {
       "8-9":
@@ -61,7 +50,7 @@ Real opening choices at this age:
 
 Small enough to feel almost silly. That's fine — at this age even a tiny genuine choice flips the on-switch, because the Storm gets to feel it was *theirs.*
 
-**Your Pusher work:** let the small choice stand, even when it's not what you'd pick. Floor instead of table. Easy subject first. Let it ride.`,
+**Your work:** let the small choice stand, even when it's not what you'd pick. Floor instead of table. Easy subject first. Let it ride.`,
 
       "10-11":
 `At 10–11, move the choice up a level — from physical setup to **sequence and approach.** You're shifting from the person who directs to the person who offers. Still involved, but a step back.
@@ -71,7 +60,7 @@ Real opening choices at this age:
 - "Do you want ten minutes to yourself first, then start — or start now and be done earlier?"
 - "Do you want to check answers together at the end, or do it fully on your own and just show me?"
 
-**Your Pusher work:** when they choose a plan you think is inefficient, let them run it anyway. A 10–11 Storm learns ownership is real by being allowed to own an imperfect plan — and often it works better than you expected.`,
+**Your work:** when they choose a plan you think is inefficient, let them run it anyway. A 10–11 Storm learns ownership is real by being allowed to own an imperfect plan — and often it works better than you expected.`,
 
       "12-14":
 `At 12–14, this is a different situation, and pretending it isn't will backfire. "Table or floor" is patronizing at this age — a teenager's ownership need has grown into *"why are you involved in my homework at all."* So the choice has to be bigger and more real: **the choice is often about your level of involvement itself.**
@@ -83,13 +72,13 @@ Real opening choices at this age:
 
 Yes — some of these mean genuinely stepping back, possibly a lot. That's not you giving up. For a 14-year-old Storm, offering real autonomy *is* the move. Pushing a teenager who's already pulling away doesn't just fail — it can damage the relationship in ways that are hard to repair, and a teen can withdraw completely in a way an 8-year-old can't.
 
-**Your Pusher work — and it's the hardest version:** when they take the autonomy you offered and you can see them about to do it badly, hold back anyway, unless it's genuinely high-stakes. The trust you build by *not* stepping in is the thing that makes them let you back in later.`,
+**Your work — and it's the hardest part:** when they take the autonomy you offered and you can see them about to do it badly, hold back anyway, unless it's genuinely high-stakes. The trust you build by *not* stepping in is the thing that makes them let you back in later.`,
     },
 
     moveOutroShared:
 `What makes this work is not the choice itself — it's what it does to the *moment.* You've handed ownership over before the stand-off can start. The Storm's on-switch — *this is mine* — gets flipped by them, not forced by you. And because they chose it, your instinct to push has nothing to push against.
 
-**The hard part is yours, not theirs.** Once they choose, you have to actually let them have it. If you override the choice, it stops being real — and a Storm can smell a fake choice instantly, at any age. The entire move depends on you holding back. That's the Pusher's work this week.`,
+**The hard part is yours, not theirs.** Once they choose, you have to actually let them have it. If you override the choice, it stops being real — and a Storm can smell a fake choice instantly, at any age. The entire move depends on you holding back. That's the work this week.`,
 
     whatWorkingLooksLike:
 `Let's be honest about the size of the win, because a false promise here would break your trust the first night it doesn't come true.
@@ -109,7 +98,7 @@ You're not manipulating them into focusing. You're removing the one thing — th
 
 Next week, we take this same principle off the homework table and into the moment you've probably been dreading most: screens.
 
-*Week 1 complete when you've reached the weekend review — whether or not every day went to plan. Showing up imperfectly still counts. Especially for a Pusher.*`,
+*Week 1 complete when you've reached the weekend review — whether or not every day went to plan. Showing up imperfectly still counts.*`,
   },
 
   days: [

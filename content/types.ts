@@ -179,6 +179,7 @@ export type LmsWeekendReview = {
 export type LmsWeekContent = {
   archetype: string;
   week: number;
+  weekTitle: string;
   weeklyReading: LmsWeeklyReading;
   days: LmsDayCard[];
   weekendReview: LmsWeekendReview;

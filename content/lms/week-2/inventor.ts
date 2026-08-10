@@ -3,6 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "inventor",
   week: 2,
+  weekTitle: "Their Way on Screens",
 
   weeklyReading: {
     introShared: `Watch {{child_name}} inside a game and you'll notice something: nobody's correcting {{child_pronoun_poss}} approach. Nobody's saying "that's not how you're supposed to build that base" or "try it this way instead." Games are one of the only places in {{child_pronoun_poss}} day where {{child_pronoun_poss}} method is entirely {{child_pronoun_poss}} own, with zero adult correction — which may be exactly why they're so magnetic. This week doesn't compete with that freedom. It extends it — the same total hands-off respect, applied somewhere that matters more to you than a game score.`,

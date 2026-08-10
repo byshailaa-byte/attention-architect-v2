@@ -34,8 +34,13 @@ export default async function WeekReadingPage({ params }: Props) {
           Week {week}
         </p>
         <h1 className="text-2xl font-bold" style={{ color: "var(--ink)" }}>
-          The Opening Choice
+          {content.weekTitle}
         </h1>
+        {week === 1 && (
+          <p className="mt-2 text-sm" style={{ color: "var(--ink-dim)" }}>
+            This is the training program for what your report called your child&apos;s attention health — six weeks of small, real moves that build it.
+          </p>
+        )}
       </div>
 
       {/* Build note exclusion enforced: age-band calibration renders ONE block only */}

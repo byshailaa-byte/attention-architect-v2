@@ -3,6 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "explorer",
   week: 2,
+  weekTitle: "The Same Channel on Screens",
 
   weeklyReading: {
     introShared: `Video-to-video, game-to-game — it looks like mindless drift, but watch closely and you'll usually find the same connecting-mind pattern that shows up everywhere else in {{child_name}}'s day, just moving faster. This week doesn't try to slow the drift down. It gives it the same lightweight home Week 1 built for tangents anywhere else — a way to note, not lose, without breaking the flow that makes screens feel good in the first place.`,

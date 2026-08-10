@@ -7,6 +7,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "all-in-kid",
   week: 1,
+  weekTitle: "The Protected Block",
 
   weeklyReading: {
     introShared: `{{child_name}} can disappear into something for two hours and not hear you call {{child_pronoun_obj}} for dinner. Not ignoring you — genuinely gone, so deep in the thing that the outside world has stopped registering. And this, more than almost anything, is the trait that gets misread. Because the same child who can vanish into a book or a build or a game for hours is the one who "can't focus" on homework — and the contradiction makes no sense until you understand what's actually going on.

@@ -7,6 +7,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "magnet",
   week: 1,
+  weekTitle: "Steady Presence",
 
   weeklyReading: {
     introShared: `Watch {{child_name}} do homework alone, and watch {{child_pronoun_obj}} do it with someone at the same table, and you may notice something that doesn't quite add up. Same child, same task, same ability — but the focus holds so much longer when there's another person in the room. It's easy to read this the wrong way. It can look like {{child_pronoun_subj}} won't work unless {{child_pronoun_subj}}'s supervised. Like {{child_pronoun_subj}} needs to be watched. Like {{child_pronoun_subj}}'s not motivated on {{child_pronoun_poss}} own.

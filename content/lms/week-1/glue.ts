@@ -7,6 +7,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "glue",
   week: 1,
+  weekTitle: "Connection First",
 
   weeklyReading: {
     introShared: `Some children can wall off a bad mood and work anyway. {{child_name}} is not one of them, and this week is about why that's not the problem it looks like.
@@ -15,7 +16,7 @@ Here is the pattern you've probably half-noticed without naming it: on a morning
 
 But the Glue doesn't work that way, and it's worth understanding *why* rather than wishing it were otherwise. This child reads the emotional room first — it's the first thing {{child_pronoun_subj}} takes in, often before {{child_pronoun_subj}}'s even aware of doing it. And until that room feels okay, the part of {{child_pronoun_obj}} that could concentrate simply isn't available. It's not that {{child_pronoun_subj}} won't focus through tension. It's that, for {{child_pronoun_obj}}, connection comes *before* concentration — not as a preference, but as an order of operations. You cannot get to the second until you've handled the first.
 
-This reframes the whole evening. When homework won't start and the day's been rough, the instinct is to push harder into the homework. For a Glue, that's pushing on the wrong thing entirely. The blocker isn't the worksheet. It's the unhandled feeling in the room. Clear that — genuinely, even briefly — and the focus that seemed impossible a minute ago is suddenly available.
+This reframes the whole evening. When homework won't start and the day's been rough, the instinct is to push harder into the homework. For a Glue, that's pushing on the wrong thing entirely. The blocker isn't the worksheet. It's the unhandled feeling in the room. Clear that — genuinely, even briefly — and the focus that seemed impossible a minute ago may open up.
 
 So this week does one thing: it puts connection *first*, on purpose, before the ask. Two real minutes of genuine contact before "okay, let's do this." Not as a manipulation — and this matters enormously for a Glue, who can feel the difference between real connection and a warm-up trick faster than almost any other child — but as the actual first step of getting anything done. And when the room *is* tense, it does something braver than pretending: it names the tension simply, out loud, because for this child naming a feeling often releases more than working around it ever could.
 

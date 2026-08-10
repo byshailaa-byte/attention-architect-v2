@@ -8,6 +8,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "live-wire",
   week: 1,
+  weekTitle: "The Real Stake",
 
   weeklyReading: {
     introShared: `Watch {{child_name}} in the two states {{child_pronoun_subj}} moves between, and the pattern is almost comical in its clarity. In one, {{child_pronoun_subj}}'s barely present — a task rolls past {{child_pronoun_obj}} and {{child_pronoun_subj}} can't seem to make {{child_pronoun_poss}} mind land on it, no matter how many times you ask. In the other, {{child_pronoun_subj}}'s *completely* alive — locked in, sharp, fully there, the same child you couldn't reach ten minutes ago now impossible to pull away. The difference between those two states is not mood, and it's not effort. It's stakes.
@@ -18,7 +19,7 @@ This is why "just do your homework because you have to" fails so completely with
 
 So this week does one thing: it stops trying to will {{child_pronoun_obj}} into caring and instead puts something genuinely real on the line. A timer to actually beat. A small bet. Someone really watching. A result that truly happens. Not a threat — threats create a different, worse kind of stake — but a live, immediate reason for the task to matter *right now*. And then, as the week goes on, it hands the stake-setting to {{child_pronoun_obj}}, because a Live Wire almost always knows better than you what genuinely registers as real.
 
-The trap to avoid is the manufactured stake — the sticker chart, the fake urgency, the reward that's obviously just a reward. This child can smell a pretend stake instantly, and a pretend stake is worse than none, because it teaches {{child_pronoun_obj}} that you don't understand what real means. The stakes this week have to be genuine. When they are, you'll see the switch flip — and you'll understand that the focus was never missing. It was just waiting for something worth turning on for.`,
+The trap to avoid is the manufactured stake — the sticker chart, the fake urgency, the reward that's obviously just a reward. This child can smell a pretend stake instantly, and a pretend stake is worse than none, because it teaches {{child_pronoun_obj}} that you don't understand what real means. The stakes this week have to be genuine. When they are, you may see the switch flip — and may understand for the first time that the focus was never missing. It was waiting for something worth turning on for.`,
 
     moveCalibration: {
       "8-9": `For a younger Live Wire, keep the stakes real but light and fun — the point is genuine, immediate, and playful, never scary. Add a "right now" to one task: beat the timer, race a sibling, show someone the result at the end. At this age the stake can be small as long as it's real in the moment. Examples: "can you beat the clock?"; a quick race where finishing actually wins something; performing or showing the finished thing to a real audience of one. Keep it a game with a real edge, not pressure.`,

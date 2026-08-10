@@ -3,6 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "magnet",
   week: 2,
+  weekTitle: "Presence Not Supervision",
 
   weeklyReading: {
     introShared: `Screens have one quality almost nothing else in {{child_name}}'s day has: they're always on, always available, and they never get bored of {{child_pronoun_obj}}. For {{child_name}} — a child whose focus is genuinely steadier with company than alone — that always-on availability is a real competitor to you, not a character flaw in {{child_pronoun_obj}}. This week doesn't fight screens by removing them faster. It offers the thing they're actually substituting for: real, low-pressure presence, given generously enough that the always-on companion has some real competition.`,

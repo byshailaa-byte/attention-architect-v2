@@ -3,6 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "captain",
   week: 2,
+  weekTitle: "Their Own Rule",
 
   weeklyReading: {
     introShared: `Screens are usually the single most fought-over rule in any house — which makes them the highest-value place to hand {{child_name}} real authority. If a Captain gets to genuinely help set the boundary here, in the domain with the most at stake, it proves the ownership from Week 1 wasn't just offered on easy, low-stakes tasks. This week doesn't loosen the limit. It changes who's holding the pen when it gets drawn.`,

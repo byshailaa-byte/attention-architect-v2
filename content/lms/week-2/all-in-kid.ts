@@ -3,6 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "all-in-kid",
   week: 2,
+  weekTitle: "The Same Depth on Screens",
 
   weeklyReading: {
     introShared: `It's easy to watch {{child_name}} vanish into a game for two hours and worry that screens have some special hold on {{child_pronoun_obj}}. They don't — not more than anything else {{child_pronoun_subj}} goes deep into, anyway. What screens actually offer, better than almost anything else in {{child_pronoun_poss}} day, is *uninterrupted time*. Nobody calls {{child_pronoun_obj}} for dinner mid-level. Nobody checks in every five minutes. The depth you see on screen isn't a different capacity than the one that goes quiet on homework — it's the exact same one, just finally given the conditions it needs everywhere else. This week doesn't fight the gaming. It uses it as proof, then builds the same conditions somewhere that matters more to you.`,
