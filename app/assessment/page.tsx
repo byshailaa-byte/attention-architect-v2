@@ -19,9 +19,13 @@ function fireGtag(event: string, params?: Record<string, unknown>) {
   }
 }
 
-function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>) {
+function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>, eventId?: string) {
   if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    window.fbq(type, event, params ?? {});
+    if (eventId) {
+      window.fbq(type, event, params ?? {}, { eventID: eventId });
+    } else {
+      window.fbq(type, event, params ?? {});
+    }
   }
 }
 
@@ -289,7 +293,7 @@ function AssessmentForm() {
         throw new Error((d as { error?: string }).error ?? "Something went wrong");
       }
       fireGtag("generate_lead");
-      fireFbq("track", "Lead");
+      fireFbq("track", "Lead", {}, `lead:${sessionId}`);
       router.push(`/report/generating/${sessionId}?name=${encodeURIComponent(childName || "")}&archetype=${encodeURIComponent(scoringResult?.archetype || "")}`);
     } catch (e) {
       setError((e as Error).message);
