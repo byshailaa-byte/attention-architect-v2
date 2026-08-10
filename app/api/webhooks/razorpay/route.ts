@@ -85,8 +85,8 @@ export async function POST(req: NextRequest) {
         `[webhook/razorpay] payment.captured: order=${razorpayOrderId} payment=${razorpayPaymentId}`
       );
 
-      // CAPI Purchase — event_id matches client-side fbq call: `purchase:${razorpayPaymentId}`
-      // after() guarantees execution completes even after the 200 response is sent
+      // CAPI Purchase + funnel event — both run in after() post-response.
+      // after() guarantees execution even after 200 is sent; single SELECT serves both.
       after(async () => {
         try {
           const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
@@ -121,30 +121,18 @@ export async function POST(req: NextRequest) {
               num_items: 1,
             },
           }]);
+          await sql`
+            INSERT INTO funnel_events (event_type, session_id, metadata)
+            VALUES ('purchase', ${row.session_id}::uuid, ${JSON.stringify({
+              tier: row.tier,
+              value: row.amount_paise / 100,
+              razorpay_payment_id: razorpayPaymentId,
+            })}::jsonb)
+          `.catch((e: unknown) => console.warn("[funnel] purchase event:", (e as Error).message));
         } catch (e: unknown) {
           console.warn("[capi] purchase:", (e as Error).message);
         }
       });
-
-      // Fire purchase funnel event (fire-and-forget)
-      sql`
-        SELECT a.session_id::text, p.tier, p.amount_paise
-        FROM purchases p
-        JOIN assessments a ON a.id = p.assessment_id
-        WHERE p.razorpay_order_id = ${razorpayOrderId}
-        LIMIT 1
-      `.then((rows) => {
-        const row = (rows as unknown as { session_id: string; tier: string; amount_paise: number }[])[0];
-        if (!row?.session_id) return;
-        return sql`
-          INSERT INTO funnel_events (event_type, session_id, metadata)
-          VALUES ('purchase', ${row.session_id}::uuid, ${JSON.stringify({
-            tier: row.tier,
-            value: row.amount_paise / 100,
-            razorpay_payment_id: razorpayPaymentId,
-          })}::jsonb)
-        `;
-      }).catch((e: unknown) => console.warn("[funnel] purchase event:", (e as Error).message));
 
       // Fire-and-forget receipt email. Never blocks the 200 response.
       // capturePayment guarantees "processed" is returned exactly once per order,

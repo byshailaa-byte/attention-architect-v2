@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // Fire generate_lead event (fire-and-forget)
-    sql`
+    // Awaited — fire-and-forget caused event loss, same pattern as assessment_complete bug
+    await sql`
       INSERT INTO funnel_events (event_type, session_id, metadata)
       VALUES ('generate_lead', ${sessionId}::uuid, '{}'::jsonb)
     `.catch((e: unknown) => console.warn("[funnel] generate_lead:", (e as Error).message));
