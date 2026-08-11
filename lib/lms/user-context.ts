@@ -14,6 +14,7 @@ export type LmsUserContext = {
   archetype: string;
   parentPattern: string;
   weakestTwo: string[];
+  onboardingCompleted: boolean;
 };
 
 function normalizeGender(raw: string | null): Gender {
@@ -36,30 +37,33 @@ export async function getLmsUserContext(): Promise<LmsUserContext> {
   if (!userId) redirect("/lms/login");
 
   const sql = getSql();
-  const rows = (await sql`
-    SELECT
-      a.id,
-      a.child_name,
-      a.child_gender,
-      a.age_band,
-      a.archetype,
-      a.parent_pattern,
-      a.weakest_two
-    FROM assessments a
-    JOIN purchases p ON p.assessment_id = a.id
-    WHERE p.user_id = ${userId}
-      AND p.status  = 'paid'
-    ORDER BY p.created_at DESC
-    LIMIT 1
-  `) as unknown as {
-    id: string;
-    child_name: string;
-    child_gender: string | null;
-    age_band: AgeBand;
-    archetype: string;
-    parent_pattern: string;
-    weakest_two: string[] | null;
-  }[];
+  const [rows, userRows] = await Promise.all([
+    sql`
+      SELECT
+        a.id,
+        a.child_name,
+        a.child_gender,
+        a.age_band,
+        a.archetype,
+        a.parent_pattern,
+        a.weakest_two
+      FROM assessments a
+      JOIN purchases p ON p.assessment_id = a.id
+      WHERE p.user_id = ${userId}
+        AND p.status  = 'paid'
+      ORDER BY p.created_at DESC
+      LIMIT 1
+    ` as unknown as Promise<{
+      id: string;
+      child_name: string;
+      child_gender: string | null;
+      age_band: AgeBand;
+      archetype: string;
+      parent_pattern: string;
+      weakest_two: string[] | null;
+    }[]>,
+    sql`SELECT onboarding_completed_at FROM users WHERE id = ${userId}` as unknown as Promise<{ onboarding_completed_at: Date | null }[]>,
+  ]);
 
   if (rows.length === 0) redirect("/");
 
@@ -73,5 +77,6 @@ export async function getLmsUserContext(): Promise<LmsUserContext> {
     archetype: a.archetype,
     parentPattern: a.parent_pattern,
     weakestTwo: a.weakest_two ?? [],
+    onboardingCompleted: !!(userRows[0]?.onboarding_completed_at),
   };
 }

@@ -4,10 +4,18 @@ import { getLmsUserContext } from "@/lib/lms/user-context";
 import { getLmsWeekContent, getDayCard } from "@/lib/lms/content";
 import { getUserProgress, isDayUnlocked, UNLOCK_DELAY_MS } from "@/lib/lms/progress";
 import { renderMarkdown, fillLmsContent } from "@/lib/lms/render";
+import { getSql } from "@/lib/db/client";
 import DayCardActions from "@/components/lms/DayCardActions";
+import ShareNudge from "@/components/lms/ShareNudge";
 import type { ReflectionOutcome } from "@/content/types";
 
 type Props = { params: Promise<{ week: string; day: string }> };
+
+const OUTCOME_LABELS: Record<string, string> = {
+  worked: "worked",
+  mixed: "mixed",
+  didnt_land: "didn't land",
+};
 
 export default async function DayCardPage({ params }: Props) {
   const { week: weekStr, day: dayStr } = await params;
@@ -24,7 +32,6 @@ export default async function DayCardPage({ params }: Props) {
   const now = new Date();
   const progress = await getUserProgress(ctx.userId, week);
 
-  // For week boundaries (Week N Day 1, N > 1), also need the previous week's progress.
   const prevWeekProgress =
     week > 1 && day === 1 ? await getUserProgress(ctx.userId, week - 1) : null;
 
@@ -34,7 +41,7 @@ export default async function DayCardPage({ params }: Props) {
 
   const fill = (s: string) => fillLmsContent(s, ctx.childName, ctx.childGender);
 
-  // Opening fork: days 3–5 use the prior day's reflection (or "mixed" if not tapped)
+  // Opening fork: days 3–5 use the prior day's reflection
   let openingForkText: string | null = null;
   if (day >= 3 && day <= 5) {
     const priorDayCard = getDayCard(content, day - 1);
@@ -44,10 +51,23 @@ export default async function DayCardPage({ params }: Props) {
     openingForkText = rawFork ? fill(rawFork) : null;
   }
 
+  // Previous day reflection label (shown as a simple note line)
+  const prevDayOutcome = day >= 2 ? (progress.reflections.get(day - 1) ?? null) : null;
+
   const dayContent = fill(dayCard.content[ctx.ageBand]);
   const reflectionPrompt = dayCard.reflection?.prompt ?? null;
 
-  // Determine where "next" goes after this card
+  // Total days completed across all weeks for share nudge
+  const sql = getSql();
+  const countRow = (await sql`
+    SELECT COUNT(*)::int as cnt FROM lms_progress
+    WHERE user_id = ${ctx.userId} AND day BETWEEN 1 AND 5
+  `) as unknown as { cnt: number }[];
+  const totalCompleted = countRow[0]?.cnt ?? 0;
+
+  // Overall progress for top bar (days completed / 30)
+  const progressPct = Math.round((totalCompleted / 30) * 100);
+
   let nextHref: string;
   if (day === 5) {
     nextHref = `/lms/week/${week}/weekend`;
@@ -56,8 +76,7 @@ export default async function DayCardPage({ params }: Props) {
   }
 
   if (!unlocked) {
-    // Determine why: is the prerequisite day incomplete, or just not yet 24h?
-    const prevDay = day === 1 ? 5 : day - 1; // week-boundary: prereq is prev week's Day 5
+    const prevDay = day === 1 ? 5 : day - 1;
     const prereqProg = day === 1 && week > 1 ? prevWeekProgress : progress;
     const prereqComplete = prereqProg?.completedDays.has(prevDay) ?? false;
 
@@ -66,7 +85,7 @@ export default async function DayCardPage({ params }: Props) {
     if (!prereqComplete) {
       heading = day === 1
         ? `Complete Week ${week - 1} first`
-        : `Day ${prevDay} isn’t complete yet`;
+        : `Day ${prevDay} isn't complete yet`;
       subtext = "Complete the previous day to continue.";
     } else {
       const prereqTime = prereqProg?.completionTimes.get(prevDay);
@@ -74,7 +93,7 @@ export default async function DayCardPage({ params }: Props) {
         ? UNLOCK_DELAY_MS - (now.getTime() - prereqTime.getTime())
         : UNLOCK_DELAY_MS;
       const remainingHours = Math.ceil(remainingMs / (60 * 60 * 1000));
-      heading = `Day ${day} isn’t available yet`;
+      heading = `Day ${day} isn't available yet`;
       subtext =
         remainingHours <= 1
           ? "This unlocks in less than an hour — check back soon."
@@ -82,113 +101,92 @@ export default async function DayCardPage({ params }: Props) {
     }
 
     return (
-      <div
-        className="min-h-screen px-5 py-10 mx-auto"
-        style={{ maxWidth: 680, background: "var(--paper)", color: "var(--ink)" }}
-      >
-        <Link href="/lms" className="text-sm mb-8 block" style={{ color: "var(--calm)" }}>
-          ← Back
-        </Link>
-        <div
-          className="rounded-xl p-6 text-center"
-          style={{ background: "var(--card)", border: "1.5px solid var(--line)" }}
-        >
-          <p className="text-lg font-semibold mb-2" style={{ color: "var(--ink)" }}>
-            {heading}
-          </p>
-          <p className="text-sm mb-4" style={{ color: "var(--ink-dim)" }}>
-            {subtext}
-          </p>
-          <Link
-            href="/lms"
-            className="inline-block rounded-lg px-4 py-2 text-sm font-semibold"
-            style={{ background: "var(--ink)", color: "#fff" }}
-          >
-            Back to my program
-          </Link>
+      <div style={{ minHeight: "100dvh", background: "var(--jm-paper)", color: "var(--jm-ink)", fontFamily: `'Public Sans', 'Inter', system-ui, sans-serif` }}>
+        {/* Top bar */}
+        <div style={{ background: "var(--jm-white)", borderBottom: "1px solid var(--jm-rule)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 14, position: "sticky", top: 0, zIndex: 10 }}>
+          <Link href="/lms" style={{ fontSize: 13, color: "var(--jm-accent-b)", fontWeight: 700, whiteSpace: "nowrap", textDecoration: "none" }}>← Journey</Link>
+          <div style={{ flex: 1, height: 5, background: "var(--jm-paper2)", borderRadius: 10, overflow: "hidden" }}>
+            <div style={{ background: "var(--jm-accent-b)", height: "100%", width: `${progressPct}%` }} />
+          </div>
+          <span style={{ fontSize: 12, color: "var(--jm-ink-faint)", whiteSpace: "nowrap" }}>Week {week} · Day {day}</span>
+        </div>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "40px 24px" }}>
+          <div style={{ borderRadius: 12, padding: "24px", textAlign: "center", background: "var(--jm-white)", border: "1.5px solid var(--jm-rule)" }}>
+            <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{heading}</p>
+            <p style={{ fontSize: 14, color: "var(--jm-ink-soft)", marginBottom: 16 }}>{subtext}</p>
+            <Link href="/lms" style={{ display: "inline-block", borderRadius: 8, padding: "10px 20px", fontSize: 14, fontWeight: 600, background: "var(--jm-ink)", color: "#fff", textDecoration: "none" }}>
+              Back to journey map
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div
-      className="min-h-screen px-5 py-10 mx-auto"
-      style={{ maxWidth: 680, background: "var(--paper)", color: "var(--ink)" }}
-    >
-      {/* Nav */}
-      <div className="flex items-center justify-between mb-8">
-        <Link href={`/lms/week/${week}`} className="text-sm" style={{ color: "var(--calm)" }}>
-          ← Week {week}
-        </Link>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 20, width: "auto" }} />
-        <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--ink-dim)" }}>
-          Day {day} of 5
-        </span>
+    <div style={{ minHeight: "100dvh", background: "var(--jm-paper)", color: "var(--jm-ink)", fontFamily: `'Public Sans', 'Inter', system-ui, sans-serif` }}>
+      {/* Persistent top bar */}
+      <div style={{ background: "var(--jm-white)", borderBottom: "1px solid var(--jm-rule)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 14, position: "sticky", top: 0, zIndex: 10 }}>
+        <Link href="/lms" style={{ fontSize: 13, color: "var(--jm-accent-b)", fontWeight: 700, whiteSpace: "nowrap", textDecoration: "none" }}>← Journey</Link>
+        <div style={{ flex: 1, height: 5, background: "var(--jm-paper2)", borderRadius: 10, overflow: "hidden" }}>
+          <div style={{ background: "var(--jm-accent-b)", height: "100%", width: `${progressPct}%` }} />
+        </div>
+        <span style={{ fontSize: 12, color: "var(--jm-ink-faint)", whiteSpace: "nowrap" }}>Week {week} · Day {day}</span>
       </div>
 
-      {/* Opening fork — prior day's reflection shapes today's opening */}
-      {openingForkText && (
-        <div
-          className="rounded-xl px-5 py-4 mb-6"
-          style={{ background: "var(--calm-tint)", border: "1px solid var(--calm)", borderColor: "rgba(110,95,176,0.3)" }}
-        >
-          <p className="text-sm" style={{ color: "var(--calm-text)" }}>
-            {openingForkText}
-          </p>
-        </div>
-      )}
+      <div style={{ maxWidth: 600, margin: "0 auto", padding: "40px 24px" }}>
+        {/* Opening fork — content-authored branch from prior day reflection */}
+        {openingForkText && (
+          <div style={{ background: "var(--calm-tint)", border: "1px solid rgba(110,95,176,0.3)", borderRadius: 12, padding: "16px 20px", marginBottom: 24 }}>
+            <p style={{ fontSize: 14, color: "var(--calm-text)" }}>{openingForkText}</p>
+          </div>
+        )}
 
-      {/* Day card */}
-      <div
-        className="rounded-xl p-6 mb-6"
-        style={{ background: "var(--card)", border: "1.5px solid var(--line)" }}
-      >
-        <div className="flex items-baseline gap-3 mb-4">
-          <span
-            className="text-xs font-semibold uppercase tracking-widest"
-            style={{ color: "var(--ink-dim)" }}
-          >
-            Action Card — Day {day}
-          </span>
-        </div>
-        <h2 className="text-xl font-bold mb-4" style={{ color: "var(--ink)" }}>
-          {fill(dayCard.title)}
-        </h2>
-        <div
-          className="prose-lms"
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(dayContent) }}
-        />
-      </div>
-
-      {/* Day progress dots */}
-      <div className="flex gap-2 justify-center mb-2">
-        {[1, 2, 3, 4, 5].map((d) => (
+        {/* Day card */}
+        <div style={{ background: "var(--card)", border: "1.5px solid var(--line)", borderRadius: 12, padding: 24, marginBottom: 24 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".13em", color: "var(--jm-accent-b)", marginBottom: 14 }}>
+            Day {day} — {fill(dayCard.title)}
+          </div>
           <div
-            key={d}
-            className="rounded-full"
-            style={{
-              width: 8,
-              height: 8,
-              background:
-                d < day ? "var(--ink)" :
-                d === day ? "var(--marker)" :
-                "var(--line)",
-            }}
+            className="prose-lms"
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(dayContent) }}
           />
-        ))}
-      </div>
+          {/* Previous day reflection note */}
+          {prevDayOutcome && !openingForkText && (
+            <p style={{ fontSize: 13, color: "var(--jm-ink-faint)", marginTop: 16, fontStyle: "italic" }}>
+              Yesterday: {OUTCOME_LABELS[prevDayOutcome] ?? prevDayOutcome}.
+            </p>
+          )}
+        </div>
 
-      {/* Interactive: complete + reflection */}
-      <DayCardActions
-        week={week}
-        day={day}
-        reflectionPrompt={reflectionPrompt}
-        alreadyComplete={alreadyComplete}
-        existingReflection={existingReflection as ReflectionOutcome | null}
-        nextHref={nextHref}
-      />
+        {/* Day progress dots */}
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 8 }}>
+          {[1, 2, 3, 4, 5].map((d) => (
+            <div
+              key={d}
+              style={{
+                width: 8, height: 8, borderRadius: "50%",
+                background: d < day ? "var(--jm-ink)" : d === day ? "var(--jm-accent-b)" : "var(--jm-rule)",
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Complete + reflection */}
+        <DayCardActions
+          week={week}
+          day={day}
+          reflectionPrompt={reflectionPrompt}
+          alreadyComplete={alreadyComplete}
+          existingReflection={existingReflection as ReflectionOutcome | null}
+          nextHref={nextHref}
+        />
+
+        {/* Share nudge — shown after completing at least a few days */}
+        {alreadyComplete && totalCompleted >= 3 && (
+          <ShareNudge totalDays={totalCompleted} />
+        )}
+      </div>
     </div>
   );
 }

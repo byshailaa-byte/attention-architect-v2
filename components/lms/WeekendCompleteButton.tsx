@@ -15,12 +15,14 @@ export default function WeekendCompleteButton({
   nextWeek,
   nextWeekUnlocked,
   nextWeekUnlockHours,
+  onCompleted,
 }: {
   week: number;
   alreadyComplete: boolean;
-  nextWeek: number | null;     // null = no more content after this week
+  nextWeek: number | null;
   nextWeekUnlocked: boolean;
-  nextWeekUnlockHours: number; // hours remaining until unlock (ignored if unlocked)
+  nextWeekUnlockHours: number;
+  onCompleted?: () => void;
 }) {
   const [done, setDone] = useState(alreadyComplete);
   const [loading, setLoading] = useState(false);
@@ -40,6 +42,7 @@ export default function WeekendCompleteButton({
         window.fbq("trackCustom", "LmsDayComplete", { week, day: 0 });
       }
       setDone(true);
+      onCompleted?.();
     } finally {
       setLoading(false);
     }

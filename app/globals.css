@@ -17,6 +17,21 @@
   --green:       #3FBE7A;
   --green-tint:  #E8F4EC;
   --line:        rgba(35,36,44,.12);
+
+  /* Journey / onboarding design system — warm green palette */
+  --jm-paper:        #EDE6D6;
+  --jm-paper2:       #E3D9C3;
+  --jm-white:        #FBF9F3;
+  --jm-ink:          #201E19;
+  --jm-ink-soft:     #5B5648;
+  --jm-ink-faint:    #8B8570;
+  --jm-rule:         rgba(32,30,25,.13);
+  --jm-accent:       #34503F;
+  --jm-accent-b:     #1F7A4C;
+  --jm-accent-soft:  rgba(52,80,63,.10);
+  --jm-gold:         #A9772A;
+  --jm-gold-soft:    rgba(169,119,42,.14);
+  --jm-shadow:       0 1px 2px rgba(32,30,25,.05), 0 10px 28px rgba(32,30,25,.08);
 }
 
 @theme inline {
