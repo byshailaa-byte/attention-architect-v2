@@ -49,7 +49,7 @@ export async function sendWhatsAppHandbook({
           {
             type: "body",
             parameters: [
-              { type: "text", parameter_name: "parent_name", text: name },
+              { type: "text", parameter_name: "customer_name", text: name },
             ],
           },
           {
