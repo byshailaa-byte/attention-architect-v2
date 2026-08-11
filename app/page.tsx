@@ -654,7 +654,7 @@ export default function LandingPage() {
           <div style={{ maxWidth: 600 }}>
 
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-horizontal-with-tagline.png" alt="Attention Architect" style={{ height: 40, width: "auto", marginBottom: "32px" }} />
+            <img src="/logo-horizontal-with-tagline.png" alt="Attention Architect" style={{ width: "min(500px, 100%)", height: "auto", marginBottom: "32px" }} />
 
             <div style={{ fontSize: "11px", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--ink-dim)", fontWeight: 700, marginBottom: "20px" }}>
               What we found for {ageLabel} with {concernLabel} difficulty
