@@ -31,7 +31,7 @@ export default async function WeekReadingPage({ params }: Props) {
       {/* Header */}
       <div className="mb-8">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-icon-wordmark.png" alt="Attention Architect" style={{ height: 36, width: "auto", marginBottom: 16 }} />
+        <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 24, width: "auto", marginBottom: 16 }} />
         <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--ink-dim)" }}>
           Week {week}
         </p>

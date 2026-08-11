@@ -156,7 +156,7 @@ function GeneratingScreen() {
     >
       <div style={{ position: "absolute", top: "24px", left: "24px" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-icon-wordmark.png" alt="Attention Architect" style={{ height: 32, width: "auto" }} />
+        <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 22, width: "auto" }} />
       </div>
 
       <div style={{ maxWidth: "400px", width: "100%", textAlign: "center" }}>

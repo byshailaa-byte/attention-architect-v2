@@ -16,9 +16,9 @@ export default function SiteFooter() {
           <div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-icon-wordmark.png"
+              src="/logo-horizontal-icon-wordmark.png"
               alt="Attention Architect"
-              style={{ height: 36, width: "auto", filter: "brightness(0) invert(1)", opacity: 0.85 }}
+              style={{ height: 26, width: "auto", filter: "brightness(3)", opacity: 0.9 }}
             />
           </div>
           <div style={{ display: "flex", gap: "28px", flexWrap: "wrap" }}>

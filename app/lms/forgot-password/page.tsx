@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
     >
       <div className="w-full max-w-sm">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-icon-wordmark.png" alt="Attention Architect" style={{ height: 44, width: "auto", marginBottom: 16 }} />
+        <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto", marginBottom: 16 }} />
         <h1
           className="text-2xl font-bold mb-2"
           style={{ color: "var(--ink)" }}

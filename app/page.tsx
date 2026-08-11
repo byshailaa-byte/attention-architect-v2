@@ -185,7 +185,7 @@ function BrandMark({ mb }: { mb?: string }) {
   return (
     <div style={{ marginBottom: mb ?? "32px" }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo-icon-wordmark.png" alt="Attention Architect" style={{ height: 48, width: "auto" }} />
+      <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto" }} />
     </div>
   );
 }
@@ -654,7 +654,7 @@ export default function LandingPage() {
           <div style={{ maxWidth: 600 }}>
 
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-full-lockup.png" alt="Attention Architect" style={{ height: 72, width: "auto", marginBottom: "36px" }} />
+            <img src="/logo-horizontal-with-tagline.png" alt="Attention Architect" style={{ height: 40, width: "auto", marginBottom: "32px" }} />
 
             <div style={{ fontSize: "11px", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--ink-dim)", fontWeight: 700, marginBottom: "20px" }}>
               What we found for {ageLabel} with {concernLabel} difficulty
