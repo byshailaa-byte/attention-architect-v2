@@ -7,11 +7,25 @@ export default async function LmsHomePage() {
   const ctx = await getLmsUserContext();
   const now = new Date();
 
-  // Fetch week 1 and week 2 progress in parallel
-  const [week1Progress, week2Progress] = await Promise.all([
+  const [week1Progress, week2Progress, week3Progress] = await Promise.all([
     getUserProgress(ctx.userId, 1),
     getUserProgress(ctx.userId, 2),
+    getUserProgress(ctx.userId, 3),
   ]);
+
+  // Week 3 unlock: requires Week 2 Day 5 complete + 24h elapsed AND content exists
+  const week3HasContent = getLmsWeekContent(ctx.archetype, 3) !== null;
+  const week3Unlocked =
+    week3HasContent && isDayUnlocked(1, 3, week3Progress, week2Progress, now);
+
+  if (week3Unlocked) {
+    if (week3Progress.completedDays.size > 0) {
+      const nextDay = getNextDay(week3Progress);
+      if (nextDay === 0) redirect("/lms/week/3/weekend");
+      redirect(`/lms/week/3/day/${nextDay}`);
+    }
+    redirect("/lms/week/3/day/1");
+  }
 
   // Week 2 unlock: requires Week 1 Day 5 complete + 24h elapsed AND content exists
   const week2HasContent = getLmsWeekContent(ctx.archetype, 2) !== null;
@@ -21,15 +35,13 @@ export default async function LmsHomePage() {
   if (week2Unlocked) {
     if (week2Progress.completedDays.size > 0) {
       const nextDay = getNextDay(week2Progress);
-      // nextDay === 0 means all 5 days done → route to weekend (done or not)
       if (nextDay === 0) redirect("/lms/week/2/weekend");
       redirect(`/lms/week/2/day/${nextDay}`);
     }
-    // Week 2 unlocked but not started — go to day 1
     redirect("/lms/week/2/day/1");
   }
 
-  // Week 2 not yet unlocked — route within week 1
+  // Week 1 routing
   if (week1Progress.completedDays.size === 0) {
     redirect("/lms/week/1");
   }

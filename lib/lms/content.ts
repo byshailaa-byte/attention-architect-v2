@@ -15,18 +15,26 @@ import { weekContent as glueWeek2 } from "@/content/lms/week-2/glue";
 import { weekContent as inventorWeek2 } from "@/content/lms/week-2/inventor";
 import { weekContent as liveWireWeek2 } from "@/content/lms/week-2/live-wire";
 import { weekContent as magnetWeek2 } from "@/content/lms/week-2/magnet";
+import { weekContent as stormWeek3 } from "@/content/lms/week-3/storm";
+import { weekContent as captainWeek3 } from "@/content/lms/week-3/captain";
+import { weekContent as allInKidWeek3 } from "@/content/lms/week-3/all-in-kid";
+import { weekContent as explorerWeek3 } from "@/content/lms/week-3/explorer";
+import { weekContent as glueWeek3 } from "@/content/lms/week-3/glue";
+import { weekContent as inventorWeek3 } from "@/content/lms/week-3/inventor";
+import { weekContent as liveWireWeek3 } from "@/content/lms/week-3/live-wire";
+import { weekContent as magnetWeek3 } from "@/content/lms/week-3/magnet";
 
 // Static map: (archetype slug, week) → content.
-// Extend as authoring docs land for weeks 3–6.
+// Extend as authoring docs land for weeks 4–6.
 const CONTENT: Partial<Record<string, Partial<Record<number, LmsWeekContent>>>> = {
-  storm:        { 1: stormWeek1,    2: stormWeek2 },
-  captain:      { 1: captainWeek1,  2: captainWeek2 },
-  "all-in-kid": { 1: allInKidWeek1, 2: allInKidWeek2 },
-  explorer:     { 1: explorerWeek1, 2: explorerWeek2 },
-  glue:         { 1: glueWeek1,     2: glueWeek2 },
-  inventor:     { 1: inventorWeek1, 2: inventorWeek2 },
-  "live-wire":  { 1: liveWireWeek1, 2: liveWireWeek2 },
-  magnet:       { 1: magnetWeek1,   2: magnetWeek2 },
+  storm:        { 1: stormWeek1,    2: stormWeek2,    3: stormWeek3 },
+  captain:      { 1: captainWeek1,  2: captainWeek2,  3: captainWeek3 },
+  "all-in-kid": { 1: allInKidWeek1, 2: allInKidWeek2, 3: allInKidWeek3 },
+  explorer:     { 1: explorerWeek1, 2: explorerWeek2, 3: explorerWeek3 },
+  glue:         { 1: glueWeek1,     2: glueWeek2,     3: glueWeek3 },
+  inventor:     { 1: inventorWeek1, 2: inventorWeek2, 3: inventorWeek3 },
+  "live-wire":  { 1: liveWireWeek1, 2: liveWireWeek2, 3: liveWireWeek3 },
+  magnet:       { 1: magnetWeek1,   2: magnetWeek2,   3: magnetWeek3 },
 };
 
 // Normalises DB display names ("The Storm", "The All-In Kid") and bare slugs
