@@ -44,12 +44,8 @@ export default function LoginForm({ redirectTo }: Props) {
       style={{ background: "var(--paper)" }}
     >
       <div className="w-full max-w-sm">
-        <p
-          className="text-xs font-semibold uppercase tracking-widest mb-1"
-          style={{ color: "var(--ink-dim)" }}
-        >
-          The Attention System
-        </p>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-icon-wordmark.png" alt="Attention Architect" style={{ height: 44, width: "auto", marginBottom: 20 }} />
         <h1
           className="text-2xl font-bold mb-8"
           style={{ color: "var(--ink)" }}

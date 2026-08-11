@@ -52,6 +52,9 @@ function PreAssessmentForm() {
   return (
     <div className="funnel-screen">
       <div className="funnel-card">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-icon-wordmark.png" alt="Attention Architect" style={{ height: 44, width: "auto", marginBottom: 20 }} />
+
         <div style={{ fontSize: "11px", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--ink-dim)", fontWeight: 700, marginBottom: "16px" }}>
           Before You Start
         </div>

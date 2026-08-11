@@ -101,6 +101,8 @@ export default async function WeekendReviewPage({ params }: Props) {
         <Link href={`/lms/week/${week}/day/5`} className="text-sm" style={{ color: "var(--calm)" }}>
           ← Day 5
         </Link>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto" }} />
         <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--ink-dim)" }}>
           Week {week} — Weekend review
         </span>

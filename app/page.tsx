@@ -183,16 +183,9 @@ type Stage = "step1" | "step2" | "reveal";
 
 function BrandMark({ mb }: { mb?: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: mb ?? "32px" }}>
-      <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--marker)", flexShrink: 0 }} />
-      <div>
-        <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "14.5px", color: "var(--ink)", lineHeight: 1.2 }}>
-          Attention Architect
-        </div>
-        <div style={{ fontSize: "11px", color: "var(--ink-dim)", fontWeight: 600, marginTop: "2px", lineHeight: 1.3 }}>
-          Become the Architect of your child&rsquo;s Attention Health
-        </div>
-      </div>
+    <div style={{ marginBottom: mb ?? "32px" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo-icon-wordmark.png" alt="Attention Architect" style={{ height: 48, width: "auto" }} />
     </div>
   );
 }
@@ -659,6 +652,9 @@ export default function LandingPage() {
           style={{ paddingTop: "56px", paddingBottom: "56px" }}
         >
           <div style={{ maxWidth: 600 }}>
+
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-full-lockup.png" alt="Attention Architect" style={{ height: 72, width: "auto", marginBottom: "36px" }} />
 
             <div style={{ fontSize: "11px", letterSpacing: ".16em", textTransform: "uppercase", color: "var(--ink-dim)", fontWeight: 700, marginBottom: "20px" }}>
               What we found for {ageLabel} with {concernLabel} difficulty

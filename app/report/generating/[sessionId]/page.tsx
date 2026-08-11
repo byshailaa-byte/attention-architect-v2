@@ -154,10 +154,9 @@ function GeneratingScreen() {
         position: "relative",
       }}
     >
-      <div style={{ position: "absolute", top: "28px", left: "28px" }}>
-        <span style={{ fontFamily: FR, fontStyle: "italic", fontSize: "14px", color: inkFaint }}>
-          Attention Architect
-        </span>
+      <div style={{ position: "absolute", top: "24px", left: "24px" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-icon-wordmark.png" alt="Attention Architect" style={{ height: 32, width: "auto" }} />
       </div>
 
       <div style={{ maxWidth: "400px", width: "100%", textAlign: "center" }}>

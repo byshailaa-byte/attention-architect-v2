@@ -1,7 +1,5 @@
 import Link from "next/link";
 
-const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
-
 export default function SiteFooter() {
   return (
     <footer style={{ background: "var(--ink)", color: "#9c9aa8", padding: "56px 0 36px" }}>
@@ -16,12 +14,12 @@ export default function SiteFooter() {
           borderBottom: "1px solid rgba(255,255,255,.1)",
         }}>
           <div>
-            <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "16px", color: "#F6F4EC" }}>
-              Attention Architect
-            </div>
-            <div style={{ color: "#9c9aa8", fontWeight: 500, fontSize: "13px", marginTop: "4px" }}>
-              by The Human Decision
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-icon-wordmark.png"
+              alt="Attention Architect"
+              style={{ height: 36, width: "auto", filter: "brightness(0) invert(1)", opacity: 0.85 }}
+            />
           </div>
           <div style={{ display: "flex", gap: "28px", flexWrap: "wrap" }}>
             <Link href="/privacy" style={{ color: "#9c9aa8", textDecoration: "none", fontSize: "13.5px", fontWeight: 500 }}>

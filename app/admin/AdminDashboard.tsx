@@ -826,9 +826,7 @@ export default function AdminDashboard({
           >
             ☰
           </button>
-          <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: C.muted }}>
-            Attention Architect
-          </span>
+          <img src="/logo-icon-wordmark.png" alt="Attention Architect" style={{ height: 20, width: "auto", filter: "brightness(0) invert(1)", opacity: 0.75 }} />
           <span style={{ fontFamily: BG, fontWeight: 700, fontSize: 14, color: C.text, marginLeft: "auto" }}>
             {NAV.find(n => n.id === active)?.label ?? "Admin"}
           </span>
@@ -847,9 +845,7 @@ export default function AdminDashboard({
       <aside style={sidebarStyle}>
         <div style={{ padding: isMobile ? "16px 20px 12px" : "24px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <p style={{ fontFamily: MONO, fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: C.muted, margin: "0 0 4px" }}>
-              Attention Architect
-            </p>
+            <img src="/logo-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto", filter: "brightness(0) invert(1)", opacity: 0.85, marginBottom: 4 }} />
             <p style={{ fontFamily: BG, fontWeight: 800, fontSize: 15, color: C.text, margin: 0 }}>Admin</p>
           </div>
           {isMobile && (

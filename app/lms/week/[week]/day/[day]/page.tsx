@@ -121,6 +121,8 @@ export default async function DayCardPage({ params }: Props) {
         <Link href={`/lms/week/${week}`} className="text-sm" style={{ color: "var(--calm)" }}>
           ← Week {week}
         </Link>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto" }} />
         <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--ink-dim)" }}>
           Day {day} of 5
         </span>

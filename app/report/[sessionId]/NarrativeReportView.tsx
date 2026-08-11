@@ -217,6 +217,8 @@ function CoverSection({
   return (
     <section style={{ background: T.surface, padding: "60px 0 52px" }}>
       <Shell>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-full-lockup.png" alt="Attention Architect" style={{ height: 64, width: "auto", marginBottom: "32px" }} />
         <div style={{
           fontFamily: PUBLIC_SANS,
           fontSize: "13px",

@@ -110,6 +110,7 @@ const HTML = `<!DOCTYPE html>
 
 <section class="cover">
   <div class="cover-inner">
+    <img src="/logo-full-lockup.png" alt="Attention Architect" style="height:70px;width:auto;margin-bottom:28px;filter:brightness(0) invert(1);opacity:0.9">
     <div class="eyebrow">The Human Decision</div>
     <h1>The Attention Handbook</h1>
     <p class="sub">The invisible skill behind every report card. A field guide for parents — free to read, free to share.</p>
@@ -119,7 +120,7 @@ const HTML = `<!DOCTYPE html>
       <div class="row"><span>Science</span><span class="n">95</span></div>
       <div class="row attn"><span><strong>Attention</strong></span><span class="q">?</span></div>
     </div>
-    <div class="tag">A Field Guide for Parents · Attention Architect</div>
+    <div class="tag">A Field Guide for Parents · attentionparents.thehumandecision.in</div>
   </div>
 </section>
 
