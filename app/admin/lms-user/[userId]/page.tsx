@@ -71,14 +71,18 @@ export default async function LmsUserDetailPage({ params }: { params: Params }) 
   const purchase = purchases[0] ?? null;
   const archetype = purchase?.archetype ?? null;
 
-  // Fetch lms_progress and lms_reflections for weeks 1 and 2
-  const [week1Progress, week2Progress] = await Promise.all([
+  // Fetch lms_progress and lms_reflections for weeks 1–3
+  const [week1Progress, week2Progress, week3Progress] = await Promise.all([
     getUserProgress(userId, 1),
     getUserProgress(userId, 2),
+    getUserProgress(userId, 3),
   ]);
 
   const week2HasContent = archetype !== null && getLmsWeekContent(archetype, 2) !== null;
   const week2Unlocked = week2HasContent && isDayUnlocked(1, 2, week2Progress, week1Progress, now);
+
+  const week3HasContent = archetype !== null && getLmsWeekContent(archetype, 3) !== null;
+  const week3Unlocked = week3HasContent && isDayUnlocked(1, 3, week3Progress, week2Progress, now);
 
   // Build week summary rows
   function buildWeekSummary(weekNum: number, prog: typeof week1Progress, prevProg: typeof week1Progress | null) {
@@ -115,6 +119,7 @@ export default async function LmsUserDetailPage({ params }: { params: Params }) 
 
   const week1Summary = buildWeekSummary(1, week1Progress, null);
   const week2Summary = buildWeekSummary(2, week2Progress, week1Progress);
+  const week3Summary = buildWeekSummary(3, week3Progress, week2Progress);
 
   const dayLabel = (d: number) => d === 0 ? "Weekend" : `Day ${d}`;
 
@@ -187,7 +192,18 @@ export default async function LmsUserDetailPage({ params }: { params: Params }) 
           <p style={{ fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em", color: "#888", margin: "0 0 8px" }}>
             Current position
           </p>
-          {week2Unlocked ? (
+          {week3Unlocked ? (
+            <p style={{ margin: 0, fontSize: "15px", color: "#111" }}>
+              <strong>Week 3</strong>{" "}
+              {week3Progress.completedDays.size > 0
+                ? `· ${week3Progress.completedDays.size} day(s) complete`
+                : "· Not started yet"}
+              {" "}· Week 3 unlocked{" "}
+              {week2Progress.completionTimes.get(5)
+                ? `(W2 Day 5 was ${formatDuration(now.getTime() - week2Progress.completionTimes.get(5)!.getTime())} ago)`
+                : ""}
+            </p>
+          ) : week2Unlocked ? (
             <p style={{ margin: 0, fontSize: "15px", color: "#111" }}>
               <strong>Week 2</strong>{" "}
               {week2Progress.completedDays.size > 0
@@ -195,7 +211,7 @@ export default async function LmsUserDetailPage({ params }: { params: Params }) 
                 : "· Not started yet"}
               {" "}· Week 2 unlocked{" "}
               {week1Progress.completionTimes.get(5)
-                ? `(Day 5 was ${formatDuration(now.getTime() - week1Progress.completionTimes.get(5)!.getTime())} ago)`
+                ? `(W1 Day 5 was ${formatDuration(now.getTime() - week1Progress.completionTimes.get(5)!.getTime())} ago)`
                 : ""}
             </p>
           ) : (
@@ -235,7 +251,6 @@ export default async function LmsUserDetailPage({ params }: { params: Params }) 
               <span style={{ fontSize: "12px", color: "#155724", fontWeight: 600 }}>UNLOCKED</span>
             )}
           </div>
-
           {week2HasContent ? (
             <WeekTable
               weekNum={2}
@@ -250,6 +265,40 @@ export default async function LmsUserDetailPage({ params }: { params: Params }) 
           ) : (
             <p style={{ fontSize: "13px", color: "#aaa", fontStyle: "italic" }}>
               Week 2 content not yet available for this user&apos;s archetype.
+            </p>
+          )}
+        </div>
+
+        {/* Week 3 table */}
+        <div style={{ marginTop: "32px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+            <p style={{ fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em", color: "#888", margin: 0 }}>
+              Week 3
+            </p>
+            {!week3HasContent && (
+              <span style={{ fontSize: "12px", color: "#aaa" }}>No content available yet</span>
+            )}
+            {week3HasContent && !week3Unlocked && (
+              <span style={{ fontSize: "12px", color: "#c00", fontWeight: 600 }}>LOCKED</span>
+            )}
+            {week3Unlocked && (
+              <span style={{ fontSize: "12px", color: "#155724", fontWeight: 600 }}>UNLOCKED</span>
+            )}
+          </div>
+          {week3HasContent ? (
+            <WeekTable
+              weekNum={3}
+              summary={week3Summary}
+              now={now}
+              dayLabel={dayLabel}
+              statusBg={statusBg}
+              statusColor={statusColor}
+              statusText={statusText}
+              formatTs={formatTs}
+            />
+          ) : (
+            <p style={{ fontSize: "13px", color: "#aaa", fontStyle: "italic" }}>
+              Week 3 content not yet available for this user&apos;s archetype.
             </p>
           )}
         </div>
