@@ -11,7 +11,7 @@ import {
   type Question,
 } from "@/lib/engine/questions";
 import AdminDashboard from "./AdminDashboard";
-import type { AdminDashboardProps, DropOffRow } from "./AdminDashboard";
+import type { AdminDashboardProps, DropOffRow, HandbookLead } from "./AdminDashboard";
 
 // ── Question lookup ───────────────────────────────────────────────────────────
 
@@ -344,6 +344,26 @@ export default async function AdminPage({
     tier_breakdown: (tierRows as { tier: string; count: number; revenue_paise: number }[]),
   };
 
+  // Handbook leads — graceful fallback if table not yet created (first submission creates it)
+  let handbookLeads: HandbookLead[] = [];
+  try {
+    const rows = await sql`
+      SELECT id, name, phone, age_band, wa_sent, created_at
+      FROM handbook_leads
+      ORDER BY created_at DESC
+    ` as unknown as { id: number; name: string; phone: string; age_band: string; wa_sent: boolean; created_at: unknown }[];
+    handbookLeads = rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      phone: r.phone,
+      age_band: r.age_band,
+      wa_sent: r.wa_sent,
+      created_at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+    }));
+  } catch {
+    // Table doesn't exist yet — no submissions, show empty state
+  }
+
   // Pending narrative reviews: count auto-generated draft reports not yet promoted
   let pendingNarrativeReviews = 0;
   try {
@@ -374,6 +394,7 @@ export default async function AdminPage({
       campaignLaunchAt={campaignLaunchAt}
       showArchive={showArchive}
       pendingNarrativeReviews={pendingNarrativeReviews}
+      handbookLeads={handbookLeads}
     />
   );
 }

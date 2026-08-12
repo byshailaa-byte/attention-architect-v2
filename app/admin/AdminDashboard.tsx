@@ -107,6 +107,15 @@ export type SessionEvent = {
   metadata: Record<string, unknown>;
 };
 
+export type HandbookLead = {
+  id: number;
+  name: string;
+  phone: string;
+  age_band: string;
+  wa_sent: boolean;
+  created_at: string;
+};
+
 export type AdminDashboardProps = {
   kpi: KpiData;
   assessments: AssessmentData[];
@@ -122,6 +131,7 @@ export type AdminDashboardProps = {
   campaignLaunchAt: string | null;
   showArchive: boolean;
   pendingNarrativeReviews: number;
+  handbookLeads: HandbookLead[];
   // legacy prop kept for compatibility — not used in new dashboard
   funnel?: FunnelCounts;
 };
@@ -708,7 +718,7 @@ function RangeControl({
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
-type Section = "overview" | "funnel" | "journeys" | "dropoffs" | "lms" | "users" | "archetypes";
+type Section = "overview" | "funnel" | "journeys" | "dropoffs" | "lms" | "users" | "archetypes" | "handbook";
 
 const NAV: { id: Section; label: string }[] = [
   { id: "overview",   label: "Overview" },
@@ -718,6 +728,7 @@ const NAV: { id: Section; label: string }[] = [
   { id: "lms",        label: "LMS Activity" },
   { id: "users",      label: "Users" },
   { id: "archetypes", label: "Archetypes" },
+  { id: "handbook",   label: "Handbook" },
 ];
 
 export default function AdminDashboard({
@@ -725,7 +736,7 @@ export default function AdminDashboard({
   funnelEvents, dropOffs, funnelSince,
   rangeParam, fromParam, toParam,
   campaignLaunchAt, showArchive,
-  pendingNarrativeReviews,
+  pendingNarrativeReviews, handbookLeads,
 }: AdminDashboardProps) {
   const [active, setActive] = useState<Section>("overview");
   const [search, setSearch] = useState("");
@@ -1197,6 +1208,59 @@ export default function AdminDashboard({
                     color={C.yellow}
                   />
                 ))
+              )}
+            </Card>
+          </div>
+        )}
+
+        {/* ── HANDBOOK ── */}
+        {active === "handbook" && (
+          <div>
+            <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 8px" }}>Handbook Leads</h2>
+            <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
+              Parents who submitted via the Younger / Older popup.{" "}
+              <span style={{ color: C.green }}>Sent</span> = WhatsApp delivered.{" "}
+              <span style={{ color: C.yellow }}>Queued</span> = saved but not yet sent.
+            </p>
+            <Card>
+              {handbookLeads.length === 0 ? (
+                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No submissions yet.</p>
+              ) : (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <SectionLabel>
+                      {handbookLeads.length} submission{handbookLeads.length !== 1 ? "s" : ""} ·{" "}
+                      {handbookLeads.filter(l => l.wa_sent).length} sent ·{" "}
+                      {handbookLeads.filter(l => !l.wa_sent).length} queued
+                    </SectionLabel>
+                  </div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                          {["Name", "WhatsApp", "Age Band", "Submitted", "Status"].map(h => (
+                            <th key={h} style={{ textAlign: "left", padding: "0 16px 10px 0", color: C.muted, fontWeight: 400, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {handbookLeads.map(lead => (
+                          <tr key={lead.id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                            <td style={{ padding: "12px 16px 12px 0", color: C.text, fontWeight: 600 }}>{lead.name}</td>
+                            <td style={{ padding: "12px 16px 12px 0", color: C.muted, fontFamily: MONO }}>{lead.phone}</td>
+                            <td style={{ padding: "12px 16px 12px 0", color: C.muted }}>{lead.age_band}</td>
+                            <td style={{ padding: "12px 16px 12px 0", color: C.muted, whiteSpace: "nowrap" }}>{fmtDateTime(lead.created_at)}</td>
+                            <td style={{ padding: "12px 0 12px 0" }}>
+                              {lead.wa_sent
+                                ? <Badge text="Sent" color={C.green} />
+                                : <Badge text="Queued" color={C.yellow} />}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </Card>
           </div>
