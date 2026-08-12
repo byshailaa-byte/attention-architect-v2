@@ -101,6 +101,9 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
       return;
     }
     const { orderId, amount, currency, keyId } = await res.json();
+    const tier = "full";
+    const source = "sticky_cta";
+    fireEvent("checkout_modal_opened", sessionId, { tier, value, source });
     new window.Razorpay({
       key: keyId,
       amount,
@@ -110,6 +113,11 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
       description: `${childName}'s Six-Week Journey`,
       prefill: { name: parentName, email, contact: phone },
       theme: { color: "#F6C63D" },
+      modal: {
+        ondismiss: () => {
+          fireEvent("checkout_modal_dismissed", sessionId, { tier, value, source });
+        },
+      },
       handler: function (response: { razorpay_payment_id: string }) {
         const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
         fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR" });

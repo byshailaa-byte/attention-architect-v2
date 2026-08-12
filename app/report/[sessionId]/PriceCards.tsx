@@ -48,6 +48,8 @@ function fireEvent(eventType: string, sessionId: string, metadata?: Record<strin
 
 export default function PriceCards({ sessionId, childName, weakestFirst, parentName, email, phone }: Props) {
   const firedViewItem = useRef(false);
+  const firedPricingView = useRef(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const s = document.createElement("script");
@@ -70,10 +72,26 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
     fireFbq("track", "ViewContent", { content_ids: ["module1", "full"], content_type: "product", currency: "INR" });
   }, [sessionId]);
 
+  // Fires once when the pricing card is ≥50% visible in the viewport — distinct from
+  // view_item (which fires on mount) and scroll_milestone (which is page-level).
+  useEffect(() => {
+    if (!rootRef.current || !("IntersectionObserver" in window)) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !firedPricingView.current) {
+        firedPricingView.current = true;
+        fireEvent("pricing_section_viewed", sessionId);
+        obs.disconnect();
+      }
+    }, { threshold: 0.5 });
+    obs.observe(rootRef.current);
+    return () => obs.disconnect();
+  }, [sessionId]);
+
   async function openModal(tier: "module1" | "full") {
     const value = TIER_AMOUNT[tier];
+    const source = "price_cards";
     const initiateEventId = `${sessionId}:initiate_checkout:${tier}`;
-    fireEvent("begin_checkout", sessionId, { tier, value, source: "price_cards" });
+    fireEvent("begin_checkout", sessionId, { tier, value, source });
     fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: tier, price: value }] });
     fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: tier }, initiateEventId);
     fetch("/api/meta/initiate-checkout", {
@@ -97,6 +115,7 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
       alert("Payment system still loading. Please try again in a moment.");
       return;
     }
+    fireEvent("checkout_modal_opened", sessionId, { tier, value, source });
     new window.Razorpay({
       key: keyId,
       amount,
@@ -106,6 +125,11 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
       description: tier === "module1" ? "Week 1 Guide" : `${childName}'s Six-Week Journey`,
       prefill: { name: parentName, email, contact: phone },
       theme: { color: "#F6C63D" },
+      modal: {
+        ondismiss: () => {
+          fireEvent("checkout_modal_dismissed", sessionId, { tier, value, source });
+        },
+      },
       handler: function (response: { razorpay_payment_id: string }) {
         // event_id matches server-side CAPI Purchase call in /api/webhooks/razorpay
         const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
@@ -121,7 +145,7 @@ export default function PriceCards({ sessionId, childName, weakestFirst, parentN
   const waShareUrl = `https://wa.me/?text=${encodeURIComponent(`Check out this attention report: ${reportUrl}`)}`;
 
   return (
-    <div style={{ maxWidth: "480px", margin: "0 auto" }}>
+    <div ref={rootRef} style={{ maxWidth: "480px", margin: "0 auto" }}>
 
       {/* Comparison anchor — shapes perception before the price ask */}
       <div style={{ margin: "0 0 16px", padding: "12px 14px", background: "rgba(32,30,25,0.04)", borderRadius: "10px" }}>
