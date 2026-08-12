@@ -27,9 +27,13 @@ export async function POST(req: Request) {
   if (
     typeof eventType !== "string" ||
     typeof sessionId !== "string" ||
-    !ALLOWED.has(eventType) ||
     !UUID_RE.test(sessionId)
   ) {
+    return new Response("bad request", { status: 400 });
+  }
+
+  if (!ALLOWED.has(eventType)) {
+    console.warn(`[funnel/event] rejected unknown event_type: "${eventType}" — add to ALLOWED and to the DB CHECK constraint if intentional`);
     return new Response("bad request", { status: 400 });
   }
 

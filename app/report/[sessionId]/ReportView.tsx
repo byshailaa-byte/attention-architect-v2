@@ -21,11 +21,21 @@ import StickyCta from "./StickyCta";
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
-// Inline-embed founder photo as base64 (accepted tradeoff — avoids CDN dependency)
+// Inline-embed founder photos as base64 (accepted tradeoff — avoids CDN dependency)
 const founderB64 = (() => {
   try {
     return fs
       .readFileSync(path.join(process.cwd(), "public/founder.jpg"))
+      .toString("base64");
+  } catch {
+    return "";
+  }
+})();
+
+const shailyB64 = (() => {
+  try {
+    return fs
+      .readFileSync(path.join(process.cwd(), "public/shaily-headshot-square.png"))
       .toString("base64");
   } catch {
     return "";
@@ -165,6 +175,10 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
   const founderSrc = founderB64
     ? `data:image/jpeg;base64,${founderB64}`
     : "/founder.jpg";
+
+  const shailySrc = shailyB64
+    ? `data:image/png;base64,${shailyB64}`
+    : "/shaily-headshot-square.png";
 
   return (
     <main style={{ background: "var(--ink)", fontFamily: "var(--font-instrument), 'Instrument Sans', sans-serif" }}>
@@ -330,30 +344,64 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
       {/* ── §7 FOUNDER ────────────────────────────────────────────────── */}
       <section style={{ background: "var(--paper)", padding: "48px 0", borderTop: "1px solid rgba(28,28,36,.1)", borderBottom: "1px solid rgba(28,28,36,.1)" }}>
         <div className="rep-shell">
-          <div style={{ display: "flex", gap: "20px", alignItems: "center", marginBottom: "16px" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={founderSrc}
-              alt="Shashank Agrawal"
-              style={{ width: "76px", height: "76px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-            />
-            <div>
-              <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "16px", color: "var(--ink)", lineHeight: 1.3 }}>
-                Shashank Agrawal · Founder, Attention Architect™
+          <div style={{ fontFamily: BG, fontWeight: 700, fontSize: "13px", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--ink-dim)", marginBottom: "28px" }}>
+            A note from the founders
+          </div>
+
+          {/* Two-founder byline row */}
+          <div style={{ display: "flex", gap: "28px", flexWrap: "wrap", marginBottom: "24px" }}>
+            {/* Shashank */}
+            <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", flex: "1 1 200px" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={founderSrc}
+                alt="Shashank Agrawal"
+                style={{ width: "64px", height: "64px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+              />
+              <div>
+                <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "15px", color: "var(--ink)", lineHeight: 1.3, marginBottom: "3px" }}>
+                  Shashank Agrawal
+                </div>
+                <div style={{ fontSize: "12.5px", color: "var(--ink-dim)", marginBottom: "8px" }}>
+                  Founder, Attention Architect
+                </div>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", borderRadius: "999px", padding: "3px 10px", fontSize: "11px", fontWeight: 600, color: "#9a7c10" }}>
+                  🎓 IIM Rohtak
+                </span>
               </div>
-              <div style={{ marginTop: "8px" }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", borderRadius: "999px", padding: "3px 10px", fontSize: "11.5px", fontWeight: 600, color: "#9a7c10" }}>
-                  🎓 IIM Rohtak Alumnus
+            </div>
+
+            {/* Shaily */}
+            <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", flex: "1 1 200px" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={shailySrc}
+                alt="Shaily Badonia"
+                style={{ width: "64px", height: "64px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+              />
+              <div>
+                <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "15px", color: "var(--ink)", lineHeight: 1.3, marginBottom: "3px" }}>
+                  Shaily Badonia
+                </div>
+                <div style={{ fontSize: "12.5px", color: "var(--ink-dim)", marginBottom: "8px" }}>
+                  Chief Attention Architect
+                </div>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", borderRadius: "999px", padding: "3px 10px", fontSize: "11px", fontWeight: 600, color: "#9a7c10" }}>
+                  10+ years of experience
                 </span>
               </div>
             </div>
           </div>
-          <div style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.55, fontStyle: "italic", marginBottom: "12px" }}>
-            &ldquo;I built Attention Architect because I realised parents are often trying harder when what they actually need is a better map.&rdquo;
-          </div>
-          <p style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.6, margin: 0 }}>
-            This started as an obsession, not a business plan — years spent trying to understand why the same advice works for one child and does nothing for another.
+
+          <p style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.6, margin: "0 0 14px" }}>
+            Attention Architect didn&rsquo;t start as a business plan. It started as years spent trying to understand why the same advice worked for one child and did nothing for another — and slowly realising the missing piece usually wasn&rsquo;t more effort from the parent. It was a clearer map.
           </p>
+          <p style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.6, margin: "0 0 20px" }}>
+            This framework was built in stages, together — studying how attention and habit actually form in children, identifying the signals that genuinely differ from child to child, and testing each assessment question until it isolated one real thing rather than guessing at several. Your answers are matched against that structure. Nothing here is improvised about your child specifically — the matching is, the framework underneath isn&rsquo;t.
+          </p>
+          <div style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.55, fontStyle: "italic" }}>
+            &ldquo;We built this because we realised parents are often trying harder when what they actually need is a better map.&rdquo;
+          </div>
         </div>
       </section>
 
