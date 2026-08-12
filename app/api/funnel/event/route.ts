@@ -5,11 +5,15 @@ assertBootGuards();
 
 const ALLOWED = new Set([
   "assessment_started",
+  "assessment_question_complete",
   "assessment_dimension_complete",
   "report_gate_view",
   "generating_page_view",
   "view_item",
   "begin_checkout",
+  "landing_step_age",
+  "landing_step_concern",
+  "landing_step_followup",
 ]);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
