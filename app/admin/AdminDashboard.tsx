@@ -90,6 +90,9 @@ export type FunnelEventCounts = {
   report_view: number;
   begin_checkout: number;
   purchase: number;
+  landing_step_age: number;
+  landing_step_concern: number;
+  landing_step_followup: number;
 };
 
 export type DropOffRow = {
@@ -99,7 +102,12 @@ export type DropOffRow = {
   seconds_since: number;
   child_name: string | null;
   parent_name: string | null;
+  email?: string | null;
+  drop_off_stage?: "pre" | "post";
 };
+
+export type ScrollMilestone = { page: string; depth: number; count: number };
+export type QuestionCompletion = { question_id: string; count: number };
 
 export type SessionEvent = {
   event_type: string;
@@ -125,10 +133,13 @@ export type AdminDashboardProps = {
   funnelEvents: FunnelEventCounts;
   dropOffs: DropOffRow[];
   funnelSince: string | null;
+  scrollMilestones: ScrollMilestone[];
+  questionCompletions: QuestionCompletion[];
   rangeParam: string | null;
   fromParam: string | null;
   toParam: string | null;
   campaignLaunchAt: string | null;
+  campaign2LaunchAt: string | null;
   showArchive: boolean;
   pendingNarrativeReviews: number;
   handbookLeads: HandbookLead[];
@@ -184,7 +195,11 @@ const TIER_LABEL: Record<string, string> = {
 };
 
 const EVENT_LABEL: Record<string, string> = {
+  landing_step_age: "Age selected",
+  landing_step_concern: "Concern selected",
+  landing_step_followup: "Follow-up answered",
   assessment_started: "Started assessment",
+  assessment_question_complete: "Question answered",
   assessment_dimension_complete: "Dimension complete",
   assessment_complete: "Assessment complete",
   report_gate_view: "Viewed report gate",
@@ -200,7 +215,11 @@ const EVENT_LABEL: Record<string, string> = {
 };
 
 const EVENT_COLOR: Record<string, string> = {
+  landing_step_age: C.muted,
+  landing_step_concern: C.muted,
+  landing_step_followup: C.muted,
   assessment_started: C.blue,
+  assessment_question_complete: C.muted,
   assessment_dimension_complete: C.muted,
   assessment_complete: C.green,
   report_gate_view: C.muted,
@@ -561,12 +580,14 @@ function RangeControl({
   fromParam,
   toParam,
   campaignLaunchAt,
+  campaign2LaunchAt,
   showArchive,
 }: {
   rangeParam: string | null;
   fromParam: string | null;
   toParam: string | null;
   campaignLaunchAt: string | null;
+  campaign2LaunchAt: string | null;
   showArchive: boolean;
 }) {
   const router = useRouter();
@@ -582,11 +603,15 @@ function RangeControl({
   const isCustom     = !!(fromParam && toParam);
   const activePreset = isCustom ? "custom" : (rangeParam ?? "launch");
 
-  const PRESETS = [
+  const BASE_PRESETS = [
     { key: "7d",  label: "7d"  },
     { key: "30d", label: "30d" },
     { key: "all", label: "All" },
-  ] as const;
+  ];
+  const CAMPAIGN_PRESETS = campaign2LaunchAt
+    ? [{ key: "c1", label: "C1" }, { key: "c2", label: "C2" }]
+    : [];
+  const PRESETS = [...CAMPAIGN_PRESETS, ...BASE_PRESETS];
 
   function buildUrl(extra: string) {
     return showArchive ? `/admin?archive=1&${extra}` : `/admin?${extra}`;
@@ -642,8 +667,22 @@ function RangeControl({
       <p style={{ fontFamily: MONO, fontSize: 9, color: C.muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 6px" }}>
         Date Range
       </p>
+      {CAMPAIGN_PRESETS.length > 0 && (
+        <div style={{ display: "flex", gap: 3, marginBottom: 3 }}>
+          {CAMPAIGN_PRESETS.map(p => (
+            <button key={p.key} onClick={() => selectPreset(p.key)} style={{ ...presetBtn(activePreset === p.key), background: activePreset === p.key ? C.blue : C.border, color: activePreset === p.key ? "#fff" : C.muted }}>
+              {p.label}
+            </button>
+          ))}
+          {CAMPAIGN_PRESETS.length > 0 && (
+            <span style={{ fontFamily: MONO, fontSize: 8, color: C.muted, padding: "5px 4px", letterSpacing: "0.04em" }}>
+              {activePreset === "c1" ? "Jul 20–Aug 11" : activePreset === "c2" ? "Aug 12+" : "campaigns"}
+            </span>
+          )}
+        </div>
+      )}
       <div style={{ display: "flex", gap: 3, marginBottom: showCustom || isCustom ? 6 : 4 }}>
-        {PRESETS.map(p => (
+        {BASE_PRESETS.map(p => (
           <button key={p.key} onClick={() => selectPreset(p.key)} style={presetBtn(activePreset === p.key)}>
             {p.label}
           </button>
@@ -718,7 +757,7 @@ function RangeControl({
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
-type Section = "overview" | "funnel" | "journeys" | "dropoffs" | "lms" | "users" | "archetypes" | "handbook";
+type Section = "overview" | "funnel" | "journeys" | "dropoffs" | "lms" | "users" | "archetypes" | "handbook" | "events";
 
 const NAV: { id: Section; label: string }[] = [
   { id: "overview",   label: "Overview" },
@@ -729,13 +768,15 @@ const NAV: { id: Section; label: string }[] = [
   { id: "users",      label: "Users" },
   { id: "archetypes", label: "Archetypes" },
   { id: "handbook",   label: "Handbook" },
+  { id: "events",     label: "Events" },
 ];
 
 export default function AdminDashboard({
   kpi, assessments, archetypes, activity, lms,
   funnelEvents, dropOffs, funnelSince,
+  scrollMilestones, questionCompletions,
   rangeParam, fromParam, toParam,
-  campaignLaunchAt, showArchive,
+  campaignLaunchAt, campaign2LaunchAt, showArchive,
   pendingNarrativeReviews, handbookLeads,
 }: AdminDashboardProps) {
   const [active, setActive] = useState<Section>("overview");
@@ -758,7 +799,9 @@ export default function AdminDashboard({
       (a.child_name ?? "").toLowerCase().includes(q) ||
       (a.email ?? "").toLowerCase().includes(q) ||
       (a.parent_name ?? "").toLowerCase().includes(q) ||
-      (a.archetype ?? "").toLowerCase().includes(q)
+      (a.archetype ?? "").toLowerCase().includes(q) ||
+      (a.phone ?? "").replace(/\D/g, "").includes(q.replace(/\D/g, "")) ||
+      a.session_id.toLowerCase().startsWith(q)
     );
   }, [assessments, search]);
 
@@ -778,6 +821,12 @@ export default function AdminDashboard({
     ? Math.round((kpi.paid_count / kpi.completed_count) * 100)
     : 0;
 
+  const landingFunnelStages = [
+    { label: "Age selected",      count: funnelEvents.landing_step_age,      color: C.muted },
+    { label: "Concern selected",  count: funnelEvents.landing_step_concern,   color: C.muted },
+    { label: "Follow-up answered",count: funnelEvents.landing_step_followup,  color: C.muted },
+  ];
+
   const funnelStages = [
     { label: "Started",       count: funnelEvents.assessment_started,  color: C.blue },
     { label: "Completed",     count: funnelEvents.assessment_complete,  color: C.blue },
@@ -786,6 +835,15 @@ export default function AdminDashboard({
     { label: "Checkout",      count: funnelEvents.begin_checkout,       color: C.purple },
     { label: "Purchased",     count: funnelEvents.purchase,             color: C.green },
   ];
+
+  const scrollByPage = useMemo(() => {
+    const pages: Record<string, { depth: number; count: number }[]> = {};
+    for (const m of scrollMilestones) {
+      if (!pages[m.page]) pages[m.page] = [];
+      pages[m.page].push({ depth: m.depth, count: m.count });
+    }
+    return pages;
+  }, [scrollMilestones]);
 
   const sidebarStyle: React.CSSProperties = isMobile ? {
     position: "fixed",
@@ -869,6 +927,34 @@ export default function AdminDashboard({
           )}
         </div>
 
+        {/* Global search */}
+        <div style={{ padding: "0 12px 10px" }}>
+          <input
+            type="text"
+            placeholder="Search email, phone, session…"
+            value={search}
+            onChange={e => { setSearch(e.target.value); if (e.target.value.trim()) setActive("users"); }}
+            style={{
+              width: "100%",
+              background: C.border,
+              border: `1px solid ${search ? C.yellow : C.border}`,
+              borderRadius: 6,
+              padding: "7px 10px",
+              fontFamily: MONO,
+              fontSize: 11,
+              color: C.text,
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+          {search && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+              <span style={{ fontFamily: MONO, fontSize: 9, color: C.muted }}>{filtered.length} match{filtered.length !== 1 ? "es" : ""}</span>
+              <button onClick={() => setSearch("")} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontFamily: MONO, fontSize: 9, padding: 0 }}>clear</button>
+            </div>
+          )}
+        </div>
+
         <nav style={{ flex: 1, padding: "4px 12px" }}>
           {NAV.map(({ id, label }) => (
             <button
@@ -948,6 +1034,7 @@ export default function AdminDashboard({
           fromParam={fromParam}
           toParam={toParam}
           campaignLaunchAt={campaignLaunchAt}
+          campaign2LaunchAt={campaign2LaunchAt}
           showArchive={showArchive}
         />
 
@@ -1049,6 +1136,14 @@ export default function AdminDashboard({
           <div>
             <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 24px" }}>Funnel</h2>
 
+            {/* Landing steps */}
+            {(funnelEvents.landing_step_age > 0 || funnelEvents.landing_step_concern > 0 || funnelEvents.landing_step_followup > 0) && (
+              <Card style={{ marginBottom: 16 }}>
+                <SectionLabel>Landing Steps (tracked from Aug 12, 2026)</SectionLabel>
+                <FunnelChart stages={landingFunnelStages} />
+              </Card>
+            )}
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
               {funnelStages.map((stage, i) => {
                 const pctOfPrev = i > 0 && funnelStages[i - 1].count > 0
@@ -1066,7 +1161,7 @@ export default function AdminDashboard({
               })}
             </div>
 
-            <Card>
+            <Card style={{ marginBottom: 16 }}>
               <SectionLabel>Funnel Flow</SectionLabel>
               <FunnelChart stages={funnelStages} />
               {funnelSince && (
@@ -1077,10 +1172,48 @@ export default function AdminDashboard({
                   </span>
                   {". "}
                   Started / Completed / Filled details / Checkout stages reflect only sessions instrumented after that date.
-                  Viewed report and pre-instrumentation sessions will undercount in those stages.
                 </p>
               )}
             </Card>
+
+            {/* Scroll milestones */}
+            {Object.keys(scrollByPage).length > 0 && (
+              <Card style={{ marginBottom: 16 }}>
+                <SectionLabel>Scroll Depth (unique sessions)</SectionLabel>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                  {Object.entries(scrollByPage).map(([page, depths]) => {
+                    const maxCount = Math.max(...depths.map(d => d.count), 1);
+                    return (
+                      <div key={page}>
+                        <p style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 10px" }}>{page}</p>
+                        {depths.map(({ depth, count }) => (
+                          <HBar key={depth} label={`${depth}%`} count={count} max={maxCount} color={C.blue} />
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+
+            {/* Per-question completion (only shows once assessment_question_complete data exists) */}
+            {questionCompletions.length > 0 && (
+              <Card>
+                <SectionLabel>Question Completion (unique sessions per question)</SectionLabel>
+                <p style={{ fontFamily: MONO, fontSize: 10, color: C.muted, margin: "0 0 14px", lineHeight: 1.5 }}>
+                  Drop at any question = users who answered that question but not the next. Tracked from Aug 12, 2026.
+                </p>
+                {questionCompletions.map(({ question_id, count }) => (
+                  <HBar
+                    key={question_id}
+                    label={question_id}
+                    count={count}
+                    max={questionCompletions[0]?.count ?? 1}
+                    color={C.blue}
+                  />
+                ))}
+              </Card>
+            )}
           </div>
         )}
 
@@ -1101,48 +1234,81 @@ export default function AdminDashboard({
         )}
 
         {/* ── DROP-OFFS ── */}
-        {active === "dropoffs" && (
-          <div>
-            <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 8px" }}>Drop-offs</h2>
-            <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
-              Sessions with events in the selected range, no <code style={{ color: C.yellow }}>assessment_complete</code>, last active &gt;30 min ago.
-            </p>
-            <Card>
-              {dropOffs.length === 0 ? (
-                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No drop-offs in this period.</p>
-              ) : (
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                        {["Last Event", "Last Seen", "Child", "Parent", "Session"].map(h => (
-                          <th key={h} style={{ textAlign: "left", padding: "0 12px 10px 0", color: C.muted, fontWeight: 400, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dropOffs.map((row, i) => (
-                        <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
-                          <td style={{ padding: "12px 12px 12px 0" }}>
-                            <Badge text={EVENT_LABEL[row.last_event] ?? row.last_event} color={EVENT_COLOR[row.last_event] ?? C.muted} />
-                          </td>
-                          <td style={{ padding: "12px 12px 12px 0", color: C.muted, whiteSpace: "nowrap" }}>
-                            {fmtDuration(row.seconds_since)}
-                          </td>
-                          <td style={{ padding: "12px 12px 12px 0", color: C.text }}>{row.child_name ?? <span style={{ color: C.border }}>—</span>}</td>
-                          <td style={{ padding: "12px 12px 12px 0", color: C.muted }}>{row.parent_name ?? <span style={{ color: C.border }}>—</span>}</td>
-                          <td style={{ padding: "12px 0 12px 0", color: C.muted, fontFamily: MONO, fontSize: 10 }}>
-                            {row.session_id.slice(0, 8)}…
-                          </td>
-                        </tr>
+        {active === "dropoffs" && (() => {
+          const preDrops  = dropOffs.filter(r => r.drop_off_stage === "pre"  || !r.drop_off_stage);
+          const postDrops = dropOffs.filter(r => r.drop_off_stage === "post");
+
+          function DropTable({ rows, showEmail }: { rows: DropOffRow[]; showEmail?: boolean }) {
+            const headers = showEmail
+              ? ["Last Event", "Last Seen", "Child", "Parent", "Email", "Session"]
+              : ["Last Event", "Last Seen", "Child", "Parent", "Session"];
+            return (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                      {headers.map(h => (
+                        <th key={h} style={{ textAlign: "left", padding: "0 12px 10px 0", color: C.muted, fontWeight: 400, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Card>
-          </div>
-        )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, i) => (
+                      <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
+                        <td style={{ padding: "12px 12px 12px 0" }}>
+                          <Badge text={EVENT_LABEL[row.last_event] ?? row.last_event} color={EVENT_COLOR[row.last_event] ?? C.muted} />
+                        </td>
+                        <td style={{ padding: "12px 12px 12px 0", color: C.muted, whiteSpace: "nowrap" }}>
+                          {fmtDuration(row.seconds_since)}
+                        </td>
+                        <td style={{ padding: "12px 12px 12px 0", color: C.text }}>{row.child_name ?? <span style={{ color: C.border }}>—</span>}</td>
+                        <td style={{ padding: "12px 12px 12px 0", color: C.muted }}>{row.parent_name ?? <span style={{ color: C.border }}>—</span>}</td>
+                        {showEmail && (
+                          <td style={{ padding: "12px 12px 12px 0", color: C.muted }}>{row.email ?? <span style={{ color: C.border }}>—</span>}</td>
+                        )}
+                        <td style={{ padding: "12px 0 12px 0", color: C.muted, fontFamily: MONO, fontSize: 10 }}>
+                          {row.session_id.slice(0, 8)}…
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          }
+
+          return (
+            <div>
+              <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 8px" }}>Drop-offs</h2>
+              <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
+                Sessions inactive for &gt;30 min in the selected date range, grouped by where they stopped.
+              </p>
+
+              {/* Post-assessment drop-offs */}
+              <Card style={{ marginBottom: 16 }}>
+                <SectionLabel>Post-assessment ({postDrops.length}) — completed, didn&apos;t purchase</SectionLabel>
+                {postDrops.length === 0 ? (
+                  <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No post-assessment drop-offs in this period.</p>
+                ) : (
+                  <DropTable rows={postDrops} showEmail />
+                )}
+              </Card>
+
+              {/* Pre-assessment drop-offs */}
+              <Card>
+                <SectionLabel>Pre-assessment ({preDrops.length}) — never completed assessment</SectionLabel>
+                <p style={{ fontFamily: MONO, fontSize: 10, color: C.muted, margin: "0 0 14px", lineHeight: 1.5 }}>
+                  Last event shows where in the funnel they stopped. Q-level precision requires per-question events (tracked from Aug 12, 2026).
+                </p>
+                {preDrops.length === 0 ? (
+                  <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No pre-assessment drop-offs in this period.</p>
+                ) : (
+                  <DropTable rows={preDrops} />
+                )}
+              </Card>
+            </div>
+          );
+        })()}
 
         {/* ── LMS ACTIVITY ── */}
         {active === "lms" && (
@@ -1210,6 +1376,110 @@ export default function AdminDashboard({
                 ))
               )}
             </Card>
+          </div>
+        )}
+
+        {/* ── EVENTS ── */}
+        {active === "events" && (
+          <div>
+            <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 8px" }}>Events Inventory</h2>
+            <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 24px", lineHeight: 1.6 }}>
+              Every tracked event, by layer. &ldquo;Awaited&rdquo; = guaranteed on success. &ldquo;Fire-and-forget&rdquo; = best-effort, may miss on tab-close. Manually maintained — verify against code on changes.
+            </p>
+
+            {([
+              {
+                heading: "Landing Page (DB — tracked from Aug 12, 2026)",
+                color: C.muted,
+                rows: [
+                  ["landing_step_age",      "Age chip selected",                "DB funnel_events",      "fire-and-forget", "age_band"],
+                  ["landing_step_concern",  "Concern card selected",             "DB funnel_events",      "fire-and-forget", "concern"],
+                  ["landing_step_followup", "Follow-up option selected",         "DB funnel_events",      "fire-and-forget", "concern, answer"],
+                ],
+              },
+              {
+                heading: "Assessment",
+                color: C.blue,
+                rows: [
+                  ["assessment_started",            "Assessment phase begins",         "DB + GA4 + Pixel",   "fire-and-forget", "—"],
+                  ["assessment_question_complete",  "User answers a question",         "DB funnel_events",   "fire-and-forget (Aug 12+)", "question_id, question_idx"],
+                  ["assessment_dimension_complete", "Dimension transition detected",   "DB + GA4 + Pixel",   "fire-and-forget", "dimension"],
+                  ["assessment_complete",           "All questions submitted",         "DB + GA4 + Pixel",   "fire-and-forget", "—"],
+                ],
+              },
+              {
+                heading: "Lead Capture",
+                color: C.yellow,
+                rows: [
+                  ["generate_lead",   "Parent details form submitted",   "DB + CAPI (after()) + Pixel", "awaited", "—"],
+                  ["report_gate_view","Report gate page rendered",       "DB funnel_events",             "awaited (server)", "—"],
+                ],
+              },
+              {
+                heading: "Report",
+                color: C.yellow,
+                rows: [
+                  ["report_view",    "Report page rendered",          "DB funnel_events",    "awaited (server)", "—"],
+                  ["view_item",      "Pricing section scrolled into view", "DB funnel_events","fire-and-forget", "tiers"],
+                  ["begin_checkout", "Checkout button clicked",       "DB funnel_events",    "fire-and-forget", "tier, value, source"],
+                  ["scroll_milestone","Scroll depth threshold hit",   "DB + GA4",            "fire-and-forget", "page, depth"],
+                ],
+              },
+              {
+                heading: "Purchase",
+                color: C.green,
+                rows: [
+                  ["purchase", "Razorpay webhook verified",    "DB + CAPI (after())", "after() on webhook", "tier, amount_paise"],
+                ],
+              },
+              {
+                heading: "LMS",
+                color: C.blue,
+                rows: [
+                  ["lms_day_complete",          "Day marked complete",         "DB funnel_events", "fire-and-forget", "week, day"],
+                  ["lms_reflection_submitted",  "Reflection saved",            "DB funnel_events", "fire-and-forget", "week, day, outcome"],
+                  ["generating_page_view",      "Report generation page hit",  "DB funnel_events", "fire-and-forget", "—"],
+                ],
+              },
+              {
+                heading: "GA4-only (no DB)",
+                color: C.muted,
+                rows: [
+                  ["age_selected",        "Age chip selected (GA4 name)", "GA4 only", "—", "age_band — DB mirror: landing_step_age"],
+                  ["concern_selected",    "Concern selected (GA4 name)",  "GA4 only", "—", "concern — DB mirror: landing_step_concern"],
+                  ["follow_up_selected",  "Follow-up (GA4 name)",         "GA4 only", "—", "concern, answer — DB mirror: landing_step_followup"],
+                  ["section_view",        "Landing section scrolled in",  "GA4 only", "—", "section"],
+                  ["cta_click",           "CTA button clicked",           "GA4 only", "—", "location"],
+                  ["age_out_of_band",     "Younger/Older chip clicked",   "GA4 only", "—", "age_band"],
+                ],
+              },
+            ] as { heading: string; color: string; rows: string[][] }[]).map(({ heading, color, rows }) => (
+              <Card key={heading} style={{ marginBottom: 16 }}>
+                <SectionLabel><span style={{ color }}>{heading}</span></SectionLabel>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 11 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                        {["Event", "When", "Layer", "Reliability", "Metadata"].map(h => (
+                          <th key={h} style={{ textAlign: "left", padding: "0 14px 8px 0", color: C.muted, fontWeight: 400, fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map(([event, when, layer, reliability, meta]) => (
+                        <tr key={event} style={{ borderBottom: `1px solid ${C.border}` }}>
+                          <td style={{ padding: "9px 14px 9px 0", color: C.yellow, whiteSpace: "nowrap" }}>{event}</td>
+                          <td style={{ padding: "9px 14px 9px 0", color: C.text }}>{when}</td>
+                          <td style={{ padding: "9px 14px 9px 0", color: C.muted, whiteSpace: "nowrap" }}>{layer}</td>
+                          <td style={{ padding: "9px 14px 9px 0", color: C.muted, whiteSpace: "nowrap" }}>{reliability}</td>
+                          <td style={{ padding: "9px 0 9px 0", color: C.muted, fontSize: 10 }}>{meta}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            ))}
           </div>
         )}
 
@@ -1294,22 +1564,22 @@ function AssessmentsTable({
   return (
     <Card>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
-        <SectionLabel>Assessments ({filtered.length})</SectionLabel>
+        <SectionLabel>Assessments ({filtered.length}){search ? ` — filtered by "${search}"` : ""}</SectionLabel>
         <input
           type="text"
-          placeholder="Search name, email, archetype…"
+          placeholder="Search name, email, phone, session…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{
             background: C.border,
-            border: `1px solid ${C.border}`,
+            border: `1px solid ${search ? C.yellow : C.border}`,
             borderRadius: 6,
             padding: "7px 14px",
             fontFamily: MONO,
             fontSize: 12,
             color: C.text,
             outline: "none",
-            width: "min(240px, 100%)",
+            width: "min(280px, 100%)",
             boxSizing: "border-box",
           }}
         />

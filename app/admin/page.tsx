@@ -11,7 +11,7 @@ import {
   type Question,
 } from "@/lib/engine/questions";
 import AdminDashboard from "./AdminDashboard";
-import type { AdminDashboardProps, DropOffRow, HandbookLead } from "./AdminDashboard";
+import type { AdminDashboardProps, DropOffRow, HandbookLead, ScrollMilestone, QuestionCompletion } from "./AdminDashboard";
 
 // ── Question lookup ───────────────────────────────────────────────────────────
 
@@ -54,6 +54,7 @@ function getDateBounds(
   from: string | undefined,
   to: string | undefined,
   campaignLaunchAt: string | null,
+  campaign2LaunchAt: string | null,
   showArchive: boolean,
 ): { from: string; to: string } {
   const now = new Date();
@@ -61,6 +62,15 @@ function getDateBounds(
   if (range === "all") return { from: "1970-01-01T00:00:00.000Z", to: toISO };
   if (range === "7d")  return { from: new Date(now.getTime() - 7 * 86_400_000).toISOString(), to: toISO };
   if (range === "30d") return { from: new Date(now.getTime() - 30 * 86_400_000).toISOString(), to: toISO };
+  if (range === "c1" && campaignLaunchAt && campaign2LaunchAt) {
+    // Campaign 1: from launch up to (but not including) campaign 2 start
+    const c2 = new Date(campaign2LaunchAt);
+    c2.setMilliseconds(c2.getMilliseconds() - 1);
+    return { from: campaignLaunchAt, to: c2.toISOString() };
+  }
+  if (range === "c2" && campaign2LaunchAt) {
+    return { from: campaign2LaunchAt, to: toISO };
+  }
   if (from && to)      return { from: new Date(from).toISOString(), to: new Date(to + "T23:59:59.999Z").toISOString() };
   // default: since campaign launch (or epoch when archived or no marker set)
   if (!showArchive && campaignLaunchAt) return { from: campaignLaunchAt, to: toISO };
@@ -82,16 +92,23 @@ export default async function AdminPage({
 
   const sql = getSql();
 
-  // Fetch campaign launch marker (graceful fallback if table not yet migrated)
+  // Fetch campaign markers (graceful fallback if table not yet migrated)
   let campaignLaunchAt: string | null = null;
+  let campaign2LaunchAt: string | null = null;
   try {
-    const settingsRows = await sql`SELECT value FROM app_settings WHERE key = 'campaign_launch_at'` as { value: string }[];
-    campaignLaunchAt = settingsRows[0]?.value ?? null;
+    const settingsRows = await sql`
+      SELECT key, value FROM app_settings
+      WHERE key IN ('campaign_launch_at', 'campaign2_launch_at')
+    ` as { key: string; value: string }[];
+    for (const r of settingsRows) {
+      if (r.key === "campaign_launch_at") campaignLaunchAt = r.value;
+      if (r.key === "campaign2_launch_at") campaign2LaunchAt = r.value;
+    }
   } catch {
     // app_settings not yet created — use defaults
   }
 
-  const bounds  = getDateBounds(params.range, params.from, params.to, campaignLaunchAt, showArchive);
+  const bounds  = getDateBounds(params.range, params.from, params.to, campaignLaunchAt, campaign2LaunchAt, showArchive);
   const fromISO = bounds.from;
   const toISO   = bounds.to;
 
@@ -205,6 +222,9 @@ export default async function AdminPage({
     report_view: number;
     begin_checkout: number;
     purchase: number;
+    landing_step_age: number;
+    landing_step_concern: number;
+    landing_step_followup: number;
   };
   let funnelEventCounts: FunnelEventCounts = {
     assessment_started: 0,
@@ -213,18 +233,24 @@ export default async function AdminPage({
     report_view: 0,
     begin_checkout: 0,
     purchase: 0,
+    landing_step_age: 0,
+    landing_step_concern: 0,
+    landing_step_followup: 0,
   };
   let dropOffs: DropOffRow[] = [];
+  let scrollMilestones: ScrollMilestone[] = [];
+  let questionCompletions: QuestionCompletion[] = [];
 
   let funnelSince: string | null = null;
   try {
-    const [eventRows, dropOffRows, sinceRows] = await Promise.all([
+    const [eventRows, dropOffRows, postDropOffRows, sinceRows, scrollRows, questionRows] = await Promise.all([
       sql`
         SELECT event_type, COUNT(DISTINCT session_id)::int AS count
         FROM funnel_events
         WHERE event_type IN (
           'assessment_started','assessment_complete','generate_lead',
-          'report_view','begin_checkout','purchase'
+          'report_view','begin_checkout','purchase',
+          'landing_step_age','landing_step_concern','landing_step_followup'
         )
         AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
         GROUP BY event_type
@@ -256,7 +282,56 @@ export default async function AdminPage({
         ORDER BY last_events.last_seen DESC
         LIMIT 50
       `,
+      sql`
+        SELECT
+          a.session_id::text,
+          last_fe.last_event,
+          last_fe.last_seen,
+          EXTRACT(EPOCH FROM (now() - last_fe.last_seen))::int AS seconds_since,
+          a.child_name,
+          a.parent_name,
+          a.email
+        FROM assessments a
+        INNER JOIN (
+          SELECT DISTINCT ON (session_id)
+            session_id,
+            event_type AS last_event,
+            created_at AS last_seen
+          FROM funnel_events
+          WHERE event_type IN ('generate_lead','report_view','view_item','begin_checkout')
+            AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
+          ORDER BY session_id, created_at DESC
+        ) last_fe ON a.session_id = last_fe.session_id
+        WHERE a.archetype IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM purchases p WHERE p.assessment_id = a.id AND p.status = 'paid'
+          )
+          AND last_fe.last_seen < now() - INTERVAL '30 minutes'
+        ORDER BY last_fe.last_seen DESC
+        LIMIT 30
+      `,
       sql`SELECT MIN(created_at) AS since FROM funnel_events`,
+      sql`
+        SELECT
+          metadata->>'page' AS page,
+          (metadata->>'depth')::int AS depth,
+          COUNT(DISTINCT session_id)::int AS count
+        FROM funnel_events
+        WHERE event_type = 'scroll_milestone'
+          AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
+        GROUP BY page, depth
+        ORDER BY page, depth
+      `,
+      sql`
+        SELECT
+          metadata->>'question_id' AS question_id,
+          COUNT(DISTINCT session_id)::int AS count
+        FROM funnel_events
+        WHERE event_type = 'assessment_question_complete'
+          AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
+        GROUP BY question_id
+        ORDER BY count DESC
+      `,
     ]);
 
     const sinceRaw = (sinceRows as unknown as { since: unknown }[])[0]?.since;
@@ -268,13 +343,39 @@ export default async function AdminPage({
       const k = row.event_type as keyof FunnelEventCounts;
       if (k in funnelEventCounts) funnelEventCounts[k] = row.count;
     }
-    dropOffs = (dropOffRows as unknown as { session_id: string; last_event: string; last_seen: unknown; seconds_since: number; child_name: string | null; parent_name: string | null }[]).map(r => ({
-      session_id: r.session_id,
-      last_event: r.last_event,
-      last_seen: r.last_seen instanceof Date ? r.last_seen.toISOString() : String(r.last_seen),
-      seconds_since: r.seconds_since,
-      child_name: r.child_name,
-      parent_name: r.parent_name,
+
+    dropOffs = [
+      ...(dropOffRows as unknown as { session_id: string; last_event: string; last_seen: unknown; seconds_since: number; child_name: string | null; parent_name: string | null }[]).map(r => ({
+        session_id: r.session_id,
+        last_event: r.last_event,
+        last_seen: r.last_seen instanceof Date ? r.last_seen.toISOString() : String(r.last_seen),
+        seconds_since: r.seconds_since,
+        child_name: r.child_name,
+        parent_name: r.parent_name,
+        email: null as string | null,
+        drop_off_stage: "pre" as const,
+      })),
+      ...(postDropOffRows as unknown as { session_id: string; last_event: string; last_seen: unknown; seconds_since: number; child_name: string | null; parent_name: string | null; email: string | null }[]).map(r => ({
+        session_id: r.session_id,
+        last_event: r.last_event,
+        last_seen: r.last_seen instanceof Date ? r.last_seen.toISOString() : String(r.last_seen),
+        seconds_since: r.seconds_since,
+        child_name: r.child_name,
+        parent_name: r.parent_name,
+        email: r.email,
+        drop_off_stage: "post" as const,
+      })),
+    ];
+
+    scrollMilestones = (scrollRows as unknown as { page: string; depth: number; count: number }[]).map(r => ({
+      page: r.page,
+      depth: r.depth,
+      count: r.count,
+    }));
+
+    questionCompletions = (questionRows as unknown as { question_id: string; count: number }[]).map(r => ({
+      question_id: r.question_id,
+      count: r.count,
     }));
   } catch {
     // funnel_events table not yet migrated — show zeros
@@ -388,10 +489,13 @@ export default async function AdminPage({
       funnelEvents={funnelEventCounts}
       dropOffs={dropOffs}
       funnelSince={funnelSince}
+      scrollMilestones={scrollMilestones}
+      questionCompletions={questionCompletions}
       rangeParam={rangeParam}
       fromParam={fromParam}
       toParam={toParam}
       campaignLaunchAt={campaignLaunchAt}
+      campaign2LaunchAt={campaign2LaunchAt}
       showArchive={showArchive}
       pendingNarrativeReviews={pendingNarrativeReviews}
       handbookLeads={handbookLeads}

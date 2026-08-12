@@ -187,6 +187,7 @@ function AssessmentForm() {
   function handleAnswer(questionId: string, value: string) {
     const nextAnswers = { ...answers, [questionId]: value };
     setAnswers(nextAnswers);
+    fireEvent("assessment_question_complete", sessionId, { question_id: questionId, question_idx: currentIdx });
     const next = currentIdx + 1;
 
     if (currentIdx === 2) {

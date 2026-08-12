@@ -17,6 +17,14 @@ function fireGtag(event: string, params?: Record<string, string | number>) {
   }
 }
 
+function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
+  fetch("/api/funnel/event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
+  }).catch(() => {});
+}
+
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
 // ── Content constants ────────────────────────────────────────────────────────
@@ -272,6 +280,7 @@ export default function LandingPage() {
   function selectAge(a: string) {
     setAge(a);
     fireGtag("age_selected", { age_band: a });
+    fireEvent("landing_step_age", landSid.current, { age_band: a });
   }
 
   function openOobPopup(band: "younger" | "older") {
@@ -304,6 +313,7 @@ export default function LandingPage() {
   function selectConcern(c: string) {
     setConcern(c);
     fireGtag("concern_selected", { concern: c });
+    fireEvent("landing_step_concern", landSid.current, { concern: c });
   }
 
   function goToStep2() {
@@ -315,6 +325,7 @@ export default function LandingPage() {
   function selectFollowUp(opt: FollowUpOption) {
     setFollowUp(opt);
     fireGtag("follow_up_selected", { concern: concern ?? "", answer: opt.echo });
+    fireEvent("landing_step_followup", landSid.current, { concern: concern ?? "", answer: opt.echo });
     setTimeout(() => setStage("reveal"), 250);
   }
 
