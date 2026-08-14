@@ -161,21 +161,35 @@ async function migrate() {
   await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
   // Rename existing rows BEFORE adding new constraint (ADD CONSTRAINT validates all existing rows)
   await sql`UPDATE funnel_events SET event_type = 'report_view' WHERE event_type = 'report_viewed'`;
-  // Add expanded constraint with all 12 event types
+  // Add expanded constraint — kept in sync with Phase 21 (the canonical final state).
+  // Both phases drop+replace, so they must always carry the same complete list.
   await sql`
     ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
       'assessment_started',
+      'assessment_question_complete',
       'assessment_dimension_complete',
       'assessment_complete',
       'report_gate_view',
+      'generating_page_view',
       'generate_lead',
       'report_view',
       'view_item',
+      'pricing_section_viewed',
       'begin_checkout',
+      'checkout_modal_opened',
+      'checkout_modal_dismissed',
       'purchase',
       'lms_day_complete',
       'lms_reflection_submitted',
-      'scroll_milestone'
+      'scroll_milestone',
+      'exit_intent_shown',
+      'landing_step_age',
+      'landing_step_concern',
+      'landing_step_followup',
+      'pricing_variant_assigned',
+      'phone_capture_shown',
+      'teaser_shown',
+      'paywall_shown'
     ))
   `;
   // Index for per-session timeline queries (also powers the drop-off view)
@@ -193,22 +207,35 @@ async function migrate() {
 
   // Phase 10b — funnel_events: add exit_intent_shown to the allowed event type set.
   // Drop + re-add constraint to include the new type (Postgres doesn't support ALTER CONSTRAINT).
+  // Kept in sync with Phase 8 and Phase 21 — all three must carry the same complete list.
   await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
   await sql`
     ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
       'assessment_started',
+      'assessment_question_complete',
       'assessment_dimension_complete',
       'assessment_complete',
       'report_gate_view',
+      'generating_page_view',
       'generate_lead',
       'report_view',
       'view_item',
+      'pricing_section_viewed',
       'begin_checkout',
+      'checkout_modal_opened',
+      'checkout_modal_dismissed',
       'purchase',
       'lms_day_complete',
       'lms_reflection_submitted',
       'scroll_milestone',
-      'exit_intent_shown'
+      'exit_intent_shown',
+      'landing_step_age',
+      'landing_step_concern',
+      'landing_step_followup',
+      'pricing_variant_assigned',
+      'phone_capture_shown',
+      'teaser_shown',
+      'paywall_shown'
     ))
   `;
 
@@ -326,11 +353,13 @@ async function migrate() {
     ON CONFLICT (key) DO NOTHING
   `;
 
-  // Phase 21 — funnel_events: add generating_page_view to the allowed event type set.
+  // Phase 21 — funnel_events: keep constraint in sync with the API ALLOWED whitelist.
+  // Updated across sessions to include all event types as they were added.
   await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
   await sql`
     ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
       'assessment_started',
+      'assessment_question_complete',
       'assessment_dimension_complete',
       'assessment_complete',
       'report_gate_view',
@@ -338,14 +367,36 @@ async function migrate() {
       'generate_lead',
       'report_view',
       'view_item',
+      'pricing_section_viewed',
       'begin_checkout',
+      'checkout_modal_opened',
+      'checkout_modal_dismissed',
       'purchase',
       'lms_day_complete',
       'lms_reflection_submitted',
       'scroll_milestone',
-      'exit_intent_shown'
+      'exit_intent_shown',
+      'landing_step_age',
+      'landing_step_concern',
+      'landing_step_followup',
+      'pricing_variant_assigned',
+      'phone_capture_shown',
+      'teaser_shown',
+      'paywall_shown'
     ))
   `;
+
+  // Phase 22 — pricing_variant on assessments.
+  // Random 50/50 assignment at assessment submit time, stored for sticky variant routing.
+  // NULL for sessions created before this migration (treated as control in the UI).
+  await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS pricing_variant TEXT CHECK (pricing_variant IN ('control', 'gated'))`;
+
+  // Phase 23 — worry_followup on assessments.
+  // The selected follow-up answer echo text from the landing page (e.g. "They delay starting as long as possible").
+  // Captured in the landing → pre-assessment → assessment URL chain and stored at submit time.
+  // Used as evidence for the m_teaser moment in the gated report arm.
+  // NULL for sessions where the parent skipped the follow-up or arrived without it.
+  await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS worry_followup TEXT`;
 
   console.log("Migrations complete.");
 }

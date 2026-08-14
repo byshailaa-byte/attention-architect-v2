@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import SiteFooter from "@/app/components/SiteFooter";
+import { CONCERN_CARD_LABELS } from "@/lib/concerns";
 
 declare global {
   interface Window {
@@ -53,12 +54,12 @@ const CONCERN_LABELS: Record<string, string> = {
 };
 
 const CONCERN_CARDS: { key: string; emoji: string | null; label: string; wide?: boolean }[] = [
-  { key: "homework",   emoji: "📖", label: "Homework turns into a battle" },
-  { key: "reminders",  emoji: "🎯", label: "I keep reminding them to focus" },
-  { key: "screens",    emoji: "📱", label: "Screens always win" },
-  { key: "confidence", emoji: "👤", label: "They've lost confidence" },
-  { key: "giveup",     emoji: "🌱", label: "They give up too easily" },
-  { key: "finish",     emoji: "📝", label: "They start everything and finish nothing" },
+  { key: "homework",   emoji: "📖", label: CONCERN_CARD_LABELS.homework },
+  { key: "reminders",  emoji: "🎯", label: CONCERN_CARD_LABELS.reminders },
+  { key: "screens",    emoji: "📱", label: CONCERN_CARD_LABELS.screens },
+  { key: "confidence", emoji: "👤", label: CONCERN_CARD_LABELS.confidence },
+  { key: "giveup",     emoji: "🌱", label: CONCERN_CARD_LABELS.giveup },
+  { key: "finish",     emoji: "📝", label: CONCERN_CARD_LABELS.finish },
   { key: "other",      emoji: null,  label: "Something else…", wide: true },
 ];
 
@@ -339,6 +340,7 @@ export default function LandingPage() {
     const ageMapped = age === "younger" || age === "older" ? "10-11" : age ?? "10-11";
     p.set("age", ageMapped);
     if (concern) p.set("concerns", concern);
+    if (followUp) p.set("followup", followUp.echo);
     return `/pre-assessment?${p.toString()}`;
   }
 

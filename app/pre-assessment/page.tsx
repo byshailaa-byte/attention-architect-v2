@@ -18,8 +18,9 @@ const GENDER_CHIPS = [
 function PreAssessmentForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const ageParam  = params.get("age") ?? "";
+  const ageParam      = params.get("age") ?? "";
   const concernsParam = params.get("concerns") ?? "";
+  const followupParam = params.get("followup") ?? "";
 
   const gatePass = VALID_AGE_BANDS.includes(ageParam) && concernsParam.split(",").filter(Boolean).length > 0;
 
@@ -45,6 +46,7 @@ function PreAssessmentForm() {
     p.set("name", trimmed); // empty string is valid — assessment skips meta phase on any name param
     if (ageParam) p.set("age", ageParam);
     if (concernsParam) p.set("concerns", concernsParam);
+    if (followupParam) p.set("followup", followupParam);
     if (childGender) p.set("gender", childGender);
     router.push(`/assessment?${p.toString()}`);
   }

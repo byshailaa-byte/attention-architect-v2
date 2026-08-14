@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
       archetype_fit_tier,
       parent_instinct_fit_tier,
       concerns,
+      worry_followup,
       answers,
       dimensions AS dimensions_json,
       weakest_two,
@@ -112,6 +113,7 @@ export async function POST(req: NextRequest) {
     archetype_fit_tier: string | null;
     parent_instinct_fit_tier: string | null;
     concerns: string[];
+    worry_followup: string | null;
     answers: Record<string, string>;
     dimensions_json: Record<string, { value: string; consistency: number; data_points: number; winning_votes: number }>;
     weakest_two: string[];
@@ -208,6 +210,7 @@ export async function POST(req: NextRequest) {
       parent_pattern: row.parent_pattern,
       parent_instinct_fit_tier: row.parent_instinct_fit_tier ?? scoring.parent_instinct_fit_tier,
       concerns: row.concerns ?? [],
+      worry_followup: row.worry_followup ?? null,
     },
     hdg, bg, sig, loop, cv, scoring,
   );
@@ -228,6 +231,10 @@ export async function POST(req: NextRequest) {
     .map(r => r.narrative_moments?.find?.((m: AttentionMoment) => m.section === "Recognition")?.content)
     .filter((s): s is string => typeof s === "string" && s.length > 0);
 
+  const priorTeaserTexts = priorRows
+    .map(r => r.narrative_moments?.find?.((m: AttentionMoment) => m.moment_id === "m_teaser")?.content)
+    .filter((s): s is string => typeof s === "string" && s.length > 0);
+
   const { moments: finalMoments, qualityResult } = await runQualityEngine({
     moments: composed.moments,
     specs,
@@ -237,6 +244,7 @@ export async function POST(req: NextRequest) {
     parentInstinctFitTier: composed.parent_instinct_fit_tier ?? "no_clear_fit",
     loop,
     priorRecognitionTexts,
+    priorTeaserTexts,
     ctx,
   });
 

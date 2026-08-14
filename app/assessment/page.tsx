@@ -98,6 +98,7 @@ function AssessmentForm() {
   const hasNameParam  = params.has("name"); // true even when name=""
   const ageParam      = params.get("age") as "8-9" | "10-11" | "12-14" | null;
   const concernsParam = params.get("concerns") ?? "";
+  const followupParam = params.get("followup") ?? "";
   const genderParam   = params.get("gender") ?? null; // collected at pre-assessment
 
   const VALID_AGE_BANDS = ["8-9", "10-11", "12-14"];
@@ -253,6 +254,7 @@ function AssessmentForm() {
           answers: finalAnswers,
           questionSequence: fullSeq.map((q) => ({ id: q.id, dimension: q.dimension })),
           concerns: concernsParam.split(",").filter(Boolean),
+          worryFollowup: followupParam || null,
         }),
       });
       const data = await res.json();

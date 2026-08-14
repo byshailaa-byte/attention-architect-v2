@@ -30,6 +30,8 @@ import {
   checkBlameFraming,
   checkEarlyActionContent,
   checkRecognitionOrdering,
+  checkTeaserLabelAbsence,
+  checkTeaserSimilarity,
 } from "./checks";
 
 const MAX_RETRIES = 2;
@@ -45,6 +47,9 @@ export interface QualityEngineInput {
   // Recognition content from the last N generated reports (for opening_similarity).
   // Pass [] to skip the similarity check (e.g., for the very first report).
   priorRecognitionTexts: string[];
+  // m_teaser content from the last N generated reports (for teaser_similarity).
+  // Pass [] when no prior teasers exist or m_teaser was not generated.
+  priorTeaserTexts?: string[];
   ctx: NarrativeContext;
 }
 
@@ -108,6 +113,12 @@ function runAllChecks(
 
   const ro = checkRecognitionOrdering(moments);
   if (ro) failures.push(ro);
+
+  const tla = checkTeaserLabelAbsence(moments);
+  if (tla) failures.push(tla);
+
+  const ts = checkTeaserSimilarity(moments, input.priorTeaserTexts ?? []);
+  if (ts) failures.push(ts);
 
   return failures;
 }

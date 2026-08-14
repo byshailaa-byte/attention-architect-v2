@@ -13,7 +13,9 @@ export type CheckName =
   | "clinical_language"
   | "blame_framing"
   | "early_action_content"
-  | "recognition_ordering";
+  | "recognition_ordering"
+  | "teaser_label_absence"
+  | "teaser_similarity";
 
 export interface CheckFailure {
   check: CheckName;

@@ -26,6 +26,10 @@ export interface NarrativeContext {
   pronouns: Pronouns;
   // Parent's stated concerns from the assessment form (e.g. ["focus", "screens"])
   concerns: string[];
+  // Follow-up answer echo text from the landing page (e.g. "They delay starting as long as possible").
+  // Null/absent when the parent navigated directly to /assessment without the landing page flow.
+  // Used exclusively as the required anchor for m_teaser — not used in any other moment.
+  worryFollowup?: string | null;
 
   // Resolved outputs
   archetype: string;
@@ -55,6 +59,7 @@ export function buildNarrativeContext(
     parent_pattern: string;
     parent_instinct_fit_tier: string;
     concerns?: string[];
+    worry_followup?: string | null;
   },
   hdg: HumanDecisionGraph,
   bg: BehaviourGraph,
@@ -70,6 +75,7 @@ export function buildNarrativeContext(
     gender,
     parentName: assessment.parent_name,
     concerns: assessment.concerns ?? [],
+    worryFollowup: assessment.worry_followup ?? null,
     pronouns: {
       subj:      resolveChildPronoun(gender, "subj"),
       obj:       resolveChildPronoun(gender, "obj"),

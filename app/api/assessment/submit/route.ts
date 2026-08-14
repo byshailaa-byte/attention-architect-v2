@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
       answers,
       questionSequence,
       concerns,
+      worryFollowup,
     } = body as {
       sessionId: string;
       childName: string;
@@ -40,7 +41,10 @@ export async function POST(req: NextRequest) {
       answers: Record<string, string>;
       questionSequence: Array<{ id: string; dimension: string }>;
       concerns?: string[];
+      worryFollowup?: string | null;
     };
+
+    const pricingVariant: "control" | "gated" = Math.random() < 0.5 ? "control" : "gated";
 
     if (!sessionId || !ageBand || !answers || !questionSequence) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -87,7 +91,9 @@ export async function POST(req: NextRequest) {
         axes, weakest_two,
         honest_flag, honest_trigger,
         confidence_vector,
-        concerns
+        concerns,
+        worry_followup,
+        pricing_variant
       ) VALUES (
         ${sessionId}::uuid,
         ${childName || null},
@@ -104,7 +110,9 @@ export async function POST(req: NextRequest) {
         ${scoring.honest_flag},
         ${scoring.honest_trigger},
         ${JSON.stringify(cv)}::jsonb,
-        ${concerns ?? []}
+        ${concerns ?? []},
+        ${worryFollowup ?? null},
+        ${pricingVariant}
       )
     `;
 
@@ -134,6 +142,7 @@ export async function POST(req: NextRequest) {
       parent_pattern: scoring.parent_pattern,
       axes: scoring.axes,
       weakest_two: scoring.weakest_two,
+      pricing_variant: pricingVariant,
     });
   } catch (e) {
     console.error("[assessment/submit]", e);

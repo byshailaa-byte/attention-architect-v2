@@ -538,6 +538,60 @@ function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
   return union === 0 ? 0 : intersection / union;
 }
 
+// ── Check 16: m_teaser label absence ─────────────────────────────────────────
+// m_teaser must not name any of the 8 child archetypes or 4 parent instinct patterns.
+// These labels appear in the report body — naming them in the pre-payment teaser breaks
+// the reveal sequence and violates the HARD RULES in the teaser's generation spec.
+const ALL_ARCHETYPE_LABELS = [
+  "The All-In Kid", "The Inventor", "The Explorer", "The Magnet",
+  "The Glue",       "The Captain",  "The Live Wire", "The Storm",
+];
+const ALL_INSTINCT_LABELS = [
+  "The Quick Fixer", "The Pusher", "The Negotiator", "The Steady Hand",
+];
+const ALL_TYPE_LABELS = [...ALL_ARCHETYPE_LABELS, ...ALL_INSTINCT_LABELS];
+
+export function checkTeaserLabelAbsence(moments: AttentionMoment[]): CheckFailure | null {
+  const teaser = moments.find(m => m.moment_id === "m_teaser");
+  if (!teaser) return null;
+  for (const label of ALL_TYPE_LABELS) {
+    if (countLabel(teaser.content, label) > 0) {
+      return {
+        check: "teaser_label_absence",
+        moment_id: teaser.moment_id,
+        reason: `m_teaser must not name any archetype or parent instinct — found "${label}"`,
+      };
+    }
+  }
+  return null;
+}
+
+// ── Check 17: m_teaser similarity ────────────────────────────────────────────
+// m_teaser must not drift toward a generic template across reports.
+// Uses the same Jaccard similarity approach as checkOpeningSimilarity.
+// priorTeaserTexts: m_teaser content from the last N generated reports.
+export function checkTeaserSimilarity(
+  moments: AttentionMoment[],
+  priorTeaserTexts: string[],
+  threshold = 0.40,
+): CheckFailure | null {
+  const teaser = moments.find(m => m.moment_id === "m_teaser");
+  if (!teaser || priorTeaserTexts.length === 0) return null;
+  const currentTokens = tokenize(teaser.content);
+  for (const prior of priorTeaserTexts) {
+    const priorTokens = tokenize(prior);
+    const similarity = jaccardSimilarity(currentTokens, priorTokens);
+    if (similarity >= threshold) {
+      return {
+        check: "teaser_similarity",
+        moment_id: teaser.moment_id,
+        reason: `m_teaser too similar to a prior teaser (Jaccard: ${similarity.toFixed(2)}, threshold: ${threshold}) — likely drifting to a generic template`,
+      };
+    }
+  }
+  return null;
+}
+
 export function checkOpeningSimilarity(
   moments: AttentionMoment[],
   priorRecognitionTexts: string[],

@@ -18,6 +18,10 @@ const ALLOWED = new Set([
   "landing_step_age",
   "landing_step_concern",
   "landing_step_followup",
+  "pricing_variant_assigned",
+  "phone_capture_shown",
+  "teaser_shown",
+  "paywall_shown",
 ]);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
