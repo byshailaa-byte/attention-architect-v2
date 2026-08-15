@@ -398,6 +398,11 @@ async function migrate() {
   // NULL for sessions where the parent skipped the follow-up or arrived without it.
   await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS worry_followup TEXT`;
 
+  // Phase 24 — variant on purchases.
+  // Carries the pricing_variant from the assessment through to the purchase record for analytics.
+  // NULL for purchases created before this migration.
+  await sql`ALTER TABLE purchases ADD COLUMN IF NOT EXISTS variant TEXT CHECK (variant IN ('control', 'gated'))`;
+
   console.log("Migrations complete.");
 }
 

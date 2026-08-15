@@ -592,6 +592,36 @@ export function checkTeaserSimilarity(
   return null;
 }
 
+// ── Check 18: m_teaser naming-framing ban ─────────────────────────────────────
+// The opening sentence of m_teaser must describe the situation, not narrate the parent's
+// act of naming or carrying the concern. Catches constructions the model uses to
+// paraphrase the banned literal sentence shapes from the generation spec.
+const TEASER_NAMING_PATTERNS: { re: RegExp; desc: string }[] = [
+  { re: /the word you\b/i,             desc: '"the word you …" (e.g. "landed on", "brought here")' },
+  { re: /you came here (worried|with)\b/i, desc: '"you came here worried about…" or "you came here with…"' },
+  { re: /the worry you brought\b/i,    desc: '"the worry you brought"' },
+  { re: /the concern you (named|brought)\b/i, desc: '"the concern you named/brought"' },
+  { re: /named? it exactly\b/i,        desc: '"name it exactly" / "named it exactly"' },
+  { re: /you'?ve? named (it|this)\b/i, desc: '"you\'ve named it" / "you named this"' },
+];
+
+export function checkTeaserNamingFraming(moments: AttentionMoment[]): CheckFailure | null {
+  const teaser = moments.find(m => m.moment_id === "m_teaser");
+  if (!teaser) return null;
+  // Only check the first sentence — that is where the opening-framing rule applies.
+  const firstSentence = teaser.content.split(/[.!?]/)[0];
+  for (const { re, desc } of TEASER_NAMING_PATTERNS) {
+    if (re.test(firstSentence)) {
+      return {
+        check: "teaser_naming_framing",
+        moment_id: teaser.moment_id,
+        reason: `m_teaser opening narrates the parent's act of naming the worry instead of describing the situation — banned construction: ${desc}`,
+      };
+    }
+  }
+  return null;
+}
+
 export function checkOpeningSimilarity(
   moments: AttentionMoment[],
   priorRecognitionTexts: string[],

@@ -15,7 +15,8 @@ export type CheckName =
   | "early_action_content"
   | "recognition_ordering"
   | "teaser_label_absence"
-  | "teaser_similarity";
+  | "teaser_similarity"
+  | "teaser_naming_framing";
 
 export interface CheckFailure {
   check: CheckName;

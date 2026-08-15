@@ -35,6 +35,21 @@ function getWebhookSecret(): string {
   return secret;
 }
 
+// Payment signature verification using the key secret (not the webhook secret).
+// Standard Razorpay payment verification: HMAC-SHA256(orderId|paymentId, KEY_SECRET).
+export function verifyPaymentSignature(
+  orderId: string,
+  paymentId: string,
+  signature: string,
+): boolean {
+  const { keySecret } = getRazorpayKeys();
+  const expected = crypto
+    .createHmac("sha256", keySecret)
+    .update(`${orderId}|${paymentId}`)
+    .digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+}
+
 // Webhook HMAC-SHA256 signature verification.
 // Uses RAZORPAY_WEBHOOK_SECRET (the secret set in Razorpay's dashboard webhook config),
 // NOT RAZORPAY_KEY_SECRET. These are two distinct secrets.

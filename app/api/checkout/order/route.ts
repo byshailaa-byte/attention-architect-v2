@@ -30,27 +30,25 @@ export async function POST(req: NextRequest) {
 
     const sql = getSql();
 
-    // Look up the assessment — fetch email now so we can gate before Razorpay
+    // Look up the assessment — fetch email and phone for user creation, pricing_variant for the purchase record
     const assessments = (await sql`
-      SELECT id, email FROM assessments
+      SELECT id, email, phone, pricing_variant FROM assessments
       WHERE session_id = ${sessionId}::uuid
       LIMIT 1
-    `) as unknown as { id: string; email: string | null }[];
+    `) as unknown as { id: string; email: string | null; phone: string | null; pricing_variant: string | null }[];
 
     if (assessments.length === 0) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    const { id: assessmentId, email: rawEmail } = assessments[0];
+    const { id: assessmentId, email: rawEmail, phone: rawPhone, pricing_variant } = assessments[0];
 
-    if (!rawEmail) {
+    if (!rawEmail && !rawPhone) {
       return NextResponse.json(
-        { error: "No email on file for this session — please re-enter your email to continue." },
+        { error: "No contact on file for this session — please re-enter your details to continue." },
         { status: 400 }
       );
     }
-
-    const email = rawEmail.trim().toLowerCase();
 
     // Create Razorpay order
     const rzp = getRazorpayClient();
@@ -66,21 +64,40 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Upsert user and record purchase — email is guaranteed non-null by the guard above
-    await sql`
-      INSERT INTO users (email) VALUES (${email})
-      ON CONFLICT (email) WHERE email IS NOT NULL DO NOTHING
-    `;
-    const userRows = (await sql`
-      SELECT id FROM users WHERE email = ${email} LIMIT 1
-    `) as unknown as { id: string }[];
-    if (userRows.length > 0) {
+    // Upsert user by email (preferred) or phone (gated arm, phone-only capture)
+    let userId: string | null = null;
+    if (rawEmail) {
+      const email = rawEmail.trim().toLowerCase();
+      await sql`
+        INSERT INTO users (email) VALUES (${email})
+        ON CONFLICT (email) WHERE email IS NOT NULL DO NOTHING
+      `;
+      const userRows = (await sql`
+        SELECT id FROM users WHERE email = ${email} LIMIT 1
+      `) as unknown as { id: string }[];
+      userId = userRows[0]?.id ?? null;
+    } else if (rawPhone) {
+      const phone = rawPhone.trim();
+      await sql`
+        INSERT INTO users (phone) VALUES (${phone})
+        ON CONFLICT (phone) DO NOTHING
+      `;
+      const userRows = (await sql`
+        SELECT id FROM users WHERE phone = ${phone} LIMIT 1
+      `) as unknown as { id: string }[];
+      userId = userRows[0]?.id ?? null;
+    }
+
+    if (userId) {
+      const variant = (pricing_variant === "gated" || pricing_variant === "control")
+        ? pricing_variant
+        : null;
       await sql`
         INSERT INTO purchases
-          (user_id, assessment_id, tier, amount_paise, razorpay_order_id, status)
+          (user_id, assessment_id, tier, amount_paise, razorpay_order_id, status, variant)
         VALUES
-          (${userRows[0].id}, ${assessmentId}, ${tier}, ${tierConfig.amount_paise},
-           ${order.id}, 'pending')
+          (${userId}, ${assessmentId}, ${tier}, ${tierConfig.amount_paise},
+           ${order.id}, 'pending', ${variant})
       `;
     }
 

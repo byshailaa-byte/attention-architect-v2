@@ -25,7 +25,7 @@ import { buildConfidenceVector } from "@/lib/graph/confidence";
 import { buildFamilyAttentionLoop } from "@/lib/graph/loop";
 import { scoreAssessment } from "@/lib/engine/scorer";
 import { buildNarrativeContext } from "@/lib/narrative/context";
-import { composeReport } from "@/lib/narrative/compose-report";
+import { composeReport, TEASER_FIXED_CLOSE } from "@/lib/narrative/compose-report";
 import { runQualityEngine } from "@/lib/quality/engine";
 import type { AttentionMoment } from "@/lib/narrative/types";
 import type { Dimensions } from "@/lib/engine/scorer";
@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
     .map(r => r.narrative_moments?.find?.((m: AttentionMoment) => m.moment_id === "m_teaser")?.content)
     .filter((s): s is string => typeof s === "string" && s.length > 0);
 
-  const { moments: finalMoments, qualityResult } = await runQualityEngine({
+  const { moments: rawFinalMoments, qualityResult } = await runQualityEngine({
     moments: composed.moments,
     specs,
     archetype: composed.archetype,
@@ -246,6 +246,15 @@ export async function POST(req: NextRequest) {
     priorRecognitionTexts,
     priorTeaserTexts,
     ctx,
+  });
+
+  // If the quality engine regenerated m_teaser, generateMoment() returns bare prose
+  // without the fixed closing sentence. Re-apply it here so the stored moment is complete.
+  const finalMoments = rawFinalMoments.map(m => {
+    if (m.moment_id === "m_teaser" && !m.content.includes(TEASER_FIXED_CLOSE)) {
+      return { ...m, content: `${m.content}\n\n${TEASER_FIXED_CLOSE}` };
+    }
+    return m;
   });
 
   console.log(`[auto-generate] session=${sessionId} quality=${qualityResult.passed ? "passed" : `failed (${qualityResult.failures.length})`}`);

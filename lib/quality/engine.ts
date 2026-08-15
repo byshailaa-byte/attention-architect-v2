@@ -32,6 +32,7 @@ import {
   checkRecognitionOrdering,
   checkTeaserLabelAbsence,
   checkTeaserSimilarity,
+  checkTeaserNamingFraming,
 } from "./checks";
 
 const MAX_RETRIES = 2;
@@ -119,6 +120,9 @@ function runAllChecks(
 
   const ts = checkTeaserSimilarity(moments, input.priorTeaserTexts ?? []);
   if (ts) failures.push(ts);
+
+  const tnf = checkTeaserNamingFraming(moments);
+  if (tnf) failures.push(tnf);
 
   return failures;
 }
