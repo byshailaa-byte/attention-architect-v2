@@ -10,7 +10,7 @@ export const pusher: PatternContent = {
     "Sometimes pushing works and I feel like a good parent. Sometimes it backfires and I wonder if I'm the reason this is a fight.",
     "I don't know how to want this for {{child_pronoun_obj}} without it turning into me wanting it more than {{child_name}} does.",
   ],
-  s3Disarm: "Nothing here is wrong — leaning on {{child_pronoun_obj}} is a real strength. But that strength meets {{child_pronoun_poss}} need for ownership in a specific way. Once you see it, you won't unsee it. The roadmap is where you shift it, not just name it.",
+  s3Disarm: "Nothing here is wrong — leaning on {{child_pronoun_obj}} is a real strength. But that strength meets {{child_pronoun_poss}} need for ownership in a specific way.",
 
   // S4 — template; {{child_reframe_close}} is filled by renderer from archetype.s4ReframeClose.
   // Source: report-content-master.md §4 (spec-defect fix, 2026-07-09)

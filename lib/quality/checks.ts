@@ -622,6 +622,72 @@ export function checkTeaserNamingFraming(moments: AttentionMoment[]): CheckFailu
   return null;
 }
 
+// ── Check 19: m_teaser bridge paraphrase ─────────────────────────────────────
+// The bridge sentence (sentence 2 of m_teaser) must add a detail that was NOT
+// already present in the parent's follow-up answer. High lexical overlap between
+// the bridge and the worryFollowup text signals the model paraphrased the parent's
+// own words instead of drawing from G1/G2 evidence.
+//
+// Uses the same Jaccard tokenizer as opening_similarity.
+// Strips the TEASER_FIXED_CLOSE (post-"\n\n") before sentence-splitting.
+// Only checks sentence 2; skips if fewer than 2 sentences are identifiable.
+export function checkTeaserBridgeParaphrase(
+  moments: AttentionMoment[],
+  worryFollowup: string | null | undefined,
+  threshold = 0.40,
+): CheckFailure | null {
+  const teaser = moments.find(m => m.moment_id === "m_teaser");
+  if (!teaser || !worryFollowup) return null;
+
+  // Strip the fixed close sentence that is appended after "\n\n" by compose-report.
+  const prose = teaser.content.includes("\n\n")
+    ? teaser.content.split("\n\n")[0].trim()
+    : teaser.content.trim();
+
+  // Split into sentences by terminal punctuation followed by whitespace.
+  const sentences = prose.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+  if (sentences.length < 2) return null;
+
+  const bridge = sentences[1];
+  const bridgeTokens = tokenize(bridge);
+  const followupTokens = tokenize(worryFollowup);
+  if (bridgeTokens.size === 0 || followupTokens.size === 0) return null;
+
+  const similarity = jaccardSimilarity(bridgeTokens, followupTokens);
+  if (similarity >= threshold) {
+    return {
+      check: "teaser_bridge_paraphrase",
+      moment_id: teaser.moment_id,
+      reason: `m_teaser bridge sentence (sentence 2) has high lexical overlap with the parent's follow-up answer (Jaccard: ${similarity.toFixed(2)}, threshold: ${threshold}) — likely paraphrasing the follow-up rather than adding G1/G2 evidence`,
+    };
+  }
+  return null;
+}
+
+// Check 20: m_teaser generated portion must be exactly 2 sentences.
+// The model is instructed to stop after sentence 2; the closing sentence is appended in code.
+// Enforcing this here makes Check 19's sentence-position detection reliable:
+// if the count is wrong, we regenerate before the bridge check can mis-fire on a fragment.
+export function checkTeaserSentenceCount(moments: AttentionMoment[]): CheckFailure | null {
+  const teaser = moments.find(m => m.moment_id === "m_teaser");
+  if (!teaser) return null;
+
+  // Strip the fixed close (appended after "\n\n") to isolate the generated portion.
+  const prose = teaser.content.includes("\n\n")
+    ? teaser.content.split("\n\n")[0].trim()
+    : teaser.content.trim();
+
+  const sentences = prose.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+  if (sentences.length !== 2) {
+    return {
+      check: "teaser_sentence_count",
+      moment_id: teaser.moment_id,
+      reason: `m_teaser generated portion has ${sentences.length} sentence${sentences.length === 1 ? "" : "s"} — must be exactly 2 (opening + bridge). Regenerating to enforce output shape before Check 19 runs.`,
+    };
+  }
+  return null;
+}
+
 export function checkOpeningSimilarity(
   moments: AttentionMoment[],
   priorRecognitionTexts: string[],
@@ -639,6 +705,250 @@ export function checkOpeningSimilarity(
         check: "opening_similarity",
         moment_id: recognition.moment_id,
         reason: `Recognition section too similar to a prior report (Jaccard: ${similarity.toFixed(2)}, threshold: ${threshold})`,
+      };
+    }
+  }
+  return null;
+}
+
+// ── Check 21: Fallback tendency language (m_instinct_interaction_fallback) ────
+// m_instinct_interaction_fallback describes a tendency grounded in mechanism,
+// NOT an observed loop. The one failure mode is the LLM writing observed-fact
+// assertions ("you do this", "this is happening") instead of tendency language.
+// This check flags those; the engine regenerates when found.
+const OBSERVED_FACT_PATTERNS = [
+  /\byou (always|never|do this|keep doing|have been)\b/i,
+  /\bthis (is happening|has been happening|keeps happening|happens in your)\b/i,
+  /\byou've? (been doing|created this|caused this)\b/i,
+  /\bin your (home|household|family), this\b/i,
+  /\bwe (saw|observed|noticed|detected) (this|that|a)\b/i,
+];
+
+export function checkInstinctInteractionTendency(moments: AttentionMoment[]): CheckFailure | null {
+  const fallback = moments.find(m => m.moment_id === "m_instinct_interaction_fallback");
+  if (!fallback) return null;
+
+  for (const pattern of OBSERVED_FACT_PATTERNS) {
+    const match = fallback.content.match(pattern);
+    if (match) {
+      return {
+        check: "instinct_interaction_tendency",
+        moment_id: fallback.moment_id,
+        reason: `m_instinct_interaction_fallback contains observed-fact language ("${match[0]}") — must use tendency language only since no loop was detected for this family`,
+      };
+    }
+  }
+  return null;
+}
+
+// ── Check 22: Simplified strengths ───────────────────────────────────────────
+
+const GENERIC_FILLER_PATTERNS = [
+  /\bis (creative|imaginative|smart|intelligent|kind|caring|empathetic)\b/i,
+  /\btries? (hard|their best)\b/i,
+  /\bworks? well with others\b/i,
+  /\bhas (a lot of|great) potential\b/i,
+  /\bis a (great|good) (listener|learner|student|friend)\b/i,
+];
+
+const ASPIRATIONAL_PATTERNS = [
+  /\bwill be able to\b/i,
+  /\bcan learn to\b/i,
+  /\bhas the potential to\b/i,
+  /\bif (they want|given the chance|motivated)\b/i,
+];
+
+// Patterns that assert productive internal engagement as fact — invalid when friction
+// evidence is avoid-type. Only flagged when hasAvoidFrictionResponse is true.
+const AVOID_ENGAGEMENT_ASSERTION_PATTERNS = [
+  /\b(processes?|works? through|works? on it|thinks? through)\s+(it|things?)\s+(quietly|internally|alone|on their own)\b/i,
+  /\bquietly\s+(processes?|works? through|resolves?)\b/i,
+  /\binternal(ly)?\s+(process|working|reflection)\b/i,
+  /\b(sits? with|holds?)\s+(the\s+)?(difficulty|challenge|frustration)\s+internally\b/i,
+];
+
+// Hedge markers — if any of these appear in the same bullet, it's appropriately hedged
+// and should NOT be flagged by the avoid-engagement check.
+const HEDGE_MARKERS = [
+  /\bmay be\b/i, /\bmight be\b/i, /\bcould be\b/i, /\bworth watching\b/i,
+  /\btends? to\b/i, /\bsometimes\b/i, /\bat times\b/i,
+];
+
+export function checkSimplifiedStrengths(
+  strengths: { emoji: string; text: string }[],
+  opts?: { hasAvoidFrictionResponse?: boolean },
+): CheckFailure[] {
+  const failures: CheckFailure[] = [];
+
+  if (strengths.length < 2 || strengths.length > 3) {
+    failures.push({
+      check: "strengths_item_count",
+      moment_id: "m_simplified_strengths",
+      reason: `Expected 2 or 3 strength items, got ${strengths.length}`,
+    });
+  }
+
+  const fullText = strengths.map(s => s.text).join(" ");
+
+  for (const p of GENERIC_FILLER_PATTERNS) {
+    const m = fullText.match(p);
+    if (m) {
+      failures.push({
+        check: "strengths_generic_filler",
+        moment_id: "m_simplified_strengths",
+        reason: `Strength contains generic filler ("${m[0]}") — strengths must be specific to this child's profile`,
+      });
+      break;
+    }
+  }
+
+  for (const p of ASPIRATIONAL_PATTERNS) {
+    const m = fullText.match(p);
+    if (m) {
+      failures.push({
+        check: "strengths_aspirational",
+        moment_id: "m_simplified_strengths",
+        reason: `Strength contains aspirational language ("${m[0]}") — strengths describe current capabilities, not future potential`,
+      });
+      break;
+    }
+  }
+
+  // Avoid-type friction_response: flag any bullet that asserts productive internal
+  // engagement as fact without hedging. Two strong bullets beat a stretched third.
+  if (opts?.hasAvoidFrictionResponse) {
+    for (const strength of strengths) {
+      for (const assertionP of AVOID_ENGAGEMENT_ASSERTION_PATTERNS) {
+        const m = strength.text.match(assertionP);
+        if (!m) continue;
+        const isHedged = HEDGE_MARKERS.some(hp => hp.test(strength.text));
+        if (!isHedged) {
+          failures.push({
+            check: "strengths_avoid_asserted_as_engagement",
+            moment_id: "m_simplified_strengths",
+            reason: `Strength bullet asserts internal engagement as fact ("${m[0]}") when friction evidence is avoid-type — use a hedge ("may be working through it quietly") or omit this bullet`,
+          });
+          break;
+        }
+      }
+    }
+  }
+
+  return failures;
+}
+
+// ── Check 23: Simplified actions (DETAIL 06 + Try Tonight) ───────────────────
+
+const GENERIC_ADVICE_PATTERNS = [
+  /\bbe patient\b/i,
+  /\bspend (quality |more )?time\b/i,
+  /\bshow (genuine |real )?interest\b/i,
+  /\bvalidate (their|your child's) feelings\b/i,
+  /\bencourage (them|your child)\b/i,
+  /\bbe consistent\b/i,
+  /\bstay (positive|calm|present)\b/i,
+];
+
+const VAGUE_STEP_PATTERNS = [
+  /^(support|help|engage with|talk to|connect with|be there for) (them|your child)\.?$/i,
+  /^(observe|watch) (them|your child)\.?$/i,
+  /^(notice|pay attention)\.?$/i,
+];
+
+export function checkSimplifiedActions(
+  actions: { emoji: string; label: string; description: string }[],
+  tryTonight: { title: string; steps: string[] } | null,
+): CheckFailure[] {
+  const failures: CheckFailure[] = [];
+
+  if (actions.length < 2 || actions.length > 4) {
+    failures.push({
+      check: "actions_item_count",
+      moment_id: "m_simplified_actions",
+      reason: `Expected 2–4 action items, got ${actions.length}`,
+    });
+  }
+
+  const fullActionText = actions.map(a => `${a.label} ${a.description}`).join(" ");
+  for (const p of GENERIC_ADVICE_PATTERNS) {
+    const m = fullActionText.match(p);
+    if (m) {
+      failures.push({
+        check: "actions_generic_advice",
+        moment_id: "m_simplified_actions",
+        reason: `Action contains generic parenting advice ("${m[0]}") — actions must be specific to this archetype × instinct combination`,
+      });
+      break;
+    }
+  }
+
+  if (tryTonight) {
+    if (tryTonight.steps.length < 2 || tryTonight.steps.length > 3) {
+      failures.push({
+        check: "try_tonight_step_count",
+        moment_id: "m_simplified_actions",
+        reason: `Try Tonight should have 2–3 steps, got ${tryTonight.steps.length}`,
+      });
+    }
+
+    for (const step of tryTonight.steps) {
+      for (const p of VAGUE_STEP_PATTERNS) {
+        if (p.test(step.trim())) {
+          failures.push({
+            check: "try_tonight_vague",
+            moment_id: "m_simplified_actions",
+            reason: `Try Tonight step is too vague to be actionable: "${step}"`,
+          });
+          break;
+        }
+      }
+    }
+  }
+
+  return failures;
+}
+
+// ── Check 24: Try Tonight title cross-session similarity ──────────────────────
+// Flags when a generated Try Tonight title is too close to a recently seen title
+// from another session — indicates model drift toward generic templates.
+//
+// Uses Jaccard similarity on word tokens (length > 2, shorter threshold than prose
+// because title vocabulary is small — 2/3-word overlap is meaningful at this scale).
+// Threshold: 0.60 (tighter than teaser prose threshold of 0.40).
+// Also flags exact matches regardless of score.
+//
+// priorTitles: titles seen in recent sessions (in-memory store in page.tsx for now).
+// NOTE: in-memory store does not persist across server restarts or multiple instances.
+// Acceptable for local preview testing; requires a real persistence layer before
+// this moves to production traffic.
+export function checkTryTonightTitle(
+  currentTitle: string,
+  priorTitles: string[],
+  threshold = 0.60,
+): CheckFailure | null {
+  if (priorTitles.length === 0) return null;
+  const normalize = (t: string) => t.toLowerCase().replace(/[^\w\s]/g, " ").trim();
+  const tokenizeTitle = (t: string): Set<string> =>
+    new Set(normalize(t).split(/\s+/).filter(w => w.length > 2));
+
+  const currentNorm = normalize(currentTitle);
+  const currentTokens = tokenizeTitle(currentTitle);
+
+  for (const prior of priorTitles) {
+    if (normalize(prior) === currentNorm) {
+      return {
+        check: "try_tonight_title_similarity",
+        moment_id: "m_simplified_actions",
+        reason: `Try Tonight title exactly matches a prior session's title: "${currentTitle}" — regenerate for a distinct title`,
+      };
+    }
+    const priorTokens = tokenizeTitle(prior);
+    const similarity = jaccardSimilarity(currentTokens, priorTokens);
+    if (similarity >= threshold) {
+      return {
+        check: "try_tonight_title_similarity",
+        moment_id: "m_simplified_actions",
+        reason: `Try Tonight title too similar to a prior session's title (Jaccard: ${similarity.toFixed(2)}, threshold: ${threshold}): "${currentTitle}" vs "${prior}" — regenerate for a distinct title`,
       };
     }
   }

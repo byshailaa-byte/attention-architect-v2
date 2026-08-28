@@ -7,10 +7,11 @@ assertBootGuards();
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, phone, ageBand } = (await req.json()) as {
+    const { name, phone, ageBand, variant } = (await req.json()) as {
       name?: string;
       phone?: string;
       ageBand?: string;
+      variant?: string;
     };
 
     if (!name?.trim() || !phone?.trim() || !ageBand) {
@@ -25,14 +26,17 @@ export async function POST(req: NextRequest) {
         name       TEXT        NOT NULL,
         phone      TEXT        NOT NULL,
         age_band   TEXT        NOT NULL,
+        variant    TEXT        NOT NULL DEFAULT 'production',
         wa_sent    BOOLEAN     NOT NULL DEFAULT false,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       )
     `;
+    await sql`ALTER TABLE handbook_leads ADD COLUMN IF NOT EXISTS variant TEXT NOT NULL DEFAULT 'production'`;
 
+    const src = (variant ?? "production").trim() || "production";
     const [row] = (await sql`
-      INSERT INTO handbook_leads (name, phone, age_band)
-      VALUES (${name.trim()}, ${phone.trim()}, ${ageBand})
+      INSERT INTO handbook_leads (name, phone, age_band, variant)
+      VALUES (${name.trim()}, ${phone.trim()}, ${ageBand}, ${src})
       RETURNING id
     `) as unknown as { id: number }[];
 

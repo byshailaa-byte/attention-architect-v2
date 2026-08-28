@@ -4,6 +4,7 @@ import { verifyPaymentSignature } from "@/lib/razorpay/client";
 import { capturePayment } from "@/lib/razorpay/capture";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { sendCapiEvents } from "@/lib/meta/capi";
+import { sendPurchaseReceipt } from "@/lib/auth/email";
 
 assertBootGuards();
 
@@ -55,9 +56,11 @@ export async function POST(req: NextRequest) {
       after(async () => {
         try {
           const rows = (await sql`
-            SELECT a.session_id::text, p.tier, p.amount_paise, a.email, a.phone
+            SELECT a.session_id::text, p.tier, p.amount_paise, a.email, a.phone,
+                   a.child_name, u.email AS user_email
             FROM purchases p
             JOIN assessments a ON a.id = p.assessment_id
+            LEFT JOIN users u ON u.id = p.user_id
             WHERE p.razorpay_order_id = ${razorpayOrderId}
             LIMIT 1
           `) as unknown as {
@@ -66,6 +69,8 @@ export async function POST(req: NextRequest) {
             amount_paise: number;
             email: string | null;
             phone: string | null;
+            child_name: string | null;
+            user_email: string | null;
           }[];
           const row = rows[0];
           if (!row) return;
@@ -98,6 +103,22 @@ export async function POST(req: NextRequest) {
           `.catch((e: unknown) =>
             console.warn("[funnel] purchase event (gated):", (e as Error).message),
           );
+
+          // Send receipt email with set-password link if we have an email address.
+          // gated-confirm wins the capturePayment race so the webhook gets "duplicate"
+          // and skips its email block — this is the authoritative send for gated arm.
+          const recipientEmail = row.user_email ?? row.email;
+          if (recipientEmail) {
+            await sendPurchaseReceipt({
+              to: recipientEmail,
+              paymentId: razorpayPaymentId,
+              amount: row.amount_paise,
+              tier: row.tier,
+              paidAt: new Date().toISOString(),
+              childName: row.child_name,
+              setPasswordUrl: `${baseUrl}/lms/set-password?session=${row.session_id}`,
+            });
+          }
         } catch (e: unknown) {
           console.warn("[capi] gated purchase:", (e as Error).message);
         }

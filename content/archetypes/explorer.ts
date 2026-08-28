@@ -9,7 +9,7 @@ export const explorer: ArchetypeContent = {
   s1EvidenceObservation: "the way one question leads {{child_pronoun_obj}} three topics away, and {{child_pronoun_subj}} can tell you exactly how {{child_pronoun_subj}} got there",
 
   // S2
-  s2Anecdote:  "{{child_name}} starts the assigned reading, gets three lines in, and ends up deep in a completely different question the book only mentioned once in passing. Twenty minutes later {{child_pronoun_subj}} can tell you three new facts and none of them were on the worksheet. Call it distraction and you'll spend a year fighting it. It's not distraction. It's exactly the same curiosity you'd want in a scientist, running with no channel to point it down.",
+  s2Anecdote:  "{{child_name}} starts the assigned reading, gets three lines in, and ends up deep in a completely different question the book only mentioned once in passing. Call it distraction and you'll spend a year fighting it. It's not distraction. It's exactly the same curiosity you'd want in a scientist, running with no channel to point it down.",
   s2Pullquote: "The tangent isn't the distraction. Sometimes it's the whole point.",
   s2Strength:  "curiosity that goes further and connects more than a fixed lesson plan ever could.",
   s2Shadow:    "without a channel, the same curiosity looks like an inability to stay on any one thing.",

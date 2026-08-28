@@ -10,7 +10,7 @@ export const quick_fixer: PatternContent = {
     "I keep swooping in to fix it before {{child_name}} even gets stuck. I don't know if I'm helping, or making sure {{child_name}} never has to try.",
     "Every time I solve it for {{child_pronoun_obj}}, some part of me is relieved — and another part wonders what {{child_name}} is actually learning from that.",
   ],
-  s3Disarm: "Nothing here is wrong — showing up the second something gets hard is real care, and it's kept plenty of kids from giving up too soon. But that same instinct meets {{child_pronoun_poss}} needs in a specific way. Once you see it, you won't unsee it. The roadmap is where you shift it, not just name it.",
+  s3Disarm: "Nothing here is wrong — showing up the second something gets hard is real care, and it's kept plenty of kids from giving up too soon. But that same instinct meets {{child_pronoun_poss}} needs in a specific way.",
 
   // S4 — template; {{child_reframe_close}} filled by renderer from archetype.s4ReframeClose.
   s4MechanismTemplate: "It's that stepping in taught {{child_name}} focus is something {{child_reframe_close}}.",

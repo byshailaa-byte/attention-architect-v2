@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "captain",
   week: 2,
-  weekTitle: "Their Own Rule",
+  weekTitle: "Let Them Set the Screen Rule",
 
   weeklyReading: {
     introShared: `Screens are usually the single most fought-over rule in any house — which makes them the highest-value place to hand {{child_name}} real authority. If a Captain gets to genuinely help set the boundary here, in the domain with the most at stake, it proves the ownership from Week 1 wasn't just offered on easy, low-stakes tasks. This week doesn't loosen the limit. It changes who's holding the pen when it gets drawn.`,
@@ -34,7 +34,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 2,
-      title: "Hand {{child_pronoun_obj}} real say in setting today's boundary.",
+      title: "Let them propose the screen rule instead of you setting it.",
       content: {
         "8-9":   "Ask {{child_pronoun_obj}} what feels fair today before announcing anything. Set the limit together, using {{child_pronoun_poss}} answer — or genuinely negotiating from it.",
         "10-11": "Not removing structure — negotiating it together, genuinely, with {{child_pronoun_poss}} input actually shaping the outcome: *\"How much time feels fair to you today?\"* Use the answer, or negotiate from it honestly.",
@@ -63,7 +63,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 4,
-      title: "Let {{child_pronoun_obj}} self-monitor the boundary.",
+      title: "Hold them to their own rule rather than yours.",
       content: {
         "8-9":   "Let {{child_name}} hold the limit {{child_pronoun_poss}} own way today. No enforcement from you — {{child_pronoun_subj}} set it, {{child_pronoun_subj}} holds it.",
         "10-11": "Instead of you enforcing the limit, hand {{child_pronoun_obj}} the responsibility of tracking and holding it {{child_pronoun_poss}} own way.",
@@ -75,7 +75,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 5,
-      title: "Name what {{child_pronoun_subj}} owned.",
+      title: "Say they set it and kept it.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"You helped set that, and you held it yourself.\"* Short and specific.",
         "10-11": "Tell {{child_name}}: *\"You set that boundary with me, and you held it yourself today. That's real ownership — not just being told what to do.\"*",

@@ -16,7 +16,19 @@ export type CheckName =
   | "recognition_ordering"
   | "teaser_label_absence"
   | "teaser_similarity"
-  | "teaser_naming_framing";
+  | "teaser_naming_framing"
+  | "teaser_bridge_paraphrase"
+  | "teaser_sentence_count"
+  | "instinct_interaction_tendency"
+  | "strengths_item_count"
+  | "strengths_generic_filler"
+  | "strengths_aspirational"
+  | "strengths_avoid_asserted_as_engagement"
+  | "actions_item_count"
+  | "actions_generic_advice"
+  | "try_tonight_step_count"
+  | "try_tonight_vague"
+  | "try_tonight_title_similarity";
 
 export interface CheckFailure {
   check: CheckName;

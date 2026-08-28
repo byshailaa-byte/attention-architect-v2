@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "live-wire",
   week: 2,
-  weekTitle: "A Borrowed Real Stake",
+  weekTitle: "A Real Stake, Even on Screen Time",
 
   weeklyReading: {
     introShared: `Games already have exactly what {{child_name}} needs to fully engage — a real, immediate stake: a timer, a rival, a visible score, a friend waiting on the other end. Rather than treating that as something to compete with, this week treats it as a template. Whatever specific thing makes the game feel real to {{child_pronoun_obj}} is a genuine blueprint for what could make anything else feel real too — borrowed deliberately, not vaguely.`,
@@ -34,7 +34,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 2,
-      title: "Borrow that exact stake-shape for a non-screen task.",
+      title: "Attach a real stake to a screen-time boundary they set.",
       content: {
         "8-9":   "Borrow the timer or the race idea for a non-screen thing today. Same shape as the game — as close as you can make it.",
         "10-11": "Whatever made the game feel real — a countdown, a rival, a visible score — apply that exact structure to something else today.",
@@ -63,7 +63,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 4,
-      title: "Set a real time boundary on the screen too.",
+      title: "Let it hold without you renegotiating mid-week.",
       content: {
         "8-9":   "Give the screen a real time edge too. Same as any other domain — a clear, held limit, separate from the stakes work.",
         "10-11": "Set a real time boundary on the screen too. Same as any other domain — a clear, held limit, separate from the stakes work.",
@@ -75,7 +75,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 5,
-      title: "Name the connection.",
+      title: "Say the stake did the work, not your reminders.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"We used your game trick somewhere else, and it worked!\"* Keep it light and specific.",
         "10-11": "Tell {{child_name}}: *\"That thing that makes the game feel real — we just used the same trick somewhere else, and it worked. You basically taught me how to make things matter to you.\"*",

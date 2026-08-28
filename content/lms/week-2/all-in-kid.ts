@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "all-in-kid",
   week: 2,
-  weekTitle: "The Same Depth on Screens",
+  weekTitle: "The Same Rule When It's a Screen",
 
   weeklyReading: {
     introShared: `It's easy to watch {{child_name}} vanish into a game for two hours and worry that screens have some special hold on {{child_pronoun_obj}}. They don't — not more than anything else {{child_pronoun_subj}} goes deep into, anyway. What screens actually offer, better than almost anything else in {{child_pronoun_poss}} day, is *uninterrupted time*. Nobody calls {{child_pronoun_obj}} for dinner mid-level. Nobody checks in every five minutes. The depth you see on screen isn't a different capacity than the one that goes quiet on homework — it's the exact same one, just finally given the conditions it needs everywhere else. This week doesn't fight the gaming. It uses it as proof, then builds the same conditions somewhere that matters more to you.`,
@@ -34,7 +34,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 2,
-      title: "Give a non-screen task the same protection.",
+      title: "Protect a screen-based deep stretch the same way you would a book.",
       content: {
         "8-9":   "Pick 15 minutes today and protect it the same way gaming already gets protected — nobody interrupts, no check-ins. Same conditions, different domain.",
         "10-11": "Pick one non-screen stretch today and protect it exactly the way {{child_pronoun_poss}} gaming time already gets protected — no interruptions, no check-ins. Same conditions, different domain.",
@@ -63,7 +63,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 4,
-      title: "Set a real, respected boundary on the screen time too.",
+      title: "Don't interrupt it just because it's a screen.",
       content: {
         "8-9":   "Give the screen time a real edge too. A clear start and stop, held the same as anything else — not a punishment, just an edge.",
         "10-11": "Set a real, respected boundary on the screen time too. Not a punishment — the same kind of clear, protected edge {{child_pronoun_poss}} other deep time now gets. A start and an end, held firmly, same as any other block.",
@@ -75,7 +75,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 5,
-      title: "Name the connection.",
+      title: "Name what held their attention, not the fact it was quiet.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"The way you go deep in that game — that's the same thing you did today. It's one skill.\"*",
         "10-11": "Tell {{child_name}}: *\"The way you go deep into that game — that's the exact same thing you do with [the protected task]. It's not two different things. It's one skill.\"*",

@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "explorer",
   week: 2,
-  weekTitle: "The Same Channel on Screens",
+  weekTitle: "The Same Notepad, Even With Screens",
 
   weeklyReading: {
     introShared: `Video-to-video, game-to-game — it looks like mindless drift, but watch closely and you'll usually find the same connecting-mind pattern that shows up everywhere else in {{child_name}}'s day, just moving faster. This week doesn't try to slow the drift down. It gives it the same lightweight home Week 1 built for tangents anywhere else — a way to note, not lose, without breaking the flow that makes screens feel good in the first place.`,
@@ -34,7 +34,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 2,
-      title: "Give screens a \"come back to it\" pad too.",
+      title: "Give screen-time ideas the same \"write it down, come back\" landing spot.",
       content: {
         "8-9":   "If something makes {{child_name}} want to look something else up, write it down, come back after. You can keep the list — the pad can be yours. Zero friction for {{child_pronoun_obj}}.",
         "10-11": "Introduce a lightweight version of the \"come back to it\" pad — even for screens: *\"If something makes you want to look something else up, note it, we'll check it after.\"* Keep it as simple as possible.",
@@ -63,7 +63,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 4,
-      title: "Set a real time boundary too.",
+      title: "Set a real end time, and let the notepad hold what's unfinished.",
       content: {
         "8-9":   "Give the screen a real time edge today. Not on what {{child_pronoun_subj}} explores — only on how long.",
         "10-11": "Set a real time boundary too. Not on what {{child_pronoun_subj}} explores — only on how long. A clear edge, same as any other domain.",
@@ -75,7 +75,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 5,
-      title: "Name the connection.",
+      title: "Say the system worked, not that they logged off on time.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"That's the same thing you do with ideas everywhere — just faster.\"*",
         "10-11": "Tell {{child_name}}: *\"That's the exact same thing you do with your ideas everywhere — one thing leads to another. It's not mindless. It's just fast.\"*",

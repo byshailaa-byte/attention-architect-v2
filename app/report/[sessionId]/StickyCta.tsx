@@ -18,6 +18,7 @@ type Props = {
   parentName: string;
   email: string;
   phone: string;
+  hasPurchase?: boolean;
 };
 
 function fireGtag(event: string, params?: Record<string, unknown>) {
@@ -44,7 +45,8 @@ function fireEvent(eventType: string, sessionId: string, metadata?: Record<strin
   }).catch(() => {});
 }
 
-export default function StickyCta({ sessionId, childName, parentName, email, phone }: Props) {
+export default function StickyCta({ sessionId, childName, parentName, email, phone, hasPurchase }: Props) {
+  if (hasPurchase) return null;
   const [visible, setVisible] = useState(false);
   const openedRef = useRef(false);
   const priceSeenRef = useRef(false);

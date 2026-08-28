@@ -7,7 +7,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "magnet",
   week: 1,
-  weekTitle: "Steady Presence",
+  weekTitle: "Being in the Room Without Managing It",
 
   weeklyReading: {
     introShared: `Watch {{child_name}} do homework alone, and watch {{child_pronoun_obj}} do it with someone at the same table, and you may notice something that doesn't quite add up. Same child, same task, same ability — but the focus holds so much longer when there's another person in the room. It's easy to read this the wrong way. It can look like {{child_pronoun_subj}} won't work unless {{child_pronoun_subj}}'s supervised. Like {{child_pronoun_subj}} needs to be watched. Like {{child_pronoun_subj}}'s not motivated on {{child_pronoun_poss}} own.
@@ -46,7 +46,7 @@ The trap this week is a subtle one, and it's worth naming now: presence has to s
     },
     {
       day: 2,
-      title: "Be present without taking over.",
+      title: "Sit nearby without steering what they're doing.",
       content: {
         "8-9":   "Pick one task. Sit near {{child_name}} — reading your own book, not helping, not checking. Just there.",
         "10-11": "Pick one task today. Sit nearby — reading your own thing, doing your own work — present but not managing. Not helping, not checking. Just there.",
@@ -80,7 +80,7 @@ The trap this week is a subtle one, and it's worth naming now: presence has to s
     },
     {
       day: 4,
-      title: "Widen the gap slightly.",
+      title: "Let a quiet stretch stay quiet — don't fill it.",
       content: {
         "8-9":   "Be there at the start, step out for the middle, come back. See how far {{child_pronoun_subj}} carries it alone.",
         "10-11": "Today, be present at the start, then step out for the middle stretch and come back. The goal isn't to always be there — it's for {{child_name}} to carry the focus a little further each time between check-ins.",
@@ -97,7 +97,7 @@ The trap this week is a subtle one, and it's worth naming now: presence has to s
     },
     {
       day: 5,
-      title: "Name what {{child_pronoun_subj}} carried alone.",
+      title: "Say you were there, not that they did well.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"I stepped out and you kept going all by yourself.\"*",
         "10-11": "After today, say one specific thing: *\"I stepped out for a while there and you kept going. That was all you.\"* Recognition of the stretch {{child_pronoun_subj}} held without company.",

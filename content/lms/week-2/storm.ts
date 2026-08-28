@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "storm",
   week: 2,
-  weekTitle: "Real Say on Screens",
+  weekTitle: "A Real Choice, Even About Screens",
 
   weeklyReading: {
     introShared: `Screens are the one place where you've probably already tried everything — time limits, app blockers, taking the device away entirely — and the fight just moves, it never actually ends. It's worth understanding why, specifically for {{child_name}}, before trying anything new here.
@@ -44,7 +44,7 @@ The move this week is small on the surface: hand {{child_pronoun_obj}} the *how*
     },
     {
       day: 2,
-      title: "Offer one real choice inside a real boundary.",
+      title: "Set the limit, then let them choose how to spend it.",
       content: {
         "8-9":   "Same total time as always. Today, let {{child_name}} pick when to use it. That's the whole move — the limit stays firm, the *when* is genuinely {{child_pronoun_poss}}.",
         "10-11": "The boundary stays — same total time as always. But today, hand {{child_pronoun_obj}} the actual decision inside it: *\"You've got [the usual time]. You decide when you use it and how you split it up.\"* Not more time, not less structure — real choice about the *how*, inside the same *how much*.",
@@ -73,7 +73,7 @@ The move this week is small on the surface: hand {{child_pronoun_obj}} the *how*
     },
     {
       day: 4,
-      title: "A harder choice, still inside the boundary.",
+      title: "Let them spend it badly once, without renegotiating.",
       content: {
         "8-9":   "Let {{child_name}} pick between two different things to do with the time — not just when, but what. Real trade-offs, both fine with you.",
         "10-11": "Today, raise the stakes slightly: offer a choice between two different things {{child_pronoun_subj}} could do with the time — not just when, but what. Real trade-offs, both genuinely fine with you, but different enough that picking one means giving up the other.",
@@ -85,7 +85,7 @@ The move this week is small on the surface: hand {{child_pronoun_obj}} the *how*
     },
     {
       day: 5,
-      title: "Name what {{child_pronoun_subj}} owned.",
+      title: "Point out what they decided, not that they turned it off.",
       content: {
         "8-9":   "Offer the choice as usual. Afterward, say one true thing: *\"You managed that time all by yourself today.\"* Short and honest.",
         "10-11": "After today, say one specific thing: *\"You managed that time completely yourself today — the boundary didn't move, but how you used it was all you.\"* Recognition that the ownership was real, inside a structure that also held.",

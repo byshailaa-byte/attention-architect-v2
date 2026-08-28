@@ -3,14 +3,26 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 
-const ink      = "#201E19";
-const inkSoft  = "#5B5648";
-const inkFaint = "#8B8570";
-const accent   = "#34503F";
-const surface  = "#FBF9F3";
-
-const FR = `"Fraunces", Georgia, serif`;
-const PP = `"Public Sans", "Inter", system-ui, sans-serif`;
+const COLORS = {
+  default: {
+    ink: "#201E19",
+    inkSoft: "#5B5648",
+    inkFaint: "#8B8570",
+    accent: "#34503F",
+    surface: "#FBF9F3",
+    headline: `"Fraunces", Georgia, serif`,
+    body: `"Public Sans", "Inter", system-ui, sans-serif`,
+  },
+  simplified: {
+    ink: "#14284D",
+    inkSoft: "#3a4f6e",
+    inkFaint: "#8B8570",
+    accent: "#22A38A",
+    surface: "#FBF9F3",
+    headline: `"Bricolage Grotesque", "Bricolage Grotesque Condensed", sans-serif`,
+    body: `"Public Sans", "Inter", system-ui, sans-serif`,
+  },
+} as const;
 
 function buildMessages(firstName: string, archetype: string): { headline: string; sub: string }[] {
   const child = firstName || "your child";
@@ -34,7 +46,7 @@ function buildMessages(firstName: string, archetype: string): { headline: string
   ];
 }
 
-function PulseRing() {
+function PulseRing({ accent }: { accent: string }) {
   return (
     <div style={{ position: "relative", width: 48, height: 48, margin: "0 auto 32px" }}>
       <style>{`
@@ -79,7 +91,11 @@ function GeneratingScreen() {
   const searchParams  = useSearchParams();
   const childName  = searchParams.get("name") || "";
   const archetype  = searchParams.get("archetype") || "";
+  const dest       = searchParams.get("dest") || "";
   const router     = useRouter();
+
+  const isSimplified = dest === "simplified";
+  const C = isSimplified ? COLORS.simplified : COLORS.default;
 
   const firstName  = childName.split(" ")[0] || "your child";
   const messages   = buildMessages(firstName, archetype);
@@ -117,8 +133,12 @@ function GeneratingScreen() {
     function redirect(hardCap = false) {
       if (redirectedRef.current) return;
       redirectedRef.current = true;
-      // hardCap=true adds ?f=1 so the report page knows not to bounce back here
-      router.replace(`/report/${sessionId}${hardCap ? "?f=1" : ""}`);
+      if (dest === "simplified") {
+        router.replace(`/preview/simplified-v1?session=${sessionId}`);
+      } else {
+        // hardCap=true adds ?f=1 so the report page knows not to bounce back here
+        router.replace(`/report/${sessionId}${hardCap ? "?f=1" : ""}`);
+      }
     }
 
     async function poll() {
@@ -144,13 +164,13 @@ function GeneratingScreen() {
     <div
       style={{
         minHeight: "100dvh",
-        background: surface,
+        background: C.surface,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         padding: "40px 24px",
-        fontFamily: PP,
+        fontFamily: C.body,
         position: "relative",
       }}
     >
@@ -160,7 +180,7 @@ function GeneratingScreen() {
       </div>
 
       <div style={{ maxWidth: "400px", width: "100%", textAlign: "center" }}>
-        <PulseRing />
+        <PulseRing accent={C.accent} />
 
         <div
           style={{
@@ -170,18 +190,18 @@ function GeneratingScreen() {
         >
           <h1
             style={{
-              fontFamily: FR,
-              fontStyle: "italic",
-              fontWeight: 600,
+              fontFamily: C.headline,
+              fontStyle: isSimplified ? "normal" : "italic",
+              fontWeight: isSimplified ? 800 : 600,
               fontSize: "clamp(22px, 5.5vw, 30px)",
-              color: ink,
+              color: C.ink,
               margin: "0 0 16px",
               lineHeight: 1.25,
             }}
           >
             {msg.headline}
           </h1>
-          <p style={{ fontFamily: PP, fontSize: "15px", color: inkSoft, lineHeight: 1.65, margin: 0 }}>
+          <p style={{ fontFamily: C.body, fontSize: "15px", color: C.inkSoft, lineHeight: 1.65, margin: 0 }}>
             {msg.sub}
           </p>
         </div>
@@ -195,7 +215,7 @@ function GeneratingScreen() {
                 style={{
                   width: 5, height: 5,
                   borderRadius: "50%",
-                  background: i === msgIdx ? accent : "rgba(32,30,25,0.15)",
+                  background: i === msgIdx ? C.accent : "rgba(32,30,25,0.15)",
                   transition: "background 0.4s",
                 }}
               />
@@ -204,7 +224,7 @@ function GeneratingScreen() {
         )}
       </div>
 
-      <div style={{ position: "absolute", bottom: "24px", fontSize: "12px", color: inkFaint, textAlign: "center", fontFamily: PP }}>
+      <div style={{ position: "absolute", bottom: "24px", fontSize: "12px", color: C.inkFaint, textAlign: "center", fontFamily: C.body }}>
         The Human Decision
       </div>
     </div>

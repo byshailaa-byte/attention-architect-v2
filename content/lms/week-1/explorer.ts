@@ -7,7 +7,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "explorer",
   week: 1,
-  weekTitle: "The Capture Channel",
+  weekTitle: "Somewhere for the Good Ideas to Go",
 
   weeklyReading: {
     introShared: `There is a moment you have almost certainly lived through this week. {{child_name}} sits down to do one specific thing — and twenty minutes later is three topics away, deep in something that has nothing to do with what {{child_pronoun_subj}} sat down for. And here is the part that makes it maddening: {{child_pronoun_subj}} can tell you *exactly* how {{child_pronoun_subj}} got there. One thing led to another led to another, and every link in that chain made sense.
@@ -48,7 +48,7 @@ That is the whole move this week. Small in practice — a pad, a "come back to i
     },
     {
       day: 2,
-      title: "Give the tangent a place to go.",
+      title: "Keep a notepad next to the homework.",
       content: {
         "8-9":   "Pick one task. Tell {{child_name}}: *\"If you think of something else, put it on this pad — we'll come back.\"*",
         "10-11": "Pick one task today. Tell {{child_name}} up front: *\"If this sparks something else, write it on this pad — we'll come back to it.\"* Give the wandering a destination instead of a dead end.",
@@ -82,7 +82,7 @@ That is the whole move this week. Small in practice — a pad, a "come back to i
     },
     {
       day: 4,
-      title: "Point the wandering at the work itself.",
+      title: "Ask what part of the actual work they'd chase first.",
       content: {
         "8-9":   "Pick a task with room to poke around. Try: *\"Find two ways this connects to something you like.\"*",
         "10-11": "Today, pick a task that has room to explore inside it. Instead of \"finish this,\" try \"find three ways this connects to something else.\" Let the exploring *be* the task, not a detour from it.",
@@ -99,7 +99,7 @@ That is the whole move this week. Small in practice — a pad, a "come back to i
     },
     {
       day: 5,
-      title: "Name the connection, not the compliance.",
+      title: "Tell them what you noticed — not that they finally sat still.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"You found a connection nobody else spotted.\"*",
         "10-11": "After today, say one specific thing: *\"You didn't just finish that — you found a link in it nobody pointed out.\"* Recognition of the connecting, which is {{child_pronoun_poss}} real strength, not just task completion.",

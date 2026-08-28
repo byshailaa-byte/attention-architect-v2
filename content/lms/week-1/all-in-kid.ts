@@ -7,7 +7,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "all-in-kid",
   week: 1,
-  weekTitle: "The Protected Block",
+  weekTitle: "One Stretch Nobody Interrupts",
 
   weeklyReading: {
     introShared: `{{child_name}} can disappear into something for two hours and not hear you call {{child_pronoun_obj}} for dinner. Not ignoring you — genuinely gone, so deep in the thing that the outside world has stopped registering. And this, more than almost anything, is the trait that gets misread. Because the same child who can vanish into a book or a build or a game for hours is the one who "can't focus" on homework — and the contradiction makes no sense until you understand what's actually going on.
@@ -46,7 +46,7 @@ The revelation of this week, for many parents, is discovering that the interrupt
     },
     {
       day: 2,
-      title: "Offer one real block.",
+      title: "Pick one block and guard it — no check-ins, no snack runs.",
       content: {
         "8-9":   "Pick one thing today. Give {{child_name}} 15 minutes with no interruptions — no questions, no \"how's it going.\" Just let {{child_pronoun_obj}} stay in it.",
         "10-11": "Pick one task today. Before {{child_name}} starts, clear the next 30 minutes of interruptions on your end — no check-ins, no \"how's it going,\" nothing. Let the depth run uninterrupted once.",
@@ -80,7 +80,7 @@ The revelation of this week, for many parents, is discovering that the interrupt
     },
     {
       day: 4,
-      title: "Let the block run past comfortable.",
+      title: "Let it run past the point you'd normally call time.",
       content: {
         "8-9":   "If {{child_name}} is still happily deep in it when time's up, don't stop {{child_pronoun_obj}}. Let it run a bit more.",
         "10-11": "Today, if {{child_name}} is still deep in it when the \"usual\" stopping point arrives, don't call time. Let it run until {{child_pronoun_subj}} naturally surfaces. Notice how long that actually takes.",
@@ -97,7 +97,7 @@ The revelation of this week, for many parents, is discovering that the interrupt
     },
     {
       day: 5,
-      title: "Name what you protected.",
+      title: "Say what they got into, not that they sat still.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"Nobody bugged you today, and look how much you did.\"* Simple, true, {{child_pronoun_poss}} to keep.",
         "10-11": "After today's block, say one specific thing: *\"I noticed you didn't get pulled out of that today. That's yours.\"* Not praise for finishing — recognition of the depth itself staying intact.",

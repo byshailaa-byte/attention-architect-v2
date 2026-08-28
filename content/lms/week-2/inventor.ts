@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "inventor",
   week: 2,
-  weekTitle: "Their Way on Screens",
+  weekTitle: "Their Way, Even When It's a Screen",
 
   weeklyReading: {
     introShared: `Watch {{child_name}} inside a game and you'll notice something: nobody's correcting {{child_pronoun_poss}} approach. Nobody's saying "that's not how you're supposed to build that base" or "try it this way instead." Games are one of the only places in {{child_pronoun_poss}} day where {{child_pronoun_poss}} method is entirely {{child_pronoun_poss}} own, with zero adult correction — which may be exactly why they're so magnetic. This week doesn't compete with that freedom. It extends it — the same total hands-off respect, applied somewhere that matters more to you than a game score.`,
@@ -34,7 +34,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 2,
-      title: "Give a real task that same freedom.",
+      title: "Let them set up the screen task their own way.",
       content: {
         "8-9":   "Pick one thing today and let {{child_name}} do it completely {{child_pronoun_poss}} way — no \"try it like this,\" not even gently. Same hands-off as gaming.",
         "10-11": "Pick one task today and hand it over completely — no method correction, no \"try it like this,\" same hands-off respect {{child_pronoun_poss}} game time already gets by default.",
@@ -63,7 +63,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 4,
-      title: "Set a real time boundary on the screen itself.",
+      title: "Resist reorganising it into something that makes sense to you.",
       content: {
         "8-9":   "Give the screen a real time edge today. Just the when, not the how — the method freedom stays completely {{child_pronoun_poss}}.",
         "10-11": "Set a real time boundary on the screen itself. Separate axis entirely — a clear start and end, held firmly. The method freedom stays total; only the *when* and *how long* get a real edge.",
@@ -75,7 +75,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 5,
-      title: "Name the connection.",
+      title: "Ask what they were going for before you comment on the result.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"Nobody tells you how to play your game — I didn't tell you how to do that either.\"*",
         "10-11": "Tell {{child_name}}: *\"Nobody tells you how to play that game — and I didn't tell you how to do [the task] either. That's not an accident. That's how you actually build things.\"*",

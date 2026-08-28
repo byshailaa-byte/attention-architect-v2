@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "glue",
   week: 2,
-  weekTitle: "Connection Before Screens",
+  weekTitle: "Reconnect Before You Mention the Screen",
 
   weeklyReading: {
     introShared: `For {{child_name}}, a screen often isn't really about the content — it's a way to disappear from a feeling that hasn't been addressed yet. This is the same connection-before-concentration pattern from Week 1, showing up in a new place: when the room feels tense and unresolved, screens become the exit. This week doesn't fight that exit by blocking it harder. It addresses what's actually driving the reach for it — real connection, offered before the tension gets a chance to send {{child_pronoun_obj}} looking for an escape.`,
@@ -34,7 +34,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 2,
-      title: "Connect first, before any screen conversation.",
+      title: "Sit with them for a moment before raising screen time.",
       content: {
         "8-9":   "On a tense moment today, have two warm minutes first — before any screen talk. Sit close, name the feeling simply. Then, and only then, any conversation about screens.",
         "10-11": "On a moment when tension's present and a screen is the instinct, connect genuinely first — a real two minutes — before addressing the screen at all.",
@@ -63,7 +63,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 4,
-      title: "Set a real boundary too — connection first.",
+      title: "Don't open with the limit — open with them.",
       content: {
         "8-9":   "Give the screen a real edge today too. A clear limit — but introduced after connection, not as the opening move.",
         "10-11": "Set a real boundary on the screen too, connection-first. The limit stays real — but it gets introduced after connection, not as the opening move.",
@@ -75,7 +75,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 5,
-      title: "Name the connection.",
+      title: "Say the conversation went differently, and why.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"You didn't need your tablet as much after we talked today.\"* Say it simply.",
         "10-11": "Tell {{child_name}}: *\"I noticed you reached for your tablet less today after we talked. That tells me something — the screen wasn't really what you needed.\"*",

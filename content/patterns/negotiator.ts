@@ -10,7 +10,7 @@ export const negotiator: PatternContent = {
     "I've basically turned homework into a marketplace. I don't know if {{child_name}} is learning to focus or just learning to ask what's in it for {{child_pronoun_obj}}.",
     "Every deal that works makes me a little more worried about what happens the day I don't have anything left to offer.",
   ],
-  s3Disarm: "Nothing here is wrong — knowing how to make something worth {{child_pronoun_poss}} while is a real skill, and it's gotten plenty of kids through plenty of hard nights. But that same instinct meets {{child_pronoun_poss}} needs in a specific way. Once you see it, you won't unsee it. The roadmap is where you shift it, not just name it.",
+  s3Disarm: "Nothing here is wrong — knowing how to make something worth {{child_pronoun_poss}} while is a real skill, and it's gotten plenty of kids through plenty of hard nights. But that same instinct meets {{child_pronoun_poss}} needs in a specific way.",
 
   // S4 — template; {{child_reframe_close}} filled by renderer from archetype.s4ReframeClose.
   s4MechanismTemplate: "It's that negotiating taught {{child_name}} focus is something {{child_reframe_close}}.",

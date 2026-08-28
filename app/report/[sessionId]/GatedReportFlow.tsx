@@ -433,6 +433,12 @@ function PaywallScreen({
               </li>
             ))}
           </ul>
+          <div style={{ borderTop: "1px solid rgba(32,30,25,0.10)", paddingTop: "14px", marginBottom: "14px" }}>
+            <p style={{ fontFamily: BG, fontSize: "12.5px", color: "#5C5950", fontStyle: "italic", margin: "0 0 5px", lineHeight: 1.55 }}>
+              &ldquo;A few simple changes reduced the daily arguments, and studying no longer feels like a battle.&rdquo;
+            </p>
+            <div style={{ fontSize: "11px", color: "#7a7870" }}>— Sandeel Shukla, Parent of a 14-year-old Son · Raipur</div>
+          </div>
           <button
             onClick={() => openModal("full")}
             style={{
@@ -454,40 +460,62 @@ function PaywallScreen({
           </button>
         </div>
 
-        {/* Secondary ₹499 block */}
-        <div style={{ textAlign: "center", padding: "4px 0 20px" }}>
-          <div style={{ fontSize: 13.5, color: "#5B5648", marginBottom: 8 }}>
-            Not ready for all six weeks yet?
+        {/* Secondary ₹499 card — white background, same card shape */}
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 16,
+            padding: "24px 20px",
+            textAlign: "left",
+            marginBottom: 16,
+            border: "1.5px solid rgba(32,30,25,0.12)",
+          }}
+        >
+          <div style={{ fontFamily: BG, fontWeight: 800, fontSize: 22, color: "var(--ink)" }}>₹499</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#3a3830", margin: "6px 0 12px" }}>
+            {TIER_LABEL.module1}
           </div>
-          <div
-            style={{
-              fontSize: 12,
-              color: "#7a7870",
-              marginBottom: 12,
-              lineHeight: 1.5,
-            }}
-          >
-            <strong style={{ color: "#3a3830" }}>₹499</strong> — {TIER_LABEL.module1}
-            <br />
-            The complete report, unlocked now · Week 1 of the roadmap, to see how it feels
-            <br />
-            Upgrade to the full 6 weeks anytime
-          </div>
+          <ul style={{ margin: "0 0 18px", padding: 0, listStyle: "none" }}>
+            {[
+              "The complete report, unlocked now",
+              "Week 1 of the roadmap, to see how it feels",
+              "Upgrade to the full 6 weeks anytime",
+            ].map((item) => (
+              <li
+                key={item}
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "flex-start",
+                  marginBottom: 7,
+                  fontSize: 12.5,
+                  color: "#5C5950",
+                  lineHeight: 1.5,
+                }}
+              >
+                <span style={{ color: "#34503F", fontWeight: 700, flexShrink: 0 }}>✓</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
           <button
             onClick={() => openModal("module1")}
             style={{
+              display: "block",
+              width: "100%",
               background: "transparent",
-              border: "1.5px solid rgba(32,30,25,0.22)",
-              borderRadius: 10,
-              color: "#5B5648",
+              border: "1.5px solid #1a1a1f",
+              color: "#1a1a1f",
+              textAlign: "center",
               fontFamily: BG,
-              fontWeight: 700,
-              fontSize: 13.5,
-              padding: "10px 20px",
+              fontWeight: 800,
+              fontSize: 14,
+              padding: 13,
+              borderRadius: 10,
               cursor: "pointer",
             }}
           >
-            Read the Report + Week 1 — ₹499
+            Open the Report + Week 1
           </button>
         </div>
 

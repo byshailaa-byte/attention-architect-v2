@@ -30,11 +30,6 @@ const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
 // ── Content constants ────────────────────────────────────────────────────────
 
-const OOB_NOTES: Record<string, string> = {
-  younger: "This assessment is built for ages 8–14. A version for younger children is coming — continue and we'll show you what applies now.",
-  older:   "This assessment is built for ages 8–14. Much of it still applies to teens — continue and answer for your teen.",
-};
-
 const AGE_LABELS: Record<string, string> = {
   "8-9":    "8 and 9-year-olds",
   "10-11":  "10 and 11-year-olds",

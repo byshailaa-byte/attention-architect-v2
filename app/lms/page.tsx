@@ -44,7 +44,7 @@ export default async function LmsHomePage() {
   const weeks: WeekState[] = [1, 2, 3, 4, 5, 6].map((week) => {
     const prog = allProgress[week - 1];
     const prevProg = week > 1 ? allProgress[week - 2] : null;
-    const hasContent = getLmsWeekContent(ctx.archetype, week) !== null;
+    const hasContent = getLmsWeekContent(ctx.archetype, week, ctx.ageBand) !== null;
     const unlocked = hasContent
       ? isDayUnlocked(1, week, prog, prevProg, now)
       : false;

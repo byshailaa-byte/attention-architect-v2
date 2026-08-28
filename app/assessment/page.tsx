@@ -51,7 +51,7 @@ function isValidPhone(raw: string): boolean {
   return /^[6-9]\d{9}$/.test(normalizePhone(raw));
 }
 
-type Phase = "meta" | "questions" | "post-assessment";
+type Phase = "meta" | "questions" | "simplified-gate" | "post-assessment";
 type ScoringResult = { archetype: string; parent_pattern: string };
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
@@ -100,6 +100,7 @@ function AssessmentForm() {
   const concernsParam = params.get("concerns") ?? "";
   const followupParam = params.get("followup") ?? "";
   const genderParam   = params.get("gender") ?? null; // collected at pre-assessment
+  const variantParam  = params.get("variant") ?? "";
 
   const VALID_AGE_BANDS = ["8-9", "10-11", "12-14"];
   const gatePass = hasNameParam
@@ -133,7 +134,7 @@ function AssessmentForm() {
   const [answers, setAnswers]       = useState<Record<string, string>>({});
   const [sessionId] = useState(() => crypto.randomUUID());
 
-  const [engagementScreen, setEngagementScreen] = useState<{ screenIdx: number; nextQIdx: number } | null>(null);
+  const [engagementBanner, setEngagementBanner] = useState<{ screenIdx: number } | null>(null);
   const shownEngagements = useRef(new Set<number>());
 
   const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
@@ -160,15 +161,12 @@ function AssessmentForm() {
     }
   }, [phase, sessionId]);
 
-  // Auto-advance engagement screens after 4.5s; tap still advances immediately
+  // Auto-dismiss inline engagement banner after 4.5s
   useEffect(() => {
-    if (engagementScreen === null) return;
-    const t = setTimeout(() => {
-      setEngagementScreen(null);
-      setCurrentIdx(engagementScreen.nextQIdx);
-    }, 4500);
+    if (engagementBanner === null) return;
+    const t = setTimeout(() => setEngagementBanner(null), 4500);
     return () => clearTimeout(t);
-  }, [engagementScreen]);
+  }, [engagementBanner]);
 
   function startAssessment() {
     setQuestions(GATEWAY_QUESTIONS);
@@ -224,19 +222,20 @@ function AssessmentForm() {
       }
     }
 
-    // Show engagement screens at ~40% and ~75% through the full sequence
+    // Show inline engagement banner at ~40% and ~75% through the full sequence
     if (questions.length > 3) {
       const nextPct = (next + 1) / questions.length;
       const THRESHOLDS = [0.40, 0.75] as const;
       for (let i = 0; i < THRESHOLDS.length; i++) {
         if (nextPct >= THRESHOLDS[i] && !shownEngagements.current.has(i)) {
           shownEngagements.current.add(i);
-          setEngagementScreen({ screenIdx: i, nextQIdx: next });
-          return;
+          setEngagementBanner({ screenIdx: i });
+          break;
         }
       }
     }
 
+    if (engagementBanner !== null) setEngagementBanner(null);
     setCurrentIdx(next);
   }
 
@@ -255,6 +254,7 @@ function AssessmentForm() {
           questionSequence: fullSeq.map((q) => ({ id: q.id, dimension: q.dimension })),
           concerns: concernsParam.split(",").filter(Boolean),
           worryFollowup: followupParam || null,
+          variant: variantParam || undefined,
         }),
       });
       const data = await res.json();
@@ -263,10 +263,52 @@ function AssessmentForm() {
       fireGtag("assessment_complete", { archetype: data.archetype });
       fireFbq("trackCustom", "AssessmentComplete", { archetype: data.archetype });
       setSubmitting(false);
-      setPhase("post-assessment");
+      if (variantParam === "simplified") {
+        // Simplified variant: show contact gate immediately (generation already started
+        // fire-and-forget in assessment/submit). Parent fills details while report generates.
+        setPhase("simplified-gate");
+      } else {
+        setPhase("post-assessment");
+      }
     } catch (e) {
       setSubmitting(false);
       setError((e as Error).message);
+    }
+  }
+
+  async function submitSimplifiedGate() {
+    if (!parentName.trim() || !email.trim() || !phone.trim()) return;
+    setPhoneError(null);
+    if (!isValidPhone(phone)) {
+      setPhoneError("Enter a valid 10-digit Indian mobile number.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/report/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          parentName: parentName.trim(),
+          email: email.trim(),
+          phone: normalizePhone(phone),
+          variant: "simplified",
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error ?? "Something went wrong");
+      }
+      fireGtag("generate_lead");
+      fireFbq("track", "Lead", {}, `lead:${sessionId}`);
+      router.push(
+        `/report/generating/${sessionId}?name=${encodeURIComponent(childName || "")}&archetype=${encodeURIComponent(scoringResult?.archetype || "")}&dest=simplified`
+      );
+    } catch (e) {
+      setError((e as Error).message);
+      setSubmitting(false);
     }
   }
 
@@ -323,50 +365,6 @@ function AssessmentForm() {
   }
 
   if (!gatePass) return null;
-
-  /* ── ENGAGEMENT SCREEN ───────────────────────────────────────── */
-  if (phase === "questions" && engagementScreen !== null) {
-    const screen = ENGAGEMENT_SCREENS[engagementScreen.screenIdx];
-    const pct = Math.round((engagementScreen.nextQIdx / questions.length) * 100);
-    return (
-      <div className="funnel-screen" style={{ background: "var(--ink)" }}>
-        <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          {/* Progress bar — gold on dark */}
-          <div style={{ width: "100%", maxWidth: 640, height: 3, background: "rgba(246,198,61,.2)", borderRadius: 2, marginBottom: 48, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${pct}%`, background: "#F6C63D", borderRadius: 2, transition: "width .3s ease" }} />
-          </div>
-          <div className="q-wrap" style={{ textAlign: "center" }}>
-            {/* Gold icon on dark card */}
-            <div style={{
-              width: 56, height: 56, borderRadius: 14,
-              background: "rgba(246,198,61,.12)",
-              border: "1px solid rgba(246,198,61,.25)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 28px",
-            }}>
-              {screen.icon}
-            </div>
-            <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "22px", lineHeight: 1.3, marginBottom: "14px", color: "#F6F4EC" }}>
-              {screen.headline()}
-            </h2>
-            <p style={{ fontSize: "15px", color: "rgba(246,244,236,.6)", lineHeight: 1.65, marginBottom: "40px" }}>
-              {screen.body}
-            </p>
-            <button
-              className="cta-btn"
-              onClick={() => {
-                setEngagementScreen(null);
-                setCurrentIdx(engagementScreen.nextQIdx);
-              }}
-              style={{ background: "#F6C63D", color: "#23242c" }}
-            >
-              {screen.cta}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   /* ── META PHASE ─────────────────────────────────────────────── */
   if (phase === "meta") {
@@ -448,10 +446,27 @@ function AssessmentForm() {
       <div className="funnel-screen">
         <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div className="q-progress" style={{ marginBottom: "24px" }}>
-            <div style={{ height: "100%", width: `${pct}%`, background: "var(--marker)", transition: "width .3s ease" }} />
+            <div style={{ height: "100%", width: `${pct}%`, background: variantParam === "simplified" ? "#F5A623" : "var(--marker)", transition: "width .3s ease" }} />
           </div>
           <div className="q-wrap">
-            <div style={{ fontSize: "13px", color: "var(--calm-text)", fontWeight: 600, marginBottom: "8px" }}>
+            {engagementBanner !== null && (
+              <div style={{
+                background: "var(--calm-tint)",
+                border: "1px solid var(--calm)",
+                borderRadius: "14px",
+                padding: "16px 18px",
+                marginBottom: "22px",
+                fontSize: "13px",
+                color: "var(--calm-text)",
+                lineHeight: 1.6,
+              }}>
+                <strong style={{ display: "block", marginBottom: "5px" }}>
+                  {ENGAGEMENT_SCREENS[engagementBanner.screenIdx].headline()}
+                </strong>
+                {ENGAGEMENT_SCREENS[engagementBanner.screenIdx].body}
+              </div>
+            )}
+            <div style={{ fontSize: "13px", color: variantParam === "simplified" ? "#22A38A" : "var(--calm-text)", fontWeight: 600, marginBottom: "8px" }}>
               {milestone}
             </div>
             <div style={{ fontSize: "12.5px", color: "var(--ink-dim)", marginBottom: "20px" }}>
@@ -478,12 +493,78 @@ function AssessmentForm() {
                     fontFamily: "inherit",
                     transition: "border-color .1s",
                   }}
-                  onMouseOver={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--marker)"; }}
+                  onMouseOver={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = variantParam === "simplified" ? "#14284D" : "var(--marker)"; }}
                   onMouseOut={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--line)"; }}
                 >
                   {opt.label}
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── SIMPLIFIED GATE PHASE ─────────────────────────────────── */
+  if (phase === "simplified-gate") {
+    const emailTouchedG = email.length > 0;
+    const emailValidG   = isValidEmail(email);
+    const gateReady     = parentName.trim().length > 0 && emailValidG && phone.trim().length > 0;
+    const kidName       = childName || "your child";
+
+    return (
+      <div style={{ minHeight: "100dvh", background: "#FBF9F3", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px" }}>
+        <div style={{ maxWidth: 440, width: "100%" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 26, width: "auto", marginBottom: 32 }} />
+          <div style={{ background: "#fff", borderRadius: 16, padding: "32px 28px", border: "1px solid #E8E4D8", boxShadow: "0 2px 12px rgba(20,40,77,0.06)" }}>
+            <div style={{ fontSize: "11px", letterSpacing: ".14em", textTransform: "uppercase", color: "#22A38A", fontWeight: 700, marginBottom: 12 }}>
+              {kidName}&rsquo;s Report is Ready
+            </div>
+            <h1 style={{ fontFamily: BG, fontWeight: 800, fontSize: "clamp(22px,4vw,28px)", color: "#14284D", lineHeight: 1.25, margin: "0 0 8px" }}>
+              Where should we send it?
+            </h1>
+            <p style={{ fontSize: "14px", color: "#5B5648", lineHeight: 1.6, margin: "0 0 28px" }}>
+              We&rsquo;ll send {kidName}&rsquo;s report to your WhatsApp. Free — no payment needed.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#14284D", marginBottom: 6 }}>
+                  Your name <span style={{ color: "#D94F3D", fontWeight: 500, fontSize: 11 }}>Required</span>
+                </label>
+                <input type="text" placeholder="e.g. Priya" value={parentName} onChange={(e) => setParentName(e.target.value)}
+                  style={{ width: "100%", padding: "13px 16px", fontSize: "15px", border: "2px solid #F5A623", borderRadius: 10, fontFamily: "inherit", background: "#FBF9F3", color: "#14284D", outline: "none", boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#14284D", marginBottom: 6 }}>
+                  Email <span style={{ color: "#D94F3D", fontWeight: 500, fontSize: 11 }}>Required</span>
+                </label>
+                <input type="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)}
+                  style={{ width: "100%", padding: "13px 16px", fontSize: "15px", border: `2px solid ${emailTouchedG && !emailValidG ? "#D94F3D" : "#F5A623"}`, borderRadius: 10, fontFamily: "inherit", background: "#FBF9F3", color: "#14284D", outline: "none", boxSizing: "border-box" }} />
+                {emailTouchedG && !emailValidG && <div style={{ fontSize: 12, color: "#D94F3D", marginTop: 5 }}>Enter a valid email (e.g. you@gmail.com)</div>}
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#14284D", marginBottom: 6 }}>
+                  WhatsApp number <span style={{ color: "#D94F3D", fontWeight: 500, fontSize: 11 }}>Required</span>
+                </label>
+                <input type="tel" placeholder="98765 43210" value={phone} onChange={(e) => { setPhone(e.target.value); setPhoneError(null); }}
+                  style={{ width: "100%", padding: "13px 16px", fontSize: "15px", border: `2px solid ${phoneError ? "#D94F3D" : "#F5A623"}`, borderRadius: 10, fontFamily: "inherit", background: "#FBF9F3", color: "#14284D", outline: "none", boxSizing: "border-box" }} />
+                {phoneError ? <div style={{ fontSize: 12, color: "#D94F3D", marginTop: 5 }}>{phoneError}</div>
+                  : <div style={{ fontSize: 12, color: "#8B8570", marginTop: 5 }}>Used only to send the report — never shared.</div>}
+              </div>
+              {error && <div style={{ background: "#fdf0ee", color: "#D94F3D", border: "1px solid #e8c4be", borderRadius: 8, padding: "12px 16px", fontSize: 13 }}>{error}</div>}
+              <button
+                className="sv-gate-submit"
+                onClick={submitSimplifiedGate}
+                disabled={!gateReady || submitting}
+                style={{ width: "100%", padding: "15px 20px", background: gateReady ? "#14284D" : "#D4D0C4", color: gateReady ? "#fff" : "#8B8570", fontFamily: BG, fontWeight: 800, fontSize: 15, border: "none", borderRadius: 10, cursor: gateReady && !submitting ? "pointer" : "not-allowed", marginTop: 4 }}
+              >
+                {submitting ? "Opening report…" : `Open ${kidName}'s Report →`}
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: 16, marginTop: 18, fontSize: 12, color: "#8B8570", justifyContent: "center" }}>
+              <span>Free</span><span>·</span><span>No payment needed</span><span>·</span><span>Sent to WhatsApp</span>
             </div>
           </div>
         </div>

@@ -7,7 +7,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "glue",
   week: 1,
-  weekTitle: "Connection First",
+  weekTitle: "Two Minutes Before the Homework",
 
   weeklyReading: {
     introShared: `Some children can wall off a bad mood and work anyway. {{child_name}} is not one of them, and this week is about why that's not the problem it looks like.
@@ -48,7 +48,7 @@ The move is small and it may feel almost too soft to count as a strategy. Trust 
     },
     {
       day: 2,
-      title: "Clear the air before the ask.",
+      title: "Connect for two minutes before mentioning what needs doing.",
       content: {
         "8-9":   "Before asking {{child_name}} to focus, have two nice minutes together first — not about the work. Then ask.",
         "10-11": "Pick one task today. Before asking {{child_name}} to concentrate, take two minutes to actually connect first — not about the work, just a real moment. Then make the ask.",
@@ -82,7 +82,7 @@ The move is small and it may feel almost too soft to count as a strategy. Trust 
     },
     {
       day: 4,
-      title: "Name the tension instead of working around it.",
+      title: "Don't let those two minutes turn into the lead-in to a task.",
       content: {
         "8-9":   "If something feels off, just say it: *\"Feels a bit grumpy today — that's okay, let's do a little.\"*",
         "10-11": "Today, if there's something off in the room, say it plainly and simply before the task: *\"Things feel a bit tense today — that's okay, let's just do a little.\"* Naming it often releases more than pretending it isn't there.",
@@ -99,7 +99,7 @@ The move is small and it may feel almost too soft to count as a strategy. Trust 
     },
     {
       day: 5,
-      title: "Name the connection that made it work.",
+      title: "Say you noticed how they were doing, not that they got started.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"We were happy together today, and the work was easier, wasn't it?\"*",
         "10-11": "After today, say one specific thing: *\"We were good with each other today, and the work just went easier, didn't it?\"* Let {{child_name}} feel the link between connection and concentration — because for {{child_pronoun_obj}}, it's real.",

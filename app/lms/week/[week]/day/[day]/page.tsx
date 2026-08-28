@@ -23,7 +23,7 @@ export default async function DayCardPage({ params }: Props) {
   const day = parseInt(dayStr, 10);
 
   const ctx = await getLmsUserContext();
-  const content = getLmsWeekContent(ctx.archetype, week);
+  const content = getLmsWeekContent(ctx.archetype, week, ctx.ageBand);
   if (!content) notFound();
 
   const dayCard = getDayCard(content, day);

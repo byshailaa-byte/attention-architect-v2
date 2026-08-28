@@ -9,7 +9,7 @@ export const all_in_kid: ArchetypeContent = {
   s1EvidenceObservation: "the way {{child_pronoun_subj}} can sit with one thing for two straight hours, completely absorbed",
 
   // S2
-  s2Anecdote:  "Give {{child_name}} one book, one drawing, one problem, and {{child_pronoun_subj}}'ll disappear into it for two hours without looking up. Call {{child_pronoun_obj}} for dinner once and it genuinely doesn't register — not ignoring you, just gone. Now hand {{child_pronoun_obj}} three short worksheets instead of one long one, with a five-minute break built in between. Watch the same kid go flat by worksheet two. Focus didn't get worse. {{child_name}} got interrupted before finishing, three times instead of once.",
+  s2Anecdote:  "Give {{child_name}} one book, one drawing, one problem, and {{child_pronoun_subj}}'ll disappear into it for two hours without looking up. Now hand {{child_pronoun_obj}} three short worksheets instead of one long one, with a five-minute break built in between. Watch the same kid go flat by worksheet two. Focus didn't get worse. {{child_name}} got interrupted before finishing, three times instead of once.",
   s2Pullquote: "Not shorter tasks. Fewer interruptions.",
   s2Strength:  "goes deeper than almost anyone when left alone with something.",
   s2Shadow:    "the same depth makes any interruption — even a well-meant check-in — feel like being physically pulled out of something.",

@@ -10,7 +10,7 @@ export const steady_hand: PatternContent = {
     "I stay so calm on the outside that sometimes I wonder if {{child_name}} even knows I'm worried underneath it.",
     "I keep waiting for my steadiness to be enough on its own, and some nights I'm not sure waiting is actually a plan.",
   ],
-  s3Disarm: "Nothing here is wrong — staying steady when nothing seems to be working is genuinely rare, and it's the thing that's kept this from turning into a bigger fight. But that same steadiness meets {{child_pronoun_poss}} needs in a specific way. Once you see it, you won't unsee it. The roadmap is where you shift it, not just name it.",
+  s3Disarm: "Nothing here is wrong — staying steady when nothing seems to be working is genuinely rare, and it's the thing that's kept this from turning into a bigger fight. But that same steadiness meets {{child_pronoun_poss}} needs in a specific way.",
 
   // S4 — template; {{child_reframe_close}} filled by renderer from archetype.s4ReframeClose.
   s4MechanismTemplate: "It's that the structure around {{child_pronoun_obj}} taught {{child_name}} focus is something {{child_reframe_close}}.",

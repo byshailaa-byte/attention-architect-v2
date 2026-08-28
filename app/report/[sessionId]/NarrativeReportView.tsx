@@ -1227,18 +1227,105 @@ function FaqSection({ childName, pronouns }: { childName: string; pronouns: { po
   );
 }
 
+function LmsAccessCard({
+  sessionId,
+  childName,
+  purchaseTier,
+}: {
+  sessionId: string;
+  childName: string;
+  purchaseTier: string | null;
+}) {
+  const isFullRoadmap = purchaseTier === "full" || purchaseTier === "topup";
+  return (
+    <div style={{
+      background: T.surface,
+      border: `1.5px solid ${T.accent}`,
+      borderRadius: "12px",
+      padding: "32px 28px",
+    }}>
+      <p style={{
+        fontFamily: PUBLIC_SANS,
+        fontSize: "11px",
+        fontWeight: 700,
+        color: T.accent,
+        letterSpacing: ".12em",
+        textTransform: "uppercase",
+        margin: "0 0 14px",
+      }}>
+        Programme access · Confirmed
+      </p>
+      <h3 style={{
+        fontFamily: FRAUNCES,
+        fontWeight: 500,
+        fontSize: "clamp(20px, 2.8vw, 26px)",
+        color: T.ink,
+        margin: "0 0 10px",
+        lineHeight: 1.25,
+        letterSpacing: "-0.02em",
+      }}>
+        {isFullRoadmap
+          ? `${childName}'s full 6-week programme is ready.`
+          : `Week 1 of ${childName}'s programme is ready.`}
+      </h3>
+      <p style={{
+        fontFamily: PUBLIC_SANS,
+        fontSize: "15px",
+        color: T.inkSoft,
+        lineHeight: 1.65,
+        margin: "0 0 28px",
+      }}>
+        {isFullRoadmap
+          ? "Set a password to open your dashboard and begin the full roadmap."
+          : "Set a password to open your dashboard and begin Week 1."}
+      </p>
+      <a
+        href={`/lms/set-password?session=${sessionId}`}
+        style={{
+          display: "inline-block",
+          background: T.accent,
+          color: "#fff",
+          fontFamily: PUBLIC_SANS,
+          fontWeight: 700,
+          fontSize: "15px",
+          padding: "14px 28px",
+          borderRadius: "8px",
+          textDecoration: "none",
+        }}
+      >
+        Set up access →
+      </a>
+      <p style={{
+        fontFamily: PUBLIC_SANS,
+        fontSize: "13px",
+        color: T.inkFaint,
+        margin: "20px 0 0",
+      }}>
+        Already set a password?{" "}
+        <a href="/lms/login" style={{ color: T.accent, textDecoration: "none" }}>
+          Log in to your dashboard
+        </a>
+      </p>
+    </div>
+  );
+}
+
 function FinalInvitationSection({
   sessionId,
   childName,
   parentName,
   email,
   phone,
+  hasPurchase,
+  purchaseTier,
 }: {
   sessionId: string;
   childName: string;
   parentName: string;
   email: string;
   phone: string;
+  hasPurchase: boolean;
+  purchaseTier: string | null;
 }) {
   return (
     <section style={{ background: T.paper, padding: "64px 0" }}>
@@ -1252,7 +1339,7 @@ function FinalInvitationSection({
             lineHeight: 1.65,
             margin: "0 0 20px",
           }}>
-            You understand what has been happening. The roadmap exists to help change what happens next.
+            You understand what has been happening. The roadmap is built to change what happens next — six weeks, one move at a time, grounded in what&rsquo;s in this report.
           </p>
           <h2 style={{
             fontFamily: FRAUNCES,
@@ -1276,14 +1363,22 @@ function FinalInvitationSection({
             Not a generic plan. This one — built from {childName}&rsquo;s own answers.
           </p>
 
-          <PriceCards
-            sessionId={sessionId}
-            childName={childName}
-            parentName={parentName}
-            email={email}
-            phone={phone}
-            weakestFirst=""
-          />
+          {hasPurchase ? (
+            <LmsAccessCard
+              sessionId={sessionId}
+              childName={childName}
+              purchaseTier={purchaseTier}
+            />
+          ) : (
+            <PriceCards
+              sessionId={sessionId}
+              childName={childName}
+              parentName={parentName}
+              email={email}
+              phone={phone}
+              weakestFirst=""
+            />
+          )}
         </div>
       </Shell>
     </section>
@@ -1323,6 +1418,8 @@ export default function NarrativeReportView({
   concerns: _concerns,
   sessionId,
   pronouns,
+  hasPurchase = false,
+  purchaseTier = null,
 }: {
   moments: AttentionMoment[];
   archetype: string;
@@ -1336,6 +1433,8 @@ export default function NarrativeReportView({
   concerns: string[];
   sessionId: string;
   pronouns: { subj: string; obj: string; poss: string; reflexive: string };
+  hasPurchase?: boolean;
+  purchaseTier?: string | null;
 }) {
   // childName is optional at intake — normalize to a grammatically safe fallback
   // so every sub-component gets a renderable string, not an empty interpolation
@@ -1444,12 +1543,12 @@ export default function NarrativeReportView({
         <div id="sticky-hide-sentinel" />
 
         {/* Final Invitation */}
-        <FinalInvitationSection sessionId={sessionId} childName={childName} parentName={parentName} email={email} phone={phone} />
+        <FinalInvitationSection sessionId={sessionId} childName={childName} parentName={parentName} email={email} phone={phone} hasPurchase={hasPurchase} purchaseTier={purchaseTier} />
 
         {/* Footer */}
         <FooterSection />
       </main>
-      <StickyCta sessionId={sessionId} childName={childName} parentName={parentName} email={email} phone={phone} />
+      <StickyCta sessionId={sessionId} childName={childName} parentName={parentName} email={email} phone={phone} hasPurchase={hasPurchase} />
     </>
   );
 }

@@ -12,7 +12,7 @@ export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   try {
-    const { sessionId, parentName, email, phone, gender, tried, better } = (await req.json()) as {
+    const { sessionId, parentName, email, phone, gender, tried, better, variant } = (await req.json()) as {
       sessionId: string;
       parentName: string;
       email: string;
@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
       gender?: string | null;
       tried?: string[];
       better?: string[];
+      variant?: string;
     };
 
     if (!sessionId || !parentName?.trim() || !email?.trim() || !phone?.trim()) {
@@ -49,9 +50,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Awaited — fire-and-forget caused event loss, same pattern as assessment_complete bug
+    const leadMetadata = JSON.stringify(variant ? { variant } : {});
     await sql`
       INSERT INTO funnel_events (event_type, session_id, metadata)
-      VALUES ('generate_lead', ${sessionId}::uuid, '{}'::jsonb)
+      VALUES ('generate_lead', ${sessionId}::uuid, ${leadMetadata}::jsonb)
     `.catch((e: unknown) => console.warn("[funnel] generate_lead:", (e as Error).message));
 
     // Single after() block: generate report first, then send WhatsApp once it's ready.

@@ -1,10 +1,9 @@
 import type { LmsWeekContent } from "@/content/types";
 
-// Week 3 — 12–14 band only. 8–9 and 10–11 not yet authored.
 export const weekContent: LmsWeekContent = {
   archetype: "inventor",
   week: 3,
-  weekTitle: "Method-Ownership, Bigger Project",
+  weekTitle: "Their Way on Something That Takes a Week",
 
   weeklyReading: {
     introShared: `Week 1 tested whether your child's own way of doing things — not your way, not the "correct" way — actually works when they're given real room to use it, on one task. Week 2 asked whether that same ownership of method could survive around screens. This week hands over something bigger: a whole project, spanning more than one sitting, with the entire approach — not just one step of it — theirs to decide.
@@ -16,8 +15,8 @@ This week's move: hand over an entire project — something with real stages or 
 Somewhere in the project, their chosen method will likely hit a real wall — something that doesn't work the way they planned. That moment is not a sign to step in and correct course. It's the actual test of whether the ownership was real, or whether it was only ever available as long as their approach happened to be working.`,
 
     moveCalibration: {
-      "8-9": "",
-      "10-11": "",
+      "8-9": `When part of {{child_name}}'s way of doing the project looks wrong or inefficient to you, notice the urge to fix it before acting on it. Most of the time, a stage that looks off is just being done differently — not broken. Give {{child_pronoun_obj}} a chance to hit the wall and find {{child_pronoun_poss}} own way around it first.`,
+      "10-11": `The instinct to redirect will be strongest when a stage of the project starts looking inefficient or headed the wrong way. Ask honestly before stepping in: is this genuinely stuck, or just being done differently than you'd do it? Most of what will feel like helping this week is the second one.`,
       "12-14": `The instinct to correct will be strongest exactly where a stage looks inefficient or "wrong" to you — which is often precisely where real learning happens if you don't intervene. Try to notice the difference between a stage that's genuinely stuck (worth a check-in) and a stage that's just being done differently than you'd do it (not a problem to fix). Most of what will feel like "helping" this week is actually the second kind.`,
     },
 
@@ -33,18 +32,18 @@ Somewhere in the project, their chosen method will likely hit a real wall — so
       day: 1,
       title: "Just notice.",
       content: {
-        "8-9": "",
-        "10-11": "",
+        "8-9": "Just watch. Notice: does {{child_name}} get to pick {{child_pronoun_poss}} own way of doing something bigger, or just small things?",
+        "10-11": "Just watch. Notice where {{child_name}} already gets to choose {{child_pronoun_poss}} own approach on a single task, and where a bigger, multi-day project still gets steered by you, piece by piece.",
         "12-14": "Notice how {{child_name}} handles ownership over a bigger, multi-stage project versus a single task.",
       },
       reflection: null,
     },
     {
       day: 2,
-      title: "Hand over the whole project.",
+      title: "Hand them something bigger than a single sitting.",
       content: {
-        "8-9": "",
-        "10-11": "",
+        "8-9": "Hand over a whole project, {{child_name}}'s way. Pick something with a few steps or days to it. Let {{child_name}} choose how to do all of it, start to finish.",
+        "10-11": `Hand over the whole approach, not just one step. Pick something that spans more than one sitting — a project, a build, something with multiple stages. Let {{child_name}} own the entire approach across all the stages, not just the first one. "This is yours start to finish. However you want to tackle it."`,
         "12-14": `Tell {{child_name}} clearly: *"This is yours from start to finish — however you want to approach it, all the way through."*`,
       },
       reflection: {
@@ -55,8 +54,8 @@ Somewhere in the project, their chosen method will likely hit a real wall — so
       day: 3,
       title: "Check in on it.",
       content: {
-        "8-9": "",
-        "10-11": "",
+        "8-9": "Do it again. Fork: Worked — let the project keep going {{child_pronoun_poss}} way. Mixed — notice which part you wanted to fix. Didn't land — shrink it to just two steps, both {{child_pronoun_poss}} call.",
+        "10-11": `Do it again. Fork: Worked — let it keep evolving under {{child_pronoun_poss}} method, even if a stage looks inefficient to you. Mixed — talk about which stages held ownership and which quietly got corrected. Didn't land — narrow to two connected stages and rebuild from there.`,
         "12-14": "**Worked** — let it keep evolving under {{child_pronoun_poss}} method, even if a stage looks inefficient to you. **Mixed** — talk about which stages held ownership and which quietly got corrected. **Didn't land** — narrow to two connected stages and rebuild from there.",
       },
       reflection: {
@@ -65,10 +64,10 @@ Somewhere in the project, their chosen method will likely hit a real wall — so
     },
     {
       day: 4,
-      title: "Let the method hit a real wall.",
+      title: "When they change approach mid-way, let it change.",
       content: {
-        "8-9": "",
-        "10-11": "",
+        "8-9": "Let {{child_pronoun_poss}} way hit a bump. Something in the project won't work the way {{child_name}} planned. Let {{child_pronoun_subj}} figure out what to do next.",
+        "10-11": "Let the method hit a real wall. Somewhere the chosen approach won't work. Let {{child_name}} hit that and find the next move without your fix.",
         "12-14": "Somewhere the chosen approach won't work. Let {{child_name}} hit that and find the next move without your fix.",
       },
       reflection: {
@@ -77,10 +76,10 @@ Somewhere in the project, their chosen method will likely hit a real wall — so
     },
     {
       day: 5,
-      title: "Name it directly.",
+      title: "Say the plan was theirs, start to finish.",
       content: {
-        "8-9": "",
-        "10-11": "",
+        "8-9": `Name it. "You did that your whole way, even when a part of it got tricky. That's yours."`,
+        "10-11": `Name it directly. "You carried your own method through the whole project, not just the easy stages. That's real ownership."`,
         "12-14": `*"You carried your own method through the whole project, not just the easy stages. That's real ownership."*`,
       },
       reflection: {
@@ -91,8 +90,8 @@ Somewhere in the project, their chosen method will likely hit a real wall — so
 
   weekendReview: {
     content: {
-      "8-9": "",
-      "10-11": "",
+      "8-9": "Did {{child_pronoun_poss}} way of doing things hold across the whole project?",
+      "10-11": "Ask {{child_name}} directly what {{child_pronoun_subj}} learned about {{child_pronoun_poss}} own approach this week.",
       "12-14": "Ask {{child_name}} directly what {{child_pronoun_subj}} learned about {{child_pronoun_poss}} own approach this week.",
     },
     noteReflectionIntro: "Here's what you noted each day this week:",

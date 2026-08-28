@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
       questionSequence,
       concerns,
       worryFollowup,
+      variant,
     } = body as {
       sessionId: string;
       childName: string;
@@ -42,9 +43,16 @@ export async function POST(req: NextRequest) {
       questionSequence: Array<{ id: string; dimension: string }>;
       concerns?: string[];
       worryFollowup?: string | null;
+      variant?: string;
     };
 
-    const pricingVariant: "control" | "gated" = Math.random() < 0.5 ? "control" : "gated";
+    // Sessions without a concern + follow-up answer can't receive a teaser, so the gated
+    // arm would degrade to a naked paywall. Force these to control so the gated bucket
+    // only contains sessions that actually received the treatment being tested.
+    const hasConcernData = (concerns?.length ?? 0) > 0 && !!worryFollowup;
+    const pricingVariant: "control" | "gated" | "simplified" =
+      variant === "simplified" ? "simplified"
+      : hasConcernData && Math.random() < 0.5 ? "gated" : "control";
 
     if (!sessionId || !ageBand || !answers || !questionSequence) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });

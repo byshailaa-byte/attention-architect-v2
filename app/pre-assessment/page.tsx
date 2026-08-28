@@ -21,6 +21,7 @@ function PreAssessmentForm() {
   const ageParam      = params.get("age") ?? "";
   const concernsParam = params.get("concerns") ?? "";
   const followupParam = params.get("followup") ?? "";
+  const variantParam  = params.get("variant") ?? "";
 
   const gatePass = VALID_AGE_BANDS.includes(ageParam) && concernsParam.split(",").filter(Boolean).length > 0;
 
@@ -48,6 +49,7 @@ function PreAssessmentForm() {
     if (concernsParam) p.set("concerns", concernsParam);
     if (followupParam) p.set("followup", followupParam);
     if (childGender) p.set("gender", childGender);
+    if (variantParam) p.set("variant", variantParam);
     router.push(`/assessment?${p.toString()}`);
   }
 

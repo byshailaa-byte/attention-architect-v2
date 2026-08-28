@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "magnet",
   week: 2,
-  weekTitle: "Presence Not Supervision",
+  weekTitle: "Nearby, Not Supervising",
 
   weeklyReading: {
     introShared: `Screens have one quality almost nothing else in {{child_name}}'s day has: they're always on, always available, and they never get bored of {{child_pronoun_obj}}. For {{child_name}} — a child whose focus is genuinely steadier with company than alone — that always-on availability is a real competitor to you, not a character flaw in {{child_pronoun_obj}}. This week doesn't fight screens by removing them faster. It offers the thing they're actually substituting for: real, low-pressure presence, given generously enough that the always-on companion has some real competition.`,
@@ -34,7 +34,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 2,
-      title: "Offer real presence during non-screen time.",
+      title: "Be in the room during screen time without monitoring it.",
       content: {
         "8-9":   "Be nearby during a non-screen activity today — doing your own thing, low-key. Just present. See if the pull toward a screen is any different.",
         "10-11": "Sit with {{child_pronoun_obj}} during one non-screen activity — genuinely present, doing your own thing nearby. See if the pull toward a screen is any different with company there.",
@@ -63,7 +63,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 4,
-      title: "Set a real time boundary on screens too.",
+      title: "Resist the check-in that's really a check-up.",
       content: {
         "8-9":   "Give the screen a real time edge too. A clear limit, same as any other domain — presence doesn't replace the boundary, it just makes it less lonely to hold.",
         "10-11": "Set a real time boundary on screens too. A clear limit, same as any other domain — presence doesn't replace the boundary, it just makes the boundary less lonely to hold.",
@@ -75,7 +75,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 5,
-      title: "Name the connection.",
+      title: "Say you were around, not that you were watching.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"You didn't reach for your tablet as much with me here today.\"* Say it simply, once.",
         "10-11": "Tell {{child_name}}: *\"You didn't reach for your tablet as much today when I was around — that's real. Screens are always there. I'd rather be.\"*",

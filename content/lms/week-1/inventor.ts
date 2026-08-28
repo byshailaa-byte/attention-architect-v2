@@ -7,7 +7,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "inventor",
   week: 1,
-  weekTitle: "Protecting Their Method",
+  weekTitle: "Let Them Do It Their Way",
 
   weeklyReading: {
     introShared: `There is a specific, quiet moment that tells you everything about {{child_name}}. {{child_pronoun_subj|cap}} is building something — a solution, a project, a way of doing a task — and it's *wrong*. Slower than it needs to be, messier, heading toward a wall you can already see. And you do the most natural thing a caring parent can do: you step in to help. "Here, try it like this." And in that instant, something goes out of {{child_pronoun_obj}}. The energy drops. The thing that was {{child_pronoun_poss}} becomes yours, and {{child_pronoun_subj}} loses interest in finishing it.
@@ -46,7 +46,7 @@ There's a deeper thing happening here, and it's worth seeing clearly. When you l
     },
     {
       day: 2,
-      title: "Let the wrong way run.",
+      title: "Let them start it their way, even if yours is faster.",
       content: {
         "8-9":   "Pick one thing today. Let {{child_name}} do it {{child_pronoun_poss}} way, even if you know a faster one. Say nothing about how.",
         "10-11": "Pick one task today. Let {{child_name}} do it entirely their own way, even if you can see a faster route — and say nothing about the method. Let the way {{child_pronoun_subj}} chose actually play out.",
@@ -80,7 +80,7 @@ There's a deeper thing happening here, and it's worth seeing clearly. When you l
     },
     {
       day: 4,
-      title: "Ask instead of tell.",
+      title: "Don't offer the shortcut when you see them take the long road.",
       content: {
         "8-9":   "If {{child_pronoun_poss}} way gets stuck, don't fix it. Ask: *\"What do you want to try next?\"*",
         "10-11": "Today, if {{child_name}}'s method hits a wall, don't fix it — ask: *\"What would you try next?\"* Keep the method {{child_pronoun_poss}}, even when it's failing. The problem-solving is the point, not the smooth result.",
@@ -97,7 +97,7 @@ There's a deeper thing happening here, and it's worth seeing clearly. When you l
     },
     {
       day: 5,
-      title: "Name what {{child_pronoun_subj}} built, their way.",
+      title: "Ask why they did it that way — and actually listen to the answer.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"You did that your own way, and it worked.\"*",
         "10-11": "After today, say one specific thing: *\"You did that completely your own way — and it worked because it was yours.\"* Recognition that the ownership of the method is the strength, not a phase to grow out of.",

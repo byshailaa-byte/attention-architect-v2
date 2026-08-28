@@ -13,7 +13,7 @@ export default async function WeekReadingPage({ params }: Props) {
   const week = parseInt(weekStr, 10);
 
   const ctx = await getLmsUserContext();
-  const content = getLmsWeekContent(ctx.archetype, week);
+  const content = getLmsWeekContent(ctx.archetype, week, ctx.ageBand);
   if (!content) notFound();
 
   const progress = await getUserProgress(ctx.userId, week);

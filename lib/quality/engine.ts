@@ -33,6 +33,8 @@ import {
   checkTeaserLabelAbsence,
   checkTeaserSimilarity,
   checkTeaserNamingFraming,
+  checkTeaserBridgeParaphrase,
+  checkTeaserSentenceCount,
 } from "./checks";
 
 const MAX_RETRIES = 2;
@@ -65,6 +67,7 @@ function runAllChecks(
   unvalidatedActiveDimLabels: string[],
   hdg: HumanDecisionGraph,
   dimensionValues: string[],
+  worryFollowup?: string | null,
 ): CheckFailure[] {
   const failures: CheckFailure[] = [];
 
@@ -124,6 +127,12 @@ function runAllChecks(
   const tnf = checkTeaserNamingFraming(moments);
   if (tnf) failures.push(tnf);
 
+  const tsc = checkTeaserSentenceCount(moments);
+  if (tsc) failures.push(tsc);
+
+  const tbp = checkTeaserBridgeParaphrase(moments, worryFollowup);
+  if (tbp) failures.push(tbp);
+
   return failures;
 }
 
@@ -148,7 +157,7 @@ export async function runQualityEngine(
     return vals;
   });
 
-  const initialFailures = runAllChecks(moments, checkInput, unvalidatedActiveDimLabels, ctx.hdg, dimensionValues);
+  const initialFailures = runAllChecks(moments, checkInput, unvalidatedActiveDimLabels, ctx.hdg, dimensionValues, ctx.worryFollowup);
 
   if (initialFailures.length === 0) {
     return { moments, qualityResult: { passed: true, failures: [] } };
@@ -172,7 +181,7 @@ export async function runQualityEngine(
       const newMoment = await generateMoment(spec, ctx);
       const candidate = moments.map(m => m.moment_id === momentId ? newMoment : m);
 
-      const recheck = runAllChecks(candidate, checkInput, unvalidatedActiveDimLabels, ctx.hdg, dimensionValues);
+      const recheck = runAllChecks(candidate, checkInput, unvalidatedActiveDimLabels, ctx.hdg, dimensionValues, ctx.worryFollowup);
       const stillFailing = recheck.some(f => f.moment_id === momentId);
       if (!stillFailing) {
         moments = candidate;
@@ -188,7 +197,7 @@ export async function runQualityEngine(
     }
   }
 
-  const finalFailures = runAllChecks(moments, checkInput, unvalidatedActiveDimLabels, ctx.hdg, dimensionValues);
+  const finalFailures = runAllChecks(moments, checkInput, unvalidatedActiveDimLabels, ctx.hdg, dimensionValues, ctx.worryFollowup);
   return {
     moments,
     qualityResult: { passed: finalFailures.length === 0, failures: finalFailures },

@@ -9,7 +9,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "storm",
   week: 1,
-  weekTitle: "The Opening Choice",
+  weekTitle: "Let Them Pick How It Starts",
 
   weeklyReading: {
     introShared: `This is the first week of a program built specifically for a Storm. It's not a course you sit and watch. It's a small set of things you try in real life — starting this week — and pay attention to what happens.
@@ -114,7 +114,7 @@ Next week, we take this same principle off the homework table and into the momen
     },
     {
       day: 2,
-      title: "Offer one opening choice.",
+      title: "Offer two ways to begin, then step back.",
       content: {
         "8-9":   "Before homework starts, offer one small, real choice from the weekly read — \"table or floor?\" or \"easy first or hard first?\" Offer it once, let them pick, and let the pick stand. Just watch the next five minutes.",
         "10-11": "Use one of the choices from the weekly read (or your own, at the same level). Offer it once, calmly, before homework starts. Then let them choose and let the choice stand. Notice what happens in the next five minutes — not the whole session, just the start. Did the stand-off happen or not?",
@@ -149,7 +149,7 @@ Next week, we take this same principle off the homework table and into the momen
     },
     {
       day: 4,
-      title: "Let them make the choice worse.",
+      title: "Let them pick the harder one, even knowing it won't go well.",
       content: {
         "8-9":   "Offer the choice. Today, if {{child_name}} picks the option you wouldn't — the harder-to-start one, the floor instead of the table — let it ride all the way. Watch what happens. Often it goes fine. Sometimes it doesn't, and that's information too, not a failure.",
         "10-11": "Offer the choice. Today, if they pick the option you wouldn't have — the harder-to-start one, the messier setup, the \"I've got it, back off\" — let it ride anyway, all the way. A Storm learns ownership is real by being allowed to own an imperfect decision. Watch what happens. Often it goes better than you'd expect. Sometimes it doesn't — and that's real information too, not a failure.",
@@ -168,7 +168,7 @@ Next week, we take this same principle off the homework table and into the momen
     },
     {
       day: 5,
-      title: "Name it.",
+      title: "Tell them what they ran, not that they behaved.",
       // Opening fork (from Day 4's nextDayOpening) is rendered before this content.
       // Day 5 collects day5_reflection — the last tap of the week.
       // No nextDayOpening: Weekend uses week_trend computed from all 4 taps (day2–5).

@@ -8,7 +8,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "captain",
   week: 1,
-  weekTitle: "Their Real Call",
+  weekTitle: "Something That's Actually Theirs to Run",
 
   weeklyReading: {
     introShared: `Hand {{child_name}} a task to do and watch the energy drain out of {{child_pronoun_obj}}. Hand {{child_pronoun_obj}} something to *run* — really run, {{child_pronoun_poss}} call, {{child_pronoun_poss}} way — and watch a different child show up entirely. Focused, driven, capable, invested. Same task, sometimes. The only thing that changed was who was holding the wheel.
@@ -47,7 +47,7 @@ The trap to watch for is *supervised autonomy* — the fake handover where you s
     },
     {
       day: 2,
-      title: "Hand over one real call.",
+      title: "Hand over one thing completely — decisions included.",
       content: {
         "8-9":   "Pick a task that's usually yours to run. Let {{child_name}} make one real choice about how it goes. Then step back.",
         "10-11": "Pick one task today that's usually yours to direct. Hand {{child_name}} the actual decision — not \"which order,\" the real call: how it gets done. Step back once you've handed it over.",
@@ -81,7 +81,7 @@ The trap to watch for is *supervised autonomy* — the fake handover where you s
     },
     {
       day: 4,
-      title: "Let {{child_name}} lead something bigger.",
+      title: "Don't quietly redo it after they've done it their way.",
       content: {
         "8-9":   "Give {{child_name}} a task {{child_pronoun_subj}} can run start to finish, even if it comes out a bit wobbly.",
         "10-11": "Today, hand over a call with real stakes attached — something that can actually go wrong. Let {{child_pronoun_obj}} run it, even if the outcome is worse than what you'd have chosen.",
@@ -98,7 +98,7 @@ The trap to watch for is *supervised autonomy* — the fake handover where you s
     },
     {
       day: 5,
-      title: "Name what {{child_name}} ran.",
+      title: "Say it was theirs, not that they helped out.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"That was your call, all of it. You ran that.\"*",
         "10-11": "After today, say one specific thing: *\"That was your call, start to finish. You ran that.\"* Not praise for the outcome — recognition that the ownership was real and it was {{child_pronoun_poss}}.",

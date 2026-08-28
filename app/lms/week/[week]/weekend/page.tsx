@@ -16,7 +16,7 @@ export default async function WeekendReviewPage({ params }: Props) {
   const week = parseInt(weekStr, 10);
 
   const ctx = await getLmsUserContext();
-  const content = getLmsWeekContent(ctx.archetype, week);
+  const content = getLmsWeekContent(ctx.archetype, week, ctx.ageBand);
   if (!content) notFound();
 
   const now = new Date();
@@ -25,7 +25,7 @@ export default async function WeekendReviewPage({ params }: Props) {
   const alreadyComplete = progress.completedDays.has(0);
 
   const nextWeek = week + 1;
-  const nextWeekHasContent = getLmsWeekContent(ctx.archetype, nextWeek) !== null;
+  const nextWeekHasContent = getLmsWeekContent(ctx.archetype, nextWeek, ctx.ageBand) !== null;
   const nextWeekUnlocked = nextWeekHasContent &&
     isDayUnlocked(1, nextWeek, { completedDays: new Set(), completionTimes: new Map(), reflections: new Map() }, progress, now);
   const day5Time = progress.completionTimes.get(5);

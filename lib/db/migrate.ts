@@ -403,6 +403,22 @@ async function migrate() {
   // NULL for purchases created before this migration.
   await sql`ALTER TABLE purchases ADD COLUMN IF NOT EXISTS variant TEXT CHECK (variant IN ('control', 'gated'))`;
 
+  // Phase 25 — widen pricing_variant to include 'simplified' arm.
+  // The simplified funnel variant (v4 design) is a third pricing/funnel path alongside control and gated.
+  // Must update both assessments and purchases so variant tracking stays in sync.
+  await sql`
+    ALTER TABLE assessments
+      DROP CONSTRAINT IF EXISTS assessments_pricing_variant_check,
+      ADD CONSTRAINT assessments_pricing_variant_check
+        CHECK (pricing_variant IN ('control', 'gated', 'simplified'))
+  `;
+  await sql`
+    ALTER TABLE purchases
+      DROP CONSTRAINT IF EXISTS purchases_variant_check,
+      ADD CONSTRAINT purchases_variant_check
+        CHECK (variant IN ('control', 'gated', 'simplified'))
+  `;
+
   console.log("Migrations complete.");
 }
 

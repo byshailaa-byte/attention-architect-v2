@@ -8,7 +8,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "live-wire",
   week: 1,
-  weekTitle: "The Real Stake",
+  weekTitle: "Something Actually Riding on It",
 
   weeklyReading: {
     introShared: `Watch {{child_name}} in the two states {{child_pronoun_subj}} moves between, and the pattern is almost comical in its clarity. In one, {{child_pronoun_subj}}'s barely present — a task rolls past {{child_pronoun_obj}} and {{child_pronoun_subj}} can't seem to make {{child_pronoun_poss}} mind land on it, no matter how many times you ask. In the other, {{child_pronoun_subj}}'s *completely* alive — locked in, sharp, fully there, the same child you couldn't reach ten minutes ago now impossible to pull away. The difference between those two states is not mood, and it's not effort. It's stakes.
@@ -47,7 +47,7 @@ The trap to avoid is the manufactured stake — the sticker chart, the fake urge
     },
     {
       day: 2,
-      title: "Put something real on the line.",
+      title: "Let them set one real stake, in their own terms.",
       content: {
         "8-9":   "Pick one task. Add something real: beat the timer, race a sibling, show someone at the end. Fun, not scary.",
         "10-11": "Pick one task today. Attach a genuine, immediate stake — a real timer to beat, a small bet, someone watching, a result that actually happens. Not a threat — a live stake.",
@@ -81,7 +81,7 @@ The trap to avoid is the manufactured stake — the sticker chart, the fake urge
     },
     {
       day: 4,
-      title: "Let {{child_pronoun_obj}} set the stake.",
+      title: "Let it be genuinely uncertain — not rigged to work out.",
       content: {
         "8-9":   "Ask {{child_name}}: *\"What would make this fun to do right now?\"* Let {{child_pronoun_obj}} pick.",
         "10-11": "Today, ask {{child_name}}: *\"What would make this worth doing right now?\"* Let {{child_pronoun_subj}} name the stake. A stake {{child_pronoun_subj}} chooses is almost always more real than one you invent.",
@@ -98,7 +98,7 @@ The trap to avoid is the manufactured stake — the sticker chart, the fake urge
     },
     {
       day: 5,
-      title: "Name the intensity, not the outcome.",
+      title: "Say the stake was theirs, not that they tried hard.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"When it counted, you were all in — did you feel it?\"*",
         "10-11": "After today, say one specific thing: *\"When it mattered, you were completely in it — did you feel that?\"* Recognition of the focus that showed up *because* something was real, so {{child_name}} starts to see the pattern too.",
