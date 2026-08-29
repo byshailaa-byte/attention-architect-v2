@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import {
   archetypeContent,
   patternContent,
@@ -18,29 +16,10 @@ import ClosingCtaButton from "./ClosingCtaButton";
 import ReportViewTracker from "./ReportViewTracker";
 import ExitIntentPopup from "./ExitIntentPopup";
 import StickyCta from "./StickyCta";
+import { FounderByline } from "@/app/components/FounderByline";
+import { SHAILY, SHASHANK, FOUNDER_PHOTOS } from "@/lib/founders";
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
-
-// Inline-embed founder photos as base64 (accepted tradeoff — avoids CDN dependency)
-const founderB64 = (() => {
-  try {
-    return fs
-      .readFileSync(path.join(process.cwd(), "public/founder.jpg"))
-      .toString("base64");
-  } catch {
-    return "";
-  }
-})();
-
-const shailyB64 = (() => {
-  try {
-    return fs
-      .readFileSync(path.join(process.cwd(), "public/shaily-headshot-square.png"))
-      .toString("base64");
-  } catch {
-    return "";
-  }
-})();
 
 type AssessmentRow = {
   session_id: string;
@@ -171,14 +150,6 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
   const reliefMsg = fill(reliefMessages[a.parent_pattern] ?? TODO(`relief/${a.parent_pattern}`));
   const tip       = tonightTips[a.archetype];
   const scene     = timelineScenes[a.archetype];
-
-  const founderSrc = founderB64
-    ? `data:image/jpeg;base64,${founderB64}`
-    : "/founder.jpg";
-
-  const shailySrc = shailyB64
-    ? `data:image/png;base64,${shailyB64}`
-    : "/shaily-headshot-square.png";
 
   return (
     <main style={{ background: "var(--ink)", fontFamily: "var(--font-instrument), 'Instrument Sans', sans-serif" }}>
@@ -349,48 +320,28 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
           </div>
 
           {/* Two-founder byline row */}
-          <div style={{ display: "flex", gap: "28px", flexWrap: "wrap", marginBottom: "24px" }}>
-            {/* Shashank */}
-            <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", flex: "1 1 200px" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={founderSrc}
-                alt="Shashank Agrawal"
-                style={{ width: "64px", height: "64px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-              />
-              <div>
-                <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "15px", color: "var(--ink)", lineHeight: 1.3, marginBottom: "3px" }}>
-                  Shashank Agrawal
-                </div>
-                <div style={{ fontSize: "12.5px", color: "var(--ink-dim)", marginBottom: "8px" }}>
-                  Founder, Attention Architect
-                </div>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", borderRadius: "999px", padding: "3px 10px", fontSize: "11px", fontWeight: 600, color: "#9a7c10" }}>
-                  🎓 IIM Rohtak
-                </span>
-              </div>
-            </div>
-
-            {/* Shaily */}
-            <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", flex: "1 1 200px" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={shailySrc}
-                alt="Shaily Badonia"
-                style={{ width: "64px", height: "64px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-              />
-              <div>
-                <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "15px", color: "var(--ink)", lineHeight: 1.3, marginBottom: "3px" }}>
-                  Shaily Badonia
-                </div>
-                <div style={{ fontSize: "12.5px", color: "var(--ink-dim)", marginBottom: "8px" }}>
-                  Chief Attention Architect
-                </div>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", borderRadius: "999px", padding: "3px 10px", fontSize: "11px", fontWeight: 600, color: "#9a7c10" }}>
-                  10+ years of experience
-                </span>
-              </div>
-            </div>
+          <div style={{ marginBottom: "24px" }}>
+            <FounderByline
+              size={64}
+              gap={28}
+              innerGap={16}
+              founders={[
+                {
+                  ...SHAILY,
+                  photo: FOUNDER_PHOTOS.shaily,
+                  nameStyle: { fontFamily: BG, fontWeight: 800, fontSize: "15px", color: "var(--ink)", lineHeight: 1.3, marginBottom: "3px" },
+                  metaStyle: { fontSize: "12.5px", color: "var(--ink-dim)", marginBottom: "8px" },
+                  badge: { label: SHAILY.credential, style: { background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", fontSize: "11px", fontWeight: 600, color: "#9a7c10" } },
+                },
+                {
+                  ...SHASHANK,
+                  photo: FOUNDER_PHOTOS.shashank,
+                  nameStyle: { fontFamily: BG, fontWeight: 800, fontSize: "15px", color: "var(--ink)", lineHeight: 1.3, marginBottom: "3px" },
+                  metaStyle: { fontSize: "12.5px", color: "var(--ink-dim)", marginBottom: "8px" },
+                  badge: { label: `🎓 ${SHASHANK.credential}`, style: { background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", fontSize: "11px", fontWeight: 600, color: "#9a7c10" } },
+                },
+              ]}
+            />
           </div>
 
           <p style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.6, margin: "0 0 14px" }}>

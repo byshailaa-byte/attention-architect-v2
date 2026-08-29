@@ -9,8 +9,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 // Six shared week titles — same for every parent. Source: THE_PLAN.pdf.
 // The personalisation lives underneath each title in the card (WHAT YOU DO = per-archetype
-// LMS content; WHAT TO WATCH FOR = per-archetype signals). Weeks 4–6 LMS content is
-// still being authored (see project memory); WHAT TO WATCH FOR covers those weeks.
+// LMS content for all 6 weeks; WHAT TO WATCH FOR = per-archetype signals).
 const SHARED_WEEK_TITLES: Record<number, string> = {
   1: "Getting started without a fight",
   2: "Screens, without the daily argument",
@@ -66,7 +65,7 @@ export default async function RoadmapPage({
   const { session } = await searchParams;
 
   if (!session || !UUID_RE.test(session)) {
-    redirect("/simplified/start");
+    redirect("/start");
   }
 
   const sql = getSql();
@@ -78,7 +77,7 @@ export default async function RoadmapPage({
   ` as { child_name: string | null; archetype: string }[];
 
   if (rows.length === 0) {
-    redirect("/simplified/start");
+    redirect("/start");
   }
 
   const childName = rows[0].child_name || "your child";

@@ -40,17 +40,14 @@ const MOBILE_CSS = `
     .rm-locked-grid { grid-template-columns: 1fr !important; }
     .rm-nav-label { display: none !important; }
     .rm-pricing { padding: 24px 18px !important; }
+    .rm-and-for-you { flex-direction: column !important; }
+    .rm-and-for-you-img { height: 28px !important; width: auto !important; }
+  }
+  @media (max-width: 400px) {
+    .rm-goal-grid { grid-template-columns: 1fr !important; }
   }
 `;
 
-const COMPONENT_LABELS = [
-  "STARTING",
-  "HOLDING ON",
-  "STAYING WITH IT",
-  "RECOVERING",
-  "CARRYING IT OVER",
-  "RUNNING IT THEMSELVES",
-] as const;
 
 const ARCHETYPE_SIGNALS: Partial<Record<string, readonly [string, string, string, string, string, string]>> = {
   "The Storm": [
@@ -154,24 +151,33 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
         }}>
           It is not your child who moves first. It is you.
         </h1>
-        {/* NOTE: spec says three-sentence body from THE_PLAN.pdf — third sentence not located;
-            using two authored sentences. Replace with PDF verbatim when available. */}
+        {/* Source: THE_PLAN.pdf verbatim */}
         <p style={{ fontSize: "16px", color: DIM, lineHeight: 1.7, marginBottom: "44px", maxWidth: "54ch" }}>
-          Every plan you have tried asked your child to change. This one changes your role — one step at a time — until managing their attention is no longer your job.
+          The goal was never a child who focuses because you asked. It is a child who runs their own attention — and that only arrives if your role changes on the way there. This is how that happens, week by week, and who you become by the end of it.
         </p>
 
         {/* ── Parent Ladder ────────────────────────────────────────────────── */}
         <div style={{ marginBottom: "44px" }}>
-          <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "18px" }}>
-            From managing attention to architecting it
-          </h2>
+          {/* Two-tone centred heading — matches THE_PLAN.pdf */}
+          <div style={{ textAlign: "center", marginBottom: "12px" }}>
+            <div style={{ fontFamily: BF, fontWeight: 800, fontSize: "clamp(20px,3.5vw,28px)", lineHeight: 1.2 }}>
+              <span style={{ color: NAVY }}>From managing attention to</span><br />
+              <span style={{ color: TEAL }}>architecting it</span>
+            </div>
+          </div>
+          <p style={{
+            textAlign: "center", fontSize: "14px", color: DIM, lineHeight: 1.65,
+            maxWidth: "46ch", margin: "0 auto 28px",
+          }}>
+            You don&rsquo;t need to manage your child&rsquo;s attention forever. The roadmap changes <em>your</em> role, step by step, so they learn to manage their own.
+          </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             {([
-              { color: "#E85D5D", name: "The Reminder Parent",    quote: "Focus. Finish your homework. Put the phone away.",                                    desc: "You manage attention from the outside." },
-              { color: "#F5A623", name: "The Observant Parent",   quote: "What keeps pulling their attention away?",                                             desc: "You begin noticing the patterns instead of reacting to every distraction." },
-              { color: "#3B82F6", name: "The Guiding Parent",     quote: "What would make this easier to start?",                                                desc: "You stop giving constant instructions and start changing the conditions around attention." },
-              { color: "#7C3AED", name: "The Coaching Parent",    quote: "What do you notice about your own attention?",                                          desc: "Your child begins recognising distraction, difficulty, fatigue and what helps them return." },
-              { color: TEAL,      name: "The Attention Architect", quote: "I don't have to manage their attention. They are learning to manage it themselves.",  desc: "You design the environment, teach the skills, and gradually hand ownership back to your child." },
+              { color: "#E85D5D", name: "The Reminder Parent",     quote: "Focus. Finish your homework. Put the phone away.",                                   desc: "You manage attention from the outside." },
+              { color: "#F5A623", name: "The Observant Parent",    quote: "What keeps pulling their attention away?",                                            desc: "You begin noticing the patterns instead of reacting to every distraction." },
+              { color: "#3B82F6", name: "The Guiding Parent",      quote: "What would make this easier to start?",                                               desc: "You stop giving constant instructions and start changing the conditions around attention." },
+              { color: "#7C3AED", name: "The Coaching Parent",     quote: "What do you notice about your own attention?",                                         desc: "Your child begins recognising distraction, difficulty, fatigue and what helps them return." },
+              { color: TEAL,      name: "The Attention Architect",  quote: "I don't have to manage their attention. They are learning to manage it themselves.", desc: "You design the environment, teach the skills, and gradually hand ownership back to your child." },
             ] as { color: string; name: string; quote: string; desc: string }[]).map((rung, i, arr) => (
               <div key={rung.name} style={{
                 display: "flex", gap: 16, alignItems: "flex-start",
@@ -189,9 +195,13 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
                 </div>
                 <div style={{ paddingTop: 4, flex: 1 }}>
                   <div style={{ font: "700 13px/1.3 var(--font-sans, system-ui)", color: rung.color, marginBottom: 3 }}>{rung.name}</div>
-                  <div style={{ font: "600 12px/1.45 var(--font-sans, system-ui)", color: INK, fontStyle: "italic", marginBottom: 4 }}>
+                  <div style={{ font: "600 12px/1.45 var(--font-sans, system-ui)", color: INK, fontStyle: "italic", marginBottom: 8 }}>
                     &ldquo;{rung.quote}&rdquo;
                   </div>
+                  {/* AI-generated placeholder — replace before any paid campaign (see project open items) */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/ladder-${i + 1}.png`} alt=""
+                    style={{ width: "100%", maxWidth: 220, height: "auto", borderRadius: 8, display: "block", marginBottom: 8 }} />
                   <p style={{ margin: 0, fontSize: "12.5px", color: DIM, lineHeight: 1.6 }}>{rung.desc}</p>
                 </div>
               </div>
@@ -208,66 +218,95 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
           </div>
         </div>
 
-        {/* ── Goal Card ────────────────────────────────────────────────────── */}
+        {/* ── Goal section ─────────────────────────────────────────────────── */}
         <div style={{
-          background: NAVY, borderRadius: 16, padding: "24px", marginBottom: "44px",
-          display: "flex", flexDirection: "column", gap: 16,
+          background: "#FEF9EE", border: `1px solid ${GOLD}55`,
+          borderRadius: 20, padding: "32px 28px", marginBottom: "44px",
         }}>
           <div style={{
             font: "700 11px/1.4 var(--font-sans, system-ui)",
-            letterSpacing: "0.1em", textTransform: "uppercase", color: GOLD,
-          }}>The four moves you&rsquo;ll build</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            letterSpacing: "0.12em", textTransform: "uppercase",
+            color: NAVY, marginBottom: "14px",
+          }}>THE GOAL</div>
+          <div style={{ fontFamily: BF, fontWeight: 800, fontSize: "clamp(18px,3vw,24px)", lineHeight: 1.25, marginBottom: "16px" }}>
+            <div style={{ color: NAVY }}>Not a child who focuses because you told them to.</div>
+            <div style={{ color: TEAL }}>A child who learns how to manage their own attention.</div>
+          </div>
+          <p style={{ margin: "0 0 22px", fontSize: "14px", color: DIM, lineHeight: 1.65 }}>
+            By the end of the roadmap, the goal is for your child to gradually become better at:
+          </p>
+          <div className="rm-goal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: "20px" }}>
             {([
-              ["NOTICE",  "See what&rsquo;s happening before you respond."],
-              ["DIRECT",  "Redirect one move — the smallest shift."],
-              ["PROTECT", "Build conditions that work with the pattern."],
-              ["RECOVER", "Get back to the move after a hard day."],
-            ] as [string, string][]).map(([goal, desc]) => (
-              <div key={goal} style={{
-                background: "rgba(255,255,255,.06)", borderRadius: 10,
-                padding: "14px 14px 12px",
-                display: "flex", flexDirection: "column", gap: 4,
+              ["01", "NOTICE",  "Recognise when their attention has drifted."],
+              ["02", "DIRECT",  "Choose where their attention needs to go."],
+              ["03", "PROTECT", "Reduce the things that repeatedly pull it away."],
+              ["04", "RECOVER", "Know how to return when attention is lost."],
+            ] as [string, string, string][]).map(([num, label, desc]) => (
+              <div key={num} style={{
+                background: CARD, borderRadius: 12,
+                padding: "16px 14px",
+                display: "flex", flexDirection: "column", gap: 6,
+                border: `1px solid ${LINE}`,
               }}>
-                <div style={{
-                  font: "700 11px/1.4 var(--font-sans, system-ui)",
-                  letterSpacing: "0.1em", textTransform: "uppercase", color: GOLD,
-                }}>{goal}</div>
-                <p style={{ margin: 0, fontSize: "12.5px", color: "rgba(255,255,255,.75)", lineHeight: 1.5 }}
-                  dangerouslySetInnerHTML={{ __html: desc }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: "50%",
+                    background: TEAL, color: "#fff",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    font: "700 11px/1 var(--font-sans, system-ui)",
+                    flexShrink: 0,
+                  }}>{num}</div>
+                  <div style={{
+                    font: "700 11px/1.2 var(--font-sans, system-ui)",
+                    letterSpacing: "0.08em", textTransform: "uppercase", color: NAVY,
+                  }}>{label}</div>
+                </div>
+                <p style={{ margin: 0, fontSize: "12.5px", color: DIM, lineHeight: 1.55 }}>{desc}</p>
               </div>
             ))}
           </div>
           {/* "And for you?" panel */}
-          <div style={{
-            background: "rgba(255,255,255,.06)", borderRadius: 10,
-            padding: "14px 14px 12px",
-            borderTop: "1px solid rgba(255,255,255,.1)",
+          <div className="rm-and-for-you" style={{
+            background: NAVY, borderRadius: 12, padding: "18px 20px",
+            display: "flex", alignItems: "flex-start", gap: 14,
           }}>
-            <div style={{
-              font: "700 11px/1.4 var(--font-sans, system-ui)",
-              letterSpacing: "0.1em", textTransform: "uppercase", color: GOLD, marginBottom: 6,
-            }}>And for you?</div>
-            <p style={{ margin: 0, fontSize: "13px", color: "rgba(255,255,255,.85)", lineHeight: 1.55 }}>
-              That&rsquo;s the Attention Architect.
-            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="rm-and-for-you-img" src="/aa-logo.png" alt="Attention Architect"
+              style={{ height: 36, width: "auto", flexShrink: 0, opacity: 0.9 }} />
+            <div>
+              <div style={{
+                font: "700 10px/1.4 var(--font-sans, system-ui)",
+                letterSpacing: "0.1em", textTransform: "uppercase",
+                color: GOLD, marginBottom: 6,
+              }}>And for you?</div>
+              <p style={{ margin: "0 0 6px", fontSize: "13px", color: "rgba(255,255,255,.85)", lineHeight: 1.55 }}>
+                To become the parent who knows when to step in, what to change, and when to step back.
+              </p>
+              <p style={{ margin: 0, fontSize: "12px", color: GOLD, fontWeight: 600 }}>
+                That&rsquo;s the Attention Architect.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* ── Six weeks ────────────────────────────────────────────────────── */}
-        <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "8px" }}>
-          Six weeks that build on each other — not six separate lessons
+        {/* ── The Whole Plan ───────────────────────────────────────────────── */}
+        <div style={{
+          font: "700 11px/1.4 var(--font-sans, system-ui)",
+          letterSpacing: "0.12em", textTransform: "uppercase",
+          color: TEAL, marginBottom: "10px",
+        }}>THE WHOLE PLAN</div>
+        <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "10px" }}>
+          Six weeks. One small change each week.
         </h2>
-        <p style={{ fontSize: "14px", color: DIM, lineHeight: 1.65, marginBottom: "10px", maxWidth: "52ch" }}>
-          Each week doesn&rsquo;t replace the one before it. It adds to it. By week six, the goal isn&rsquo;t a new habit you&rsquo;re managing for {c} — it&rsquo;s one {c} already has.
+        <p style={{ fontSize: "14px", color: DIM, lineHeight: 1.65, marginBottom: "20px", maxWidth: "56ch" }}>
+          Every parent gets these same six, in this order — you can read all of them right here. What the assessment adds is the part underneath each one: which move fits your child&rsquo;s pattern.
         </p>
-        <p style={{ fontSize: "11.5px", color: DIM, marginBottom: "20px", letterSpacing: ".01em" }}>
-          Small → tested → routine → resilient → shared → automatic.
-        </p>
+        {/* DELIBERATE: accordion stays collapsed with week 1 open by default.
+            PDF shows all six expanded; keeping accordion because six fully-expanded
+            cards make the page impractically long on mobile. */}
         <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "44px" }}>
           {weekContents.map(({ weekTitle, day2Title, day4Title, whatToSay }, i) => {
             const tagColor = WEEK_COLORS[i % WEEK_COLORS.length];
-            const componentLabel = COMPONENT_LABELS[i] ?? "";
             const archSignals = ARCHETYPE_SIGNALS[archetype] ?? ARCHETYPE_SIGNALS["The All-In Kid"];
             const signal = archSignals?.[i] ?? "";
             return (
@@ -275,7 +314,7 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
                 <summary style={{ display: "flex", alignItems: "flex-start", gap: "14px", padding: "16px 18px", cursor: "pointer", userSelect: "none" }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: tagColor, marginBottom: "4px" }}>
-                      WEEK {i + 1} · {componentLabel}
+                      WEEK {i + 1}
                     </div>
                     <div style={{ fontFamily: BF, fontWeight: 800, fontSize: "15px", color: NAVY, lineHeight: 1.3 }}>{weekTitle}</div>
                   </div>
@@ -357,49 +396,6 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
           }}>
             Start {c}&rsquo;s roadmap →
           </button>
-        </div>
-
-        {/* ── Founders ─────────────────────────────────────────────────────── */}
-        <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: "20px", padding: "32px", marginBottom: "32px" }}>
-          <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: TEAL, marginBottom: "12px" }}>The founders</div>
-
-          <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", marginBottom: "20px" }}>
-            {/* Shashank */}
-            <div style={{ display: "flex", gap: "14px", alignItems: "flex-start", flex: "1 1 180px" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/founder.jpg" alt="Shashank Agrawal"
-                style={{ width: "56px", height: "56px", borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: `2px solid ${GOLD}` }} />
-              <div>
-                <div style={{ fontFamily: BF, fontWeight: 800, fontSize: "15px", color: NAVY, lineHeight: 1.3, marginBottom: "3px" }}>Shashank Agrawal</div>
-                <div style={{ fontSize: "12px", color: DIM, marginBottom: "8px" }}>Founder, Attention Architect</div>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", borderRadius: "999px", padding: "3px 10px", fontSize: "11px", fontWeight: 600, color: "#9a7c10" }}>
-                  🎓 IIM Rohtak Alumnus
-                </span>
-              </div>
-            </div>
-            {/* Shaily */}
-            <div style={{ display: "flex", gap: "14px", alignItems: "flex-start", flex: "1 1 180px" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/shaily-headshot-square.png" alt="Shaily Badonia"
-                style={{ width: "56px", height: "56px", borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: `2px solid ${TEAL}` }} />
-              <div>
-                <div style={{ fontFamily: BF, fontWeight: 800, fontSize: "15px", color: NAVY, lineHeight: 1.3, marginBottom: "3px" }}>Shaily Badonia</div>
-                <div style={{ fontSize: "12px", color: DIM, marginBottom: "8px" }}>Chief Attention Architect</div>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", background: `${TEAL}18`, border: `1px solid ${TEAL}44`, borderRadius: "999px", padding: "3px 10px", fontSize: "11px", fontWeight: 600, color: TEAL }}>
-                  10+ years of experience
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ fontSize: "14px", color: DIM, lineHeight: 1.7 }}>
-            <p style={{ margin: "0 0 14px" }}>
-              Attention Architect didn&rsquo;t start as a business plan. It started as years spent trying to understand why the same advice worked for one child and did nothing for another — and slowly realising the missing piece usually wasn&rsquo;t more effort from the parent. It was a clearer map.
-            </p>
-            <div style={{ borderLeft: `3px solid ${GOLD}`, paddingLeft: "16px", fontStyle: "italic", color: DIM, lineHeight: 1.65 }}>
-              &ldquo;We built this because we realised parents are often trying harder when what they actually need is a better map.&rdquo;
-            </div>
-          </div>
         </div>
 
         {/* ── FAQ ──────────────────────────────────────────────────────────── */}

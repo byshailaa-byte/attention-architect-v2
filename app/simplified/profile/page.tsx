@@ -70,7 +70,7 @@ export default async function ProfilePage({
   const { session } = await searchParams;
 
   if (!session || !UUID_RE.test(session)) {
-    redirect("/simplified/start");
+    redirect("/start");
   }
 
   const sql = getSql();
@@ -83,7 +83,7 @@ export default async function ProfilePage({
   ` as Row[];
 
   if (rows.length === 0) {
-    redirect("/simplified/start");
+    redirect("/start");
   }
 
   const row = rows[0];

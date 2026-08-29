@@ -137,7 +137,7 @@ function ArchetypeCard({ a, expanded, onToggle }: { a: Archetype; expanded: bool
 
 export default function ChildrenPage() {
   const router = useRouter();
-  const go = () => router.push("/simplified/start");
+  const go = () => router.push("/start");
   const [expandedId, setExpandedId] = useState<string>("storm");
 
   const h2: React.CSSProperties = { ...headingStyle, fontSize: "var(--type-display-size)", lineHeight: 1.16 };

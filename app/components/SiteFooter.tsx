@@ -13,12 +13,15 @@ export default function SiteFooter() {
           paddingBottom: "32px",
           borderBottom: "1px solid rgba(255,255,255,.1)",
         }}>
-          <div>
+          <div style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            background: "#fff", borderRadius: 10, padding: "8px 16px",
+          }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo-horizontal-icon-wordmark.png"
               alt="Attention Architect"
-              style={{ height: 26, width: "auto", filter: "brightness(3)", opacity: 0.9 }}
+              style={{ height: 36, width: "auto", display: "block" }}
             />
           </div>
           <div style={{ display: "flex", gap: "28px", flexWrap: "wrap" }}>

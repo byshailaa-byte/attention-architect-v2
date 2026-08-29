@@ -369,7 +369,7 @@ export default function ArticlePage({ slug }: { slug: string }) {
 
   const Body = BODIES[slug];
   const router = useRouter();
-  const go = () => router.push("/simplified/start");
+  const go = () => router.push("/start");
 
   return (
     <div className="aa-site">

@@ -170,6 +170,35 @@
   .aa-site .aa-steps-grid { grid-template-columns:1fr; }
 }
 
+/* "If you want the detail" link row — inline at desktop, stacked at mobile */
+.aa-site .aa-detail-links {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px 30px;
+  align-items:baseline;
+}
+@media (max-width:640px) {
+  .aa-site .aa-detail-links {
+    flex-direction:column;
+    gap:var(--space-3);
+  }
+}
+
+/* Six-skills table row in /health — label | body at desktop, stacked at mobile */
+.aa-site .aa-skill-row {
+  display:grid;
+  grid-template-columns:140px 1fr;
+  gap:var(--space-6);
+  padding:var(--space-5) var(--card-pad);
+  align-items:baseline;
+}
+@media (max-width:640px) {
+  .aa-site .aa-skill-row {
+    grid-template-columns:1fr;
+    gap:var(--space-2);
+  }
+}
+
 /* Pattern-link: horizontal on desktop, vertical on mobile */
 .aa-site .aa-pattern-link {
   display:flex;

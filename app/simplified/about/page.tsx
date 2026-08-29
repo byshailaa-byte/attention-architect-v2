@@ -1,6 +1,8 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle } from "../_shared";
+import { FounderByline } from "@/app/components/FounderByline";
+import { SHAILY, SHASHANK } from "@/lib/founders-data";
 
 const PRINCIPLES = [
   {
@@ -31,7 +33,7 @@ const TRUST_ITEMS = [
 
 export default function AboutPage() {
   const router = useRouter();
-  const go = () => router.push("/simplified/start");
+  const go = () => router.push("/start");
 
   const h2: React.CSSProperties = { ...headingStyle, fontSize: "var(--type-display-size)", lineHeight: 1.16 };
   const h3: React.CSSProperties = { ...headingStyle, fontSize: "var(--text-2xl)", lineHeight: 1.3 };
@@ -80,39 +82,39 @@ export default function AboutPage() {
 
             {/* Founders */}
             <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 20 }}>
-              {/* Shashank */}
-              <div style={{ display: "flex", gap: "var(--space-5)", alignItems: "flex-start" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/founder.jpg" alt="Shashank Agrawal" style={{
-                  width: 56, height: 56, borderRadius: "50%", objectFit: "cover", flexShrink: 0,
-                }} />
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ font: "var(--weight-bold) var(--text-lg)/1.3 var(--font-sans)", color: "var(--navy-800)" }}>Shashank Agrawal</div>
-                  <div style={{ font: "var(--type-body-sm)", color: "var(--text-muted)" }}>Founder, Attention Architect</div>
-                  <span style={{
-                    alignSelf: "flex-start", padding: "3px 10px", borderRadius: "var(--radius-pill)",
-                    background: "var(--amber-100)", border: "1px solid var(--amber-200)",
-                    font: "var(--weight-medium) var(--text-xs)/1.4 var(--font-sans)", color: "var(--amber-700)",
-                  }}>IIM Rohtak Alumnus</span>
-                </div>
-              </div>
-
-              {/* Shaily */}
-              <div style={{ display: "flex", gap: "var(--space-5)", alignItems: "flex-start" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/shaily-headshot-square.png" alt="Shaily Badonia" style={{
-                  width: 56, height: 56, borderRadius: "50%", objectFit: "cover", flexShrink: 0,
-                }} />
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ font: "var(--weight-bold) var(--text-lg)/1.3 var(--font-sans)", color: "var(--navy-800)" }}>Shaily Badonia</div>
-                  <div style={{ font: "var(--type-body-sm)", color: "var(--text-muted)" }}>Chief Attention Architect</div>
-                  <span style={{
-                    alignSelf: "flex-start", padding: "3px 10px", borderRadius: "var(--radius-pill)",
-                    background: "var(--teal-100)", border: "1px solid var(--teal-200)",
-                    font: "var(--weight-medium) var(--text-xs)/1.4 var(--font-sans)", color: "var(--teal-700)",
-                  }}>10+ years of experience</span>
-                </div>
-              </div>
+              <FounderByline
+                size={56}
+                gap={20}
+                innerGap={20}
+                founders={[
+                  {
+                    ...SHAILY,
+                    photo: "/shaily-headshot-square.png",
+                    nameStyle: { font: "var(--weight-bold) var(--text-lg)/1.3 var(--font-sans)", color: "var(--navy-800)" },
+                    metaStyle: { font: "var(--type-body-sm)", color: "var(--text-muted)" },
+                    badge: {
+                      label: SHAILY.credential,
+                      style: {
+                        background: "var(--teal-100)", border: "1px solid var(--teal-200)",
+                        font: "var(--weight-medium) var(--text-xs)/1.4 var(--font-sans)", color: "var(--teal-700)",
+                      },
+                    },
+                  },
+                  {
+                    ...SHASHANK,
+                    photo: "/founder.jpg",
+                    nameStyle: { font: "var(--weight-bold) var(--text-lg)/1.3 var(--font-sans)", color: "var(--navy-800)" },
+                    metaStyle: { font: "var(--type-body-sm)", color: "var(--text-muted)" },
+                    badge: {
+                      label: `${SHASHANK.credential} Alumnus`,
+                      style: {
+                        background: "var(--amber-100)", border: "1px solid var(--amber-200)",
+                        font: "var(--weight-medium) var(--text-xs)/1.4 var(--font-sans)", color: "var(--amber-700)",
+                      },
+                    },
+                  },
+                ]}
+              />
 
               <div style={{ borderTop: "1px solid var(--border-divider)", paddingTop: "var(--space-5)" }}>
                 <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-muted)" }}>
@@ -174,7 +176,7 @@ export default function AboutPage() {
                 font: "var(--type-eyebrow)", letterSpacing: "var(--tracking-eyebrow)",
                 textTransform: "uppercase", color: "var(--text-eyebrow)",
               }}>How we work with parents</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "var(--grid-2up)", gap: "var(--space-3)" }}>
                 {TRUST_ITEMS.map((item) => (
                   <div key={item} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
                     <span style={{ color: "var(--teal-600)", fontWeight: "var(--weight-bold)", flexShrink: 0 }}>✓</span>

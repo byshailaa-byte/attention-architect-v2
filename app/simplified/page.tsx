@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { SiteFooterFull } from "./_shared";
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -27,12 +28,12 @@ function Wrap({ children, narrow }: { children: React.ReactNode; narrow?: boolea
 // ─── Nav ─────────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { id: "home",       label: "Home",                href: "/simplified" },
-  { id: "health",     label: "Attention Health",    href: "/simplified/health" },
-  { id: "archetypes", label: "8 Types of Children", href: "/simplified/children" },
-  { id: "instincts",  label: "4 Types of Parents",  href: "/simplified/parents" },
-  { id: "resources",  label: "Resources",           href: "/simplified/resources" },
-  { id: "about",      label: "About us",            href: "/simplified/about" },
+  { id: "home",       label: "Home",                href: "/" },
+  { id: "health",     label: "Attention Health",    href: "/health" },
+  { id: "archetypes", label: "8 Types of Children", href: "/children" },
+  { id: "instincts",  label: "4 Types of Parents",  href: "/parents" },
+  { id: "resources",  label: "Resources",           href: "/resources" },
+  { id: "about",      label: "About us",            href: "/about" },
 ];
 
 function SiteNav({ onCta, active }: { onCta: () => void; active: string }) {
@@ -44,7 +45,7 @@ function SiteNav({ onCta, active }: { onCta: () => void; active: string }) {
         maxWidth: 1160, margin: "0 auto", padding: "var(--space-4) var(--page-pad)",
         display: "flex", alignItems: "center", gap: "var(--space-6)",
       }}>
-        <a href="/simplified" style={{ flex: "0 0 auto", display: "block" }}>
+        <a href="/" style={{ flex: "0 0 auto", display: "block" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 34, width: "auto", display: "block" }} />
         </a>
@@ -120,91 +121,6 @@ function SiteNav({ onCta, active }: { onCta: () => void; active: string }) {
     </header>
   );
 }
-
-// ─── Footer ───────────────────────────────────────────────────────────────────
-
-function SiteFooterFull() {
-  const col: React.CSSProperties = { display: "flex", flexDirection: "column", gap: "var(--space-3)" };
-  const colHead: React.CSSProperties = {
-    font: "var(--weight-bold) var(--text-xs)/1.4 var(--font-sans)",
-    letterSpacing: "var(--tracking-eyebrow)", textTransform: "uppercase",
-    color: "var(--amber-500)",
-  };
-  const lnk: React.CSSProperties = { font: "var(--type-body-sm)", color: "var(--text-on-navy-muted)", textDecoration: "none" };
-
-  return (
-    <footer style={{ background: "var(--surface-footer)", color: "var(--text-on-navy-muted)" }}>
-      <Wrap>
-        <div style={{
-          padding: "var(--space-16) 0 var(--space-12)",
-          display: "grid", gridTemplateColumns: "var(--grid-footer)", gap: "var(--space-10)",
-        }}>
-          {/* Brand */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-            <div style={{
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              background: "#fff", borderRadius: 10, padding: "8px 16px", alignSelf: "flex-start",
-            }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 36, width: "auto", display: "block" }} />
-            </div>
-            <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-on-navy-muted)", maxWidth: 220 }}>
-              We help parents build the capability that sits underneath everything else they want for their child: the ability to direct their own attention.
-            </p>
-          </div>
-          {/* Col 1 */}
-          <div style={col}>
-            <div style={colHead}>Attention Health</div>
-            {([
-              ["What is Attention Health?", "/simplified/health"],
-              ["The 8 kinds of children",   "/simplified/children"],
-              ["The 4 kinds of parents",    "/simplified/parents"],
-            ] as [string, string][]).map(([t, h]) => (
-              <a key={t} href={h} style={lnk}>{t}</a>
-            ))}
-          </div>
-          {/* Col 2 */}
-          <div style={col}>
-            <div style={colHead}>For parents</div>
-            {([
-              ["Real cases & articles", "/simplified/resources"],
-            ] as [string, string][]).map(([t, h]) => (
-              <a key={t} href={h} style={lnk}>{t}</a>
-            ))}
-          </div>
-          {/* Col 3 */}
-          <div style={col}>
-            <div style={colHead}>Practice</div>
-            {([
-              ["About us",         "/simplified/about"],
-              ["Privacy Policy",   "/privacy"],
-              ["Terms of Service", "/terms"],
-            ] as [string, string][]).map(([t, h]) => (
-              <a key={t} href={h} style={lnk}>{t}</a>
-            ))}
-          </div>
-          {/* Col 4 — Contact */}
-          <div style={col}>
-            <div style={colHead}>Contact</div>
-            <span style={lnk}>support@thehumandecision.in</span>
-            <span style={lnk}>+91 99933 74923</span>
-            <span style={lnk}>The Human Decision, India</span>
-          </div>
-        </div>
-
-        <div style={{ borderTop: "1px solid rgba(255,255,255,.08)", padding: "var(--space-6) 0 var(--space-10)" }}>
-          <p style={{ margin: "0 0 var(--space-3)", font: "var(--type-body-sm)", color: "var(--text-on-navy-muted)", opacity: 0.7, maxWidth: 720 }}>
-            Attention Architect helps parents understand their child. It is not a medical or diagnostic service. Nothing here names, rules out, or tests for any condition. If something at home worries you, please speak to a qualified professional.
-          </p>
-          <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-on-navy-muted)", opacity: 0.5 }}>
-            © 2026 The Human Decision. All rights reserved.{"  "} Made with care for parents.
-          </p>
-        </div>
-      </Wrap>
-    </footer>
-  );
-}
-
 // ─── Page data ────────────────────────────────────────────────────────────────
 
 const CAPABILITIES = [
@@ -304,7 +220,7 @@ const TESTIMONIALS = [
 
 export default function SimplifiedHomepage() {
   const router = useRouter();
-  function go() { router.push("/simplified/start"); }
+  function go() { router.push("/start"); }
 
   const heading: React.CSSProperties = {
     margin: 0,
@@ -607,10 +523,7 @@ export default function SimplifiedHomepage() {
       {/* ── S9: If you want the detail — quiet links ──────────────────────── */}
       <div style={{ background: "var(--surface-page-warm)", borderTop: "1px solid var(--border-divider)" }}>
         <Wrap>
-          <div style={{
-            padding: "var(--space-10) 0",
-            display: "flex", gap: "10px 30px", flexWrap: "wrap", alignItems: "baseline",
-          }}>
+          <div className="aa-detail-links" style={{ padding: "var(--space-10) 0" }}>
             <span style={{
               font: "var(--weight-bold) var(--text-sm)/1.4 var(--font-sans)",
               color: "var(--ink-500)", letterSpacing: "0.06em", textTransform: "uppercase",

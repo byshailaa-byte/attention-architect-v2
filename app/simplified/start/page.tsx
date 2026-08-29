@@ -271,7 +271,9 @@ export default function SimplifiedStart() {
             <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-dim)", marginBottom: "9px" }}>
               How old is {childName.trim() ? `${childName.trim()}` : "your child"}?
             </div>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+
+            {/* Primary: the three in-range ages — main choice, full tap targets */}
+            <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
               {(["8–9", "10–11", "12–14"] as const).map((label) => {
                 const val = label.replace("–", "-");
                 const sel = age === val;
@@ -281,6 +283,7 @@ export default function SimplifiedStart() {
                     className={`chip-btn${sel ? " sel" : ""}`}
                     style={{
                       flex: 1,
+                      minHeight: "48px",
                       padding: "11px 0",
                       ...(sel ? { background: GOLDB, color: NAVY, borderColor: GOLD } : {}),
                     }}
@@ -290,19 +293,9 @@ export default function SimplifiedStart() {
                   </button>
                 );
               })}
-              <button
-                className="chip-btn"
-                onClick={() => openOobPopup("younger")}
-              >
-                Younger than 8
-              </button>
-              <button
-                className="chip-btn"
-                onClick={() => openOobPopup("older")}
-              >
-                Older than 14
-              </button>
             </div>
+
+            {/* OOB chips (Younger / Older) disabled pending consent language. Re-enable once settled. */}
           </div>
 
           <button

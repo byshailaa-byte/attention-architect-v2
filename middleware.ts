@@ -21,7 +21,14 @@ export async function middleware(req: NextRequest) {
       const decoded = atob(b64);
       const colonIdx = decoded.indexOf(":");
       const pass = colonIdx >= 0 ? decoded.slice(colonIdx + 1) : "";
-      valid = pass === password;
+      // Timing-safe comparison: XOR all bytes so early-exit timing can't reveal the password.
+      // crypto.timingSafeEqual is Node-only; Edge Runtime has only Web Crypto.
+      const ae = new TextEncoder().encode(pass);
+      const be = new TextEncoder().encode(password);
+      const maxLen = Math.max(ae.length, be.length);
+      let diff = ae.length !== be.length ? 1 : 0;
+      for (let i = 0; i < maxLen; i++) diff |= (ae[i] ?? 0) ^ (be[i] ?? 0);
+      valid = diff === 0;
     } catch {
       valid = false;
     }

@@ -14,8 +14,7 @@ import {
   selectActionDimensions,
 } from "@/lib/narrative/simplified-actions";
 import type { ActionsOutput } from "@/lib/narrative/simplified-actions";
-import { reformatM01, reformatM02 } from "@/lib/narrative/simplified-reformatter";
-import type { SimplifiedBehaviourPattern } from "@/lib/narrative/simplified-reformatter";
+import { reformatM01 } from "@/lib/narrative/simplified-reformatter";
 import { checkTryTonightTitle } from "@/lib/quality/checks";
 import SimplifiedFunnelClient from "./client";
 import SimplifiedGate from "./SimplifiedGate";
@@ -136,7 +135,6 @@ export default async function Page({
   const sigDimensions: SigDimension[] = behaviourSig.dimensions ?? [];
 
   const m01 = moments.find((m) => m.moment_id === "m_01");
-  const m02 = moments.find((m) => m.moment_id === "m_02");
   const m03 = moments.find((m) => m.moment_id === "m_03");
 
   const str = (v: unknown, def: string): string => (typeof v === "string" ? v : def);
@@ -155,7 +153,6 @@ export default async function Page({
   const mCachedActions   = moments.find(m => m.moment_id === "m_simplified_actions");
   const mCachedFallback  = moments.find(m => m.moment_id === "m_instinct_interaction_fallback");
   const mCachedDetail01  = moments.find(m => m.moment_id === "m_01_simplified");
-  const mCachedDetail04  = moments.find(m => m.moment_id === "m_02_simplified");
 
   // Accumulates moments generated this request; persisted to DB at the end.
   const newMoments: { moment_id: string; title: string; content: string }[] = [];
@@ -257,16 +254,6 @@ export default async function Page({
     newMoments.push({ moment_id: "m_01_simplified", title: "detail01_bullets", content: JSON.stringify(detail01Bullets) });
   }
 
-  // DETAIL 04 (m_02_simplified): condense m_02 prose to 2-sentence main + Remember line.
-  let detail04Simplified: SimplifiedBehaviourPattern | null = null;
-  if (mCachedDetail04) {
-    try { detail04Simplified = JSON.parse(mCachedDetail04.content) as SimplifiedBehaviourPattern; } catch {}
-  }
-  if (!detail04Simplified && m02) {
-    detail04Simplified = await reformatM02(m02.content, childName);
-    newMoments.push({ moment_id: "m_02_simplified", title: "detail04_simplified", content: JSON.stringify(detail04Simplified) });
-  }
-
   // Persist any newly generated moments back to the report so subsequent visits are served
   // from cache. Uses JSONB array concatenation; safe because narrative_moments is an array
   // for all sessions with a published report.
@@ -309,9 +296,6 @@ export default async function Page({
     m01Title: m01?.title ?? null,
     m01Content: m01?.content ?? null,
     detail01Bullets: detail01Bullets ?? null,
-    m02Title: m02?.title ?? null,
-    m02Content: m02?.content ?? null,
-    detail04Simplified: detail04Simplified ?? null,
     detail03Content,
     detail03Title,
     strengths: strengths ?? null,

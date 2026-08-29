@@ -167,20 +167,14 @@ export default function ProfileView({
     <div style={{ background: BG, minHeight: "100vh" }}>
       <style>{CSS}</style>
 
-      {/* Minimal top bar */}
+      {/* Minimal top bar — no CTA; parent has already taken the assessment */}
       <header style={{
         background: NAVY, padding: "12px 24px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
+        display: "flex", alignItems: "center",
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect"
           style={{ height: 28, width: "auto", filter: "brightness(10)", opacity: 0.9 }} />
-        <a href={roadmapUrl} style={{
-          background: AMBER, color: NAVY,
-          font: "700 13px/1.3 var(--font-sans, system-ui)",
-          padding: "8px 16px", borderRadius: 8,
-          textDecoration: "none", whiteSpace: "nowrap",
-        }}>Get the Roadmap →</a>
       </header>
 
       <div style={{ maxWidth: 728, margin: "0 auto", padding: "40px 24px 0", display: "flex", flexDirection: "column", gap: 48 }}>

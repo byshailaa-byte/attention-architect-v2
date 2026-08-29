@@ -21,18 +21,13 @@ export type SimplifiedReportData = {
   m01Content: string | null;
   // DETAIL 01 simplified — 3-4 checklist bullets extracted from m_01 prose.
   detail01Bullets: string[] | null;
-  // DETAIL 04 — m_02 (Behaviour Pattern): plain prose explaining the attention mechanism.
-  m02Title: string | null;
-  m02Content: string | null;
-  // DETAIL 04 simplified — condensed to 2-sentence main + Remember line.
-  detail04Simplified: { main: string; remember: string } | null;
   // DETAIL 03 — populated from m_03 (loop detected) or m_instinct_interaction_fallback.
-  // fixLoopRefs() is applied at render time on both paths.
+  // fixLoopRefs() is applied at render time on both paths. Trimmed to first paragraph at render.
   detail03Content: string | null;
   detail03Title: string | null;
-  // DETAIL 05 — 2–3 strength bullets; 2 is valid when avoid friction_response leaves no honest third.
+  // DETAIL 05 — trimmed to 2 items at render; 2 is valid when evidence supports only 2.
   strengths: { emoji: string; text: string }[] | null;
-  // DETAIL 06 + Try Tonight — 2–4 action items; 2–3 steps.
+  // Try Tonight — from m_simplified_actions.tryTonight.
   actions: { emoji: string; label: string; description: string }[] | null;
   tryTonight: { title: string; steps: string[] } | null;
   weekTitles: [string, string, string];
@@ -368,7 +363,7 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
           <span>For Parents</span>
           <span>FAQs</span>
         </div>
-        <button className="cta-primary" style={{ padding: "11px 20px", fontSize: "12.5px" }}>Take Free Assessment</button>
+        {!data && <button className="cta-primary" style={{ padding: "11px 20px", fontSize: "12.5px" }}>Take Free Assessment</button>}
       </div>
 
       {/* ===== HOMEPAGE ===== */}
@@ -530,7 +525,6 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
               <div className="eyebrow">Attention Health Report</div>
               <h1>{c}&rsquo;s Attention Report</h1>
               <div className="who">A personalized report for {c}</div>
-              <div className="sub">This report helps you understand how {c}&rsquo;s attention shows up in everyday situations, and what can help it grow.</div>
               <div className="meta-row">
                 <span>{data ? "Assessment complete" : "Taken 17 May 2026"}</span>
                 <span>{data?.ageBand ? `Age band: ${data.ageBand}` : "4 min 32 sec"}</span>
@@ -611,7 +605,7 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
             <h3>How your instinct meets {c}&rsquo;s pattern</h3>
             {data?.detail03Content ? (
               <>
-                <NarrativeProse text={fixLoopRefs(data.detail03Content)} />
+                <NarrativeProse text={fixLoopRefs(data.detail03Content.split(/\n\n+/)[0] ?? data.detail03Content)} />
                 <div className="remember-box" style={{ marginTop: "16px" }}>
                   <b>Worth knowing, not worth worrying about</b>
                   This doesn&rsquo;t mean your instinct is wrong. It means knowing when to hold it back is as useful as knowing when to use it.
@@ -625,60 +619,19 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
             )}
           </div>
 
-          <div className="two-col">
-            <div className="report-card" style={{ marginBottom: 0 }}>
-              <span className="detail-num">DETAIL 04</span>
-              <h3>What this means</h3>
-              {data?.detail04Simplified ? (
-                <>
-                  <p style={{ fontSize: "13px", color: "var(--dim)", lineHeight: 1.75, marginBottom: "14px" }}>{data.detail04Simplified.main}</p>
-                  <div className="remember-box">
-                    <b style={{ display: "inline", marginBottom: 0 }}>Remember: </b>{data.detail04Simplified.remember}
-                  </div>
-                </>
-              ) : data?.m02Content ? (
-                <NarrativeProse text={data.m02Content} className={undefined} />
-              ) : (
-                <>
-                  <p style={{ fontSize: "12.5px", color: "var(--dim)", marginBottom: "14px" }}>Attention isn&rsquo;t about trying harder — it&rsquo;s about the conditions around a task. {c}&rsquo;s focus works best when something genuinely interests them and gets harder to hold when a task feels repetitive or open-ended.</p>
-                  <div className="remember-box"><b style={{ display: "inline", marginBottom: 0 }}>Remember: </b>This isn&rsquo;t about effort. It&rsquo;s about creating the right conditions for focus to grow.</div>
-                </>
-              )}
-            </div>
-            <div className="report-card" style={{ marginBottom: 0 }}>
-              <span className="detail-num">DETAIL 05</span>
-              <h3>{c}&rsquo;s strengths</h3>
-              {data?.strengths && data.strengths.length > 0 ? (
-                <ul className="icon-list">
-                  {data.strengths.map((s, i) => (
-                    <li key={i}><span className="ic">{s.emoji}</span>{s.text}</li>
-                  ))}
-                </ul>
-              ) : (
-                <ul className="icon-list">
-                  <li><span className="ic">🌱</span>Recovers and returns to a task on their own, without much prompting</li>
-                  <li><span className="ic">🎯</span>Can go deep and focus hard on things they genuinely care about</li>
-                  <li><span className="ic">🤝</span>Responds well when the structure and cues around a task are clear</li>
-                </ul>
-              )}
-            </div>
-          </div>
-
           <div className="report-card">
-            <span className="detail-num">DETAIL 06</span>
-            <h3>What you can do next</h3>
-            {data?.actions && data.actions.length > 0 ? (
+            <span className="detail-num">DETAIL 05</span>
+            <h3>{c}&rsquo;s strengths</h3>
+            {data?.strengths && data.strengths.length > 0 ? (
               <ul className="icon-list">
-                {data.actions.map((a, i) => (
-                  <li key={i}><span className="ic">{a.emoji}</span><div><b>{a.label}</b> — {a.description}</div></li>
+                {data.strengths.slice(0, 2).map((s, i) => (
+                  <li key={i}><span className="ic">{s.emoji}</span>{s.text}</li>
                 ))}
               </ul>
             ) : (
               <ul className="icon-list">
-                <li><span className="ic">🎯</span><div><b>Make starts easier</b> — give a clear reason, break tasks into small steps, start together.</div></li>
-                <li><span className="ic">⏱</span><div><b>Build stamina gradually</b> — short, timed stretches that slowly get longer, not long stretches from day one.</div></li>
-                <li><span className="ic">🔕</span><div><b>Reduce distraction load</b> — a calmer environment before asking for focus, not during.</div></li>
-                <li><span className="ic">🔄</span><div><b>Help transitions</b> — a quick visual or verbal cue before and after switching tasks.</div></li>
+                <li><span className="ic">🌱</span>Recovers and returns to a task on their own, without much prompting</li>
+                <li><span className="ic">🎯</span>Can go deep and focus hard on things they genuinely care about</li>
               </ul>
             )}
           </div>
@@ -706,11 +659,8 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
             <p style={{ fontSize: "11.5px", color: "var(--dim)", marginTop: "12px" }}>You&rsquo;re not testing {c}. You&rsquo;re learning how they actually work.</p>
           </div>
 
-          <div className="pull-quote">&ldquo;When we understand attention, we stop fighting it and start supporting it.&rdquo;</div>
-
           <div className="report-cta">
-            <div style={{ fontWeight: 700, marginBottom: "8px", color: "var(--navy)" }}>Want a personalized plan for {c}?</div>
-            <div className="sub">The Attention Health Roadmap turns this into a real, step-by-step plan.</div>
+            <div className="sub">You know what&rsquo;s happening and why. The roadmap is what to change — six weeks, one step at a time.</div>
             <button
               className="cta-primary gold"
               onClick={() => {

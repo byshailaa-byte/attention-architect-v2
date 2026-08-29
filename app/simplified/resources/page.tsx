@@ -65,7 +65,7 @@ const ARTICLES = [
 
 export default function ResourcesPage() {
   const router = useRouter();
-  const go = () => router.push("/simplified/start");
+  const go = () => router.push("/start");
   const [tab, setTab] = useState<"cases" | "articles">("cases");
 
   const h2: React.CSSProperties = { ...headingStyle, fontSize: "var(--type-display-size)", lineHeight: 1.16 };

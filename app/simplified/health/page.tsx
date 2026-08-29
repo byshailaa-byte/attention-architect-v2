@@ -45,7 +45,7 @@ const SIX_SKILLS = [
 
 export default function AttentionHealthPage() {
   const router = useRouter();
-  const go = () => router.push("/simplified/start");
+  const go = () => router.push("/start");
   const [activeTab, setActiveTab] = useState(0);
   const tab = REFRAME_TABS[activeTab];
 
@@ -144,11 +144,8 @@ export default function AttentionHealthPage() {
               background: "var(--surface-card)", boxShadow: "var(--shadow-card)", overflow: "hidden",
             }}>
               {SIX_SKILLS.map((s, i) => (
-                <div key={s.name} style={{
-                  display: "grid", gridTemplateColumns: "140px 1fr",
-                  gap: "var(--space-6)", padding: "var(--space-5) var(--card-pad)",
+                <div key={s.name} className="aa-skill-row" style={{
                   borderTop: i === 0 ? "none" : "1px solid var(--border-divider)",
-                  alignItems: "baseline",
                 }}>
                   <div style={{ font: "var(--weight-bold) var(--text-base)/1.4 var(--font-sans)", color: "var(--navy-800)" }}>
                     {s.n}. {s.name}

@@ -4,12 +4,12 @@ import { useState } from "react";
 // ─── Nav items (all hrefs wired) ─────────────────────────────────────────────
 
 export const NAV_ITEMS = [
-  { id: "home",       label: "Home",                href: "/simplified" },
-  { id: "health",     label: "Attention Health",    href: "/simplified/health" },
-  { id: "archetypes", label: "8 Types of Children", href: "/simplified/children" },
-  { id: "instincts",  label: "4 Types of Parents",  href: "/simplified/parents" },
-  { id: "resources",  label: "Resources",           href: "/simplified/resources" },
-  { id: "about",      label: "About us",            href: "/simplified/about" },
+  { id: "home",       label: "Home",                href: "/" },
+  { id: "health",     label: "Attention Health",    href: "/health" },
+  { id: "archetypes", label: "8 Types of Children", href: "/children" },
+  { id: "instincts",  label: "4 Types of Parents",  href: "/parents" },
+  { id: "resources",  label: "Resources",           href: "/resources" },
+  { id: "about",      label: "About us",            href: "/about" },
 ];
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ export function SiteNav({ onCta, active }: { onCta: () => void; active: string }
         maxWidth: 1160, margin: "0 auto", padding: "var(--space-4) var(--page-pad)",
         display: "flex", alignItems: "center", gap: "var(--space-6)",
       }}>
-        <a href="/simplified" style={{ flex: "0 0 auto", display: "block" }}>
+        <a href="/" style={{ flex: "0 0 auto", display: "block" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 34, width: "auto", display: "block" }} />
         </a>
@@ -145,21 +145,21 @@ export function SiteFooterFull() {
           <div style={col}>
             <div style={colHead}>Attention Health</div>
             {([
-              ["What is Attention Health?", "/simplified/health"],
-              ["The 8 kinds of children",   "/simplified/children"],
-              ["The 4 kinds of parents",    "/simplified/parents"],
+              ["What is Attention Health?", "/health"],
+              ["The 8 kinds of children",   "/children"],
+              ["The 4 kinds of parents",    "/parents"],
             ] as [string, string][]).map(([t, h]) => <a key={t} href={h} style={lnk}>{t}</a>)}
           </div>
           <div style={col}>
             <div style={colHead}>For parents</div>
             {([
-              ["Real cases & articles", "/simplified/resources"],
+              ["Real cases & articles", "/resources"],
             ] as [string, string][]).map(([t, h]) => <a key={t} href={h} style={lnk}>{t}</a>)}
           </div>
           <div style={col}>
             <div style={colHead}>Practice</div>
             {([
-              ["About us",        "/simplified/about"],
+              ["About us",        "/about"],
               ["Privacy Policy",  "/privacy"],
               ["Terms of Service","/terms"],
             ] as [string, string][]).map(([t, h]) => <a key={t} href={h} style={lnk}>{t}</a>)}

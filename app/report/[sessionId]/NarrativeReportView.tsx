@@ -12,9 +12,9 @@
 // only parent-facing content (moments, archetype, parent_instinct).
 // honest_flag and honest_trigger are NEVER passed or rendered — Gate 3.
 
-import fs from "fs";
-import path from "path";
 import type { AttentionMoment } from "@/lib/narrative/types";
+import { FounderByline } from "@/app/components/FounderByline";
+import { SHAILY, SHASHANK, FOUNDER_PHOTOS } from "@/lib/founders";
 import type { FamilyAttentionLoop } from "@/lib/graph/loop";
 import { TestimonialsCarousel } from "./TestimonialsCarousel";
 import PriceCards from "./PriceCards";
@@ -52,26 +52,6 @@ function FontLoader() {
 }
 
 // ── Inline-embed founder photos as base64 ─────────────────────────────────────
-const founderB64 = (() => {
-  try {
-    return fs
-      .readFileSync(path.join(process.cwd(), "public/founder.jpg"))
-      .toString("base64");
-  } catch {
-    return "";
-  }
-})();
-
-const shailyB64 = (() => {
-  try {
-    return fs
-      .readFileSync(path.join(process.cwd(), "public/shaily-headshot-square.png"))
-      .toString("base64");
-  } catch {
-    return "";
-  }
-})();
-
 // ── Per-archetype static signal-row cards ─────────────────────────────────────
 // key receives the child's first name so possessives work correctly.
 // value is either a static string or a function of pronouns (for gender-sensitive phrasing).
@@ -992,14 +972,6 @@ function RoadmapSection({
 }
 
 function FounderSection({ sectionN }: { sectionN: number }) {
-  const founderSrc = founderB64
-    ? `data:image/jpeg;base64,${founderB64}`
-    : "/founder.jpg";
-
-  const shailySrc = shailyB64
-    ? `data:image/png;base64,${shailyB64}`
-    : "/shaily-headshot-square.png";
-
   return (
     <section style={{ background: T.surface, padding: "52px 0" }}>
       <Divider />
@@ -1017,57 +989,29 @@ function FounderSection({ sectionN }: { sectionN: number }) {
             A note from the founders
           </h2>
 
-          {/* Two-founder byline row */}
-          <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", marginBottom: "24px" }}>
-            {/* Shashank */}
-            <div style={{ display: "flex", gap: "14px", alignItems: "flex-start", flex: "1 1 200px" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={founderSrc}
-                alt="Shashank Agrawal"
-                style={{
-                  width: "52px",
-                  height: "52px",
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                  flexShrink: 0,
-                  border: `2px solid ${T.paperDeep}`,
-                }}
-              />
-              <div>
-                <div style={{ fontFamily: FRAUNCES, fontWeight: 700, fontSize: "15px", color: T.ink, lineHeight: 1.3 }}>
-                  Shashank Agrawal
-                </div>
-                <div style={{ fontFamily: PUBLIC_SANS, fontSize: "12px", color: T.inkFaint, marginTop: "2px" }}>
-                  Founder, Attention Architect · IIM Rohtak
-                </div>
-              </div>
-            </div>
-
-            {/* Shaily */}
-            <div style={{ display: "flex", gap: "14px", alignItems: "flex-start", flex: "1 1 200px" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={shailySrc}
-                alt="Shaily Badonia"
-                style={{
-                  width: "52px",
-                  height: "52px",
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                  flexShrink: 0,
-                  border: `2px solid ${T.paperDeep}`,
-                }}
-              />
-              <div>
-                <div style={{ fontFamily: FRAUNCES, fontWeight: 700, fontSize: "15px", color: T.ink, lineHeight: 1.3 }}>
-                  Shaily Badonia
-                </div>
-                <div style={{ fontFamily: PUBLIC_SANS, fontSize: "12px", color: T.inkFaint, marginTop: "2px" }}>
-                  Chief Attention Architect · 10+ years of experience
-                </div>
-              </div>
-            </div>
+          <div style={{ marginBottom: "24px" }}>
+            <FounderByline
+              size={52}
+              gap={24}
+              innerGap={14}
+              photoBorder={`2px solid ${T.paperDeep}`}
+              founders={[
+                {
+                  ...SHAILY,
+                  photo: FOUNDER_PHOTOS.shaily,
+                  role: `${SHAILY.role} · ${SHAILY.credential}`,
+                  nameStyle: { fontFamily: FRAUNCES, fontWeight: 700, fontSize: "15px", color: T.ink, lineHeight: 1.3 },
+                  metaStyle: { fontFamily: PUBLIC_SANS, fontSize: "12px", color: T.inkFaint, marginTop: "2px" },
+                },
+                {
+                  ...SHASHANK,
+                  photo: FOUNDER_PHOTOS.shashank,
+                  role: `${SHASHANK.role} · ${SHASHANK.credential}`,
+                  nameStyle: { fontFamily: FRAUNCES, fontWeight: 700, fontSize: "15px", color: T.ink, lineHeight: 1.3 },
+                  metaStyle: { fontFamily: PUBLIC_SANS, fontSize: "12px", color: T.inkFaint, marginTop: "2px" },
+                },
+              ]}
+            />
           </div>
 
           <div style={{ fontFamily: PUBLIC_SANS, fontSize: "14px", color: T.inkSoft, lineHeight: 1.7 }}>
