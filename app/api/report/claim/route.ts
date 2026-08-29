@@ -83,26 +83,46 @@ export async function POST(req: NextRequest) {
         // If generation didn't finish, parent lands on static view; if it did, they see the narrative.
       }
 
-      // Step 2: send WhatsApp — always fires, even if generation above failed/timed out
+      // Step 2: claim the WhatsApp send atomically, execute, then confirm.
+      // whatsapp_send_claimed_at prevents duplicate concurrent sends.
+      // whatsapp_report_sent_at is written ONLY after the send returns success.
+      // On failure the claim is released so re-submitting the claim form retries.
+      let waClaimRows: { child_name: string | null; parent_name: string | null; phone: string | null }[] = [];
       try {
-        const rows = await sql`
+        waClaimRows = await sql`
           UPDATE assessments
-          SET whatsapp_report_sent_at = NOW()
+          SET whatsapp_send_claimed_at = NOW()
           WHERE session_id = ${sessionId}::uuid
-            AND whatsapp_report_sent_at IS NULL
+            AND whatsapp_send_claimed_at IS NULL
+            AND whatsapp_report_sent_at   IS NULL
           RETURNING child_name, parent_name, phone
         ` as unknown as { child_name: string | null; parent_name: string | null; phone: string | null }[];
-        if (rows.length > 0) {
-          const row = rows[0];
-          await sendWhatsAppReport({
-            parentName: row.parent_name  ?? parentName.trim(),
-            childName:  row.child_name   ?? "your child",
-            sessionId,
-            rawPhone:   row.phone        ?? phone.trim(),
-          });
-        }
       } catch (e: unknown) {
-        console.warn("[whatsapp] dedup update:", (e as Error).message);
+        console.error("[whatsapp] claim failed:", (e as Error).message);
+      }
+
+      if (waClaimRows.length > 0) {
+        const row = waClaimRows[0];
+        try {
+          await sendWhatsAppReport({
+            parentName: row.parent_name ?? parentName.trim(),
+            childName:  row.child_name  ?? "your child",
+            sessionId,
+            rawPhone:   row.phone       ?? phone.trim(),
+          });
+          // Confirmed success — record the send timestamp
+          await sql`
+            UPDATE assessments SET whatsapp_report_sent_at = NOW()
+            WHERE session_id = ${sessionId}::uuid
+          `;
+        } catch (e: unknown) {
+          // Release the claim so the next claim form submission can retry
+          console.error("[whatsapp] send failed — releasing claim:", (e as Error).message);
+          await sql`
+            UPDATE assessments SET whatsapp_send_claimed_at = NULL
+            WHERE session_id = ${sessionId}::uuid
+          `.catch((e2: unknown) => console.error("[whatsapp] claim release failed:", (e2 as Error).message));
+        }
       }
 
       // CAPI Lead — event_id matches client-side fbq call: `lead:${sessionId}`

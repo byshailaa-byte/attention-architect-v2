@@ -482,7 +482,7 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
               letterSpacing: ".08em", textTransform: "uppercase",
               padding: "4px 10px", borderRadius: 6,
             }}>
-              Most popular
+              Recommended
             </div>
             <div style={{ fontSize: "13px", color: "rgba(255,255,255,.55)", marginBottom: 6 }}>
               Roadmap + a Founder Call

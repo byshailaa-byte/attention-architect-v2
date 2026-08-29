@@ -543,6 +543,15 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_29_handbook_leads_variant') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 31 — whatsapp_send_claimed_at: separate claim column so the send timestamp
+  // (whatsapp_report_sent_at) is set only after a confirmed successful send.
+  // The claim column acts as an atomic concurrency guard that can be released on failure,
+  // enabling retry by re-submitting the claim form. Nullable — existing rows stay NULL.
+  if (!applied.has("phase_31_wa_claim_column")) {
+    await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS whatsapp_send_claimed_at TIMESTAMPTZ`;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_31_wa_claim_column') ON CONFLICT DO NOTHING`;
+  }
+
   // Phase 30 — purchases.tier: extend CHECK to include tier1 and tier2 for roadmap pricing.
   // tier1 = Roadmap only (₹2,999). tier2 = Roadmap + Founder Call (₹4,999).
   // module1 / full / topup kept for backward-compat with existing paid records.
