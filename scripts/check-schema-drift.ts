@@ -26,6 +26,10 @@ if (!PROD_URL || !DEV_URL) {
 const prod = neon(PROD_URL);
 const dev = neon(DEV_URL);
 
+// Use the concrete inferred type rather than SqlClient,
+// which resolves differently across neon overloads and causes TS2345.
+type SqlClient = typeof prod;
+
 // Prisma ORM tables that exist in dev only (created by a prior `prisma db push`).
 // Not part of our application schema; application code uses lowercase unquoted names.
 // Do not drop from dev (shared branch); do not create on prod.
@@ -33,7 +37,7 @@ const KNOWN_DEV_ONLY_TABLES = new Set(["Assessment", "Lead", "Report", "Response
 
 type Row = Record<string, unknown>;
 
-async function getTables(db: ReturnType<typeof neon>): Promise<string[]> {
+async function getTables(db: SqlClient): Promise<string[]> {
   const rows = await db`
     SELECT table_name
     FROM information_schema.tables
@@ -43,7 +47,7 @@ async function getTables(db: ReturnType<typeof neon>): Promise<string[]> {
   return rows.map((r) => r.table_name as string);
 }
 
-async function getColumns(db: ReturnType<typeof neon>, table: string): Promise<Row[]> {
+async function getColumns(db: SqlClient, table: string): Promise<Row[]> {
   return await db`
     SELECT column_name, data_type, udt_name, is_nullable, column_default
     FROM information_schema.columns
@@ -52,7 +56,7 @@ async function getColumns(db: ReturnType<typeof neon>, table: string): Promise<R
   ` as Row[];
 }
 
-async function getConstraints(db: ReturnType<typeof neon>, table: string): Promise<Row[]> {
+async function getConstraints(db: SqlClient, table: string): Promise<Row[]> {
   return await db`
     SELECT tc.constraint_name, tc.constraint_type, cc.check_clause
     FROM information_schema.table_constraints tc
@@ -64,7 +68,7 @@ async function getConstraints(db: ReturnType<typeof neon>, table: string): Promi
   ` as Row[];
 }
 
-async function getIndexes(db: ReturnType<typeof neon>, table: string): Promise<Row[]> {
+async function getIndexes(db: SqlClient, table: string): Promise<Row[]> {
   return await db`
     SELECT indexname, indexdef
     FROM pg_indexes

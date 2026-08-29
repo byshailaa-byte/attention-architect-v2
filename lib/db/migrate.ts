@@ -16,8 +16,8 @@ async function migrate() {
       applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `;
-  const rows = await sql`SELECT phase FROM schema_migrations`;
-  const applied = new Set(rows.map((r: { phase: string }) => r.phase));
+  const rows = await sql`SELECT phase FROM schema_migrations` as { phase: string }[];
+  const applied = new Set(rows.map((r) => r.phase));
 
   // Backfill: phases confirmed applied to production before tracking existed.
   // Phase 21 intentionally excluded — production has a stale funnel constraint that needs re-run.
