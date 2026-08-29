@@ -190,8 +190,10 @@ function timeBetween(a: string, b: string) {
 
 const TIER_LABEL: Record<string, string> = {
   module1: "Module 1",
-  full: "Full Roadmap",
-  topup: "Upgrade",
+  full:    "Full Roadmap",
+  topup:   "Upgrade",
+  tier1:   "Roadmap",
+  tier2:   "Roadmap + Call",
 };
 
 const EVENT_LABEL: Record<string, string> = {

@@ -1,5 +1,29 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
+
+declare global {
+  interface Window {
+    Razorpay: new (options: Record<string, unknown>) => { open(): void };
+    gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
+  }
+}
+
+function fireGtag(event: string, params?: Record<string, unknown>) {
+  if (typeof window !== "undefined" && typeof window.gtag === "function") {
+    window.gtag("event", event, params ?? {});
+  }
+}
+
+function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
+  fetch("/api/funnel/event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
+  }).catch(() => {});
+}
+
 const NAVY   = "#14284D";
 const GOLD   = "#F5A623";
 const TEAL   = "#22A38A";
@@ -27,6 +51,9 @@ type Props = {
   archetype:    string;
   weekContents: WeekContent[];
   sessionId:    string | null;
+  parentName?:  string;
+  email?:       string;
+  phone?:       string;
 };
 
 const MOBILE_CSS = `
@@ -116,8 +143,81 @@ const ARCHETYPE_SIGNALS: Partial<Record<string, readonly [string, string, string
   ],
 };
 
-export default function RoadmapView({ childName: c, archetype, weekContents, sessionId }: Props) {
-  void sessionId; // reserved for payment wiring
+export default function RoadmapView({ childName: c, archetype, weekContents, sessionId, parentName = "", email = "", phone = "" }: Props) {
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const pricingRef = useRef<HTMLDivElement>(null);
+  const firedViewItem = useRef(false);
+
+  useEffect(() => {
+    const s = document.createElement("script");
+    s.src = "https://checkout.razorpay.com/v1/checkout.js";
+    s.async = true;
+    document.head.appendChild(s);
+    return () => { document.head.contains(s) && document.head.removeChild(s); };
+  }, []);
+
+  useEffect(() => {
+    if (!pricingRef.current || !sessionId || !("IntersectionObserver" in window)) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !firedViewItem.current) {
+        firedViewItem.current = true;
+        fireEvent("view_item", sessionId, { tiers: ["tier1", "tier2"] });
+        obs.disconnect();
+      }
+    }, { threshold: 0.4 });
+    obs.observe(pricingRef.current);
+    return () => obs.disconnect();
+  }, [sessionId]);
+
+  async function openCheckout(tier: "tier1" | "tier2") {
+    if (!sessionId || checkoutLoading) return;
+    const label = tier === "tier1" ? "Roadmap" : "Roadmap + Founder Call";
+    const value = tier === "tier1" ? 2999 : 4999;
+    setCheckoutLoading(true);
+    fireEvent("begin_checkout", sessionId, { tier, value, source: "roadmap" });
+    fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: tier, price: value }] });
+    try {
+      const res = await fetch("/api/checkout/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, tier }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        alert(d.error ?? "Could not create order. Please try again.");
+        return;
+      }
+      const { orderId, amount, currency, keyId } = await res.json() as { orderId: string; amount: number; currency: string; keyId: string };
+      if (typeof window.Razorpay === "undefined") {
+        alert("Payment system still loading. Please try again in a moment.");
+        return;
+      }
+      fireEvent("checkout_modal_opened", sessionId, { tier, value, source: "roadmap" });
+      new window.Razorpay({
+        key: keyId,
+        amount,
+        currency,
+        order_id: orderId,
+        name: "Attention Architect",
+        description: label,
+        prefill: { name: parentName, email, contact: phone },
+        theme: { color: "#F5A623" },
+        modal: {
+          ondismiss: () => {
+            fireEvent("checkout_modal_dismissed", sessionId, { tier, value, source: "roadmap" });
+          },
+        },
+        handler: function (response: { razorpay_payment_id: string }) {
+          const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
+          fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR", items: [{ item_id: tier, price: value }] });
+          if (typeof window.fbq === "function") window.fbq("track", "Purchase", { value, currency: "INR", content_name: tier }, { eventID: purchaseEventId });
+          window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
+        },
+      }).open();
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
 
   const WEEK_COLORS = [TEAL, GOLD, NAVY] as const;
 
@@ -362,40 +462,100 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
         </div>
 
         {/* ── Pricing ──────────────────────────────────────────────────────── */}
-        <div className="rm-pricing" style={{
-          background: NAVY, borderRadius: 16, padding: "32px 28px",
-          marginBottom: "44px", textAlign: "center",
-        }}>
+        <div ref={pricingRef} className="rm-pricing" style={{ marginBottom: "44px" }}>
           <p style={{
-            margin: "0 0 22px", fontFamily: BF, fontWeight: 700,
-            fontSize: "clamp(15px,2.5vw,18px)", lineHeight: 1.4, color: "#fff",
+            margin: "0 0 20px", fontFamily: BF, fontWeight: 700,
+            fontSize: "clamp(15px,2.5vw,18px)", lineHeight: 1.4, color: NAVY, textAlign: "center",
           }}>
             The plan is the same six weeks. What goes underneath is {c}&rsquo;s.
           </p>
+
+          {/* Tier 2 — dominant card */}
           <div style={{
-            fontFamily: BF, fontSize: "44px", fontWeight: 800,
-            background: `linear-gradient(135deg, ${GOLD}, #FBCB4A)`,
-            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            backgroundClip: "text", marginBottom: "12px",
+            background: NAVY, borderRadius: 16, padding: "28px 24px",
+            marginBottom: "12px", position: "relative", overflow: "hidden",
           }}>
-            ₹2,999
+            <div style={{
+              position: "absolute", top: 14, right: 16,
+              background: GOLD, color: NAVY,
+              fontFamily: BF, fontWeight: 800, fontSize: "10px",
+              letterSpacing: ".08em", textTransform: "uppercase",
+              padding: "4px 10px", borderRadius: 6,
+            }}>
+              Most popular
+            </div>
+            <div style={{ fontSize: "13px", color: "rgba(255,255,255,.55)", marginBottom: 6 }}>
+              Roadmap + a Founder Call
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
+              <div style={{
+                fontFamily: BF, fontSize: "40px", fontWeight: 800,
+                background: `linear-gradient(135deg, ${GOLD}, #FBCB4A)`,
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                backgroundClip: "text", lineHeight: 1,
+              }}>
+                ₹4,999
+              </div>
+              <div style={{ fontSize: "14px", color: "rgba(255,255,255,.4)", textDecoration: "line-through" }}>₹7,999</div>
+            </div>
+            <ul style={{ margin: "0 0 20px", padding: 0, listStyle: "none" }}>
+              {[
+                `The personalised six-week roadmap built around ${c}`,
+                "A personal call with our founder — at a time that works for you",
+                "7-day guarantee: full refund if it doesn't feel worth it",
+              ].map(item => (
+                <li key={item} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8, fontSize: "13px", color: "rgba(255,255,255,.8)", lineHeight: 1.5 }}>
+                  <span style={{ color: GOLD, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => openCheckout("tier2")}
+              disabled={checkoutLoading || !sessionId}
+              style={{
+                width: "100%", background: GOLD, color: NAVY,
+                fontFamily: BF, fontWeight: 800, fontSize: "16px",
+                padding: "15px 24px", borderRadius: "12px",
+                border: "none", cursor: checkoutLoading ? "wait" : "pointer",
+                opacity: checkoutLoading ? 0.7 : 1,
+              }}
+            >
+              {checkoutLoading ? "Loading…" : `Start ${c}’s roadmap →`}
+            </button>
+            <div style={{ marginTop: 12, fontSize: "11px", color: "rgba(255,255,255,.4)", textAlign: "center" }}>
+              One-time · Secured by Razorpay
+            </div>
           </div>
+
+          {/* Tier 1 — lighter card */}
           <div style={{
-            display: "flex", justifyContent: "center", gap: "10px",
-            fontSize: "12px", color: "rgba(255,255,255,.6)",
-            marginBottom: "24px", flexWrap: "wrap", alignItems: "center",
+            background: "#F5F4F0", border: `1px solid ${LINE}`, borderRadius: 14,
+            padding: "20px 22px",
           }}>
-            <span>One-time</span><span>·</span><span>7-day guarantee</span><span>·</span><span>You keep your report either way</span>
+            <div style={{ fontSize: "13px", color: DIM, marginBottom: 6 }}>Just the roadmap</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14 }}>
+              <div style={{ fontFamily: BF, fontSize: "28px", fontWeight: 800, color: NAVY }}>₹2,999</div>
+              <div style={{ fontSize: "13px", color: "#bbb", textDecoration: "line-through" }}>₹4,999</div>
+            </div>
+            <button
+              onClick={() => openCheckout("tier1")}
+              disabled={checkoutLoading || !sessionId}
+              style={{
+                width: "100%", background: "transparent", color: NAVY,
+                fontFamily: BF, fontWeight: 700, fontSize: "14px",
+                padding: "12px 18px", borderRadius: "10px",
+                border: `1.5px solid ${NAVY}`,
+                cursor: checkoutLoading ? "wait" : "pointer",
+                opacity: checkoutLoading ? 0.6 : 1,
+              }}
+            >
+              {checkoutLoading ? "Loading…" : "Choose this plan →"}
+            </button>
+            <div style={{ marginTop: 10, fontSize: "11px", color: "#bbb", textAlign: "center" }}>
+              One-time · 7-day guarantee
+            </div>
           </div>
-          <button style={{
-            background: GOLD, color: NAVY,
-            fontFamily: BF, fontWeight: 800, fontSize: "16px",
-            padding: "16px 32px", borderRadius: "12px",
-            border: "none", cursor: "pointer",
-            width: "100%", maxWidth: "360px",
-          }}>
-            Start {c}&rsquo;s roadmap →
-          </button>
         </div>
 
         {/* ── FAQ ──────────────────────────────────────────────────────────── */}

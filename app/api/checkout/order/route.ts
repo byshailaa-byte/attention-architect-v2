@@ -6,9 +6,11 @@ import { assertBootGuards } from "@/lib/boot-guard";
 assertBootGuards();
 
 const TIERS = {
-  module1: { amount_paise: 49900, label: "Module 1" },
-  full:    { amount_paise: 99900, label: "Full 6-Module Roadmap" },
-  topup:   { amount_paise: 50000, label: "Upgrade to Full Roadmap" },
+  module1: { amount_paise:  49900, label: "Module 1" },
+  full:    { amount_paise:  99900, label: "Full 6-Module Roadmap" },
+  topup:   { amount_paise:  50000, label: "Upgrade to Full Roadmap" },
+  tier1:   { amount_paise: 299900, label: "Roadmap" },
+  tier2:   { amount_paise: 499900, label: "Roadmap + Founder Call" },
 } as const;
 
 type Tier = keyof typeof TIERS;
@@ -89,7 +91,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (userId) {
-      const variant = (pricing_variant === "gated" || pricing_variant === "control")
+      const variant = (pricing_variant === "gated" || pricing_variant === "control" || pricing_variant === "simplified")
         ? pricing_variant
         : null;
       await sql`

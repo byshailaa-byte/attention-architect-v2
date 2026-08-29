@@ -543,6 +543,19 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_29_handbook_leads_variant') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 30 — purchases.tier: extend CHECK to include tier1 and tier2 for roadmap pricing.
+  // tier1 = Roadmap only (₹2,999). tier2 = Roadmap + Founder Call (₹4,999).
+  // module1 / full / topup kept for backward-compat with existing paid records.
+  if (!applied.has("phase_30_purchases_tier_tiers")) {
+    await sql`
+      ALTER TABLE purchases
+        DROP CONSTRAINT IF EXISTS purchases_tier_check,
+        ADD CONSTRAINT purchases_tier_check
+          CHECK (tier IN ('module1','full','topup','tier1','tier2'))
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_30_purchases_tier_tiers') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 

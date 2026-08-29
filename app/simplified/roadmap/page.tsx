@@ -70,18 +70,21 @@ export default async function RoadmapPage({
 
   const sql = getSql();
   const rows = await sql`
-    SELECT a.child_name, a.archetype
+    SELECT a.child_name, a.archetype, a.parent_name, a.email, a.phone
     FROM assessments a
     WHERE a.session_id = ${session}::uuid
     LIMIT 1
-  ` as { child_name: string | null; archetype: string }[];
+  ` as { child_name: string | null; archetype: string; parent_name: string | null; email: string | null; phone: string | null }[];
 
   if (rows.length === 0) {
     redirect("/start");
   }
 
-  const childName = rows[0].child_name || "your child";
-  const archetype = rows[0].archetype  || "The All-In Kid";
+  const childName   = rows[0].child_name  || "your child";
+  const archetype   = rows[0].archetype   || "The All-In Kid";
+  const parentName  = rows[0].parent_name || "";
+  const email       = rows[0].email       || "";
+  const phone       = rows[0].phone       || "";
 
   const fallbackArchetype = "The All-In Kid";
   const defaultWeekContents: WeekContent[] = [1, 2, 3, 4, 5, 6].map(w => {
@@ -103,6 +106,9 @@ export default async function RoadmapPage({
         archetype={archetype}
         weekContents={weekContents}
         sessionId={session}
+        parentName={parentName}
+        email={email}
+        phone={phone}
       />
       <SiteFooter />
     </>

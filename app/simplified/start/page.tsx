@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 declare global {
@@ -13,6 +13,14 @@ function fireGtag(event: string, params?: Record<string, string | number>) {
   if (typeof window !== "undefined" && typeof window.gtag === "function") {
     window.gtag("event", event, params ?? {});
   }
+}
+
+function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
+  fetch("/api/funnel/event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
+  }).catch(() => {});
 }
 
 const BG    = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
@@ -102,20 +110,41 @@ const FOLLOW_UP: Record<string, { question: string; options: { label: string; ec
   },
 };
 
-type Stage = "name-age" | "concern" | "followup";
+type Stage = "start" | "followup";
 
 export default function SimplifiedStart() {
   const router = useRouter();
-  const [stage, setStage]       = useState<Stage>("name-age");
+  const [stage, setStage]         = useState<Stage>("start");
   const [childName, setChildName] = useState("");
-  const [age, setAge]           = useState<string | null>(null);
-  const [concern, setConcern]   = useState<string | null>(null);
+  const [gender, setGender]       = useState<string | null>(null);
+  const [age, setAge]             = useState<string | null>(null);
+  const [concern, setConcern]     = useState<string | null>(null);
 
   const [oobPopup, setOobPopup]           = useState<"younger" | "older" | null>(null);
   const [oobName, setOobName]             = useState("");
   const [oobPhone, setOobPhone]           = useState("");
   const [oobSubmitting, setOobSubmitting] = useState(false);
   const [oobResult, setOobResult]         = useState<{ wa_sent: boolean } | null>(null);
+
+  // Landing session UUID — used for landing_step_* DB events.
+  // Separate from the assessment session_id created when assessment starts.
+  const landSidRef = useRef<string | null>(null);
+  function getLandSid(): string {
+    if (!landSidRef.current) landSidRef.current = crypto.randomUUID();
+    return landSidRef.current;
+  }
+
+  function selectAge(val: string) {
+    setAge(val);
+    fireGtag("age_selected", { age_band: val });
+    fireEvent("landing_step_age", getLandSid(), { age_band: val });
+  }
+
+  function selectConcern(key: string) {
+    setConcern(key);
+    fireGtag("concern_selected", { concern: key });
+    fireEvent("landing_step_concern", getLandSid(), { concern: key });
+  }
 
   function openOobPopup(band: "younger" | "older") {
     setOobPopup(band);
@@ -145,9 +174,11 @@ export default function SimplifiedStart() {
   }
 
   function goToAssessment(followup: string) {
-    fireGtag("simplified_cta_click", {});
+    fireGtag("follow_up_selected", { concern: concern ?? "", answer: followup });
+    fireEvent("landing_step_followup", getLandSid(), { concern: concern ?? "", answer: followup });
     const p = new URLSearchParams();
-    p.set("name", childName.trim()); // empty string valid — hasNameParam = true skips meta phase
+    p.set("name", childName.trim());
+    if (gender) p.set("gender", gender);
     if (age) p.set("age", age);
     if (concern) p.set("concerns", concern);
     p.set("followup", followup);
@@ -155,7 +186,7 @@ export default function SimplifiedStart() {
     router.push(`/assessment?${p.toString()}`);
   }
 
-  // ── OOB modal — rendered over any stage ──────────────────────────────────
+  // ── OOB modal ────────────────────────────────────────────────────────────────
   const oobModal = oobPopup ? (
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
@@ -173,23 +204,26 @@ export default function SimplifiedStart() {
             <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "18px", color: "var(--ink)", lineHeight: 1.3, marginBottom: "12px" }}>
               {OOB_COPY[oobPopup].heading}
             </div>
-            <p style={{ fontSize: "14px", color: "var(--ink-dim)", lineHeight: 1.6, marginBottom: "22px" }}>
+            <p style={{ fontSize: "14px", color: "var(--ink-dim)", lineHeight: 1.6, marginBottom: "16px" }}>
               {OOB_COPY[oobPopup].body}
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "18px" }}>
+            <p style={{ fontSize: "13.5px", color: "var(--ink-dim)", lineHeight: 1.6, marginBottom: "16px" }}>
+              Where should we send it? Enter your WhatsApp number and we&apos;ll send the Attention Handbook within a few minutes.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "14px" }}>
               <input
                 type="text"
                 placeholder="Your name"
                 value={oobName}
                 onChange={(e) => setOobName(e.target.value)}
-                style={{ border: "1.5px solid var(--line)", borderRadius: "10px", padding: "12px 14px", fontSize: "14.5px", fontFamily: "inherit", color: "var(--ink)", background: "var(--paper)", outline: "none", width: "100%" }}
+                style={{ border: "1.5px solid var(--line)", borderRadius: "10px", padding: "12px 14px", fontSize: "14.5px", fontFamily: "inherit", color: "var(--ink)", background: "var(--paper)", outline: "none", width: "100%", boxSizing: "border-box" }}
               />
               <input
                 type="tel"
                 placeholder="WhatsApp number"
                 value={oobPhone}
                 onChange={(e) => setOobPhone(e.target.value)}
-                style={{ border: "1.5px solid var(--line)", borderRadius: "10px", padding: "12px 14px", fontSize: "14.5px", fontFamily: "inherit", color: "var(--ink)", background: "var(--paper)", outline: "none", width: "100%" }}
+                style={{ border: "1.5px solid var(--line)", borderRadius: "10px", padding: "12px 14px", fontSize: "14.5px", fontFamily: "inherit", color: "var(--ink)", background: "var(--paper)", outline: "none", width: "100%", boxSizing: "border-box" }}
               />
             </div>
             <button
@@ -198,14 +232,14 @@ export default function SimplifiedStart() {
               style={{
                 width: "100%", background: NAVY, color: "#fff", border: "none", borderRadius: "10px",
                 padding: "14px 20px", fontWeight: 700, fontSize: "15px", cursor: oobName.trim() && oobPhone.trim() && !oobSubmitting ? "pointer" : "not-allowed",
-                opacity: oobName.trim() && oobPhone.trim() && !oobSubmitting ? 1 : 0.55, fontFamily: "inherit",
+                opacity: oobName.trim() && oobPhone.trim() && !oobSubmitting ? 1 : 0.55, fontFamily: "inherit", marginBottom: "10px",
               }}
             >
               {oobSubmitting ? "Sending…" : "Send me the Handbook →"}
             </button>
-            <div style={{ marginTop: "12px", fontSize: "12px", color: "var(--ink-dim)", textAlign: "center" }}>
-              Free. No spam. Unsubscribe anytime.
-            </div>
+            <p style={{ fontSize: "11.5px", color: "var(--ink-dim)", textAlign: "center", lineHeight: 1.5, margin: 0 }}>
+              By continuing, you agree to receive the Handbook and occasional related messages from Attention Architect on WhatsApp. Reply STOP any time to opt out.
+            </p>
           </>
         ) : (
           <div style={{ textAlign: "center", padding: "8px 0" }}>
@@ -230,8 +264,9 @@ export default function SimplifiedStart() {
     </div>
   ) : null;
 
-  // ── Stage: name-age ───────────────────────────────────────────────────────
-  if (stage === "name-age") {
+  // ── Stage: start (combined) ───────────────────────────────────────────────────
+  if (stage === "start") {
+    const canContinue = !!age && !!concern && age !== "younger" && age !== "older";
     return (
       <>
       <div className="funnel-screen">
@@ -239,10 +274,11 @@ export default function SimplifiedStart() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto", marginBottom: 20 }} />
 
-          <div style={{ fontSize: "11px", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--ink-dim)", fontWeight: 700, marginBottom: "16px" }}>
+          <div style={{ fontSize: "11px", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--ink-dim)", fontWeight: 700, marginBottom: "18px" }}>
             Before You Start
           </div>
 
+          {/* Name */}
           <label style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: "10px" }}>
             What&rsquo;s your child&rsquo;s first name?{" "}
             <span style={{ fontWeight: 400, color: "var(--ink-dim)" }}>(optional)</span>
@@ -252,28 +288,43 @@ export default function SimplifiedStart() {
             placeholder="e.g. Arjun"
             value={childName}
             onChange={(e) => setChildName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && age) setStage("concern"); }}
             style={{
-              width: "100%",
-              padding: "16px 18px",
-              fontSize: "16px",
-              border: "2px solid var(--marker)",
-              borderRadius: "12px",
-              fontFamily: "inherit",
-              marginBottom: "24px",
-              background: "var(--paper)",
-              color: "var(--ink)",
-              outline: "none",
+              width: "100%", padding: "14px 16px", fontSize: "16px",
+              border: "2px solid var(--marker)", borderRadius: "12px",
+              fontFamily: "inherit", marginBottom: "20px",
+              background: "var(--paper)", color: "var(--ink)", outline: "none", boxSizing: "border-box",
             }}
           />
 
-          <div style={{ marginBottom: "28px" }}>
+          {/* Gender */}
+          <div style={{ marginBottom: "20px" }}>
             <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-dim)", marginBottom: "9px" }}>
-              How old is {childName.trim() ? `${childName.trim()}` : "your child"}?
+              Pronouns <span style={{ fontWeight: 400 }}>(optional)</span>
             </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              {([["he", "He/him"], ["she", "She/her"], ["they", "They/them"]] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  className={`chip-btn${gender === val ? " sel" : ""}`}
+                  style={{
+                    flex: 1, minHeight: "44px", padding: "10px 0",
+                    ...(gender === val ? { background: GOLDB, color: NAVY, borderColor: GOLD } : {}),
+                  }}
+                  onClick={() => setGender(gender === val ? null : val)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-            {/* Primary: the three in-range ages — main choice, full tap targets */}
-            <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
+          {/* Age */}
+          <div style={{ marginBottom: "20px" }}>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-dim)", marginBottom: "9px" }}>
+              How old is {childName.trim() ? childName.trim() : "your child"}?
+            </div>
+            {/* In-range chips */}
+            <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
               {(["8–9", "10–11", "12–14"] as const).map((label) => {
                 const val = label.replace("–", "-");
                 const sel = age === val;
@@ -282,33 +333,72 @@ export default function SimplifiedStart() {
                     key={val}
                     className={`chip-btn${sel ? " sel" : ""}`}
                     style={{
-                      flex: 1,
-                      minHeight: "48px",
-                      padding: "11px 0",
+                      flex: 1, minHeight: "48px", padding: "11px 0",
                       ...(sel ? { background: GOLDB, color: NAVY, borderColor: GOLD } : {}),
                     }}
-                    onClick={() => { setAge(val); fireGtag("simplified_age", { age_band: val }); }}
+                    onClick={() => selectAge(val)}
                   >
                     {label}
                   </button>
                 );
               })}
             </div>
+            {/* OOB chips */}
+            <div style={{ display: "flex", gap: "8px" }}>
+              {([["younger", "Younger than 8"], ["older", "Older than 14"]] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  className="chip-btn"
+                  style={{ flex: 1, minHeight: "40px", padding: "9px 0", fontSize: "12px", color: "var(--ink-dim)" }}
+                  onClick={() => openOobPopup(val)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
-            {/* OOB chips (Younger / Older) disabled pending consent language. Re-enable once settled. */}
+          {/* Concern */}
+          <div style={{ marginBottom: "20px" }}>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-dim)", marginBottom: "9px" }}>
+              What&rsquo;s worrying you the most right now?
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+              {CONCERN_CARDS.map(({ key, emoji, label }) => (
+                <button
+                  key={key}
+                  onClick={() => selectConcern(key)}
+                  style={{
+                    background: concern === key ? "#FFF8E6" : "var(--paper)",
+                    border: concern === key ? `2px solid ${GOLD}` : "2px solid transparent",
+                    outline: "none", borderRadius: "12px", padding: "14px 10px",
+                    textAlign: "center", cursor: "pointer", fontFamily: "inherit",
+                    transition: "all .12s", display: "flex", flexDirection: "column",
+                    alignItems: "center", gap: 0,
+                  }}
+                >
+                  <span style={{ fontSize: "22px", marginBottom: "6px", display: "block", lineHeight: 1 }}>{emoji}</span>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--ink)", lineHeight: 1.3 }}>{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <button
             className="cta-btn"
-            disabled={!age}
-            onClick={() => { if (age) setStage("concern"); }}
+            disabled={!canContinue}
+            onClick={() => { if (canContinue) setStage("followup"); }}
             style={{
-              background: age ? NAVY : "var(--line)",
-              color: age ? "#fff" : "var(--ink-dim)",
-              cursor: age ? "pointer" : "not-allowed",
+              background: canContinue ? NAVY : "var(--line)",
+              color: canContinue ? "#fff" : "var(--ink-dim)",
+              cursor: canContinue ? "pointer" : "not-allowed",
             }}
           >
-            {age ? "Continue →" : "Select your child's age to continue"}
+            {!age
+              ? "Select your child's age to continue"
+              : !concern
+                ? "Select what's worrying you most"
+                : "Continue →"}
           </button>
 
           <div style={{ display: "flex", gap: "16px", marginTop: "14px", fontSize: "12px", color: "var(--ink-dim)" }}>
@@ -321,81 +411,7 @@ export default function SimplifiedStart() {
     );
   }
 
-  // ── Stage: concern ────────────────────────────────────────────────────────
-  if (stage === "concern") {
-    return (
-      <div className="funnel-screen">
-        <div className="funnel-card">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto", marginBottom: 20 }} />
-
-          <button
-            onClick={() => setStage("name-age")}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", color: "var(--calm-text)", fontWeight: 600, marginBottom: "18px", padding: 0, display: "flex", alignItems: "center", gap: "6px" }}
-          >
-            ← Back
-          </button>
-
-          <div style={{ fontSize: "11px", letterSpacing: ".13em", textTransform: "uppercase", fontWeight: 700, color: TEAL, marginBottom: "10px" }}>
-            Step 1 of 2
-          </div>
-
-          <h1 style={{ fontFamily: BG, fontWeight: 800, fontSize: "clamp(20px,3vw,26px)", lineHeight: 1.35, color: "var(--ink)", marginBottom: "8px" }}>
-            What&rsquo;s worrying you the most right now?
-          </h1>
-          <div style={{ fontSize: "14px", color: "var(--ink-dim)", marginBottom: "24px" }}>
-            Choose what feels closest to your situation.
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-            {CONCERN_CARDS.map(({ key, emoji, label }) => (
-              <button
-                key={key}
-                onClick={() => { setConcern(key); fireGtag("simplified_concern", { concern: key }); }}
-                style={{
-                  background: concern === key ? "#FFF8E6" : "var(--paper)",
-                  border: concern === key ? `2px solid ${GOLD}` : "2px solid transparent",
-                  outline: "none",
-                  borderRadius: "14px",
-                  padding: "18px 14px",
-                  textAlign: "center",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  transition: "all .12s",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "0",
-                }}
-              >
-                <span style={{ fontSize: "24px", marginBottom: "8px", display: "block", lineHeight: 1 }}>{emoji}</span>
-                <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink)", lineHeight: 1.35 }}>{label}</span>
-              </button>
-            ))}
-          </div>
-
-          <button
-            className="cta-btn"
-            disabled={!concern}
-            onClick={() => { if (concern) setStage("followup"); }}
-            style={{
-              background: concern ? NAVY : "var(--line)",
-              color: concern ? "#fff" : "var(--ink-dim)",
-              cursor: concern ? "pointer" : "not-allowed",
-            }}
-          >
-            {concern ? "Continue →" : "Select what's worrying you most"}
-          </button>
-
-          <div style={{ display: "flex", gap: "16px", marginTop: "14px", fontSize: "12px", color: "var(--ink-dim)" }}>
-            <span>Free</span><span>·</span><span>Under 5 minutes</span><span>·</span><span>No sign-up needed</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Stage: followup ───────────────────────────────────────────────────────
+  // ── Stage: followup ───────────────────────────────────────────────────────────
   const fuConfig = concern ? FOLLOW_UP[concern] : null;
   return (
     <div className="funnel-screen">
@@ -404,14 +420,14 @@ export default function SimplifiedStart() {
         <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto", marginBottom: 20 }} />
 
         <button
-          onClick={() => setStage("concern")}
+          onClick={() => setStage("start")}
           style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", color: "var(--calm-text)", fontWeight: 600, marginBottom: "18px", padding: 0, display: "flex", alignItems: "center", gap: "6px" }}
         >
           ← Back
         </button>
 
         <div style={{ fontSize: "11px", letterSpacing: ".13em", textTransform: "uppercase", fontWeight: 700, color: TEAL, marginBottom: "10px" }}>
-          Step 2 of 2 · One more question
+          One more question
         </div>
 
         <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "clamp(18px,3vw,24px)", lineHeight: 1.3, color: "var(--ink)", marginBottom: "22px" }}>
@@ -423,21 +439,13 @@ export default function SimplifiedStart() {
             <button
               key={opt.echo}
               onClick={() => {
-                fireGtag("simplified_followup", { concern: concern ?? "", answer: opt.echo });
                 goToAssessment(opt.echo);
               }}
               style={{
-                background: "var(--paper)",
-                border: "1.5px solid var(--line)",
-                borderRadius: "12px",
-                padding: "14px 16px",
-                fontSize: "14px",
-                fontWeight: 500,
-                color: "var(--ink)",
-                cursor: "pointer",
-                textAlign: "left",
-                fontFamily: "inherit",
-                transition: "border-color .1s, background .1s",
+                background: "var(--paper)", border: "1.5px solid var(--line)",
+                borderRadius: "12px", padding: "14px 16px", fontSize: "14px",
+                fontWeight: 500, color: "var(--ink)", cursor: "pointer",
+                textAlign: "left", fontFamily: "inherit", transition: "border-color .1s, background .1s",
               }}
             >
               {opt.label}
