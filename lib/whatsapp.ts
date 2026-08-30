@@ -89,6 +89,7 @@ export async function sendWhatsAppHandbook({
   }
 }
 
+// Throws on any failure so the caller's try/catch can release the claim and skip sent_at.
 export async function sendWhatsAppReport({
   parentName,
   childName,
@@ -100,64 +101,58 @@ export async function sendWhatsAppReport({
   sessionId: string;
   rawPhone: string;
 }): Promise<void> {
-  try {
-    const to = normalizePhone(rawPhone);
-    if (!to) return;
+  const to = normalizePhone(rawPhone);
+  if (!to) throw new Error(`invalid phone: "${rawPhone}"`);
 
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-    const accessToken   = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const accessToken   = process.env.WHATSAPP_ACCESS_TOKEN;
 
-    if (!phoneNumberId || !accessToken) {
-      console.warn("[whatsapp] WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_ACCESS_TOKEN not set — skipping send");
-      return;
-    }
-
-    const body = {
-      messaging_product: "whatsapp",
-      to,
-      type: "template",
-      template: {
-        name: "report_ready",
-        language: { code: "en" },
-        components: [
-          {
-            type: "body",
-            parameters: [
-              { type: "text", parameter_name: "parent_name", text: parentName },
-              { type: "text", parameter_name: "child_name", text: childName },
-            ],
-          },
-          {
-            type: "button",
-            sub_type: "url",
-            index: "0",
-            parameters: [
-              { type: "text", text: `report/${sessionId}` },
-            ],
-          },
-        ],
-      },
-    };
-
-    const res = await fetch(
-      `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      console.error("[whatsapp] API error", res.status, JSON.stringify(data));
-    } else {
-      console.log("[whatsapp] sent to", to, "session", sessionId, JSON.stringify(data));
-    }
-  } catch (e) {
-    console.error("[whatsapp] unexpected error:", e);
+  if (!phoneNumberId || !accessToken) {
+    throw new Error("WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_ACCESS_TOKEN not set");
   }
+
+  const body = {
+    messaging_product: "whatsapp",
+    to,
+    type: "template",
+    template: {
+      name: "report_ready",
+      language: { code: "en" },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", parameter_name: "parent_name", text: parentName },
+            { type: "text", parameter_name: "child_name", text: childName },
+          ],
+        },
+        {
+          type: "button",
+          sub_type: "url",
+          index: "0",
+          parameters: [
+            { type: "text", text: `report/${sessionId}` },
+          ],
+        },
+      ],
+    },
+  };
+
+  const res = await fetch(
+    `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  const data = await res.json().catch(() => ({})) as Record<string, unknown>;
+  if (!res.ok) {
+    throw new Error(`WhatsApp API ${res.status}: ${JSON.stringify(data)}`);
+  }
+  console.log("[whatsapp] sent to", to, "session", sessionId, JSON.stringify(data));
 }
