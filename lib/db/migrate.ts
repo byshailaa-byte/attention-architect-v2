@@ -552,6 +552,52 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_31_wa_claim_column') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 32 — whatsapp_send_attempts: counts total claim cycles for bounded retry.
+  // Incremented each time the claim is atomically acquired (claim route + cron retries).
+  // Sessions with attempts >= MAX and sent_at NULL are recoverable via admin panel.
+  if (!applied.has("phase_32_wa_send_attempts")) {
+    await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS whatsapp_send_attempts INT NOT NULL DEFAULT 0`;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_32_wa_send_attempts') ON CONFLICT DO NOTHING`;
+  }
+
+  // Phase 33 — add simplified_report_view to the funnel_events event_type CHECK constraint.
+  // Fires in /preview/simplified-v1 when a real published report renders for a gated parent.
+  // Without this, the simplified variant emits no report-view signal at all.
+  if (!applied.has("phase_33_simplified_report_view_event")) {
+    await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
+    await sql`
+      ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+        'assessment_started',
+        'assessment_question_complete',
+        'assessment_dimension_complete',
+        'assessment_complete',
+        'report_gate_view',
+        'generating_page_view',
+        'generate_lead',
+        'report_view',
+        'view_item',
+        'pricing_section_viewed',
+        'begin_checkout',
+        'checkout_modal_opened',
+        'checkout_modal_dismissed',
+        'purchase',
+        'lms_day_complete',
+        'lms_reflection_submitted',
+        'scroll_milestone',
+        'exit_intent_shown',
+        'landing_step_age',
+        'landing_step_concern',
+        'landing_step_followup',
+        'pricing_variant_assigned',
+        'phone_capture_shown',
+        'teaser_shown',
+        'paywall_shown',
+        'simplified_report_view'
+      ))
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_33_simplified_report_view_event') ON CONFLICT DO NOTHING`;
+  }
+
   // Phase 30 — purchases.tier: extend CHECK to include tier1 and tier2 for roadmap pricing.
   // tier1 = Roadmap only (₹2,999). tier2 = Roadmap + Founder Call (₹4,999).
   // module1 / full / topup kept for backward-compat with existing paid records.

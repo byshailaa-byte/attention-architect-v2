@@ -124,6 +124,25 @@ export type HandbookLead = {
   created_at: string;
 };
 
+export type WaFailureRow = {
+  session_id: string;
+  child_name: string | null;
+  parent_name: string | null;
+  phone: string | null;
+  whatsapp_send_attempts: number;
+  created_at: string;
+};
+
+export type NeverGeneratedRow = {
+  session_id: string;
+  child_name: string | null;
+  parent_name: string | null;
+  phone: string | null;
+  archetype: string | null;
+  whatsapp_send_attempts: number;
+  created_at: string;
+};
+
 export type AdminDashboardProps = {
   kpi: KpiData;
   assessments: AssessmentData[];
@@ -143,6 +162,8 @@ export type AdminDashboardProps = {
   showArchive: boolean;
   pendingNarrativeReviews: number;
   handbookLeads: HandbookLead[];
+  waFailures: WaFailureRow[];
+  neverGenerated: NeverGeneratedRow[];
   // legacy prop kept for compatibility — not used in new dashboard
   funnel?: FunnelCounts;
 };
@@ -779,7 +800,7 @@ export default function AdminDashboard({
   scrollMilestones, questionCompletions,
   rangeParam, fromParam, toParam,
   campaignLaunchAt, campaign2LaunchAt, showArchive,
-  pendingNarrativeReviews, handbookLeads,
+  pendingNarrativeReviews, handbookLeads, waFailures, neverGenerated,
 }: AdminDashboardProps) {
   const [active, setActive] = useState<Section>("overview");
   const [search, setSearch] = useState("");
@@ -1105,6 +1126,107 @@ export default function AdminDashboard({
               <KpiCard label="Conversion" value={`${conversion}%`} sub="completed → paid" />
               <KpiCard label="Top Archetype" value={kpi.top_archetype ?? "—"} />
             </div>
+
+            {neverGenerated.length > 0 && (
+              <Card style={{ marginBottom: 24, borderColor: "#D97706A0", background: "#FFFBEB" }}>
+                <SectionLabel>
+                  <span style={{ color: "#B45309" }}>
+                    Report Generation Failed — {neverGenerated.length} session{neverGenerated.length !== 1 ? "s" : ""} with no published report
+                  </span>
+                </SectionLabel>
+                <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 14px", lineHeight: 1.6 }}>
+                  Gate was submitted but no report was published after 10+ minutes. Generation likely hit the 300s ceiling or failed silently.
+                  WhatsApp will not send until a report exists — trigger generation manually via /api/internal/report/auto-generate or promote a draft.
+                </p>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                        {["Child", "Parent", "Phone", "Archetype", "WA Attempts", "Session", "When"].map(h => (
+                          <th key={h} style={{ textAlign: "left", padding: "0 12px 8px 0", color: C.muted, fontWeight: 400, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {neverGenerated.map(row => (
+                        <tr key={row.session_id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                          <td style={{ padding: "10px 12px 10px 0", color: C.text }}>{row.child_name ?? "—"}</td>
+                          <td style={{ padding: "10px 12px 10px 0", color: C.muted }}>{row.parent_name ?? "—"}</td>
+                          <td style={{ padding: "10px 12px 10px 0", color: C.muted, fontFamily: MONO }}>{row.phone ?? "—"}</td>
+                          <td style={{ padding: "10px 12px 10px 0", color: C.muted }}>{row.archetype ?? "—"}</td>
+                          <td style={{ padding: "10px 12px 10px 0" }}>
+                            <Badge text={String(row.whatsapp_send_attempts)} color="#B45309" />
+                          </td>
+                          <td style={{ padding: "10px 12px 10px 0", color: C.muted, fontSize: 10 }}>
+                            <a
+                              href={`/report/${row.session_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: C.blue, textDecoration: "none" }}
+                            >
+                              {row.session_id.slice(0, 8)}… →
+                            </a>
+                          </td>
+                          <td style={{ padding: "10px 0 10px 0", color: C.muted, whiteSpace: "nowrap" }}>
+                            {fmtDateTime(row.created_at)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+
+            {waFailures.length > 0 && (
+              <Card style={{ marginBottom: 24, borderColor: `${C.red}60`, background: `${C.red}08` }}>
+                <SectionLabel>
+                  <span style={{ color: C.red }}>
+                    WhatsApp Recovery — {waFailures.length} session{waFailures.length !== 1 ? "s" : ""} exhausted all retries
+                  </span>
+                </SectionLabel>
+                <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 14px", lineHeight: 1.6 }}>
+                  These parents were promised a WhatsApp report but never received one.
+                  All {5} automatic attempts failed. Contact manually or re-trigger via the claim endpoint.
+                </p>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                        {["Child", "Parent", "Phone", "Attempts", "Session", "When"].map(h => (
+                          <th key={h} style={{ textAlign: "left", padding: "0 12px 8px 0", color: C.muted, fontWeight: 400, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {waFailures.map(row => (
+                        <tr key={row.session_id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                          <td style={{ padding: "10px 12px 10px 0", color: C.text }}>{row.child_name ?? "—"}</td>
+                          <td style={{ padding: "10px 12px 10px 0", color: C.muted }}>{row.parent_name ?? "—"}</td>
+                          <td style={{ padding: "10px 12px 10px 0", color: C.muted, fontFamily: MONO }}>{row.phone ?? "—"}</td>
+                          <td style={{ padding: "10px 12px 10px 0" }}>
+                            <Badge text={String(row.whatsapp_send_attempts)} color={C.red} />
+                          </td>
+                          <td style={{ padding: "10px 12px 10px 0", color: C.muted, fontSize: 10 }}>
+                            <a
+                              href={`/report/${row.session_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: C.blue, textDecoration: "none" }}
+                            >
+                              {row.session_id.slice(0, 8)}… →
+                            </a>
+                          </td>
+                          <td style={{ padding: "10px 0 10px 0", color: C.muted, whiteSpace: "nowrap" }}>
+                            {fmtDateTime(row.created_at)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
 
             <Card style={{ marginBottom: 24 }}>
               <SectionLabel>Recent Activity</SectionLabel>

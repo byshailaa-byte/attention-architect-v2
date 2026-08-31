@@ -11,7 +11,7 @@ import {
   type Question,
 } from "@/lib/engine/questions";
 import AdminDashboard from "./AdminDashboard";
-import type { AdminDashboardProps, DropOffRow, HandbookLead, ScrollMilestone, QuestionCompletion } from "./AdminDashboard";
+import type { AdminDashboardProps, DropOffRow, HandbookLead, WaFailureRow, NeverGeneratedRow, ScrollMilestone, QuestionCompletion } from "./AdminDashboard";
 
 // ── Question lookup ───────────────────────────────────────────────────────────
 
@@ -465,6 +465,76 @@ export default async function AdminPage({
     // Table doesn't exist yet — no submissions, show empty state
   }
 
+  // Sessions where generation never completed: gate submitted, archetype set, no published report after 10 min
+  let neverGenerated: NeverGeneratedRow[] = [];
+  try {
+    const ngRows = await sql`
+      SELECT
+        a.session_id::text,
+        a.child_name,
+        a.parent_name,
+        a.phone,
+        a.archetype,
+        a.whatsapp_send_attempts,
+        a.created_at
+      FROM assessments a
+      WHERE a.parent_name IS NOT NULL
+        AND a.archetype IS NOT NULL
+        AND a.phone IS NOT NULL
+        AND a.created_at < NOW() - INTERVAL '10 minutes'
+        AND NOT EXISTS (
+          SELECT 1 FROM reports r
+          WHERE r.assessment_id = a.id
+            AND r.status = 'published'
+            AND r.superseded_by IS NULL
+        )
+      ORDER BY a.created_at DESC
+      LIMIT 20
+    ` as unknown as { session_id: string; child_name: string | null; parent_name: string | null; phone: string | null; archetype: string | null; whatsapp_send_attempts: number; created_at: unknown }[];
+    neverGenerated = ngRows.map(r => ({
+      session_id: r.session_id,
+      child_name: r.child_name,
+      parent_name: r.parent_name,
+      phone: r.phone,
+      archetype: r.archetype,
+      whatsapp_send_attempts: r.whatsapp_send_attempts,
+      created_at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+    }));
+  } catch {
+    // reports table may not be migrated yet — safe to show empty
+  }
+
+  // WhatsApp recovery: sessions that exhausted all send attempts without a confirmed send
+  let waFailures: WaFailureRow[] = [];
+  try {
+    const waRows = await sql`
+      SELECT
+        session_id::text,
+        child_name,
+        parent_name,
+        phone,
+        whatsapp_send_attempts,
+        created_at
+      FROM assessments
+      WHERE whatsapp_report_sent_at  IS NULL
+        AND whatsapp_send_attempts   >= 5
+        AND whatsapp_send_claimed_at IS NULL
+        AND archetype IS NOT NULL
+        AND phone IS NOT NULL
+      ORDER BY created_at DESC
+    ` as unknown as { session_id: string; child_name: string | null; parent_name: string | null; phone: string | null; whatsapp_send_attempts: number; created_at: unknown }[];
+    waFailures = waRows.map(r => ({
+      session_id: r.session_id,
+      child_name: r.child_name,
+      parent_name: r.parent_name,
+      phone: r.phone,
+      whatsapp_send_attempts: r.whatsapp_send_attempts,
+      created_at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+    }));
+  } catch {
+    // whatsapp_send_attempts column may not exist on older schemas — safe to show empty
+  }
+
   // Pending narrative reviews: count auto-generated draft reports not yet promoted
   let pendingNarrativeReviews = 0;
   try {
@@ -499,6 +569,8 @@ export default async function AdminPage({
       showArchive={showArchive}
       pendingNarrativeReviews={pendingNarrativeReviews}
       handbookLeads={handbookLeads}
+      waFailures={waFailures}
+      neverGenerated={neverGenerated}
     />
   );
 }

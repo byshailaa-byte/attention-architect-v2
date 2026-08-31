@@ -79,22 +79,47 @@ export async function POST(req: NextRequest) {
         ]);
       } catch (e: unknown) {
         console.warn("[auto-generate] trigger failed or timed out:", (e as Error).message);
-        // Fall through — WhatsApp still sends with the report link.
-        // If generation didn't finish, parent lands on static view; if it did, they see the narrative.
+        // Generation may still be running in its own function invocation (maxDuration=300).
+        // Do NOT fall through to send — check report readiness explicitly below.
       }
 
-      // Step 2: claim the WhatsApp send atomically, execute, then confirm.
-      // whatsapp_send_claimed_at prevents duplicate concurrent sends.
-      // whatsapp_report_sent_at is written ONLY after the send returns success.
-      // On failure the claim is released so re-submitting the claim form retries.
+      // Step 2: verify the report is published before attempting the WhatsApp send.
+      // Sending before the report exists means the link has nothing to point at.
+      // If not ready: record an attempt (so cron knows to retry) then bail — cron will
+      // send once the report is published.
+      const MAX_WA_ATTEMPTS = 5;
+
+      const reportReadyRows = await sql`
+        SELECT r.id FROM reports r
+        JOIN assessments a ON a.id = r.assessment_id
+        WHERE a.session_id = ${sessionId}::uuid
+          AND r.status = 'published'
+          AND r.superseded_by IS NULL
+        LIMIT 1
+      ` as unknown as { id: string }[];
+
+      if (reportReadyRows.length === 0) {
+        console.error("[whatsapp] report not published after generation — recording attempt for cron pickup:", sessionId);
+        await sql`
+          UPDATE assessments
+          SET whatsapp_send_attempts = whatsapp_send_attempts + 1
+          WHERE session_id = ${sessionId}::uuid
+            AND whatsapp_send_claimed_at IS NULL
+            AND whatsapp_report_sent_at   IS NULL
+            AND whatsapp_send_attempts    < ${MAX_WA_ATTEMPTS}
+        `.catch((e: unknown) => console.error("[whatsapp] attempt increment failed:", (e as Error).message));
+        // Fall through to CAPI Lead below; skip the WA send block entirely.
+      } else {
       let waClaimRows: { child_name: string | null; parent_name: string | null; phone: string | null }[] = [];
       try {
         waClaimRows = await sql`
           UPDATE assessments
-          SET whatsapp_send_claimed_at = NOW()
+          SET whatsapp_send_claimed_at = NOW(),
+              whatsapp_send_attempts   = whatsapp_send_attempts + 1
           WHERE session_id = ${sessionId}::uuid
             AND whatsapp_send_claimed_at IS NULL
             AND whatsapp_report_sent_at   IS NULL
+            AND whatsapp_send_attempts    < ${MAX_WA_ATTEMPTS}
           RETURNING child_name, parent_name, phone
         ` as unknown as { child_name: string | null; parent_name: string | null; phone: string | null }[];
       } catch (e: unknown) {
@@ -103,27 +128,38 @@ export async function POST(req: NextRequest) {
 
       if (waClaimRows.length > 0) {
         const row = waClaimRows[0];
-        try {
-          await sendWhatsAppReport({
-            parentName: row.parent_name ?? parentName.trim(),
-            childName:  row.child_name  ?? "your child",
-            sessionId,
-            rawPhone:   row.phone       ?? phone.trim(),
-          });
-          // Confirmed success — record the send timestamp
-          await sql`
-            UPDATE assessments SET whatsapp_report_sent_at = NOW()
-            WHERE session_id = ${sessionId}::uuid
-          `;
-        } catch (e: unknown) {
-          // Release the claim so the next claim form submission can retry
-          console.error("[whatsapp] send failed — releasing claim:", (e as Error).message);
+        let sent = false;
+
+        for (let attempt = 0; attempt <= 1 && !sent; attempt++) {
+          if (attempt === 1) {
+            // One retry after 20s for transient failures (rate limit, network hiccup).
+            // 20s is safe even in the worst case (240s generation + 20s retry < 300s maxDuration).
+            await new Promise(r => setTimeout(r, 20_000));
+          }
+          try {
+            await sendWhatsAppReport({
+              parentName: row.parent_name ?? parentName.trim(),
+              childName:  row.child_name  ?? "your child",
+              sessionId,
+              rawPhone:   row.phone       ?? phone.trim(),
+            });
+            await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${sessionId}::uuid`;
+            sent = true;
+          } catch (e: unknown) {
+            console.error(`[whatsapp] attempt ${attempt + 1} failed:`, (e as Error).message);
+          }
+        }
+
+        if (!sent) {
+          // Both in-process attempts exhausted — release claim for hourly cron retry.
+          console.error("[whatsapp] in-process attempts exhausted — releasing for cron:", sessionId);
           await sql`
             UPDATE assessments SET whatsapp_send_claimed_at = NULL
             WHERE session_id = ${sessionId}::uuid
-          `.catch((e2: unknown) => console.error("[whatsapp] claim release failed:", (e2 as Error).message));
+          `.catch((e: unknown) => console.error("[whatsapp] claim release failed:", (e as Error).message));
         }
       }
+      } // end else (report published)
 
       // CAPI Lead — event_id matches client-side fbq call: `lead:${sessionId}`
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
