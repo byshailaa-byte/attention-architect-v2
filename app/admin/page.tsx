@@ -488,6 +488,7 @@ export default async function AdminPage({
             AND r.status = 'published'
             AND r.superseded_by IS NULL
         )
+        AND (a.child_name IS NULL OR (a.child_name NOT ILIKE 'Test%' AND a.child_name NOT ILIKE 'Smoke%'))
       ORDER BY a.created_at DESC
       LIMIT 20
     ` as unknown as { session_id: string; child_name: string | null; parent_name: string | null; phone: string | null; archetype: string | null; whatsapp_send_attempts: number; created_at: unknown }[];
@@ -521,6 +522,7 @@ export default async function AdminPage({
         AND whatsapp_send_claimed_at IS NULL
         AND archetype IS NOT NULL
         AND phone IS NOT NULL
+        AND (child_name IS NULL OR (child_name NOT ILIKE 'Test%' AND child_name NOT ILIKE 'Smoke%'))
       ORDER BY created_at DESC
     ` as unknown as { session_id: string; child_name: string | null; parent_name: string | null; phone: string | null; whatsapp_send_attempts: number; created_at: unknown }[];
     waFailures = waRows.map(r => ({

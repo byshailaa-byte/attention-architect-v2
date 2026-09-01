@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
       AND a.archetype IS NOT NULL
       AND a.phone IS NOT NULL
       AND a.parent_name IS NOT NULL
+      AND (a.child_name IS NULL OR (a.child_name NOT ILIKE 'Test%' AND a.child_name NOT ILIKE 'Smoke%'))
     ORDER BY a.created_at ASC
     LIMIT ${BATCH_SIZE}
   ` as unknown as { session_id: string; child_name: string | null; parent_name: string | null; phone: string | null }[];
@@ -126,6 +127,7 @@ export async function GET(req: NextRequest) {
           AND r.status = 'published'
           AND r.superseded_by IS NULL
       )
+      AND (a.child_name IS NULL OR (a.child_name NOT ILIKE 'Test%' AND a.child_name NOT ILIKE 'Smoke%'))
   ` as unknown as { count: number }[];
 
   const neverGenerated = (neverGeneratedRows[0] as { count: number })?.count ?? 0;
