@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export const NAVY = "#14284D";
 export const GOLD = "#F5A623";
@@ -39,6 +39,17 @@ export default function ThankYouScreen({
   email: string;
   phone: string; // normalized 10-digit
 }) {
+  const firedView = useRef(false);
+  useEffect(() => {
+    if (firedView.current) return;
+    firedView.current = true;
+    fetch("/api/funnel/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_type: "thankyou_screen_view", session_id: sessionId, metadata: { variant: "simplified" } }),
+    }).catch(() => {});
+  }, [sessionId]);
+
   const [correcting, setCorrecting]     = useState(false);
   const [newPhone, setNewPhone]         = useState("");
   const [phoneError, setPhoneError]     = useState<string | null>(null);
