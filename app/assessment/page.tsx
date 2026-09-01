@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { GATEWAY_QUESTIONS, Question } from "@/lib/engine/questions";
 import { buildQuestionSequence, progressMilestone, GatewayAnswers } from "@/lib/engine/router";
 import SiteFooter from "@/app/components/SiteFooter";
+import ThankYouScreen from "@/app/preview/simplified-v1/ThankYouScreen";
 
 declare global {
   interface Window {
@@ -51,7 +52,7 @@ function isValidPhone(raw: string): boolean {
   return /^[6-9]\d{9}$/.test(normalizePhone(raw));
 }
 
-type Phase = "meta" | "questions" | "simplified-gate" | "post-assessment";
+type Phase = "meta" | "questions" | "simplified-gate" | "simplified-thankyou" | "post-assessment";
 type ScoringResult = { archetype: string; parent_pattern: string };
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
@@ -148,6 +149,7 @@ function AssessmentForm() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState<string | null>(null);
+  const [submittedPhone, setSubmittedPhone] = useState("");
   const router = useRouter();
 
   const firedStart = useRef(false);
@@ -303,9 +305,9 @@ function AssessmentForm() {
       }
       fireGtag("generate_lead");
       fireFbq("track", "Lead", {}, `lead:${sessionId}`);
-      router.push(
-        `/report/generating/${sessionId}?name=${encodeURIComponent(childName || "")}&archetype=${encodeURIComponent(scoringResult?.archetype || "")}&dest=simplified`
-      );
+      setSubmittedPhone(normalizePhone(phone));
+      setSubmitting(false);
+      setPhase("simplified-thankyou");
     } catch (e) {
       setError((e as Error).message);
       setSubmitting(false);
@@ -344,6 +346,18 @@ function AssessmentForm() {
       setError((e as Error).message);
       setSubmitting(false);
     }
+  }
+
+  if (phase === "simplified-thankyou") {
+    return (
+      <ThankYouScreen
+        sessionId={sessionId}
+        childName={childName || "your child"}
+        parentName={parentName.trim()}
+        email={email.trim()}
+        phone={submittedPhone}
+      />
+    );
   }
 
   if (submitting) {
