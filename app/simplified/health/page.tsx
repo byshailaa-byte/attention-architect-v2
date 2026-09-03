@@ -61,7 +61,7 @@ export default function AttentionHealthPage() {
         <Wrap>
           <div style={{ padding: "var(--site-section-gap) 0", maxWidth: 720, display: "flex", flexDirection: "column", gap: 20 }}>
             <Eyebrow>Attention Health</Eyebrow>
-            <h1 style={h2}>Attention is six small skills. Not one big talent.</h1>
+            <h1 style={h2}>Attention is built in six steps. Not one big talent.</h1>
             <p style={{ margin: 0, font: "var(--type-body)", color: "var(--text-body)" }}>
               Your child already has some of them. One is usually missing — and that one is why the evenings are hard.
             </p>
@@ -121,7 +121,7 @@ export default function AttentionHealthPage() {
                 <div style={{
                   font: "var(--weight-bold) var(--text-sm)/1.4 var(--font-sans)",
                   color: "var(--teal-700)",
-                }}>The skill being used: {tab.skill}</div>
+                }}>The step: {tab.skill}</div>
               </div>
             </div>
           </div>
@@ -133,7 +133,7 @@ export default function AttentionHealthPage() {
         <Wrap>
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
             <div style={{ maxWidth: 720, display: "flex", flexDirection: "column", gap: 14 }}>
-              <Eyebrow>The six skills</Eyebrow>
+              <Eyebrow>The six steps</Eyebrow>
               <h2 style={h3}>They arrive roughly in this order.</h2>
               <p style={{ margin: 0, font: "var(--type-body)", color: "var(--text-body)" }}>
                 A child can be strong at the fourth and have never built the first — which is why &ldquo;she can&rsquo;t concentrate&rdquo; tells you nothing.

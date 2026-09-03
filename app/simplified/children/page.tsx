@@ -153,7 +153,7 @@ export default function ChildrenPage() {
             <Eyebrow>Your child</Eyebrow>
             <h1 style={h2}>Eight kinds of children. One of them is yours.</h1>
             <p style={{ margin: 0, font: "var(--type-body)", color: "var(--text-body)" }}>
-              No labels, no best one. Each begins with what that child is genuinely good at, then names the skill they are ready to build next. Most mothers spot their own child straight away.
+              No labels, no best one. Each begins with what that child is genuinely good at, then names the step they are ready to build next. Most mothers spot their own child straight away.
             </p>
           </div>
         </Wrap>
@@ -186,7 +186,7 @@ export default function ChildrenPage() {
             </div>
 
             <p style={{ margin: 0, font: "var(--type-body)", color: "var(--text-body)" }}>
-              This is your child now, at this age. They move between these as the missing skill gets built.
+              This is your child now, at this age. They move between these as the missing step gets built.
             </p>
           </div>
         </Wrap>

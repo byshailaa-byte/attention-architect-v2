@@ -38,7 +38,7 @@ const META: Record<string, ArticleMeta> = {
     hasCta: true,
   },
   "six-skills": {
-    title: "The six skills, and what each looks like at 8, 11 and 14",
+    title: "The six steps, and what each looks like at 8, 11 and 14",
     kind: "Explainer",
     readTime: "6 min",
     hasCta: true,

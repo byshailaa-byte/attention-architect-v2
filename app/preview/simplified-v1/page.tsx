@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
 import { getSql } from "@/lib/db/client";
+import {
+  PATTERN_LINE, MEANING, FRICTION_POINTS, TONIGHT_SAY, TONIGHT_WATCH,
+  INSTINCT_LINE, NOW_LINES, THEN_LINES, TESTIMONIAL_POOL,
+} from "@/lib/content/report-content";
 import { getLmsWeekContent } from "@/lib/lms/content";
 import {
   generateInstinctInteractionFallback,
@@ -31,28 +35,28 @@ const seenTryTonightTitles = new Set<string>();
 
 // Maps raw DB slug values to parent-readable label + description for each profile card row.
 const ATTENTION_SHAPE: Record<string, { label: string; desc: string }> = {
-  "narrow-deep":       { label: "What draws attention in",  desc: "Goes deep into chosen things; absorbs fully and stays there" },
-  "wide-shifting":     { label: "What draws attention in",  desc: "Moves between a few related things at once; broad spread" },
-  "social-anchored":   { label: "What draws attention in",  desc: "Seeks to be around or with other people" },
-  "sensation-seeking": { label: "What draws attention in",  desc: "Pursues whatever feels most exciting or active in the moment" },
+  "narrow-deep":       { label: "What gets them focused",  desc: "Something they can go right into. Once they're in, they tend to stay there." },
+  "wide-shifting":     { label: "What gets them focused",  desc: "A few related things at once. Their attention moves between them rather than settling on one." },
+  "social-anchored":   { label: "What gets them focused",  desc: "Being around other people. Company tends to hold them more than the task does." },
+  "sensation-seeking": { label: "What gets them focused",  desc: "Whatever feels most alive in the moment. Energy tends to matter more than the subject." },
 };
 const ATTENTION_COMPETITION: Record<string, { label: string; desc: string }> = {
-  "novelty":  { label: "What pulls it away", desc: "New ideas or inputs that arrive mid-task" },
-  "external": { label: "What pulls it away", desc: "Nearby noise, movement, or sensory activity" },
-  "internal": { label: "What pulls it away", desc: "Boredom or frustration building from within" },
-  "social":   { label: "What pulls it away", desc: "What's happening with other people nearby" },
+  "novelty":  { label: "What tends to pull them away", desc: "A new idea arriving mid-task. It often feels more urgent than what they were doing." },
+  "external": { label: "What tends to pull them away", desc: "Noise or movement nearby. It doesn't take much to break the thread." },
+  "internal": { label: "What tends to pull them away", desc: "Boredom or frustration building up from the inside, before anything happens around them." },
+  "social":   { label: "What tends to pull them away", desc: "Whatever is going on with the people nearby. That usually gets read first." },
 };
 const FRICTION_RESPONSE: Record<string, { label: string; desc: string }> = {
-  "avoid":           { label: "Response to friction", desc: "Tends to step back and avoid when things get hard" },
-  "solo-push":       { label: "Response to friction", desc: "Tends to push through alone, even when frustrated" },
-  "support-seek":    { label: "Response to friction", desc: "Looks for someone to help work through it" },
-  "emotional-derail":{ label: "Response to friction", desc: "Can get emotionally overwhelmed before trying again" },
+  "avoid":           { label: "What happens when things get hard", desc: "They tend to step back rather than push into it. Often quietly, before anyone notices." },
+  "solo-push":       { label: "What happens when things get hard", desc: "They keep going alone, even when it's clearly frustrating. Asking for help doesn't come easily." },
+  "support-seek":    { label: "What happens when things get hard", desc: "They look for someone to work through it with. The company matters as much as the help." },
+  "emotional-derail":{ label: "What happens when things get hard", desc: "It can become overwhelming before they get to a second attempt. Coming back takes a while." },
 };
 const RECHARGE_TYPE: Record<string, { label: string; desc: string }> = {
-  "sensory-quiet":           { label: "What helps them recharge", desc: "Quiet, low-stimulation time alone" },
-  "social-connection":       { label: "What helps them recharge", desc: "Time with trusted people; social connection" },
-  "cognitive-displacement":  { label: "What helps them recharge", desc: "Something absorbing to take the mind elsewhere" },
-  "autonomous-unstructured": { label: "What helps them recharge", desc: "Full control over their own time — no demands" },
+  "sensory-quiet":           { label: "What helps them reset", desc: "Quiet time on their own, with not much going on." },
+  "social-connection":       { label: "What helps them reset", desc: "Time with people they trust. Not necessarily talking — just not alone." },
+  "cognitive-displacement":  { label: "What helps them reset", desc: "Something absorbing enough to take their mind somewhere else entirely." },
+  "autonomous-unstructured": { label: "What helps them reset", desc: "Time that's fully theirs, with nothing being asked of them." },
 };
 
 const ARCHETYPE_DESC: Record<string, string> = {
@@ -321,7 +325,7 @@ export default async function Page({
     detail01Bullets: detail01Bullets ?? null,
     detail03Content,
     detail03Title,
-    strengths: strengths ?? null,
+    strengths: strengths?.map(s => s.text) ?? null,
     actions: actionsOutput?.actions ?? null,
     tryTonight: actionsOutput?.tryTonight ?? null,
     weekTitles: [
@@ -330,6 +334,22 @@ export default async function Page({
       weekContent[2]?.weekTitle ?? "Week 3",
     ],
     sessionId: session,
+    patternLine: PATTERN_LINE[archetype] ?? "",
+    meaning: MEANING[archetype] ?? [],
+    frictionPoints: FRICTION_POINTS[archetype] ?? [],
+    tonightSay: TONIGHT_SAY[archetype] ?? "",
+    tonightWatch: TONIGHT_WATCH[archetype] ?? "",
+    instinctLine: INSTINCT_LINE[parentPattern] ?? "",
+    nowLines: NOW_LINES,
+    thenLines: THEN_LINES,
+    ladderCurrent: 1,
+    testimonial: TESTIMONIAL_POOL[
+      parseInt(session.replace(/-/g, "").slice(0, 2), 16) % TESTIMONIAL_POOL.length
+    ],
+    drawsIn:  dims.attention_shape?.value ? (ATTENTION_SHAPE[dims.attention_shape.value]?.desc ?? "")  : "",
+    pullsAway: dims.attention_competition?.value ? (ATTENTION_COMPETITION[dims.attention_competition.value]?.desc ?? "") : "",
+    friction:  dims.friction_response?.value ? (FRICTION_RESPONSE[dims.friction_response.value]?.desc ?? "")  : "",
+    recharge:  dims.recharge_type?.value ? (RECHARGE_TYPE[dims.recharge_type.value]?.desc ?? "")  : "",
   };
 
   return <SimplifiedFunnelClient data={data} />;

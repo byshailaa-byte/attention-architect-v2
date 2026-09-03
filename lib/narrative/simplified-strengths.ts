@@ -151,8 +151,11 @@ SECTION: "${childName}'s strengths"
 
 PURPOSE: Give the parent 2–3 specific, capability-framed strengths that are genuinely true of this child's attention pattern. Each strength should feel like something the parent can recognise — not generic praise.
 
+PLAIN ENGLISH RULE — mandatory:
+Write in plain English a parent would use talking to a friend. No invented names for activities. Banned words: tangent, through-line, lapse in concentration, sustained, unprompted, calibration, internalise, absorbed, orbit, mechanism. Short sentences. Nothing that needs reading twice.
+
 FORMAT (strict):
-Return 2 or 3 lines (2 if a third can't be made honestly — see constraint above, if present). Each line: one emoji, one space, then the strength in one short sentence, roughly 12–18 words, third person, no full stop at the end. Do not add a second clause explaining or elaborating — one observation, stated once.
+Return 2 or 3 lines (2 if a third can't be made honestly — see constraint above, if present). Each line: one emoji, one space, then the strength in one short sentence, 12 words max, third person, no full stop at the end. Do not add a second clause explaining or elaborating — one observation, stated once.
 
 Good example shape (do NOT copy these — generate from the evidence above):
 🎯 Goes deep into whatever captures their attention — surface-level was never an option
