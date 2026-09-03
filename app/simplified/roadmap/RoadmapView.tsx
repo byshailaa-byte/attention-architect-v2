@@ -40,6 +40,14 @@ const BF     = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 // Six distinct accent colours — one per week, in order
 const W = ["#E2705F", "#E9973F", "#DFC13C", "#4E9E86", "#3D7CB8", "#7B6BC4"] as const;
 
+// Rung 1 quote — varies by parent instinct, everything else stays universal
+const RUNG1_QUOTE: Record<string, string> = {
+  "The Quick Fixer":  "Here — let me show you a different way.",
+  "The Pusher":       "Focus. Finish your homework. Put the phone away.",
+  "The Negotiator":   "Finish this bit and then you can have your phone.",
+  "The Steady Hand":  "I'll wait. Whenever you're ready.",
+};
+
 // What the child is building — one per week
 const THEM_LINES = [
   "beginning without a reminder",
@@ -63,13 +71,14 @@ export type WeekContent = {
 };
 
 type Props = {
-  childName:    string;
-  archetype:    string;
-  weekContents: WeekContent[];
-  sessionId:    string | null;
-  parentName?:  string;
-  email?:       string;
-  phone?:       string;
+  childName:     string;
+  archetype:     string;
+  parentPattern?: string;
+  weekContents:  WeekContent[];
+  sessionId:     string | null;
+  parentName?:   string;
+  email?:        string;
+  phone?:        string;
 };
 
 const MOBILE_CSS = `
@@ -166,7 +175,7 @@ const ARCHETYPE_SIGNALS: Partial<Record<string, readonly [string, string, string
   ],
 };
 
-export default function RoadmapView({ childName: c, archetype, weekContents, sessionId, parentName = "", email = "", phone = "" }: Props) {
+export default function RoadmapView({ childName: c, archetype, parentPattern = "The Pusher", weekContents, sessionId, parentName = "", email = "", phone = "" }: Props) {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const pricingRef = useRef<HTMLDivElement>(null);
   const firedViewItem = useRef(false);
@@ -441,31 +450,31 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
               <span style={{ color: TEAL }}>architecting it</span>
             </div>
           </div>
-          <p style={{ textAlign: "center", fontSize: "14px", color: DIM, lineHeight: 1.65, maxWidth: "46ch", margin: "0 auto 28px" }}>
+          <p style={{ textAlign: "center", fontSize: "14px", color: DIM, lineHeight: 1.65, maxWidth: "46ch", margin: "0 auto 24px" }}>
             You don&rsquo;t need to manage {c}&rsquo;s attention forever. The roadmap changes <em>your</em> role, step by step, so they learn to manage their own.
           </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          <div>
             {([
-              { color: "#E85D5D", name: "The Reminder Parent",     quote: "Focus. Finish your homework. Put the phone away.",                                   desc: "You manage attention from the outside." },
+              { color: "#E85D5D", name: "The Reminder Parent",     quote: RUNG1_QUOTE[parentPattern] ?? RUNG1_QUOTE["The Pusher"]!, desc: "Every parent starts here. What differs is how." },
               { color: GOLD,      name: "The Observant Parent",    quote: "What keeps pulling their attention away?",                                            desc: "You begin noticing the patterns instead of reacting to every distraction." },
               { color: "#3B82F6", name: "The Guiding Parent",      quote: "What would make this easier to start?",                                               desc: "You stop giving constant instructions and start changing the conditions around attention." },
-              { color: "#7C3AED", name: "The Coaching Parent",     quote: "What do you notice about your own attention?",                                         desc: "Your child begins recognising distraction, difficulty, fatigue and what helps them return." },
-              { color: TEAL,      name: "The Attention Architect",  quote: "I don't have to manage their attention. They are learning to manage it themselves.", desc: "You design the environment, teach the skills, and gradually hand ownership back to your child." },
+              { color: "#7C3AED", name: "The Coaching Parent",     quote: "What do you notice about your own attention?",                                        desc: "Your child begins recognising distraction, difficulty, fatigue and what helps them return." },
+              { color: TEAL,      name: "The Attention Architect", quote: "I don’t have to manage their attention. They are learning to manage it themselves.", desc: "You design the environment, teach the skills, and gradually hand ownership back to your child." },
             ] as { color: string; name: string; quote: string; desc: string }[]).map((rung, i, arr) => (
-              <div key={rung.name} style={{ display: "flex", gap: 16, alignItems: "flex-start", padding: "16px 0", borderBottom: i < arr.length - 1 ? `1px solid ${LINE}` : "none" }}>
-                <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: rung.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", font: "700 13px/1 'Instrument Sans',system-ui" }}>{i + 1}</div>
-                  {i < arr.length - 1 && <div style={{ width: 2, height: 18, background: LINE, marginTop: 4 }} />}
+              <div key={rung.name} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "16px 0", borderBottom: i < arr.length - 1 ? `1px solid ${LINE}` : "none" }}>
+                {/* Thumbnail with badge overlapping top-left */}
+                <div style={{ position: "relative", flexShrink: 0, width: 100, height: 100 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/ladder-${i + 1}.png`} alt="" style={{ width: 100, height: 100, borderRadius: 10, objectFit: "cover", display: "block" }} />
+                  <div style={{ position: "absolute", top: -6, left: -6, width: 22, height: 22, borderRadius: "50%", background: rung.color, color: "#fff", font: "700 11px/22px 'Instrument Sans',system-ui", textAlign: "center", border: `2px solid ${BG}` }}>{i + 1}</div>
                 </div>
-                <div style={{ paddingTop: 4, flex: 1 }}>
+                {/* Text column */}
+                <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
                   <div style={{ font: "700 13px/1.3 'Instrument Sans',system-ui", color: rung.color, marginBottom: 3 }}>{rung.name}</div>
-                  <div style={{ font: "600 12px/1.45 'Instrument Sans',system-ui", color: INK, fontStyle: "italic", marginBottom: 8 }}>
+                  <div style={{ font: "500 12px/1.45 'Instrument Sans',system-ui", color: INK, fontStyle: "italic", marginBottom: 6 }}>
                     &ldquo;{rung.quote}&rdquo;
                   </div>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/ladder-${i + 1}.png`} alt=""
-                    style={{ width: "100%", maxWidth: 220, height: "auto", borderRadius: 8, display: "block", margin: "0 auto 8px" }} />
-                  <p style={{ margin: 0, fontSize: "12.5px", color: DIM, lineHeight: 1.6 }}>{rung.desc}</p>
+                  <p style={{ margin: 0, fontSize: "12px", color: DIM, lineHeight: 1.55 }}>{rung.desc}</p>
                 </div>
               </div>
             ))}

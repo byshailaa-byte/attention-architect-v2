@@ -11,12 +11,12 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // The personalisation lives underneath each title in the card (WHAT YOU DO = per-archetype
 // LMS content for all 6 weeks; WHAT TO WATCH FOR = per-archetype signals).
 const SHARED_WEEK_TITLES: Record<number, string> = {
-  1: "Getting started without a fight",
-  2: "Screens, without the daily argument",
-  3: "Making it stick on a normal day",
-  4: "When it falls apart",
-  5: "Beyond homework",
-  6: "When they do it on their own",
+  1: "Starting without being asked",
+  2: "Staying with it when something easier is right there",
+  3: "Keeping it going on an ordinary day",
+  4: "Coming back after attention slips",
+  5: "Using it beyond homework",
+  6: "Running it themselves",
 };
 
 // Source: UPDATED_WEBSITE.pdf — what to say each week, shared across all archetypes.
@@ -70,21 +70,22 @@ export default async function RoadmapPage({
 
   const sql = getSql();
   const rows = await sql`
-    SELECT a.child_name, a.archetype, a.parent_name, a.email, a.phone
+    SELECT a.child_name, a.archetype, a.parent_pattern, a.parent_name, a.email, a.phone
     FROM assessments a
     WHERE a.session_id = ${session}::uuid
     LIMIT 1
-  ` as { child_name: string | null; archetype: string; parent_name: string | null; email: string | null; phone: string | null }[];
+  ` as { child_name: string | null; archetype: string; parent_pattern: string | null; parent_name: string | null; email: string | null; phone: string | null }[];
 
   if (rows.length === 0) {
     redirect("/start");
   }
 
-  const childName   = rows[0].child_name  || "your child";
-  const archetype   = rows[0].archetype   || "The All-In Kid";
-  const parentName  = rows[0].parent_name || "";
-  const email       = rows[0].email       || "";
-  const phone       = rows[0].phone       || "";
+  const childName     = rows[0].child_name    || "your child";
+  const archetype     = rows[0].archetype     || "The All-In Kid";
+  const parentPattern = rows[0].parent_pattern || "The Pusher";
+  const parentName    = rows[0].parent_name   || "";
+  const email         = rows[0].email         || "";
+  const phone         = rows[0].phone         || "";
 
   const fallbackArchetype = "The All-In Kid";
   const defaultWeekContents: WeekContent[] = [1, 2, 3, 4, 5, 6].map(w => {
@@ -104,6 +105,7 @@ export default async function RoadmapPage({
       <RoadmapView
         childName={childName}
         archetype={archetype}
+        parentPattern={parentPattern}
         weekContents={weekContents}
         sessionId={session}
         parentName={parentName}
