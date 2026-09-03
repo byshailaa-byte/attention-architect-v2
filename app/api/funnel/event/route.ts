@@ -23,6 +23,7 @@ const ALLOWED = new Set([
   "teaser_shown",
   "paywall_shown",
   "thankyou_screen_view",
+  "founder_call_requested",
 ]);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

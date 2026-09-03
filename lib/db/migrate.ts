@@ -638,6 +638,46 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_34_thankyou_screen_view_event') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 35 — add founder_call_requested to the funnel_events event_type CHECK constraint.
+  // Fires when a parent taps "Book your free call →" on the roadmap.
+  // Must be added here AND in the ALLOWED set in /api/funnel/event/route.ts — both, always.
+  if (!applied.has("phase_35_founder_call_requested_event")) {
+    await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
+    await sql`
+      ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+        'assessment_started',
+        'assessment_question_complete',
+        'assessment_dimension_complete',
+        'assessment_complete',
+        'report_gate_view',
+        'generating_page_view',
+        'generate_lead',
+        'report_view',
+        'view_item',
+        'pricing_section_viewed',
+        'begin_checkout',
+        'checkout_modal_opened',
+        'checkout_modal_dismissed',
+        'purchase',
+        'lms_day_complete',
+        'lms_reflection_submitted',
+        'scroll_milestone',
+        'exit_intent_shown',
+        'landing_step_age',
+        'landing_step_concern',
+        'landing_step_followup',
+        'pricing_variant_assigned',
+        'phone_capture_shown',
+        'teaser_shown',
+        'paywall_shown',
+        'simplified_report_view',
+        'thankyou_screen_view',
+        'founder_call_requested'
+      ))
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_35_founder_call_requested_event') ON CONFLICT DO NOTHING`;
+  }
+
   // Phase 30 — purchases.tier: extend CHECK to include tier1 and tier2 for roadmap pricing.
   // tier1 = Roadmap only (₹2,999). tier2 = Roadmap + Founder Call (₹4,999).
   // module1 / full / topup kept for backward-compat with existing paid records.

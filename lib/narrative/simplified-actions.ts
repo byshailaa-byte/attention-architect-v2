@@ -4,7 +4,7 @@
 // Actions are parent behaviors, not child behaviors. They should calibrate to both
 // the child's pattern and the parent's natural instinct.
 //
-// "Don't stretch" rule is explicit in the spec: 2–4 action items; 2–3 Try Tonight steps.
+// "Don't stretch" rule is explicit in the spec: 2–4 action items; 1 Try Tonight ACTION line.
 // If only 2–3 action items are genuinely grounded, generate 2–3. If Try Tonight can't
 // be specifically grounded, generate a simpler observation task — do not manufacture steps.
 
@@ -107,9 +107,11 @@ export function selectActionDimensions(
 // ⏱ **Label** — description text.
 //
 // TRY TONIGHT:
-// TITLE: The X-Minute Task
-// STEP: First step text.
-// STEP: Second step text.
+// TITLE: Ten quiet minutes
+// ACTION: The complete thing the parent does, one sentence.
+//
+// Legacy format (cached sessions before 2026-09-03) used STEP: lines.
+// Parser accepts both; ACTION: takes precedence.
 function parseActionsOutput(raw: string): ActionsOutput {
   const actionsSection = raw.split(/TRY TONIGHT:/i)[0] ?? "";
   const tonightSection = raw.split(/TRY TONIGHT:/i)[1] ?? "";
@@ -129,14 +131,17 @@ const ACTION_LINE_RE = /^(\p{Emoji_Presentation}|\p{Extended_Pictographic})️?\
     .filter((x): x is ActionItem => x !== null)
     .slice(0, 4);
 
-  // Parse Try Tonight
+  // Parse Try Tonight — ACTION: (new) or STEP: (legacy)
   let tryTonight: TryTonight | null = null;
   if (tonightSection.trim()) {
     const titleMatch = tonightSection.match(/TITLE:\s*(.+)/i);
-    const steps = (tonightSection.match(/STEP:\s*(.+)/gi) ?? [])
-      .map(s => s.replace(/^STEP:\s*/i, "").trim())
-      .slice(0, 3);
-    if (titleMatch && steps.length >= 2) {
+    const actionMatch = tonightSection.match(/ACTION:\s*(.+)/i);
+    const steps = actionMatch
+      ? [actionMatch[1].trim()]
+      : (tonightSection.match(/STEP:\s*(.+)/gi) ?? [])
+          .map(s => s.replace(/^STEP:\s*/i, "").trim())
+          .slice(0, 3);
+    if (titleMatch && steps.length >= 1) {
       tryTonight = { title: titleMatch[1].trim(), steps };
     }
   }
@@ -181,7 +186,10 @@ SECTIONS: "What you can do next" + "Try Tonight"
 PURPOSE:
 (a) 2–4 concrete parent behaviors that work with this specific archetype × parent instinct combination. These should help the parent support the child's attention pattern rather than working against it. Calibrate to the parent instinct — if their instinct tends to create friction with this archetype, give them a lower-friction alternative. If the instinct aligns, tell them why it's working.
 
-(b) One simple Try Tonight activity — a specific task the parent can do this evening, grounded in at least one of the dimension items above. 2–3 steps, no more. If the evidence only supports an observation task (parent watches without intervening), that's fine — a simpler honest task beats a complex manufactured one.
+(b) One simple Try Tonight activity — a specific thing the parent can do this evening, grounded in at least one of the dimension items above. One sentence, the behaviour only. If the evidence only supports an observation task (parent watches without intervening), that's fine — name the observation as the action.
+
+PLAIN ENGLISH RULE — mandatory:
+Write in plain English a parent would use talking to a friend. No invented names for activities — describe what it is. Banned words: tangent, through-line, lapse in concentration, sustained, unprompted, calibration, internalise, absorbed, orbit, mechanism. Short sentences. Nothing that needs reading twice.
 
 FORMAT (strict — do not deviate):
 ACTIONS:
@@ -190,11 +198,8 @@ ACTIONS:
 (repeat 2–4 times)
 
 TRY TONIGHT:
-TITLE: [Short evocative title, like "The 10-Minute Task" or "The Wait-and-Watch"]
-STEP: [First step — one clear instruction, under 15 words, one action only]
-STEP: [Second step — one clear instruction, under 15 words]
-STEP: [Third step — one clear instruction, under 15 words]
-STEP: [Fourth step if genuinely needed — one clear instruction, under 15 words]
+TITLE: [Plain description of the activity — name what the parent does, don't brand it. "Ten quiet minutes" not "The Orbit Watch." "Leave it there" not "The Quiet Drop."]
+ACTION: [What the parent does this evening. One complete sentence, under 15 words. The behaviour itself — not setup, not what to choose first. E.g. "Set a timer for ten minutes and leave the room."]
 
 SAME-ROOT-DIFFERENT-SITUATION RULE:
 If the parent instinct creates friction across multiple distinct situations, name each situation as its own action item even if they share the same underlying principle. For example: "don't step in when the child is stuck" and "don't offer alternatives mid-deep-focus" and "understand that stepping in removes the challenge itself" are three genuinely distinct behaviors — the parent needs to recognise each situation separately. Collapsing them into one loses the specific guidance for each. Count by situation, not by root principle.
@@ -205,7 +210,7 @@ HARD RULES — any violation triggers regeneration:
 • Each action description: one sentence, under 15 words — the label carries the why; the description names the what only. No "when X" framing, no "because Y" clause.
 • No generic parenting platitudes: "be patient", "spend quality time", "be consistent", "show interest", "validate their feelings"
 • No aspirational parent framing: "try to", "aim to", "work on" — write as concrete present-tense behaviors
-• Try Tonight: 3–4 steps; each step one clear instruction, under 15 words, one action only — if a step is doing two things, split it into two steps
+• Try Tonight: one ACTION line only — what the parent does, one complete sentence, under 15 words; do not describe what to pick or observe first — just the behaviour
 • No clinical language, no diagnostic framing
 • Do NOT fabricate traits not supported by the evidence above
 • Write ONLY the structured output — no preamble, no commentary after`;

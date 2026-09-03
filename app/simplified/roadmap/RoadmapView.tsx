@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { NOW_LINES, THEN_LINES, TESTIMONIAL_POOL } from "@/lib/content/report-content";
 
 declare global {
   interface Window {
@@ -27,12 +28,27 @@ function fireEvent(eventType: string, sessionId: string, metadata?: Record<strin
 const NAVY   = "#14284D";
 const GOLD   = "#F5A623";
 const TEAL   = "#22A38A";
+const TEAL_D = "#137A66";
+const BLUE   = "#2F72B6";
 const INK    = "#1A1A1A";
 const DIM    = "#555";
 const LINE   = "#E2DFDA";
 const BG     = "#FAFAF7";
 const CARD   = "#FFFFFF";
 const BF     = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
+
+// Six distinct accent colours — one per week, in order
+const W = ["#E2705F", "#E9973F", "#DFC13C", "#4E9E86", "#3D7CB8", "#7B6BC4"] as const;
+
+// What the child is building — one per week
+const THEM_LINES = [
+  "beginning without a reminder",
+  "holding on when something easier is nearby",
+  "staying with it past the first good stretch",
+  "finding their way back on their own",
+  "using it where nobody taught it",
+  "doing it without you in the room",
+] as const;
 
 export type WeekPreview = {
   weekTitle: string;
@@ -41,9 +57,9 @@ export type WeekPreview = {
 
 export type WeekContent = {
   weekTitle: string;
-  day2Title: string;   // WHAT YOU DO — primary action
-  day4Title: string;   // WHAT YOU DO — secondary action
-  whatToSay: string;   // PDF shared script (verbatim)
+  day2Title: string;   // WHAT YOU DO — primary action → "You:" line
+  day4Title: string;   // WHAT YOU DO — secondary action (shown in accordion)
+  whatToSay: string;   // script line → "What to say" in accordion
 };
 
 type Props = {
@@ -61,20 +77,27 @@ const MOBILE_CSS = `
   details summary::marker { display: none; }
   .rm-acc-icon::after { content: "+"; font-weight: 400; }
   details[open] .rm-acc-icon::after { content: "−"; }
-  details summary { border-radius: 14px; }
-  details[open] summary { border-radius: 14px 14px 0 0; }
+  .rm-wk-icon::after { content: "+"; font-size: 14px; font-weight: 400; color: #B9BEC6; }
+  details[open] .rm-wk-icon::after { content: "−"; }
+  .rm-faq-det summary { border-radius: 12px; }
+  .rm-faq-det[open] summary { border-radius: 12px 12px 0 0; }
+  .rm-dot-f { position: relative; padding-left: 14px; }
+  .rm-dot-f::before { content: ""; position: absolute; left: 0; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .rm-dot-o { position: relative; padding-left: 14px; }
+  .rm-dot-o::before { content: ""; position: absolute; left: 0; top: 8px; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid currentColor; background: transparent; }
+  .rm-testimonials-scroll { scrollbar-width: none; }
+  .rm-testimonials-scroll::-webkit-scrollbar { display: none; }
   @media (max-width: 520px) {
     .rm-locked-grid { grid-template-columns: 1fr !important; }
     .rm-nav-label { display: none !important; }
-    .rm-pricing { padding: 24px 18px !important; }
     .rm-and-for-you { flex-direction: column !important; }
     .rm-and-for-you-img { height: 28px !important; width: auto !important; }
+    .rm-sn-grid { grid-template-columns: 1fr !important; }
   }
   @media (max-width: 400px) {
     .rm-goal-grid { grid-template-columns: 1fr !important; }
   }
 `;
-
 
 const ARCHETYPE_SIGNALS: Partial<Record<string, readonly [string, string, string, string, string, string]>> = {
   "The Storm": [
@@ -118,7 +141,7 @@ const ARCHETYPE_SIGNALS: Partial<Record<string, readonly [string, string, string
     "They tell you when they want you around — and when they don't.",
   ],
   "The Glue": [
-    "Homework starts without the friction it used to start with.",
+    "Homework starts without the resistance it used to start with.",
     "Screen conversations stop beginning as an argument.",
     "A bad day stops taking the whole evening with it.",
     "Something unresolved doesn't mean the night is ruined.",
@@ -148,6 +171,12 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
   const pricingRef = useRef<HTMLDivElement>(null);
   const firedViewItem = useRef(false);
 
+  const testimonialIdx = sessionId
+    ? parseInt(sessionId.replace(/-/g, "").slice(0, 2), 16) % TESTIMONIAL_POOL.length
+    : 0;
+  const testimonial = TESTIMONIAL_POOL[testimonialIdx];
+  void testimonial; // used below
+
   useEffect(() => {
     const s = document.createElement("script");
     s.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -171,7 +200,7 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
 
   async function openCheckout(tier: "tier1" | "tier2") {
     if (!sessionId || checkoutLoading) return;
-    const label = tier === "tier1" ? "Roadmap" : "Roadmap + Founder Call";
+    const label = tier === "tier1" ? "Roadmap" : "Roadmap + Founder Calls";
     const value = tier === "tier1" ? 2999 : 4999;
     setCheckoutLoading(true);
     fireEvent("begin_checkout", sessionId, { tier, value, source: "roadmap" });
@@ -219,13 +248,30 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
     }
   }
 
-  const WEEK_COLORS = [TEAL, GOLD, NAVY] as const;
+  const archSignals = ARCHETYPE_SIGNALS[archetype] ?? ARCHETYPE_SIGNALS["The All-In Kid"];
+
+  function handleFounderCall() {
+    if (sessionId) {
+      fireEvent("founder_call_requested", sessionId, { source: "mid_page" });
+      fireGtag("founder_call_requested", { source: "mid_page" });
+    }
+    const msg = encodeURIComponent(
+      `Hi — I'd like to book my free 30-minute founder call. Child: ${c}. Session: ${sessionId ?? "unknown"}`
+    );
+    window.open(`https://wa.me/919993374923?text=${msg}`, "_blank", "noopener,noreferrer");
+  }
+
+  // Shared tick-list style helper
+  const tick = (color: string) => ({
+    display: "flex", gap: 8, alignItems: "flex-start",
+    marginBottom: 7, fontSize: "13px", color: DIM, lineHeight: 1.5,
+  } as React.CSSProperties);
 
   return (
-    <div style={{ background: BG, minHeight: "100dvh", fontFamily: "'Inter', system-ui, sans-serif", color: INK }}>
+    <div style={{ background: BG, minHeight: "100dvh", fontFamily: "'Instrument Sans', system-ui, sans-serif", color: INK }}>
       <style dangerouslySetInnerHTML={{ __html: MOBILE_CSS }} />
 
-      {/* Nav */}
+      {/* ── Nav ─────────────────────────────────────────────────────────── */}
       <div style={{ padding: "14px 20px", borderBottom: `1px solid ${LINE}`, display: "flex", alignItems: "center", gap: "12px", background: CARD, position: "sticky", top: 0, zIndex: 10 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 24, width: "auto", flexShrink: 0 }} />
@@ -236,149 +282,51 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
 
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "36px 18px 80px" }}>
 
-        {/* ── Hero ─────────────────────────────────────────────────────────── */}
-        <div style={{
-          font: "700 11px/1.4 var(--font-sans, system-ui)",
-          letterSpacing: "0.12em", textTransform: "uppercase",
-          color: TEAL, marginBottom: "12px",
-        }}>
+        {/* ── 1. Hero ──────────────────────────────────────────────────────── */}
+        <div style={{ font: "700 11px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: TEAL, marginBottom: "12px" }}>
           THE ROADMAP
         </div>
-        <h1 style={{
-          fontFamily: BF, fontWeight: 800,
-          fontSize: "clamp(24px,5vw,38px)", lineHeight: 1.15,
-          color: NAVY, marginBottom: "16px",
-        }}>
+        <h1 style={{ fontFamily: BF, fontWeight: 800, fontSize: "clamp(24px,5vw,38px)", lineHeight: 1.15, color: NAVY, marginBottom: "16px" }}>
           It is not your child who moves first. It is you.
         </h1>
-        {/* Source: THE_PLAN.pdf verbatim */}
         <p style={{ fontSize: "16px", color: DIM, lineHeight: 1.7, marginBottom: "44px", maxWidth: "54ch" }}>
           The goal was never a child who focuses because you asked. It is a child who runs their own attention — and that only arrives if your role changes on the way there. This is how that happens, week by week, and who you become by the end of it.
         </p>
 
-        {/* ── Parent Ladder ────────────────────────────────────────────────── */}
-        <div style={{ marginBottom: "44px" }}>
-          {/* Two-tone centred heading — matches THE_PLAN.pdf */}
-          <div style={{ textAlign: "center", marginBottom: "12px" }}>
-            <div style={{ fontFamily: BF, fontWeight: 800, fontSize: "clamp(20px,3.5vw,28px)", lineHeight: 1.2 }}>
-              <span style={{ color: NAVY }}>From managing attention to</span><br />
-              <span style={{ color: TEAL }}>architecting it</span>
-            </div>
-          </div>
-          <p style={{
-            textAlign: "center", fontSize: "14px", color: DIM, lineHeight: 1.65,
-            maxWidth: "46ch", margin: "0 auto 28px",
-          }}>
-            You don&rsquo;t need to manage your child&rsquo;s attention forever. The roadmap changes <em>your</em> role, step by step, so they learn to manage their own.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            {([
-              { color: "#E85D5D", name: "The Reminder Parent",     quote: "Focus. Finish your homework. Put the phone away.",                                   desc: "You manage attention from the outside." },
-              { color: "#F5A623", name: "The Observant Parent",    quote: "What keeps pulling their attention away?",                                            desc: "You begin noticing the patterns instead of reacting to every distraction." },
-              { color: "#3B82F6", name: "The Guiding Parent",      quote: "What would make this easier to start?",                                               desc: "You stop giving constant instructions and start changing the conditions around attention." },
-              { color: "#7C3AED", name: "The Coaching Parent",     quote: "What do you notice about your own attention?",                                         desc: "Your child begins recognising distraction, difficulty, fatigue and what helps them return." },
-              { color: TEAL,      name: "The Attention Architect",  quote: "I don't have to manage their attention. They are learning to manage it themselves.", desc: "You design the environment, teach the skills, and gradually hand ownership back to your child." },
-            ] as { color: string; name: string; quote: string; desc: string }[]).map((rung, i, arr) => (
-              <div key={rung.name} style={{
-                display: "flex", gap: 16, alignItems: "flex-start",
-                padding: "16px 0",
-                borderBottom: i < arr.length - 1 ? `1px solid ${LINE}` : "none",
-              }}>
-                <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: "50%",
-                    background: rung.color, color: "#fff",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    font: "700 13px/1 var(--font-sans, system-ui)",
-                  }}>{i + 1}</div>
-                  {i < arr.length - 1 && <div style={{ width: 2, height: 18, background: LINE, marginTop: 4 }} />}
-                </div>
-                <div style={{ paddingTop: 4, flex: 1 }}>
-                  <div style={{ font: "700 13px/1.3 var(--font-sans, system-ui)", color: rung.color, marginBottom: 3 }}>{rung.name}</div>
-                  <div style={{ font: "600 12px/1.45 var(--font-sans, system-ui)", color: INK, fontStyle: "italic", marginBottom: 8 }}>
-                    &ldquo;{rung.quote}&rdquo;
-                  </div>
-                  {/* AI-generated placeholder — replace before any paid campaign (see project open items) */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/ladder-${i + 1}.png`} alt=""
-                    style={{ width: "100%", maxWidth: 220, height: "auto", borderRadius: 8, display: "block", marginBottom: 8 }} />
-                  <p style={{ margin: 0, fontSize: "12.5px", color: DIM, lineHeight: 1.6 }}>{rung.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* Footer rail */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 8, marginTop: 18,
-            font: "500 11.5px/1.4 var(--font-sans, system-ui)", color: DIM,
-          }}>
-            <span style={{ color: "#E85D5D", fontWeight: 700 }}>More control from you</span>
-            <div style={{ flex: 1, height: 2, background: `linear-gradient(to right, #E85D5D, ${TEAL})`, borderRadius: 2 }} />
-            <span style={{ color: TEAL, fontWeight: 700 }}>More ownership by your child</span>
-          </div>
-        </div>
-
-        {/* ── Goal section ─────────────────────────────────────────────────── */}
-        <div style={{
-          background: "#FEF9EE", border: `1px solid ${GOLD}55`,
-          borderRadius: 20, padding: "32px 28px", marginBottom: "44px",
-        }}>
-          <div style={{
-            font: "700 11px/1.4 var(--font-sans, system-ui)",
-            letterSpacing: "0.12em", textTransform: "uppercase",
-            color: NAVY, marginBottom: "14px",
-          }}>THE GOAL</div>
+        {/* ── 2. Goal ──────────────────────────────────────────────────────── */}
+        <div style={{ background: "#FEF9EE", border: `1px solid ${GOLD}55`, borderRadius: 20, padding: "32px 28px", marginBottom: "44px" }}>
+          <div style={{ font: "700 11px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: NAVY, marginBottom: "14px" }}>THE GOAL</div>
           <div style={{ fontFamily: BF, fontWeight: 800, fontSize: "clamp(18px,3vw,24px)", lineHeight: 1.25, marginBottom: "16px" }}>
             <div style={{ color: NAVY }}>Not a child who focuses because you told them to.</div>
             <div style={{ color: TEAL }}>A child who learns how to manage their own attention.</div>
           </div>
           <p style={{ margin: "0 0 22px", fontSize: "14px", color: DIM, lineHeight: 1.65 }}>
-            By the end of the roadmap, the goal is for your child to gradually become better at:
+            By the end of the roadmap, the goal is for {c} to gradually become better at:
           </p>
           <div className="rm-goal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: "20px" }}>
             {([
-              ["01", "NOTICE",  "Recognise when their attention has drifted."],
-              ["02", "DIRECT",  "Choose where their attention needs to go."],
-              ["03", "PROTECT", "Reduce the things that repeatedly pull it away."],
-              ["04", "RECOVER", "Know how to return when attention is lost."],
+              ["01", "NOTICE",  "Spot when their attention has drifted."],
+              ["02", "DIRECT",  "Choose where it needs to go."],
+              ["03", "PROTECT", "Cut down what keeps pulling it away."],
+              ["04", "RECOVER", "Know how to get back to it."],
             ] as [string, string, string][]).map(([num, label, desc]) => (
-              <div key={num} style={{
-                background: CARD, borderRadius: 12,
-                padding: "16px 14px",
-                display: "flex", flexDirection: "column", gap: 6,
-                border: `1px solid ${LINE}`,
-              }}>
+              <div key={num} style={{ background: CARD, borderRadius: 12, padding: "16px 14px", display: "flex", flexDirection: "column", gap: 6, border: `1px solid ${LINE}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: "50%",
-                    background: TEAL, color: "#fff",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    font: "700 11px/1 var(--font-sans, system-ui)",
-                    flexShrink: 0,
-                  }}>{num}</div>
-                  <div style={{
-                    font: "700 11px/1.2 var(--font-sans, system-ui)",
-                    letterSpacing: "0.08em", textTransform: "uppercase", color: NAVY,
-                  }}>{label}</div>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: TEAL, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", font: "700 11px/1 'Instrument Sans',system-ui", flexShrink: 0 }}>{num}</div>
+                  <div style={{ font: "700 11px/1.2 'Instrument Sans',system-ui", letterSpacing: "0.08em", textTransform: "uppercase", color: NAVY }}>{label}</div>
                 </div>
                 <p style={{ margin: 0, fontSize: "12.5px", color: DIM, lineHeight: 1.55 }}>{desc}</p>
               </div>
             ))}
           </div>
-          {/* "And for you?" panel */}
-          <div className="rm-and-for-you" style={{
-            background: NAVY, borderRadius: 12, padding: "18px 20px",
-            display: "flex", alignItems: "flex-start", gap: 14,
-          }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="rm-and-for-you-img" src="/aa-logo.png" alt="Attention Architect"
-              style={{ height: 36, width: "auto", flexShrink: 0, opacity: 0.9 }} />
+          {/* "And for you?" */}
+          <div className="rm-and-for-you" style={{ background: NAVY, borderRadius: 12, padding: "18px 20px", display: "flex", alignItems: "flex-start", gap: 14 }}>
+            <div style={{ background: "#fff", borderRadius: 10, padding: "6px 8px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="rm-and-for-you-img" src="/aa-logo.png" alt="Attention Architect" style={{ height: 30, width: "auto", display: "block" }} />
+            </div>
             <div>
-              <div style={{
-                font: "700 10px/1.4 var(--font-sans, system-ui)",
-                letterSpacing: "0.1em", textTransform: "uppercase",
-                color: GOLD, marginBottom: 6,
-              }}>And for you?</div>
+              <div style={{ font: "700 10px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.1em", textTransform: "uppercase", color: GOLD, marginBottom: 6 }}>And for you?</div>
               <p style={{ margin: "0 0 6px", fontSize: "13px", color: "rgba(255,255,255,.85)", lineHeight: 1.55 }}>
                 To become the parent who knows when to step in, what to change, and when to step back.
               </p>
@@ -389,176 +337,260 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
           </div>
         </div>
 
-        {/* ── The Whole Plan ───────────────────────────────────────────────── */}
-        <div style={{
-          font: "700 11px/1.4 var(--font-sans, system-ui)",
-          letterSpacing: "0.12em", textTransform: "uppercase",
-          color: TEAL, marginBottom: "10px",
-        }}>THE WHOLE PLAN</div>
-        <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "10px" }}>
-          Six weeks. One small change each week.
-        </h2>
-        <p style={{ fontSize: "14px", color: DIM, lineHeight: 1.65, marginBottom: "20px", maxWidth: "56ch" }}>
-          Every parent gets these same six, in this order — you can read all of them right here. What the assessment adds is the part underneath each one: which move fits your child&rsquo;s pattern.
-        </p>
-        {/* DELIBERATE: accordion stays collapsed with week 1 open by default.
-            PDF shows all six expanded; keeping accordion because six fully-expanded
-            cards make the page impractically long on mobile. */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "44px" }}>
-          {weekContents.map(({ weekTitle, day2Title, day4Title, whatToSay }, i) => {
-            const tagColor = WEEK_COLORS[i % WEEK_COLORS.length];
-            const archSignals = ARCHETYPE_SIGNALS[archetype] ?? ARCHETYPE_SIGNALS["The All-In Kid"];
-            const signal = archSignals?.[i] ?? "";
-            return (
-              <details key={i} open={i === 0} style={{ background: CARD, border: `1.5px solid ${tagColor}44`, borderRadius: "14px" }}>
-                <summary style={{ display: "flex", alignItems: "flex-start", gap: "14px", padding: "16px 18px", cursor: "pointer", userSelect: "none" }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: tagColor, marginBottom: "4px" }}>
-                      WEEK {i + 1}
-                    </div>
-                    <div style={{ fontFamily: BF, fontWeight: 800, fontSize: "15px", color: NAVY, lineHeight: 1.3 }}>{weekTitle}</div>
+        {/* ── 3. Six weeks ─────────────────────────────────────────────────── */}
+        <div style={{ marginBottom: "44px" }}>
+          <div style={{ font: "700 11px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: TEAL, marginBottom: "10px" }}>THE SIX WEEKS</div>
+          <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "10px" }}>
+            One change a week. Six weeks. That&rsquo;s the whole ask.
+          </h2>
+          <p style={{ fontSize: "14px", color: DIM, lineHeight: 1.65, marginBottom: "18px", maxWidth: "56ch" }}>
+            Each week works on you first, then on them — the second half doesn&rsquo;t hold without the first.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {weekContents.slice(0, 6).map(({ weekTitle, day2Title, day4Title, whatToSay }, i) => {
+              const wc = W[i] ?? TEAL;
+              const signal = archSignals?.[i] ?? "";
+              return (
+                <div key={i} style={{ background: CARD, border: `1px solid ${LINE}`, borderLeft: `4px solid ${wc}`, borderRadius: 10, overflow: "hidden" }}>
+                  {/* Badge + title */}
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px 0" }}>
+                    <div style={{ width: 24, height: 24, borderRadius: 6, background: wc, color: "#fff", fontFamily: BF, fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                    <div style={{ fontFamily: BF, fontWeight: 700, fontSize: 14.5, color: NAVY, lineHeight: 1.25 }}>{weekTitle}</div>
                   </div>
-                  <span className="rm-acc-icon" style={{ color: tagColor, fontSize: "20px", flexShrink: 0, marginTop: "2px" }} />
-                </summary>
-                <div style={{ padding: "0 18px 18px", borderTop: `1px solid ${LINE}` }}>
-                  {/* WHAT YOU DO */}
-                  <div style={{ marginTop: 14 }}>
-                    <div style={{ fontSize: "9.5px", fontWeight: 700, color: tagColor, textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 6 }}>
-                      What you do
-                    </div>
-                    <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5 }}>
-                      {[day2Title, day4Title].filter(Boolean).map((title, bi) => (
-                        <li key={bi} style={{ display: "flex", gap: 7, alignItems: "flex-start", fontSize: "12.5px", color: DIM, lineHeight: 1.45 }}>
-                          <span style={{ color: tagColor, fontWeight: 700, flexShrink: 0, fontSize: 11, marginTop: 2 }}>→</span>
-                          <span>{title}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  {/* You / Them — always visible */}
+                  <div style={{ padding: "8px 14px 0 50px", display: "flex", flexDirection: "column", gap: 2 }}>
+                    <div className="rm-dot-f" style={{ fontSize: "12px", lineHeight: 1.55, color: wc }}><strong style={{ color: NAVY }}>You:</strong> {day2Title}</div>
+                    <div className="rm-dot-o" style={{ fontSize: "12px", lineHeight: 1.55, color: wc }}><strong style={{ color: NAVY }}>Them:</strong> {THEM_LINES[i]}</div>
                   </div>
-                  {/* WHAT TO WATCH FOR */}
-                  {signal && (
-                    <div style={{ marginTop: 14 }}>
-                      <div style={{ fontSize: "9.5px", fontWeight: 700, color: tagColor, textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 5 }}>
-                        What to watch for
-                      </div>
-                      <p style={{ margin: 0, fontSize: "12.5px", color: DIM, lineHeight: 1.55, fontStyle: "italic" }}>{signal}</p>
+                  {/* Accordion — one per week, week 1 open */}
+                  <details open={i === 0} style={{ margin: "10px 14px 12px 50px", borderTop: `1px dashed ${LINE}`, paddingTop: 9 }}>
+                    <summary style={{ cursor: "pointer", fontSize: "10px", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: GOLD, display: "flex", justifyContent: "space-between", alignItems: "center", listStyle: "none" }}>
+                      What to say · Watch for
+                      <span className="rm-wk-icon" />
+                    </summary>
+                    <div style={{ marginTop: 9 }}>
+                      {whatToSay && (
+                        <>
+                          <div style={{ fontSize: "8px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: TEAL_D }}>What to say</div>
+                          <p style={{ margin: "2px 0 10px", fontSize: "12px", fontStyle: "italic", color: NAVY, lineHeight: 1.5 }}>&ldquo;{whatToSay}&rdquo;</p>
+                        </>
+                      )}
+                      {day4Title && (
+                        <>
+                          <div style={{ fontSize: "8px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: TEAL_D, marginBottom: 2 }}>Also this week</div>
+                          <p style={{ margin: "0 0 10px", fontSize: "12px", color: DIM, lineHeight: 1.5 }}>{day4Title}</p>
+                        </>
+                      )}
+                      {signal && (
+                        <>
+                          <div style={{ fontSize: "8px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: DIM }}>Watch for</div>
+                          <p style={{ margin: "2px 0 0", fontSize: "12px", color: DIM, lineHeight: 1.5, fontStyle: "italic" }}>{signal}</p>
+                        </>
+                      )}
                     </div>
-                  )}
-                  {/* WHAT TO SAY */}
-                  {whatToSay && (
-                    <div style={{ marginTop: 14 }}>
-                      <div style={{ fontSize: "9.5px", fontWeight: 700, color: tagColor, textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 5 }}>
-                        What to say
-                      </div>
-                      <p style={{ margin: 0, fontSize: "13px", color: NAVY, lineHeight: 1.55, fontWeight: 600 }}>
-                        &ldquo;{whatToSay}&rdquo;
-                      </p>
-                    </div>
-                  )}
+                  </details>
                 </div>
-              </details>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
-        {/* ── Pricing ──────────────────────────────────────────────────────── */}
-        <div ref={pricingRef} className="rm-pricing" style={{ marginBottom: "44px" }}>
-          <p style={{
-            margin: "0 0 20px", fontFamily: BF, fontWeight: 700,
-            fontSize: "clamp(15px,2.5vw,18px)", lineHeight: 1.4, color: NAVY, textAlign: "center",
-          }}>
-            The plan is the same six weeks. What goes underneath is {c}&rsquo;s.
+        {/* ── 4. Mid-page free call — gift for finishing the assessment ────── */}
+        <div style={{ marginBottom: "44px" }}>
+          <div style={{ font: "700 10px/1.4 ‘Instrument Sans’,system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: TEAL_D, marginBottom: 12 }}>
+            Yours for finishing the assessment
+          </div>
+          <div style={{ background: CARD, border: `1.5px solid ${TEAL}55`, borderRadius: 14, overflow: "hidden" }}>
+            <div style={{ height: 4, background: TEAL }} />
+            <div style={{ padding: "18px 18px 20px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                <div style={{ fontFamily: BF, fontWeight: 700, fontSize: "16px", color: NAVY }}>A call with our founder</div>
+                <div style={{ background: TEAL, color: "#fff", fontSize: "8px", fontWeight: 700, letterSpacing: ".08em", padding: "3px 7px", borderRadius: 5, flexShrink: 0 }}>FREE FOR YOU</div>
+              </div>
+              <div style={{ fontFamily: BF, fontWeight: 800, fontSize: 28, color: TEAL_D, lineHeight: 1, marginBottom: 4 }}>
+                Free&nbsp;<s style={{ fontSize: 13, fontWeight: 600, color: "#A6ADB8" }}>₹999</s>
+              </div>
+              <div style={{ fontSize: "11px", color: DIM, marginBottom: 16 }}>30 minutes · No purchase needed</div>
+              <ul style={{ listStyle: "none", margin: "0 0 16px", padding: 0 }}>
+                {[
+                  "Bring one evening that isn’t working",
+                  "We look at it together",
+                  "Yours because you finished the assessment",
+                ].map(item => (
+                  <li key={item} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 7, fontSize: "13px", color: DIM, lineHeight: 1.5 }}>
+                    <span style={{ color: TEAL, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={handleFounderCall}
+                style={{ width: "100%", background: TEAL, color: "#fff", fontFamily: BF, fontWeight: 700, fontSize: "14px", padding: "13px", borderRadius: 10, border: "none", cursor: "pointer", display: "block", boxSizing: "border-box" }}
+              >
+                Book your free call →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 5. Ladder ────────────────────────────────────────────────────── */}
+        <div style={{ marginBottom: "44px" }}>
+          <div style={{ textAlign: "center", marginBottom: "12px" }}>
+            <div style={{ fontFamily: BF, fontWeight: 800, fontSize: "clamp(20px,3.5vw,28px)", lineHeight: 1.2 }}>
+              <span style={{ color: NAVY }}>From managing attention to</span><br />
+              <span style={{ color: TEAL }}>architecting it</span>
+            </div>
+          </div>
+          <p style={{ textAlign: "center", fontSize: "14px", color: DIM, lineHeight: 1.65, maxWidth: "46ch", margin: "0 auto 28px" }}>
+            You don&rsquo;t need to manage {c}&rsquo;s attention forever. The roadmap changes <em>your</em> role, step by step, so they learn to manage their own.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {([
+              { color: "#E85D5D", name: "The Reminder Parent",     quote: "Focus. Finish your homework. Put the phone away.",                                   desc: "You manage attention from the outside." },
+              { color: GOLD,      name: "The Observant Parent",    quote: "What keeps pulling their attention away?",                                            desc: "You begin noticing the patterns instead of reacting to every distraction." },
+              { color: "#3B82F6", name: "The Guiding Parent",      quote: "What would make this easier to start?",                                               desc: "You stop giving constant instructions and start changing the conditions around attention." },
+              { color: "#7C3AED", name: "The Coaching Parent",     quote: "What do you notice about your own attention?",                                         desc: "Your child begins recognising distraction, difficulty, fatigue and what helps them return." },
+              { color: TEAL,      name: "The Attention Architect",  quote: "I don't have to manage their attention. They are learning to manage it themselves.", desc: "You design the environment, teach the skills, and gradually hand ownership back to your child." },
+            ] as { color: string; name: string; quote: string; desc: string }[]).map((rung, i, arr) => (
+              <div key={rung.name} style={{ display: "flex", gap: 16, alignItems: "flex-start", padding: "16px 0", borderBottom: i < arr.length - 1 ? `1px solid ${LINE}` : "none" }}>
+                <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: rung.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", font: "700 13px/1 'Instrument Sans',system-ui" }}>{i + 1}</div>
+                  {i < arr.length - 1 && <div style={{ width: 2, height: 18, background: LINE, marginTop: 4 }} />}
+                </div>
+                <div style={{ paddingTop: 4, flex: 1 }}>
+                  <div style={{ font: "700 13px/1.3 'Instrument Sans',system-ui", color: rung.color, marginBottom: 3 }}>{rung.name}</div>
+                  <div style={{ font: "600 12px/1.45 'Instrument Sans',system-ui", color: INK, fontStyle: "italic", marginBottom: 8 }}>
+                    &ldquo;{rung.quote}&rdquo;
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/ladder-${i + 1}.png`} alt=""
+                    style={{ width: "100%", maxWidth: 220, height: "auto", borderRadius: 8, display: "block", margin: "0 auto 8px" }} />
+                  <p style={{ margin: 0, fontSize: "12.5px", color: DIM, lineHeight: 1.6 }}>{rung.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 18, font: "500 11.5px/1.4 'Instrument Sans',system-ui", color: DIM }}>
+            <span style={{ color: "#E85D5D", fontWeight: 700 }}>More control from you</span>
+            <div style={{ flex: 1, height: 2, background: `linear-gradient(to right, #E85D5D, ${TEAL})`, borderRadius: 2 }} />
+            <span style={{ color: TEAL, fontWeight: 700 }}>More ownership by your child</span>
+          </div>
+        </div>
+
+        {/* ── 6. School night, six weeks apart ─────────────────────────────── */}
+        <div style={{ marginBottom: "44px" }}>
+          <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "14px" }}>
+            A school night, six weeks apart
+          </h2>
+          <div className="rm-sn-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ background: "#FBEDEA", border: "1px solid #F3D7D0", borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ fontSize: "8.5px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: "#A8341F", marginBottom: 10 }}>Right now</div>
+              {NOW_LINES.map((line, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: i < NOW_LINES.length - 1 ? 6 : 0 }}>
+                  <span style={{ color: "#A8341F", opacity: 0.5, flexShrink: 0, lineHeight: 1.55 }}>—</span>
+                  <span style={{ fontSize: "12px", color: "#7A2E1A", lineHeight: 1.55 }}>{line}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: "#DCECE7", border: "1px solid #C4E0D7", borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ fontSize: "8.5px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: TEAL_D, marginBottom: 10 }}>In six weeks</div>
+              {THEN_LINES.map((line, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: i < THEN_LINES.length - 1 ? 6 : 0 }}>
+                  <span style={{ color: TEAL_D, opacity: 0.5, flexShrink: 0, lineHeight: 1.55 }}>—</span>
+                  <span style={{ fontSize: "12px", color: "#1A5E4A", lineHeight: 1.55 }}>{line}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── 7. Pricing — three equal cards ───────────────────────────────── */}
+        <div ref={pricingRef} style={{ marginBottom: "44px" }}>
+          <p style={{ margin: "0 0 20px", fontFamily: BF, fontWeight: 700, fontSize: "clamp(15px,2.5vw,18px)", lineHeight: 1.4, color: NAVY, textAlign: "center" }}>
+            Six weeks now, for how they handle attention later.
           </p>
 
-          {/* Tier 2 — dominant card */}
-          <div style={{
-            background: NAVY, borderRadius: 16, padding: "28px 24px",
-            marginBottom: "12px", position: "relative", overflow: "hidden",
-          }}>
-            <div style={{
-              position: "absolute", top: 14, right: 16,
-              background: GOLD, color: NAVY,
-              fontFamily: BF, fontWeight: 800, fontSize: "10px",
-              letterSpacing: ".08em", textTransform: "uppercase",
-              padding: "4px 10px", borderRadius: 6,
-            }}>
-              Recommended
-            </div>
-            <div style={{ fontSize: "13px", color: "rgba(255,255,255,.55)", marginBottom: 6 }}>
-              Roadmap + a Founder Call
-            </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
-              <div style={{
-                fontFamily: BF, fontSize: "40px", fontWeight: 800,
-                background: `linear-gradient(135deg, ${GOLD}, #FBCB4A)`,
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-                backgroundClip: "text", lineHeight: 1,
-              }}>
-                ₹4,999
+          {/* Card 1 — Roadmap + 3 calls (gold, recommended) */}
+          <div style={{ background: CARD, border: `1.5px solid ${GOLD}`, borderRadius: 12, overflow: "hidden", marginBottom: 10, boxShadow: "0 2px 10px rgba(245,166,35,.14)" }}>
+            <div style={{ height: 4, background: GOLD }} />
+            <div style={{ padding: "14px 16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+                <div style={{ fontSize: "12px", fontWeight: 600, color: DIM }}>Roadmap + three founder calls</div>
+                <div style={{ background: GOLD, color: NAVY, fontSize: "8px", fontWeight: 700, letterSpacing: ".08em", padding: "3px 7px", borderRadius: 5, flexShrink: 0 }}>RECOMMENDED</div>
               </div>
-              <div style={{ fontSize: "14px", color: "rgba(255,255,255,.4)", textDecoration: "line-through" }}>₹7,999</div>
-            </div>
-            <ul style={{ margin: "0 0 20px", padding: 0, listStyle: "none" }}>
-              {[
-                `The personalised six-week roadmap built around ${c}`,
-                "A personal call with our founder — at a time that works for you",
-                "7-day guarantee: full refund if it doesn't feel worth it",
-              ].map(item => (
-                <li key={item} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8, fontSize: "13px", color: "rgba(255,255,255,.8)", lineHeight: 1.5 }}>
-                  <span style={{ color: GOLD, fontWeight: 700, flexShrink: 0 }}>✓</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-            <button
-              onClick={() => openCheckout("tier2")}
-              disabled={checkoutLoading || !sessionId}
-              style={{
-                width: "100%", background: GOLD, color: NAVY,
-                fontFamily: BF, fontWeight: 800, fontSize: "16px",
-                padding: "15px 24px", borderRadius: "12px",
-                border: "none", cursor: checkoutLoading ? "wait" : "pointer",
-                opacity: checkoutLoading ? 0.7 : 1,
-              }}
-            >
-              {checkoutLoading ? "Loading…" : `Start ${c}’s roadmap →`}
-            </button>
-            <div style={{ marginTop: 12, fontSize: "11px", color: "rgba(255,255,255,.4)", textAlign: "center" }}>
-              One-time · Secured by Razorpay
+              <div style={{ fontFamily: BF, fontWeight: 800, fontSize: 27, color: NAVY, lineHeight: 1, marginBottom: 4 }}>
+                ₹4,999&nbsp;<s style={{ fontSize: 13, fontWeight: 600, color: "#A6ADB8" }}>₹7,999</s>
+              </div>
+              <div style={{ fontSize: "10.5px", color: DIM, marginBottom: 12 }}>One-time · 7-day guarantee</div>
+              <ul style={{ listStyle: "none", margin: "0 0 14px", padding: 0 }}>
+                {[
+                  `The personalised six-week roadmap built around ${c}`,
+                  "Three founder calls, not one",
+                  "Full refund if it isn’t worth it",
+                ].map(item => (
+                  <li key={item} style={tick(GOLD)}>
+                    <span style={{ color: GOLD, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => openCheckout("tier2")}
+                disabled={checkoutLoading || !sessionId}
+                style={{ width: "100%", background: GOLD, color: NAVY, fontFamily: BF, fontWeight: 800, fontSize: "15px", padding: "13px", borderRadius: 10, border: "none", cursor: checkoutLoading ? "wait" : "pointer", opacity: checkoutLoading ? 0.7 : 1, display: "block", boxSizing: "border-box" }}
+              >
+                {checkoutLoading ? "Loading…" : `Start ${c}’s roadmap →`}
+              </button>
             </div>
           </div>
 
-          {/* Tier 1 — lighter card */}
-          <div style={{
-            background: "#F5F4F0", border: `1px solid ${LINE}`, borderRadius: 14,
-            padding: "20px 22px",
-          }}>
-            <div style={{ fontSize: "13px", color: DIM, marginBottom: 6 }}>Just the roadmap</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14 }}>
-              <div style={{ fontFamily: BF, fontSize: "28px", fontWeight: 800, color: NAVY }}>₹2,999</div>
-              <div style={{ fontSize: "13px", color: "#bbb", textDecoration: "line-through" }}>₹4,999</div>
-            </div>
-            <button
-              onClick={() => openCheckout("tier1")}
-              disabled={checkoutLoading || !sessionId}
-              style={{
-                width: "100%", background: "transparent", color: NAVY,
-                fontFamily: BF, fontWeight: 700, fontSize: "14px",
-                padding: "12px 18px", borderRadius: "10px",
-                border: `1.5px solid ${NAVY}`,
-                cursor: checkoutLoading ? "wait" : "pointer",
-                opacity: checkoutLoading ? 0.6 : 1,
-              }}
-            >
-              {checkoutLoading ? "Loading…" : "Choose this plan →"}
-            </button>
-            <div style={{ marginTop: 10, fontSize: "11px", color: "#bbb", textAlign: "center" }}>
-              One-time · 7-day guarantee
+          {/* Card 3 — Just the roadmap (blue) */}
+          <div style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 12, overflow: "hidden", marginBottom: 10 }}>
+            <div style={{ height: 4, background: BLUE }} />
+            <div style={{ padding: "14px 16px" }}>
+              <div style={{ fontSize: "12px", fontWeight: 600, color: DIM, marginBottom: 6 }}>Just the roadmap</div>
+              <div style={{ fontFamily: BF, fontWeight: 800, fontSize: 27, color: NAVY, lineHeight: 1, marginBottom: 4 }}>
+                ₹2,999&nbsp;<s style={{ fontSize: 13, fontWeight: 600, color: "#A6ADB8" }}>₹4,999</s>
+              </div>
+              <div style={{ fontSize: "10.5px", color: DIM, marginBottom: 12 }}>One-time · 7-day guarantee</div>
+              <ul style={{ listStyle: "none", margin: "0 0 14px", padding: 0 }}>
+                {[
+                  `The personalised six-week roadmap built around ${c}`,
+                  "Every week’s move, the words, what to watch for",
+                  "Full refund if it isn’t worth it",
+                ].map(item => (
+                  <li key={item} style={tick(BLUE)}>
+                    <span style={{ color: BLUE, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => openCheckout("tier1")}
+                disabled={checkoutLoading || !sessionId}
+                style={{ width: "100%", background: "transparent", color: NAVY, fontFamily: BF, fontWeight: 700, fontSize: "14px", padding: "12px", borderRadius: 10, border: `1.5px solid ${NAVY}`, cursor: checkoutLoading ? "wait" : "pointer", opacity: checkoutLoading ? 0.6 : 1, display: "block", boxSizing: "border-box" }}
+              >
+                {checkoutLoading ? "Loading…" : "Choose this plan →"}
+              </button>
             </div>
           </div>
+
+          <div style={{ textAlign: "center", fontSize: "11px", color: "#8A9097", marginTop: 6 }}>One-time payment · Secured by Razorpay</div>
         </div>
 
-        {/* ── FAQ ──────────────────────────────────────────────────────────── */}
+        {/* ── 8. Testimonials ───────────────────────────────────────────────── */}
+        <div className="rm-testimonials-scroll" style={{ display: "flex", overflowX: "auto", gap: 14, marginBottom: "44px", scrollSnapType: "x mandatory", paddingBottom: 4 }}>
+          {TESTIMONIAL_POOL.map((t, i) => (
+            <div key={i} style={{ flex: "0 0 280px", scrollSnapAlign: "start", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 16, padding: "22px 20px", boxShadow: "0 4px 14px rgba(20,40,77,.05)" }}>
+              <div style={{ fontSize: "14px", fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 12 }}>★★★★★</div>
+              <p style={{ margin: "0 0 14px", fontStyle: "italic", fontSize: "14px", color: INK, lineHeight: 1.6 }}>&ldquo;{t.quote}&rdquo;</p>
+              <div style={{ fontSize: "12.5px", fontWeight: 700, color: NAVY }}>{t.who}</div>
+              <div style={{ fontSize: "12.5px", color: DIM, marginTop: 2 }}>{t.detail}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── 9. FAQ ───────────────────────────────────────────────────────── */}
         <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "16px" }}>
           Frequently asked questions
         </h2>
@@ -569,16 +601,17 @@ export default function RoadmapView({ childName: c, archetype, weekContents, ses
             ["Does this diagnose ADHD or any condition?", "No — and it's not designed to. If something here concerns you clinically, that's worth a conversation with a pediatrician or child psychologist."],
             ["Is this the same as the report I already got?", `No. The report helped you understand ${c}'s pattern. The roadmap is what helps you act on it, one week at a time.`],
           ].map(([q, a]) => (
-            <details key={q} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: "12px", padding: "16px 20px" }}>
+            <details key={q} className="rm-faq-det" style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: "12px", padding: "16px 20px" }}>
               <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: "14.5px", color: INK, listStyle: "none", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
                 {q}
-                <span style={{ color: NAVY, fontSize: "18px", flexShrink: 0 }}>+</span>
+                <span className="rm-acc-icon" style={{ color: NAVY, fontSize: "18px", flexShrink: 0 }} />
               </summary>
               <div style={{ marginTop: "12px", fontSize: "14px", color: DIM, lineHeight: 1.65 }}>{a}</div>
             </details>
           ))}
         </div>
 
+        {/* ── 10. Disclaimer ───────────────────────────────────────────────── */}
         <div style={{ fontSize: "12px", color: DIM, textAlign: "center" }}>
           Attention Architect is a parent-education and guidance platform, not a diagnostic service.
         </div>
