@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "live-wire",
   week: 2,
-  weekTitle: "A Real Stake, Even on Screen Time",
+  weekTitle: "Handling what pulls them away",
 
   weeklyReading: {
     introShared: `Games already have exactly what {{child_name}} needs to fully engage — a real, immediate stake: a timer, a rival, a visible score, a friend waiting on the other end. Rather than treating that as something to compete with, this week treats it as a template. Whatever specific thing makes the game feel real to {{child_pronoun_obj}} is a genuine blueprint for what could make anything else feel real too — borrowed deliberately, not vaguely.`,

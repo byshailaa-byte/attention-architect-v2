@@ -5,7 +5,7 @@ const D3 = `**Worked** — {{child_name}} noticed the interruption and adjusted 
 export const weekContent: LmsWeekContent = {
   archetype: "explorer",
   week: 5,
-  weekTitle: "When Their Excitement Interrupts Someone",
+  weekTitle: "Using it beyond homework",
 
   weeklyReading: {
     introShared: `The capture system has survived a real dead end. This week: what happens when {{child_name}}'s tangent-chasing pulls someone else's attention along with it — a sibling mid-focus, a friend trying to talk?`,

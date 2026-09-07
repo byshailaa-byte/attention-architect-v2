@@ -7,7 +7,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "inventor",
   week: 1,
-  weekTitle: "Let Them Do It Their Way",
+  weekTitle: "Getting started without the push",
 
   weeklyReading: {
     introShared: `There is a specific, quiet moment that tells you everything about {{child_name}}. {{child_pronoun_subj|cap}} is building something — a solution, a project, a way of doing a task — and it's *wrong*. Slower than it needs to be, messier, heading toward a wall you can already see. And you do the most natural thing a caring parent can do: you step in to help. "Here, try it like this." And in that instant, something goes out of {{child_pronoun_obj}}. The energy drops. The thing that was {{child_pronoun_poss}} becomes yours, and {{child_pronoun_subj}} loses interest in finishing it.

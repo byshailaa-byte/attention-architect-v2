@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "inventor",
   week: 4,
-  weekTitle: "When Their Way Doesn't Work",
+  weekTitle: "Coming back after a slip",
 
   weeklyReading: {
     introShared: `Week 3 asked whether {{child_name}}'s ownership of method held across a whole project. This week is the harder version: what happens when the chosen method genuinely doesn't work — not a snag to troubleshoot, but a real failure that means starting over. This is where "it's your approach" gets tested for real.`,

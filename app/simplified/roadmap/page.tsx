@@ -11,10 +11,10 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // The personalisation lives underneath each title in the card (WHAT YOU DO = per-archetype
 // LMS content for all 6 weeks; WHAT TO WATCH FOR = per-archetype signals).
 const SHARED_WEEK_TITLES: Record<number, string> = {
-  1: "Starting without being asked",
-  2: "Staying with it when something easier is right there",
-  3: "Keeping it going on an ordinary day",
-  4: "Coming back after attention slips",
+  1: "Getting started without the push",
+  2: "Handling what pulls them away",
+  3: "Staying with it on an ordinary day",
+  4: "Coming back after a slip",
   5: "Using it beyond homework",
   6: "Running it themselves",
 };

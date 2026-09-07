@@ -5,7 +5,7 @@ const D3 = `**Worked** — you read the ask correctly and matched it. Keep doing
 export const weekContent: LmsWeekContent = {
   archetype: "magnet",
   week: 6,
-  weekTitle: "When They Ask for You Themselves",
+  weekTitle: "Running it themselves",
 
   weeklyReading: {
     introShared: `Five weeks built presence — one-on-one, through struggle, across a group. This week is about noticing when {{child_name}} starts initiating connection {{child_pronoun_poss}} own way, asking for company on {{child_pronoun_poss}} own terms rather than waiting for you to offer it.`,

@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "all-in-kid",
   week: 4,
-  weekTitle: "When the Deep Dive Goes Nowhere",
+  weekTitle: "Coming back after a slip",
 
   weeklyReading: {
     introShared: `Weeks 1–3 protected {{child_name}}'s depth from outside interruption. This week is different: what happens when the depth itself leads somewhere unproductive — a project that's not working, a wrong approach pursued at length? Protecting depth has to include protecting it through a bad stretch, not just defending it from the outside.`,

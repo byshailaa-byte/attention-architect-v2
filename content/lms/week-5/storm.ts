@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "storm",
   week: 5,
-  weekTitle: "When Their Choice Affects a Sibling",
+  weekTitle: "Using it beyond homework",
 
   weeklyReading: {
     introShared: `Week 4 tested whether {{child_name}}'s ownership survived a real bad outcome. This week is different in kind, not just degree: what happens when the choice isn't purely {{child_pronoun_poss}} to make, because a sibling or someone else is genuinely affected by it? Ownership has to learn to share a room.`,

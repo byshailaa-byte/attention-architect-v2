@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "storm",
   week: 4,
-  weekTitle: "When They Choose Badly — and You Let Them",
+  weekTitle: "Coming back after a slip",
 
   weeklyReading: {
     introShared: `Week 3 asked whether {{child_name}}'s ownership held across a whole routine. This week asks something harder: does it hold when the choice {{child_pronoun_subj}} makes is genuinely a bad one? Real ownership isn't just picking well — it's living with what happens when the pick doesn't work out. That's the part most parenting instinct fights hardest against, especially when watching it happen feels avoidable.`,

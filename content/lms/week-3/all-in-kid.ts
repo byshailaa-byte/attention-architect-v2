@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "all-in-kid",
   week: 3,
-  weekTitle: "Protecting It on the Days It's Inconvenient",
+  weekTitle: "Staying with it on an ordinary day",
 
   weeklyReading: {
     introShared: `Week 1 tested something specific: what happens when your child gets one genuinely protected block of time, with zero interruptions, for something they're deeply absorbed in. Week 2 asked whether that same protection could exist around screens without becoming a fight. This week asks whether it holds across something longer — a whole stretch with more than one activity in it, including the transitions between them.

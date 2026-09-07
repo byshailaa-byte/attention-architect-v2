@@ -5,7 +5,7 @@ const D3 = `**Worked** — {{child_name}} set a real stake unprompted and you le
 export const weekContent: LmsWeekContent = {
   archetype: "live-wire",
   week: 6,
-  weekTitle: "When They Set Their Own Bet",
+  weekTitle: "Running it themselves",
 
   weeklyReading: {
     introShared: `Five weeks built self-generated stakes — through real loss, through shared consequence. This week is about noticing when {{child_name}} invents {{child_pronoun_poss}} own stakes entirely unprompted, without you setting up the structure first.`,

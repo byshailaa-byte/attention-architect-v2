@@ -48,15 +48,83 @@ const RUNG1_QUOTE: Record<string, string> = {
   "The Steady Hand":  "I'll wait. Whenever you're ready.",
 };
 
-// What the child is building — one per week
-const THEM_LINES = [
-  "beginning without a reminder",
-  "holding on when something easier is nearby",
-  "staying with it past the first good stretch",
-  "finding their way back on their own",
-  "using it where nobody taught it",
-  "doing it without you in the room",
+// Problem each module solves — one per week, universal
+const PROBLEM_LINES = [
+  "For evenings that take three reminders before anything begins.",
+  "For when something easier is always one tap away.",
+  "For the tired Tuesday, not the good day.",
+  "For when one interruption ends the whole session.",
+  "For when it only works at the kitchen table.",
+  "For the evening you don't have to be in the room.",
 ] as const;
+
+// What the child is building — per archetype × week
+const THEM_LINES_BY_ARCHETYPE: Record<string, readonly [string, string, string, string, string, string]> = {
+  "The Storm": [
+    "begins once the choice is genuinely theirs",
+    "stays with it even when it wasn't their idea",
+    "runs a whole stretch without handing it back",
+    "picks it up again after a bad call",
+    "makes their own calls outside homework too",
+    "decides before you think to offer",
+  ],
+  "The All-In Kid": [
+    "gets into something without needing a run-up",
+    "comes out of a screen like they would a book",
+    "keeps going on a day that usually derails it",
+    "a session going nowhere doesn't wreck the evening",
+    "protects their own focus somewhere new",
+    "asks for the quiet themselves",
+  ],
+  "The Inventor": [
+    "starts their own way without waiting to be told",
+    "sticks with their method when a shortcut appears",
+    "carries one approach across days, adjusting as they go",
+    "a method failing doesn't end the whole thing",
+    "uses their own way somewhere new",
+    "explains why they did it that way",
+  ],
+  "The Explorer": [
+    "writes the idea down instead of chasing it",
+    "comes back to the page after the break",
+    "keeps using it on an ordinary day",
+    "one idea going nowhere doesn't stop the next",
+    "reaches for it somewhere you never set it up",
+    "uses it without any reminder from you",
+  ],
+  "The Magnet": [
+    "begins with you nearby but not helping",
+    "stays with it when the room goes quiet",
+    "keeps going on a day you can't sit with them",
+    "works through a hard bit without you fixing it",
+    "holds their own in a group, not just with you",
+    "tells you when they want you close",
+  ],
+  "The Glue": [
+    "starts once things feel settled between you",
+    "stays with it even when something's unresolved",
+    "keeps going on a day that already went badly",
+    "a wobble doesn't take the whole evening with it",
+    "handles a sibling moment without carrying all of it",
+    "tells you how they're doing before you ask",
+  ],
+  "The Captain": [
+    "starts when it's genuinely theirs to run",
+    "keeps going when someone else sets the terms",
+    "runs something ongoing for a whole week",
+    "it going wrong doesn't stop them leading next time",
+    "takes charge somewhere outside homework",
+    "steps up before anyone asks",
+  ],
+  "The Live Wire": [
+    "starts when something's actually riding on it",
+    "keeps going after the exciting part ends",
+    "carries a stake across days, not one burst",
+    "a stake not paying off doesn't stop the next",
+    "sets stakes outside homework too",
+    "sets their own without being prompted",
+  ],
+};
 
 export type WeekPreview = {
   weekTitle: string;
@@ -359,17 +427,21 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
             {weekContents.slice(0, 6).map(({ weekTitle, day2Title, day4Title, whatToSay }, i) => {
               const wc = W[i] ?? TEAL;
               const signal = archSignals?.[i] ?? "";
+              const themLine = (THEM_LINES_BY_ARCHETYPE[archetype] ?? THEM_LINES_BY_ARCHETYPE["The All-In Kid"]!)[i] ?? "";
               return (
                 <div key={i} style={{ background: CARD, border: `1px solid ${LINE}`, borderLeft: `4px solid ${wc}`, borderRadius: 10, overflow: "hidden" }}>
-                  {/* Badge + title */}
+                  {/* Badge + title + problem line */}
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px 0" }}>
                     <div style={{ width: 24, height: 24, borderRadius: 6, background: wc, color: "#fff", fontFamily: BF, fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
-                    <div style={{ fontFamily: BF, fontWeight: 700, fontSize: 14.5, color: NAVY, lineHeight: 1.25 }}>{weekTitle}</div>
+                    <div>
+                      <div style={{ fontFamily: BF, fontWeight: 700, fontSize: 14.5, color: NAVY, lineHeight: 1.25 }}>{weekTitle}</div>
+                      <div style={{ fontSize: "11px", color: DIM, lineHeight: 1.45, marginTop: 3 }}>{PROBLEM_LINES[i]}</div>
+                    </div>
                   </div>
                   {/* You / Them — always visible */}
                   <div style={{ padding: "8px 14px 0 50px", display: "flex", flexDirection: "column", gap: 2 }}>
                     <div className="rm-dot-f" style={{ fontSize: "12px", lineHeight: 1.55, color: wc }}><strong style={{ color: NAVY }}>You:</strong> {day2Title}</div>
-                    <div className="rm-dot-o" style={{ fontSize: "12px", lineHeight: 1.55, color: wc }}><strong style={{ color: NAVY }}>Them:</strong> {THEM_LINES[i]}</div>
+                    <div className="rm-dot-o" style={{ fontSize: "12px", lineHeight: 1.55, color: wc }}><strong style={{ color: NAVY }}>Them:</strong> {themLine}</div>
                   </div>
                   {/* Accordion — one per week, week 1 open */}
                   <details open={i === 0} style={{ margin: "10px 14px 12px 50px", borderTop: `1px dashed ${LINE}`, paddingTop: 9 }}>

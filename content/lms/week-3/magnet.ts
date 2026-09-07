@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "magnet",
   week: 3,
-  weekTitle: "Staying Through the Long Stretch",
+  weekTitle: "Staying with it on an ordinary day",
 
   weeklyReading: {
     introShared: `Week 1 tested something quiet: whether simply being nearby, without offering guidance or correction, changed how your child engaged with what they were doing. Week 2 tested that same steady presence around screens. This week asks whether that presence can extend across a longer stretch — more than one activity, more time — without turning into supervision somewhere along the way.

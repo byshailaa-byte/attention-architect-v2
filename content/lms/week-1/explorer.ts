@@ -7,7 +7,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "explorer",
   week: 1,
-  weekTitle: "Somewhere for the Good Ideas to Go",
+  weekTitle: "Getting started without the push",
 
   weeklyReading: {
     introShared: `There is a moment you have almost certainly lived through this week. {{child_name}} sits down to do one specific thing — and twenty minutes later is three topics away, deep in something that has nothing to do with what {{child_pronoun_subj}} sat down for. And here is the part that makes it maddening: {{child_pronoun_subj}} can tell you *exactly* how {{child_pronoun_subj}} got there. One thing led to another led to another, and every link in that chain made sense.

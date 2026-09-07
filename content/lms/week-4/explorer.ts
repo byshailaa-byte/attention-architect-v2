@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "explorer",
   week: 4,
-  weekTitle: "When the Idea Turns Out to Be Nothing",
+  weekTitle: "Coming back after a slip",
 
   weeklyReading: {
     introShared: `Week 3 made the capture system a standing habit, ideas actually revisited. This week tests what happens when a followed-up idea turns out to be a genuine dead end — not a bad habit, just a real miss. Does the system (and {{child_name}}'s trust in it) survive that?`,

@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "captain",
   week: 4,
-  weekTitle: "When It Falls Apart on Their Watch",
+  weekTitle: "Coming back after a slip",
 
   weeklyReading: {
     introShared: `Week 3 sustained leadership over an ongoing responsibility. This week tests what happens when something under {{child_name}}'s leadership genuinely goes wrong — not a hiccup, a real failure that reflects on {{child_pronoun_poss}} choices as the one in charge.`,

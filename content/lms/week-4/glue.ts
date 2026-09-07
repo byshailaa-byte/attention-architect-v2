@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "glue",
   week: 4,
-  weekTitle: "When You Can't Fix It by Bedtime",
+  weekTitle: "Coming back after a slip",
 
   weeklyReading: {
     introShared: `Connection-first has been a daily habit across good and bad days. This week goes further: what happens when there's real tension that can't be fully resolved in the moment — named honestly, without forcing a tidy resolution.`,

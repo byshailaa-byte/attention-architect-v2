@@ -5,7 +5,7 @@ const D3 = `**Worked** — {{child_name}} named a feeling and you just listened.
 export const weekContent: LmsWeekContent = {
   archetype: "glue",
   week: 6,
-  weekTitle: "When They Tell You Before You Ask",
+  weekTitle: "Running it themselves",
 
   weeklyReading: {
     introShared: `Five weeks built connection-first as a habit, including through real, unresolved tension. This week is about noticing when {{child_name}} starts naming {{child_pronoun_poss}} own feelings unprompted, without you asking "what's wrong?" first.`,
