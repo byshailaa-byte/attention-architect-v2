@@ -443,8 +443,8 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
     "The Inventor":    "Their own method left intact",
     "The Explorer":    "The space to find their own way back",
     "The Magnet":      "Someone nearby, not helping",
-    "The Glue":        "The air to be clear first",
-    "The Captain":     "To be the one running it",
+    "The Glue":        "Things settled between you first",
+    "The Captain":     "To be trusted to run it",
     "The Live Wire":   "Something to be at stake",
   };
   const PARENT_OFFERS: Record<string, string> = {
