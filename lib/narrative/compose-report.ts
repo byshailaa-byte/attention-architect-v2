@@ -45,8 +45,6 @@ function summarisePrior(moments: AttentionMoment[]): string {
 }
 
 // Best confidence tier across a set of dimensions (direct_evidence > framework_interpretation > hypothesis > insufficient_evidence).
-// Uses effectiveTier so that unvalidated dimensions (e.g. support_response) are capped at
-// framework_interpretation and cannot elevate a moment to direct_evidence confidence.
 function bestTierFor(ctx: NarrativeContext, dims: string[]): AttentionMoment["confidence_tier"] {
   const dimSet = new Set(dims);
   const found = ctx.sig.dimensions.filter(d => dimSet.has(d.dimension) && d.evidence_tier !== "insufficient_evidence");
@@ -428,8 +426,7 @@ export async function composeReport(ctx: NarrativeContext): Promise<ComposeOutpu
     const unvalidatedActiveDims = ctx.sig.dimensions.filter(
       d => !d.validated && d.evidence_tier !== "insufficient_evidence"
     );
-    // D3.2/D3.confirm for friction hypothesis; S1 for support_response (unvalidated active dim)
-    const relevantQ = ["D3.2", "D3.confirm", "S1"];
+    const relevantQ = ["D3.2", "D3.confirm"];
 
     const unvalidatedSection = unvalidatedActiveDims.length > 0
       ? `\n\nNEW DIMENSION — HEDGE REQUIRED: One additional observation from this session is too new to assert confidently. ` +

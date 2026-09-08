@@ -275,19 +275,3 @@ export const D6_CONFIRM: Question = {
   ],
 };
 
-// ── support_response (S1) ─────────────────────────────────────────────────────
-// Single always-asked question. No depth variant, no confirm variant.
-// Measures how {name} typically responds when the parent steps in to help.
-// No rules derive from this dimension yet — accumulating real production n first.
-
-export const S1: Question = {
-  id: "S1",
-  dimension: "support_response",
-  text: "Think about the last time you stepped in to help {name} with something they were really struggling with. What usually happened?",
-  options: [
-    { label: "They went along, but seemed to lose interest once I was involved", value: "disengagement" },
-    { label: "They pushed back or got frustrated that I stepped in", value: "resistance" },
-    { label: "They let me help, but didn't really try on their own the next time", value: "dependency" },
-    { label: "They had already shut down before I could reach them — the window had passed", value: "timing-mismatch" },
-  ],
-};

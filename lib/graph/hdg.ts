@@ -135,11 +135,6 @@ const NODE_TEXTS: Record<string, NodeText> = {
   "D6.confirm:cognitive-displacement":  { trigger: "when needing to recharge", choice: "recharges best through an absorbing distraction" },
   "D6.confirm:autonomous-unstructured": { trigger: "when needing to recharge", choice: "recharges best through freedom from structure" },
 
-  // S1 — support_response (parent observes child's response to parental help)
-  "S1:disengagement":    { trigger: "when parent stepped in to help", choice: "went along but lost interest once parent was involved" },
-  "S1:resistance":       { trigger: "when parent stepped in to help", choice: "pushed back or got frustrated at the intervention" },
-  "S1:dependency":       { trigger: "when parent stepped in to help", choice: "accepted the help but didn't try independently next time" },
-  "S1:timing-mismatch":  { trigger: "when parent stepped in to help", choice: "had already shut down — intervention arrived too late" },
 };
 
 export function buildHdg(answers: Record<string, string>): HumanDecisionGraph {

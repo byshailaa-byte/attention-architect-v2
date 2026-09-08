@@ -30,7 +30,6 @@ export const QUESTION_HOME_DIMENSION: Record<string, string> = {
   "D6.2": "recharge_type",
   "D6.3": "recharge_type",
   "D6.confirm": "recharge_type",
-  S1: "support_response",
 };
 
 // Value translation for cross-dimension contributions.
@@ -86,14 +85,6 @@ export const CROSS_DIM_VALUE_MAP: Record<string, string | null> = {
 //                    regardless of what the data layer resolves (rendering-level cap only;
 //                    stored evidence_tier is not mutated).
 //
-// support_response validation gate:
-//   Flip to true ONLY after ALL of the following are confirmed in production:
-//   1. ≥ 30 deduplicated production families have answered S1 (same two-stage dedup
-//      as loop-coverage-production.ts: session_id then content-fingerprint)
-//   2. Per-archetype value distributions checked for clustering (same ≥ 60% threshold
-//      used for attention_shape/reward_driver validation before Rule 4 was trusted)
-//   3. No strong archetype-conflation artifacts (same check run for Inventor × QF)
-//   This is a deliberate code-review gate — do not flip to true programmatically.
 export const DIMENSION_VALIDATION: Record<string, { validated: boolean }> = {
   attention_shape:      { validated: true },
   reward_driver:        { validated: true },
@@ -101,7 +92,6 @@ export const DIMENSION_VALIDATION: Record<string, { validated: boolean }> = {
   parent_instinct:      { validated: true },
   attention_competition: { validated: true },
   recharge_type:        { validated: true },
-  support_response:     { validated: false },
 };
 
 // Static mapping: question ID → every dimension it touches and at what weight.
@@ -152,5 +142,4 @@ export const QUESTION_WEIGHTS: Record<string, QuestionWeight[]> = {
   "D6.2": [{ dimension: "recharge_type", tier: "primary", weight: 1.0 }],
   "D6.3": [{ dimension: "recharge_type", tier: "primary", weight: 1.0 }],
   "D6.confirm": [{ dimension: "recharge_type", tier: "primary", weight: 1.0 }],
-  S1: [{ dimension: "support_response", tier: "primary", weight: 1.0 }],
 };
