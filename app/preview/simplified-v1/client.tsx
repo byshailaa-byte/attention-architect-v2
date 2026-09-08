@@ -68,6 +68,30 @@ function fixLoopRefs(text: string): string {
     .replace(/\bthe loop\b/g, "this dynamic");
 }
 
+// Strips leading openers that make S2 read as a continuation of S1.
+function cleanTensionOpener(s: string): string {
+  s = s.replace(/^[…\.]+\s*/, "");
+  s = s.replace(/^(But|And|Yet|So|However),?\s+/, "");
+  s = s.replace(/^The structural tension here is that\s+/i, "");
+  s = s.replace(/^The tension (here is|with this particular pattern is) that\s+/i, "");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Extracts the collision sentence for the Attention Fit tension block.
+// m_03 (loop): tension is the pull-quote — last paragraph after \n\n, < 320 chars.
+// Fallback: tension is S2 — last sentence of the single paragraph.
+// fixLoopRefs applied before splitting so "the loop" is already resolved.
+function extractTensionSentence(content: string): string {
+  const paras = fixLoopRefs(content).split(/\n\n+/).filter(Boolean);
+  if (paras.length > 1) {
+    const last = paras[paras.length - 1] ?? "";
+    if (last.length < 320) return cleanTensionOpener(last);
+  }
+  const text = paras[0] ?? content;
+  const sentences = text.trim().split(/(?<=[.!?])\s+(?=[A-Z"])/).map(s => s.trim()).filter(Boolean);
+  return cleanTensionOpener(sentences[sentences.length - 1] ?? text);
+}
+
 // Renders a narrative prose string (m_01 / m_03 content) as React paragraphs.
 // Splits on double-newline, converts **bold** to <strong>.
 function NarrativeProse({ text, className }: { text: string; className?: string }) {
@@ -403,22 +427,6 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
   const tealDims = DIMS.filter(d => !weakKeys.has(d.key));
   const amberDims = DIMS.filter(d => weakKeys.has(d.key));
   const allOneGroup = tealDims.length === 0 || amberDims.length === 0;
-  const N_WORDS = ["", "One", "Two", "Three", "Four"];
-  const nWord = N_WORDS[tealDims.length] ?? String(tealDims.length);
-  const isAre = tealDims.length === 1 ? "is" : "are";
-  const placeWord = amberDims.length === 1 ? "the one place" : "the places";
-
-  const renderDimItem = (d: { key: string; label: string; val: string; desc: string }, amber: boolean) => (
-    <div key={d.key} style={{ paddingLeft: 13, borderLeft: `2px solid ${amber ? AMBER_LINE : TEAL_LINE}`, marginLeft: 3, padding: "6px 0 6px 13px", marginBottom: 6 }}>
-      <div style={{ font: "700 12px/1.3 ‘Instrument Sans’,sans-serif", color: NAVY, marginBottom: 3 }}>{d.label}</div>
-      <div style={{ font: "400 11.5px/1.5 ‘Instrument Sans’,sans-serif", color: DIM, marginBottom: amber ? 4 : 0 }}>{d.desc}</div>
-      {d.val && WHERE[d.key]?.[d.val] && (
-        <div style={{ font: "italic 400 11px/1.45 ‘Instrument Sans’,sans-serif", color: amber ? AMBER_TEXT : TEAL, marginTop: 4 }}>
-          Where you see it: {WHERE[d.key][d.val]}
-        </div>
-      )}
-    </div>
-  );
 
   // ── Attention Fit ────────────────────────────────────────────────────────────
   const SHIFT: Record<string, string> = {
@@ -428,12 +436,34 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
     "The Steady Hand":  "Keep the calm. Just offer the first step when they have not found one in a minute.",
   };
   const shift = SHIFT[data.parentPattern] ?? SHIFT["The Pusher"]!;
-  const fitPara = data.detail03Content
-    ? fixLoopRefs(data.detail03Content.split(/\n\n+/)[0] ?? data.detail03Content)
-    : null;
+
+  const CHILD_NEEDS: Record<string, string> = {
+    "The Storm":       "To choose what happens first",
+    "The All-In Kid":  "A protected block to go deep",
+    "The Inventor":    "Their own method left intact",
+    "The Explorer":    "The space to find their own way back",
+    "The Magnet":      "Someone nearby, not helping",
+    "The Glue":        "The air to be clear first",
+    "The Captain":     "To be the one running it",
+    "The Live Wire":   "Something to be at stake",
+  };
+  const PARENT_OFFERS: Record<string, string> = {
+    "The Quick Fixer": "A faster way through",
+    "The Pusher":      "Pressure to keep going",
+    "The Negotiator":  "A deal both sides can take",
+    "The Steady Hand": "Calm and space to wait",
+  };
+  const tensionSentence = data.detail03Content ? extractTensionSentence(data.detail03Content) : null;
+  const fullNarrative   = data.detail03Content ? fixLoopRefs(data.detail03Content) : null;
 
   return (
     <div style={{ fontFamily: "’Instrument Sans’,system-ui,sans-serif", lineHeight: 1.6, overflowX: "hidden" }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .aar-details summary::-webkit-details-marker { display: none; }
+        .aar-details summary::marker { display: none; }
+        .aar-details .aar-tog::after { content: "+"; font-size: 15px; font-weight: 400; color: #7D8CA3; }
+        .aar-details[open] .aar-tog::after { content: "−"; }
+      ` }} />
 
       {/* Sticky header */}
       <header style={{ position: "sticky", top: 0, zIndex: 20, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "14px 20px", borderBottom: "1px solid #EFEDE8", background: "rgba(250,250,246,.95)", backdropFilter: "blur(10px)" }}>
@@ -458,44 +488,35 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
         </div>
       </div>
 
-      {/* §2 Snapshot — cream */}
+      {/* §2 Snapshot — cream, 2×2 grid */}
       <div style={{ background: CREAM }}>
         <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px" }}>
-          <div style={eyebrow(TEAL)}>Attention Health Snapshot</div>
-          <h2 style={{ margin: "0 0 6px", font: `700 19px/1.25 ${BF}`, color: NAVY }}>Four things we looked at — and where you see them.</h2>
-          <div style={{ background: "#fff", border: "1px solid #E4E0D9", borderRadius: 14, padding: "18px 16px", marginTop: 18 }}>
-            {allOneGroup ? (
-              DIMS.map(d => renderDimItem(d, false))
-            ) : (
-              <>
-                {tealDims.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#21A38A", flexShrink: 0 }} />
-                      <div style={{ font: "700 10.5px/1.2 ‘Instrument Sans’,sans-serif", color: TEAL }}>Already working for {c}</div>
-                    </div>
-                    {tealDims.map(d => renderDimItem(d, false))}
+          <div style={eyebrow(AMBER_TEXT)}>Attention Health Snapshot</div>
+          <h2 style={{ margin: "0 0 6px", font: `700 20px/1.18 ${BF}`, color: NAVY }}>Four things we looked at</h2>
+          <p style={{ margin: 0, font: "400 12px/1.55 ‘Instrument Sans’,sans-serif", color: DIM }}>
+            {allOneGroup ? "All four dimensions show up clearly in the pattern." : "Two are already working. Two are where the plan opens."}
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
+            {[...tealDims, ...amberDims].map(d => {
+              const isAmber = weakKeys.has(d.key);
+              const oneLine = (d.val && WHERE[d.key]?.[d.val]) ?? d.desc;
+              return (
+                <div key={d.key} style={{ background: "#fff", borderRadius: 13, padding: "14px 14px 14px", position: "relative", overflow: "hidden", boxShadow: "0 2px 10px rgba(20,40,77,.06)" }}>
+                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: isAmber ? GOLD : "#21A38A" }} />
+                  <div style={{ display: "inline-flex", alignItems: "center", fontSize: 8, letterSpacing: ".08em", textTransform: "uppercase" as const, fontWeight: 700, padding: "3px 7px", borderRadius: 5, marginBottom: 9, ...(isAmber ? { background: AMBER_BG, color: AMBER_TEXT } : { background: TEAL_BG, color: TEAL }) }}>
+                    {isAmber ? "Start here" : "Working"}
                   </div>
-                )}
-                {amberDims.length > 0 && (
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: GOLD, flexShrink: 0 }} />
-                      <div style={{ font: "700 10.5px/1.2 ‘Instrument Sans’,sans-serif", color: AMBER_TEXT }}>Where the plan starts</div>
-                    </div>
-                    {amberDims.map(d => renderDimItem(d, true))}
-                  </div>
-                )}
-              </>
-            )}
-            {!allOneGroup && (
-              <div style={{ background: "#EEF1E7", border: "1px solid #DDE3D0", borderRadius: 10, padding: "10px 13px", marginTop: 14 }}>
-                <p style={{ margin: 0, font: "400 11.5px/1.5 ‘Instrument Sans’,sans-serif", color: "#4A5A44" }}>
-                  <strong style={{ color: NAVY }}>{nWord} of these {isAre} already working for {c}.</strong> The plan leans on those and opens at {placeWord} attention takes more effort.
-                </p>
-              </div>
-            )}
+                  <div style={{ fontFamily: BF, fontSize: 14, fontWeight: 700, color: NAVY, lineHeight: 1.2 }}>{d.label}</div>
+                  <div style={{ fontSize: 11.5, lineHeight: 1.5, marginTop: 6, color: DIM }}>{oneLine}</div>
+                </div>
+              );
+            })}
           </div>
+          {!allOneGroup && (
+            <div style={{ background: "#fff", borderRadius: 11, padding: "13px 14px", marginTop: 12, boxShadow: "0 2px 10px rgba(20,40,77,.05)", font: "400 12px/1.55 ‘Instrument Sans’,sans-serif", color: DIM }}>
+              <strong style={{ color: NAVY }}>The plan leans on the first two</strong> and opens at the other two.
+            </div>
+          )}
         </div>
       </div>
 
@@ -544,38 +565,59 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
         </div>
       </div>
 
-      {/* §5 Attention Fit — navy */}
+      {/* §5 Attention Fit — navy, pairing + tension + collapsed detail */}
       <div style={{ background: NAVY }}>
-        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px" }}>
-          <div style={eyebrow(GOLD)}>Your Attention Fit</div>
-          <h2 style={{ margin: "0 0 16px", font: `700 20px/1.25 ${BF}`, color: "#fff" }}>
-            What {c} needs, and what you naturally do
-          </h2>
-          <div style={{ display: "grid", gap: 10 }}>
-            <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 12, padding: "16px 18px" }}>
-              <div style={{ font: "700 9px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase", color: "#9AA7BC", marginBottom: 6 }}>{c} tends to</div>
-              <div style={{ font: `700 17px/1.25 ${BF}`, color: "#fff", marginBottom: 4 }}>{data.archetype}</div>
-              <p style={{ margin: 0, font: "400 13px/1.55 ‘Instrument Sans’,sans-serif", color: "#C1CAD8" }}>{data.archetypeDesc}</p>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -70, right: -50, width: 220, height: 220, borderRadius: "50%", background: "radial-gradient(circle,rgba(245,166,35,.15),transparent 66%)", pointerEvents: "none" }} />
+          <div style={{ position: "relative" }}>
+            <div style={eyebrow(GOLD)}>Your Attention Fit</div>
+            <h2 style={{ margin: "0 0 16px", font: `700 20px/1.18 ${BF}`, color: "#fff" }}>
+              What {c} needs, and what you naturally do
+            </h2>
+            {/* Pairing row: child need | MEETS | parent offer */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 34px 1fr", alignItems: "stretch" }}>
+              <div style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.13)", borderRadius: 12, padding: 13 }}>
+                <div style={{ font: "700 8px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase" as const, color: "#8B99B0", marginBottom: 5 }}>{c} needs</div>
+                <div style={{ fontFamily: BF, fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.15 }}>
+                  {CHILD_NEEDS[data.archetype] ?? data.archetypeDesc}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ font: "700 8px/1.1 ‘Instrument Sans’,sans-serif", letterSpacing: ".09em", textTransform: "uppercase" as const, color: GOLD, writingMode: "vertical-rl" }}>meets</span>
+              </div>
+              <div style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.13)", borderRadius: 12, padding: 13 }}>
+                <div style={{ font: "700 8px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase" as const, color: "#8B99B0", marginBottom: 5 }}>You offer</div>
+                <div style={{ fontFamily: BF, fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.15 }}>
+                  {PARENT_OFFERS[data.parentPattern] ?? data.parentInstinctDesc}
+                </div>
+              </div>
             </div>
-            <div style={{ textAlign: "center", font: "700 9px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".12em", textTransform: "uppercase", color: GOLD }}>meets</div>
-            <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 12, padding: "16px 18px" }}>
-              <div style={{ font: "700 9px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase", color: "#9AA7BC", marginBottom: 6 }}>You naturally</div>
-              <div style={{ font: `700 17px/1.25 ${BF}`, color: "#fff", marginBottom: 4 }}>{data.parentPattern}</div>
-              <p style={{ margin: 0, font: "400 13px/1.55 ‘Instrument Sans’,sans-serif", color: "#C1CAD8" }}>{data.parentInstinctDesc}</p>
+            {/* Tension block — gold bordered */}
+            {tensionSentence && (
+              <div style={{ background: "rgba(245,166,35,.11)", border: "1px solid rgba(245,166,35,.24)", borderRadius: 12, padding: 15, marginTop: 14 }}>
+                <div style={{ font: "700 8px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".11em", textTransform: "uppercase" as const, color: "#FBCB4A", marginBottom: 7 }}>Where they meet</div>
+                <div style={{ fontFamily: BF, fontSize: 15.5, fontWeight: 700, color: "#fff", lineHeight: 1.4 }}>{tensionSentence}</div>
+              </div>
+            )}
+            {/* Full narrative — collapsed */}
+            {fullNarrative && (
+              <details className="aar-details" style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,.13)", paddingTop: 11 }}>
+                <summary style={{ cursor: "pointer", fontSize: 10, letterSpacing: ".09em", textTransform: "uppercase" as const, color: "#FBCB4A", fontWeight: 700, display: "flex", justifyContent: "space-between", alignItems: "center", userSelect: "none" as const }}>
+                  <span>{data.archetype} · {data.parentPattern}</span>
+                  <span className="aar-tog" />
+                </summary>
+                <p style={{ fontSize: 12, lineHeight: 1.65, color: "#AFBACB", marginTop: 10, marginBottom: 0 }}>{fullNarrative}</p>
+              </details>
+            )}
+            {/* One shift */}
+            <div style={{ background: GOLD, borderRadius: 11, padding: 13, marginTop: 14 }}>
+              <div style={{ font: "700 8px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".11em", textTransform: "uppercase" as const, color: "#7A5410", marginBottom: 5 }}>The one shift</div>
+              <div style={{ fontFamily: BF, fontSize: 14, fontWeight: 700, color: NAVY, lineHeight: 1.4 }}>{shift}</div>
             </div>
+            <p style={{ margin: "12px 0 0", font: "italic 400 10.5px/1.5 ‘Instrument Sans’,sans-serif", color: "#7D8CA3" }}>
+              Every instinct is a good instinct meeting a particular child. Nothing here says you&rsquo;ve been doing it wrong.
+            </p>
           </div>
-          {fitPara && (
-            <div style={{ borderLeft: "2px solid #F5A623", borderRadius: "0 10px 10px 0", background: "rgba(255,255,255,.05)", padding: "12px 14px", marginTop: 14 }}>
-              <p style={{ margin: 0, font: "400 13.5px/1.6 ‘Instrument Sans’,sans-serif", color: "#D6DEEA" }}>{fitPara}</p>
-            </div>
-          )}
-          <div style={{ background: AMBER_BG, borderRadius: 10, padding: "12px 14px", marginTop: 12 }}>
-            <div style={{ font: "700 9px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase", color: AMBER_TEXT, marginBottom: 6 }}>The one shift</div>
-            <p style={{ margin: 0, font: "600 13.5px/1.5 ‘Instrument Sans’,sans-serif", color: "#6B5220" }}>{shift}</p>
-          </div>
-          <p style={{ margin: "12px 0 0", font: "italic 400 12px/1.5 ‘Instrument Sans’,sans-serif", color: "#9AA7BC" }}>
-            Every instinct is a good instinct meeting a particular child. Nothing here says you&rsquo;ve been doing it wrong.
-          </p>
         </div>
       </div>
 

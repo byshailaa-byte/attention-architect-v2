@@ -198,17 +198,23 @@ const MOBILE_CSS = `
   .rm-faq-det summary { border-radius: 12px; }
   .rm-faq-det[open] summary { border-radius: 12px 12px 0 0; }
   .rm-dot-f { position: relative; padding-left: 14px; }
-  .rm-dot-f::before { content: ""; position: absolute; left: 0; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .rm-dot-f::before { content: ""; position: absolute; left: 0; top: 8px; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
   .rm-dot-o { position: relative; padding-left: 14px; }
-  .rm-dot-o::before { content: ""; position: absolute; left: 0; top: 8px; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid currentColor; background: transparent; }
+  .rm-dot-o::before { content: ""; position: absolute; left: 0; top: 8px; width: 5px; height: 5px; border-radius: 50%; border: 1.5px solid currentColor; background: transparent; }
   .rm-testimonials-scroll { scrollbar-width: none; }
   .rm-testimonials-scroll::-webkit-scrollbar { display: none; }
+  .rm-wk-row { display: flex; gap: 12px; position: relative; padding-bottom: 4px; }
+  .rm-wk-row:not(:last-child)::after { content: ""; position: absolute; left: 14px; top: 32px; bottom: 0; width: 2px; background: #E2DFDA; }
+  .rm-wk-body { flex: 1; min-width: 0; padding-bottom: 14px; }
+  .rm-wk-det summary { list-style: none; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font-size: 9.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #F5A623; }
+  .rm-wk-det summary::-webkit-details-marker { display: none; }
+  .rm-wk-det summary::marker { display: none; }
+  .rm-wk-det summary .rm-wk-icon { margin-left: 2px; }
   @media (max-width: 520px) {
     .rm-locked-grid { grid-template-columns: 1fr !important; }
     .rm-nav-label { display: none !important; }
     .rm-and-for-you { flex-direction: column !important; }
     .rm-and-for-you-img { height: 28px !important; width: auto !important; }
-    .rm-sn-grid { grid-template-columns: 1fr !important; }
   }
   @media (max-width: 400px) {
     .rm-goal-grid { grid-template-columns: 1fr !important; }
@@ -409,120 +415,83 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
           The goal was never a child who focuses because you asked. It is a child who runs their own attention — and that only arrives if your role changes on the way there. This is how that happens, week by week, and who you become by the end of it.
         </p>
 
-        {/* ── 3. Six weeks ─────────────────────────────────────────────────── */}
+        {/* ── 3. Six weeks — compressed timeline ───────────────────────────── */}
         <div style={{ marginBottom: "44px" }}>
           <div style={{ font: "700 11px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: TEAL, marginBottom: "10px" }}>THE SIX WEEKS</div>
           <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "10px" }}>
-            One change a week. Six weeks. That&rsquo;s the whole ask.
+            One change a week
           </h2>
           <p style={{ fontSize: "14px", color: DIM, lineHeight: 1.65, marginBottom: "18px", maxWidth: "56ch" }}>
-            Each week works on you first, then on them — the second half doesn&rsquo;t hold without the first.
+            Each week works on you first, then on {c}.
           </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {weekContents.slice(0, 6).map(({ weekTitle, day2Title, day4Title, whatToSay }, i) => {
+          <div style={{ position: "relative" }}>
+            {weekContents.slice(0, 6).map(({ weekTitle, day2Title, whatToSay }, i) => {
               const wc = W[i] ?? TEAL;
-              const signal = archSignals?.[i] ?? "";
               const themLine = (THEM_LINES_BY_ARCHETYPE[archetype] ?? THEM_LINES_BY_ARCHETYPE["The All-In Kid"]!)[i] ?? "";
               return (
-                <div key={i} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, overflow: "hidden" }}>
-                  <div style={{ height: 3, background: wc }} />
-                  {/* Badge + title + problem line */}
-                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px 0" }}>
-                    <div style={{ width: 26, height: 26, borderRadius: 8, background: wc, color: "#fff", fontFamily: BF, fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
-                    <div>
-                      <div style={{ fontFamily: BF, fontWeight: 700, fontSize: 14.5, color: NAVY, lineHeight: 1.25 }}>{weekTitle}</div>
-                      <div style={{ fontSize: "11px", color: DIM, lineHeight: 1.45, marginTop: 3 }}>{PROBLEM_LINES[i]}</div>
-                    </div>
+                <div key={i} className="rm-wk-row">
+                  <div style={{ width: 29, height: 29, borderRadius: 9, background: wc, color: "#fff", fontFamily: BF, fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, zIndex: 1 }}>{i + 1}</div>
+                  <div className="rm-wk-body">
+                    <div style={{ fontFamily: BF, fontWeight: 700, fontSize: 14.5, color: NAVY, lineHeight: 1.2 }}>{weekTitle}</div>
+                    <div style={{ fontSize: 11.5, lineHeight: 1.5, marginTop: 4, color: DIM }}>{PROBLEM_LINES[i]}</div>
+                    <details className="rm-wk-det" style={{ marginTop: 8 }}>
+                      <summary>What you do <span className="rm-wk-icon" /></summary>
+                      <div style={{ marginTop: 9, background: CARD, borderRadius: 10, padding: 12, boxShadow: "0 2px 8px rgba(20,40,77,.05)" }}>
+                        <div className="rm-dot-f" style={{ fontSize: 11.5, lineHeight: 1.5, color: wc, marginBottom: 4 }}><strong style={{ fontSize: 9, letterSpacing: ".06em", textTransform: "uppercase" as const, color: NAVY, opacity: 0.6, display: "inline" }}>You </strong>{day2Title}</div>
+                        <div className="rm-dot-o" style={{ fontSize: 11.5, lineHeight: 1.5, color: wc }}><strong style={{ fontSize: 9, letterSpacing: ".06em", textTransform: "uppercase" as const, color: NAVY, opacity: 0.6, display: "inline" }}>{c} </strong>{themLine}</div>
+                        {whatToSay && (
+                          <div style={{ background: NAVY, borderRadius: 8, padding: "9px 11px", marginTop: 9 }}>
+                            <div style={{ fontSize: 7.5, letterSpacing: ".1em", textTransform: "uppercase" as const, color: GOLD, fontWeight: 700 }}>Say</div>
+                            <div style={{ fontSize: 11.5, fontStyle: "italic", color: "#fff", marginTop: 3, fontFamily: BF, fontWeight: 600 }}>&ldquo;{whatToSay}&rdquo;</div>
+                          </div>
+                        )}
+                      </div>
+                    </details>
                   </div>
-                  {/* You / Them — always visible */}
-                  <div style={{ padding: "8px 14px 0 50px", display: "flex", flexDirection: "column", gap: 2 }}>
-                    <div className="rm-dot-f" style={{ fontSize: "12px", lineHeight: 1.55, color: wc }}><strong style={{ color: NAVY }}>You:</strong> {day2Title}</div>
-                    <div className="rm-dot-o" style={{ fontSize: "12px", lineHeight: 1.55, color: wc }}><strong style={{ color: NAVY }}>{c}:</strong> {themLine}</div>
-                  </div>
-                  {/* Accordion — one per week, week 1 open */}
-                  <details open={i === 0} style={{ margin: "10px 14px 12px 50px", borderTop: `1px dashed ${LINE}`, paddingTop: 9 }}>
-                    <summary style={{ cursor: "pointer", fontSize: "10px", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: GOLD, display: "flex", justifyContent: "space-between", alignItems: "center", listStyle: "none" }}>
-                      What to say · Watch for
-                      <span className="rm-wk-icon" />
-                    </summary>
-                    <div style={{ marginTop: 9 }}>
-                      {whatToSay && (
-                        <>
-                          <div style={{ fontSize: "8px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: TEAL_D }}>What to say</div>
-                          <p style={{ margin: "2px 0 10px", fontSize: "12px", fontStyle: "italic", color: NAVY, lineHeight: 1.5 }}>&ldquo;{whatToSay}&rdquo;</p>
-                        </>
-                      )}
-                      {day4Title && (
-                        <>
-                          <div style={{ fontSize: "8px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: TEAL_D, marginBottom: 2 }}>Also this week</div>
-                          <p style={{ margin: "0 0 10px", fontSize: "12px", color: DIM, lineHeight: 1.5 }}>{day4Title}</p>
-                        </>
-                      )}
-                      {signal && (
-                        <>
-                          <div style={{ fontSize: "8px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: DIM }}>Watch for</div>
-                          <p style={{ margin: "2px 0 0", fontSize: "12px", color: DIM, lineHeight: 1.5, fontStyle: "italic" }}>{signal}</p>
-                        </>
-                      )}
-                    </div>
-                  </details>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* ── The arc ──────────────────────────────────────────────────────── */}
-        <div style={{
-          marginBottom: "44px", borderRadius: 14, overflow: "hidden",
-          background: NAVY,
-        }}>
-          <div style={{ padding: "22px 20px 24px" }}>
-            {/* Marker */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <div style={{
-                width: 19, height: 19, borderRadius: "50%",
-                background: GOLD, color: NAVY,
-                fontFamily: BF, fontWeight: 800, fontSize: 9.5,
-                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-              }}>2</div>
-              <div style={{ fontSize: 8.5, letterSpacing: "0.13em", textTransform: "uppercase" as const, fontWeight: 700, color: "#FBCB4A" }}>The arc</div>
-            </div>
-            <div style={{ fontFamily: BF, fontWeight: 700, fontSize: "clamp(18px,3.5vw,22px)", lineHeight: 1.16, color: "#fff", marginBottom: 9 }}>
-              Where this goes for {c}
-            </div>
-            <div style={{ fontSize: 12.5, lineHeight: 1.6, color: "#AFBACB", marginBottom: 17 }}>
-              Six weeks is the start of it, not the whole of it.
-            </div>
-            {/* Steps */}
-            <div>
-              {([
-                { dot: C1, label: "NOW",           when: "Right now",      title: "You’re the reason it happens",          line: "You ask twice. Leaving the room means it stops." },
-                { dot: C2, label: "6W",            when: "By week six",    title: "They start without being asked",              line: "More often than not. You can leave the room." },
-                { dot: C3, label: "→",         when: "The months after", title: "It turns up elsewhere",                    line: "Somewhere nobody taught it. They notice their own drift." },
-                { dot: C4, label: "∞",         when: "What you’re building", title: "A child who runs their own attention", line: "The skill nobody hands out at nineteen." },
-              ] as { dot: string; label: string; when: string; title: string; line: string }[]).map((s, i, arr) => (
-                <div key={i} style={{ display: "flex", gap: 12, paddingBottom: i < arr.length - 1 ? 16 : 0, position: "relative" }}>
-                  {i < arr.length - 1 && (
-                    <div style={{ position: "absolute", left: 15, top: 32, bottom: 0, width: 2, background: "rgba(255,255,255,.15)" }} />
-                  )}
-                  <div style={{
-                    width: 32, height: 32, borderRadius: "50%",
-                    background: s.dot, color: "#fff",
-                    fontFamily: BF, fontWeight: 800, fontSize: 9.5,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0, zIndex: 1,
-                  }}>{s.label}</div>
-                  <div style={{ flex: 1, paddingTop: 4 }}>
-                    <div style={{ fontSize: 8.5, letterSpacing: "0.11em", textTransform: "uppercase" as const, fontWeight: 700, color: s.dot }}>{s.when}</div>
-                    <div style={{ fontFamily: BF, fontSize: 14.5, fontWeight: 700, color: "#fff", marginTop: 3, lineHeight: 1.22 }}>{s.title}</div>
-                    <div style={{ fontSize: 11.5, lineHeight: 1.5, color: "#AFBACB", marginTop: 5 }}>{s.line}</div>
-                  </div>
+        {/* ── The arc — school-night before/after merged into stages 1 & 2 ── */}
+        {(() => {
+          const sn = SCHOOL_NIGHT[archetype] ?? SCHOOL_NIGHT["The Explorer"]!;
+          const arcSteps: { dot: string; label: string; when: string; title: string; line: string }[] = [
+            { dot: C1, label: "NOW", when: "Tonight",          title: "You’re the reason it happens",     line: [sn.now[0], sn.now[1]].filter(Boolean).join(". ") + "." },
+            { dot: C2, label: "6W",  when: "By week six",      title: "They start without being asked",       line: sn.then[0] ?? "" },
+            { dot: C3, label: "→",   when: "The months after", title: "It turns up elsewhere",                 line: "Somewhere nobody taught it. They notice their own drift." },
+            { dot: C4, label: "∞",   when: "What you’re building", title: "A child who runs their own attention", line: "The skill nobody hands out at nineteen." },
+          ];
+          return (
+            <div style={{ marginBottom: "44px", borderRadius: 14, overflow: "hidden", background: NAVY }}>
+              <div style={{ padding: "22px 20px 24px" }}>
+                <div style={{ fontSize: 8.5, letterSpacing: "0.13em", textTransform: "uppercase" as const, fontWeight: 700, color: "#FBCB4A", marginBottom: 7 }}>Where this goes</div>
+                <div style={{ fontFamily: BF, fontWeight: 700, fontSize: "clamp(18px,3.5vw,22px)", lineHeight: 1.16, color: "#fff", marginBottom: 9 }}>
+                  A school night with {c}
                 </div>
-              ))}
+                <div style={{ fontSize: 12.5, lineHeight: 1.6, color: "#AFBACB", marginBottom: 17 }}>
+                  Six weeks is the start of it, not the whole of it.
+                </div>
+                <div>
+                  {arcSteps.map((s, i, arr) => (
+                    <div key={i} style={{ display: "flex", gap: 12, paddingBottom: i < arr.length - 1 ? 16 : 0, position: "relative" }}>
+                      {i < arr.length - 1 && (
+                        <div style={{ position: "absolute", left: 15, top: 32, bottom: 0, width: 2, background: "rgba(255,255,255,.16)" }} />
+                      )}
+                      <div style={{ width: 31, height: 31, borderRadius: "50%", background: s.dot, color: "#fff", fontFamily: BF, fontWeight: 800, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, zIndex: 1 }}>{s.label}</div>
+                      <div style={{ flex: 1, paddingTop: 3 }}>
+                        <div style={{ fontSize: 8, letterSpacing: "0.11em", textTransform: "uppercase" as const, fontWeight: 700, color: s.dot }}>{s.when}</div>
+                        <div style={{ fontFamily: BF, fontSize: 14.5, fontWeight: 700, color: "#fff", marginTop: 3, lineHeight: 1.22 }}>{s.title}</div>
+                        <div style={{ fontSize: 11.5, lineHeight: 1.5, color: "#AFBACB", marginTop: 5 }}>{s.line}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* ── 4. Mid-page free call — gift for finishing the assessment ────── */}
         <div style={{ marginBottom: "44px" }}>
@@ -606,37 +575,6 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
           </div>
         </div>
 
-        {/* ── 6. School night, six weeks apart ─────────────────────────────── */}
-        {(() => {
-          const sn = SCHOOL_NIGHT[archetype] ?? SCHOOL_NIGHT["The Explorer"]!;
-          return (
-          <div style={{ marginBottom: "44px" }}>
-            <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "14px" }}>
-              A school night with {c}, six weeks apart
-            </h2>
-            <div className="rm-sn-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div style={{ background: "#FBEDEA", border: "1px solid #F3D7D0", borderRadius: 12, padding: "14px 16px" }}>
-                <div style={{ fontSize: "8.5px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: "#A8341F", marginBottom: 10 }}>Right now</div>
-                {sn.now.map((line, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: i < sn.now.length - 1 ? 6 : 0 }}>
-                    <span style={{ color: "#A8341F", opacity: 0.5, flexShrink: 0, lineHeight: 1.55 }}>—</span>
-                    <span style={{ fontSize: "12px", color: "#7A2E1A", lineHeight: 1.55 }}>{line}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ background: "#DCECE7", border: "1px solid #C4E0D7", borderRadius: 12, padding: "14px 16px" }}>
-                <div style={{ fontSize: "8.5px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: TEAL_D, marginBottom: 10 }}>In six weeks</div>
-                {sn.then.map((line, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: i < sn.then.length - 1 ? 6 : 0 }}>
-                    <span style={{ color: TEAL_D, opacity: 0.5, flexShrink: 0, lineHeight: 1.55 }}>—</span>
-                    <span style={{ fontSize: "12px", color: "#1A5E4A", lineHeight: 1.55 }}>{line}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          );
-        })()}
 
         {/* ── 7. Pricing — three equal cards ───────────────────────────────── */}
         <div ref={pricingRef} style={{ marginBottom: "44px" }}>
