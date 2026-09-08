@@ -344,9 +344,10 @@ export async function composeReport(ctx: NarrativeContext): Promise<ComposeOutpu
   {
     const weakDims = ctx.scoring.weakest_two.map((axis: string) => {
       const map: Record<string, string> = {
-        Stability: "attention_shape",
+        Stability:  "attention_shape",
         Resistance: "attention_competition",
-        Recovery: "recharge_type",
+        Recovery:   "recharge_type",
+        Attention:  "attention_shape",
       };
       return map[axis] ?? "attention_shape";
     });

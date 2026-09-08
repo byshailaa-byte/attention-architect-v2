@@ -198,17 +198,21 @@ describe("BLOCKING — Storm verification (G1=sensation-seeking, G3=pusher, rewa
         expect(scoreAssessment(buildStormDims(g2)).parent_pattern).toBe("The Pusher");
       });
 
-      it("Assertion 3 (BLOCKING): weakest_two == {Stability, Resistance}", () => {
+      it("Assertion 3 (BLOCKING): weakest_two == {Attention, Stability}", () => {
+        // sensation-seeking has Attention norm ≈0.167 (lowest) and Stability ≈0.29–0.40.
+        // Resistance is Medium–Strong depending on G2 competition value.
+        // Attention axis was added 2026-09 (4-axis system); prior assertion was {Stability, Resistance}.
         const out = scoreAssessment(buildStormDims(g2));
         const set = new Set(out.weakest_two);
+        expect(set.has("Attention")).toBe(true);
         expect(set.has("Stability")).toBe(true);
-        expect(set.has("Resistance")).toBe(true);
       });
 
       it("Diagnostic: axis norms and eligibility", () => {
         const out = scoreAssessment(buildStormDims(g2));
         console.log(
           `G2=${g2}: ` +
+          `Attention=${out.axes.attention.norm.toFixed(3)}(${out.axes.attention.band}) ` +
           `Stability=${out.axes.stability.norm.toFixed(3)}(${out.axes.stability.band}) ` +
           `Resistance=${out.axes.resistance.norm.toFixed(3)}(${out.axes.resistance.band}) ` +
           `Recovery=${out.axes.recovery.norm.toFixed(3)}(${out.axes.recovery.band},eligible=${out.axes.recovery.eligible}) ` +

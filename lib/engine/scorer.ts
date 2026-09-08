@@ -28,9 +28,10 @@ export type ScoringOutput = {
   archetype_fit_tier: FitTier;
   parent_instinct_fit_tier: FitTier;
   axes: {
-    stability: AxisResult;
+    stability:  AxisResult;
     resistance: AxisResult;
-    recovery: AxisResult;
+    recovery:   AxisResult;
+    attention:  AxisResult;
   };
   weakest_two: string[];
   honest_flag: boolean;
@@ -138,8 +139,9 @@ function clamp(v: number, min: number, max: number) {
 // [CALIBRATE] — theoretical bounds, tighten to observed percentiles once data exists.
 
 const STABILITY_MIN  = 0.03;  const STABILITY_MAX  = 0.95;
-const RESISTANCE_MIN = 0.10;  const RESISTANCE_MAX = 0.70;
+const RESISTANCE_MIN = 0.10;  const RESISTANCE_MAX = 0.35; // [CALIBRATE] empirical ceiling; P99 of 399 prod sessions = 0.2667; was 0.70 (theoretical)
 const RECOVERY_MIN   = 0.03;  const RECOVERY_MAX   = 0.90;
+const ATTENTION_MIN  = 0.20;  const ATTENTION_MAX  = 0.80; // [CALIBRATE] derived from polarity table extremes; validate at n=1000
 
 function normalize(value: number, min: number, max: number): number {
   return (value - min) / (max - min);
@@ -180,7 +182,7 @@ function computeResistance(dims: Dimensions): AxisResult {
 
   // [CALIBRATE] consistency from attention_competition (primary dimension)
   const value = polarity * (0.5 + 0.5 * competition.consistency);
-  const norm  = normalize(value, RESISTANCE_MIN, RESISTANCE_MAX);
+  const norm  = clamp(normalize(value, RESISTANCE_MIN, RESISTANCE_MAX), 0, 1);
   return { value, norm, band: toBand(norm), eligible: true };
 }
 
@@ -232,17 +234,37 @@ function computeRecovery(dims: Dimensions): AxisResult {
   return { value, norm, band: toBand(norm), eligible: true };
 }
 
+// [CALIBRATE] How naturally the child's attention shape serves their daily context.
+// Higher = shape is already an asset; lower = shape creates friction most of the time.
+// Validate against teacher/parent outcome data at n=1000.
+const ATTENTION_SHAPE_POLARITY: Record<string, number> = {
+  "narrow-deep":       0.80,
+  "wide-shifting":     0.50,
+  "social-anchored":   0.45,
+  "sensation-seeking": 0.30,
+};
+
+function computeAttention(dims: Dimensions): AxisResult {
+  const shape = dims.attention_shape;
+  const polarity = ATTENTION_SHAPE_POLARITY[shape.value] ?? 0.45;
+  const value = polarity * (0.5 + 0.5 * shape.consistency);
+  const norm  = clamp(normalize(value, ATTENTION_MIN, ATTENTION_MAX), 0, 1);
+  return { value, norm, band: toBand(norm), eligible: true };
+}
+
 // ── Weakest-two (spec §4c, ranked by NORMALIZED values) ───────────────────────
 
 function selectWeakestTwo(
-  stability: AxisResult,
+  stability:  AxisResult,
   resistance: AxisResult,
-  recovery: AxisResult
+  recovery:   AxisResult,
+  attention:  AxisResult,
 ): string[] {
   const candidates = [
     { name: "Stability",  n: stability.norm,  eligible: stability.eligible },
     { name: "Resistance", n: resistance.norm, eligible: resistance.eligible },
     { name: "Recovery",   n: recovery.norm,   eligible: recovery.eligible },
+    { name: "Attention",  n: attention.norm,  eligible: attention.eligible },
   ].filter(a => a.eligible);
 
   // ascending; tie → alphabetical (provisional — no objective field in Phase 0–2)
@@ -307,8 +329,9 @@ export function scoreAssessment(
   const stability  = computeStability(dims);
   const resistance = computeResistance(dims);
   const recovery   = computeRecovery(dims);
+  const attention  = computeAttention(dims);
 
-  const weakest_two = selectWeakestTwo(stability, resistance, recovery);
+  const weakest_two = selectWeakestTwo(stability, resistance, recovery, attention);
 
   const { honest_flag, honest_trigger } = computeHonestPath(dims);
 
@@ -317,7 +340,7 @@ export function scoreAssessment(
 
   return {
     archetype, parent_pattern, archetype_fit_tier, parent_instinct_fit_tier,
-    axes: { stability, resistance, recovery },
+    axes: { stability, resistance, recovery, attention },
     weakest_two, honest_flag, honest_trigger, data_richness,
   };
 }

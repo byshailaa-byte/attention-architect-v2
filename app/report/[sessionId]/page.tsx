@@ -63,9 +63,10 @@ export default async function ReportPage({
     archetype: string;
     parent_pattern: string;
     axes: {
-      stability: AxisResult;
+      stability:  AxisResult;
       resistance: AxisResult;
-      recovery: AxisResult;
+      recovery:   AxisResult;
+      attention?: AxisResult;
     };
     weakest_two: string[];
     parent_name: string | null;

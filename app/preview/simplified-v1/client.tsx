@@ -360,6 +360,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
     Stability:  "friction_response",
     Resistance: "attention_competition",
     Recovery:   "recharge_type",
+    Attention:  "attention_shape",
   };
   const weakKeys = new Set(
     (data.weakestTwo ?? []).map(ax => AXIS_TO_DIM[ax]).filter(Boolean)
