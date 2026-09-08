@@ -38,7 +38,11 @@ const CARD   = "#FFFFFF";
 const BF     = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
 // Six distinct accent colours — one per week, in order
-const W = ["#E2705F", "#E9973F", "#DFC13C", "#4E9E86", "#3D7CB8", "#7B6BC4"] as const;
+const W  = ["#E2705F", "#E9973F", "#DFC13C", "#4E9E86", "#3D7CB8", "#7B6BC4"] as const;
+const C1 = "#E2705F";
+const C2 = "#E9973F";
+const C3 = "#3D7CB8";
+const C4 = "#4E9E86";
 
 // Rung 1 quote — varies by parent instinct, everything else stays universal
 const RUNG1_QUOTE: Record<string, string> = {
@@ -465,6 +469,58 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* ── The arc ──────────────────────────────────────────────────────── */}
+        <div style={{
+          marginBottom: "44px", borderRadius: 14, overflow: "hidden",
+          background: NAVY,
+        }}>
+          <div style={{ padding: "22px 20px 24px" }}>
+            {/* Marker */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <div style={{
+                width: 19, height: 19, borderRadius: "50%",
+                background: GOLD, color: NAVY,
+                fontFamily: BF, fontWeight: 800, fontSize: 9.5,
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              }}>2</div>
+              <div style={{ fontSize: 8.5, letterSpacing: "0.13em", textTransform: "uppercase" as const, fontWeight: 700, color: "#FBCB4A" }}>The arc</div>
+            </div>
+            <div style={{ fontFamily: BF, fontWeight: 700, fontSize: "clamp(18px,3.5vw,22px)", lineHeight: 1.16, color: "#fff", marginBottom: 9 }}>
+              Where this goes for {c}
+            </div>
+            <div style={{ fontSize: 12.5, lineHeight: 1.6, color: "#AFBACB", marginBottom: 17 }}>
+              Six weeks is the start of it, not the whole of it.
+            </div>
+            {/* Steps */}
+            <div>
+              {([
+                { dot: C1, label: "NOW",           when: "Right now",      title: "You’re the reason it happens",          line: "You ask twice. Leaving the room means it stops." },
+                { dot: C2, label: "6W",            when: "By week six",    title: "They start without being asked",              line: "More often than not. You can leave the room." },
+                { dot: C3, label: "→",         when: "The months after", title: "It turns up elsewhere",                    line: "Somewhere nobody taught it. They notice their own drift." },
+                { dot: C4, label: "∞",         when: "What you’re building", title: "A child who runs their own attention", line: "The skill nobody hands out at nineteen." },
+              ] as { dot: string; label: string; when: string; title: string; line: string }[]).map((s, i, arr) => (
+                <div key={i} style={{ display: "flex", gap: 12, paddingBottom: i < arr.length - 1 ? 16 : 0, position: "relative" }}>
+                  {i < arr.length - 1 && (
+                    <div style={{ position: "absolute", left: 15, top: 32, bottom: 0, width: 2, background: "rgba(255,255,255,.15)" }} />
+                  )}
+                  <div style={{
+                    width: 32, height: 32, borderRadius: "50%",
+                    background: s.dot, color: "#fff",
+                    fontFamily: BF, fontWeight: 800, fontSize: 9.5,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0, zIndex: 1,
+                  }}>{s.label}</div>
+                  <div style={{ flex: 1, paddingTop: 4 }}>
+                    <div style={{ fontSize: 8.5, letterSpacing: "0.11em", textTransform: "uppercase" as const, fontWeight: 700, color: s.dot }}>{s.when}</div>
+                    <div style={{ fontFamily: BF, fontSize: 14.5, fontWeight: 700, color: "#fff", marginTop: 3, lineHeight: 1.22 }}>{s.title}</div>
+                    <div style={{ fontSize: 11.5, lineHeight: 1.5, color: "#AFBACB", marginTop: 5 }}>{s.line}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
