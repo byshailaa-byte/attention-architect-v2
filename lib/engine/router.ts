@@ -10,6 +10,7 @@ import {
   P1, P2,
   D5_1, D5_2,
   D6_1, D6_2, D6_3, D6_CONFIRM,
+  R1, R2, R3,
 } from "./questions";
 
 export type GatewayAnswers = {
@@ -90,6 +91,10 @@ export function buildQuestionSequence(g: GatewayAnswers): Question[] {
     seq.push(...DEPTH_QUESTIONS[depth.slot3]);
   }
 
+  // Recovery response — always asked regardless of routing
+  seq.push(R1, R2, R3);
+  inDepth.add("recovery_response");
+
   // Fill remaining dimensions
   const allDimensions = [
     "attention_shape",
@@ -98,6 +103,7 @@ export function buildQuestionSequence(g: GatewayAnswers): Question[] {
     "parent_instinct",
     "attention_competition",
     "recharge_type",
+    "recovery_response",
   ];
 
   // Gateway-anchored dimensions already answered by G1/G2/G3 — no further questions if not in depth.

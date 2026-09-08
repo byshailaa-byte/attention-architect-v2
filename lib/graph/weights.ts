@@ -30,6 +30,9 @@ export const QUESTION_HOME_DIMENSION: Record<string, string> = {
   "D6.2": "recharge_type",
   "D6.3": "recharge_type",
   "D6.confirm": "recharge_type",
+  R1: "recovery_response",
+  R2: "recovery_response",
+  R3: "recovery_response",
 };
 
 // Value translation for cross-dimension contributions.
@@ -92,6 +95,7 @@ export const DIMENSION_VALIDATION: Record<string, { validated: boolean }> = {
   parent_instinct:      { validated: true },
   attention_competition: { validated: true },
   recharge_type:        { validated: true },
+  recovery_response:    { validated: false },
 };
 
 // Static mapping: question ID → every dimension it touches and at what weight.
@@ -142,4 +146,7 @@ export const QUESTION_WEIGHTS: Record<string, QuestionWeight[]> = {
   "D6.2": [{ dimension: "recharge_type", tier: "primary", weight: 1.0 }],
   "D6.3": [{ dimension: "recharge_type", tier: "primary", weight: 1.0 }],
   "D6.confirm": [{ dimension: "recharge_type", tier: "primary", weight: 1.0 }],
+  R1: [{ dimension: "recovery_response", tier: "primary", weight: 1.0 }],
+  R2: [{ dimension: "recovery_response", tier: "primary", weight: 1.0 }],
+  R3: [{ dimension: "recovery_response", tier: "primary", weight: 1.0 }],
 };

@@ -13,6 +13,7 @@ export const ALL_DIMENSIONS = [
   "parent_instinct",
   "attention_competition",
   "recharge_type",
+  "recovery_response",
 ] as const;
 
 export type Dimension = (typeof ALL_DIMENSIONS)[number];

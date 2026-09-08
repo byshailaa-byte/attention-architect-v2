@@ -139,6 +139,7 @@ function clamp(v: number, min: number, max: number) {
 
 const STABILITY_MIN  = 0.03;  const STABILITY_MAX  = 0.95;
 const RESISTANCE_MIN = 0.10;  const RESISTANCE_MAX = 0.70;
+const RECOVERY_MIN   = 0.03;  const RECOVERY_MAX   = 0.90;
 
 function normalize(value: number, min: number, max: number): number {
   return (value - min) / (max - min);
@@ -183,33 +184,52 @@ function computeResistance(dims: Dimensions): AxisResult {
   return { value, norm, band: toBand(norm), eligible: true };
 }
 
-/**
- * Spec §4a vote-based Recovery normalization lookup.
- * Returns null when data_points == 1 → INELIGIBLE for weakest_two.
- * "One answer tells us which route; it tells us nothing about consistency of route."
- */
-function recoveryNorm(data_points: number, winning_votes: number): number | null {
-  if (data_points <= 1) return null; // INELIGIBLE
-  if (data_points === 2) return winning_votes === 2 ? 1.00 : 0.35;
-  // data_points === 3
-  if (winning_votes === 3) return 1.00;
-  if (winning_votes === 2) return 0.65;
-  return 0.30; // three-way scatter
-}
+// [CALIBRATE] Directional polarity for recovery_response — higher = easier to restart.
+// Values shared across R1/R2/R3 (autonomous/responsive/dependent/stopped).
+const RECOVERY_RESPONSE_QUALITY: Record<string, number> = {
+  "autonomous": 0.90,
+  "responsive": 0.60,
+  "dependent":  0.25,
+  "stopped":    0.05,
+};
+
+// [CALIBRATE] Supporting polarity from recharge_type.
+// Contributes proportional to its data_points (≈25% on D6.confirm path, more with depth).
+const RECHARGE_QUALITY: Record<string, number> = {
+  "autonomous-unstructured": 0.80,
+  "cognitive-displacement":  0.60,
+  "social-connection":       0.45,
+  "sensory-quiet":           0.30,
+};
 
 function computeRecovery(dims: Dimensions): AxisResult {
-  const recharge = dims.recharge_type;
+  const rr = dims.recovery_response;
+  const rt = dims.recharge_type;
 
-  // Raw value: still computed for display/bar width (§3 formula unchanged).
-  const value = 0.25 + 0.50 * recharge.consistency;
+  // Fallback for legacy sessions scored before recovery_response was introduced.
+  if (!rr || rr.data_points === 0) {
+    const legacyValue = 0.25 + 0.50 * rt.consistency;
+    const legacyNorm  = rt.data_points <= 1 ? null
+      : rt.data_points === 2 ? (rt.winning_votes === 2 ? 1.00 : 0.35)
+      : rt.winning_votes === 3 ? 1.00 : rt.winning_votes === 2 ? 0.65 : 0.30;
+    const eligible = legacyNorm !== null;
+    return { value: legacyValue, norm: legacyNorm ?? 0, band: toBand(legacyNorm ?? 0), eligible };
+  }
 
-  const norm = recoveryNorm(recharge.data_points, recharge.winning_votes);
-  const eligible = norm !== null;
+  // recovery_response (R1/R2/R3): primary driver. recharge_type: supporting, weighted by data_points.
+  const totalDp = rr.data_points + rt.data_points;
+  const rrW     = rr.data_points / totalDp;
+  const rtW     = rt.data_points / totalDp;
 
-  // When ineligible: band still derived from value for display purposes,
-  // but norm=0 and eligible=false keeps it out of ranking (§4a).
-  const displayNorm = norm ?? 0;
-  return { value, norm: displayNorm, band: toBand(displayNorm), eligible };
+  const polarity    = rrW * (RECOVERY_RESPONSE_QUALITY[rr.value] ?? 0.45)
+                    + rtW * (RECHARGE_QUALITY[rt.value] ?? 0.55);
+  const consistency = rrW * (0.5 + 0.5 * rr.consistency)
+                    + rtW * (0.5 + 0.5 * rt.consistency);
+
+  const value = polarity * consistency;
+  const norm  = clamp(normalize(value, RECOVERY_MIN, RECOVERY_MAX), 0, 1);
+
+  return { value, norm, band: toBand(norm), eligible: true };
 }
 
 // ── Weakest-two (spec §4c, ranked by NORMALIZED values) ───────────────────────

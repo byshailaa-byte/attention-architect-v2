@@ -225,6 +225,46 @@ export const D5_2: Question = {
   ],
 };
 
+// ── recovery_response (R1, R2, R3) — always asked ────────────────────────────
+// All three share the same four values so tallyDimension finds majority across data_points=3.
+// autonomous → returns on own; responsive → one prompt; dependent → needs help; stopped → ends session
+
+export const R1: Question = {
+  id: "R1",
+  dimension: "recovery_response",
+  text: "When something interrupts {name} mid-task — someone calls them, a sibling comes in — what usually happens next?",
+  options: [
+    { label: "They go back to it on their own", value: "autonomous" },
+    { label: "They go back if reminded once", value: "responsive" },
+    { label: "They need help finding where they were", value: "dependent" },
+    { label: "That's usually the end of the session", value: "stopped" },
+  ],
+};
+
+export const R2: Question = {
+  id: "R2",
+  dimension: "recovery_response",
+  text: "After they stop, how long before they're properly back into it?",
+  options: [
+    { label: "Almost straight away", value: "autonomous" },
+    { label: "A few minutes", value: "responsive" },
+    { label: "It takes a while to settle again", value: "dependent" },
+    { label: "They don't really get back into it", value: "stopped" },
+  ],
+};
+
+export const R3: Question = {
+  id: "R3",
+  dimension: "recovery_response",
+  text: "When {name} comes back to something after a break, is that usually their idea or yours?",
+  options: [
+    { label: "Theirs, almost always", value: "autonomous" },
+    { label: "Sometimes theirs, sometimes mine", value: "responsive" },
+    { label: "Usually mine", value: "dependent" },
+    { label: "It only happens if I sit with them", value: "stopped" },
+  ],
+};
+
 // ── recharge_type depth (D6.x) ────────────────────────────────────────────────
 
 export const D6_1: Question = {
