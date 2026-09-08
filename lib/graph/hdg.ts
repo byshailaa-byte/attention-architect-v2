@@ -135,11 +135,24 @@ const NODE_TEXTS: Record<string, NodeText> = {
   "D6.confirm:cognitive-displacement":  { trigger: "when needing to recharge", choice: "recharges best through an absorbing distraction" },
   "D6.confirm:autonomous-unstructured": { trigger: "when needing to recharge", choice: "recharges best through freedom from structure" },
 
-  // S1 — support_response (parent observes child's response to parental help)
-  "S1:disengagement":    { trigger: "when parent stepped in to help", choice: "went along but lost interest once parent was involved" },
-  "S1:resistance":       { trigger: "when parent stepped in to help", choice: "pushed back or got frustrated at the intervention" },
-  "S1:dependency":       { trigger: "when parent stepped in to help", choice: "accepted the help but didn't try independently next time" },
-  "S1:timing-mismatch":  { trigger: "when parent stepped in to help", choice: "had already shut down — intervention arrived too late" },
+  // R1 — what happens after an interruption
+  "R1:autonomous": { trigger: "when interrupted mid-task", choice: "returns to it on their own" },
+  "R1:responsive": { trigger: "when interrupted mid-task", choice: "returns if reminded once" },
+  "R1:dependent":  { trigger: "when interrupted mid-task", choice: "needs help finding where they were" },
+  "R1:stopped":    { trigger: "when interrupted mid-task", choice: "doesn't get back to it that session" },
+
+  // R2 — gap before restarting
+  "R2:autonomous": { trigger: "after stopping mid-task", choice: "is back into it almost straight away" },
+  "R2:responsive": { trigger: "after stopping mid-task", choice: "takes a few minutes to resettle" },
+  "R2:dependent":  { trigger: "after stopping mid-task", choice: "takes a while to settle back in" },
+  "R2:stopped":    { trigger: "after stopping mid-task", choice: "doesn't really get back into it" },
+
+  // R3 — who restarts it
+  "R3:autonomous": { trigger: "when returning after a break", choice: "restarts on their own initiative" },
+  "R3:responsive": { trigger: "when returning after a break", choice: "sometimes self-starts, sometimes needs a nudge" },
+  "R3:dependent":  { trigger: "when returning after a break", choice: "usually restarts when prompted by parent" },
+  "R3:stopped":    { trigger: "when returning after a break", choice: "only restarts when parent sits with them" },
+
 };
 
 export function buildHdg(answers: Record<string, string>): HumanDecisionGraph {

@@ -7,7 +7,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "glue",
   week: 1,
-  weekTitle: "Two Minutes Before the Homework",
+  weekTitle: "Getting started without the push",
 
   weeklyReading: {
     introShared: `Some children can wall off a bad mood and work anyway. {{child_name}} is not one of them, and this week is about why that's not the problem it looks like.

@@ -4,7 +4,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "storm",
   week: 3,
-  weekTitle: "When It Sticks for a Whole Afternoon",
+  weekTitle: "Staying with it on an ordinary day",
 
   weeklyReading: {
     introShared: `This is Week 3 of a program built specifically for a Storm. Week 1 tested one thing: does real ownership over a single task actually change how your child shows up for it. Week 2 asked whether that same ownership holds up around screens — one of the hardest places to hand over control. This week asks something different: does it hold across a whole stretch, not just one moment you set up carefully?

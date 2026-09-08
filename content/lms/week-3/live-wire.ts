@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "live-wire",
   week: 3,
-  weekTitle: "When It Has to Last More Than a Burst",
+  weekTitle: "Staying with it on an ordinary day",
 
   weeklyReading: {
     introShared: `Week 1 tested whether a real, genuine stake — not a manufactured one — changes how fully your child shows up for something. Week 2 tested that same real stake in a screens context. This week asks something harder: does a real stake still carry them through something that takes longer than one sitting, when the payoff or consequence is further away than it was in a quick, contained task?

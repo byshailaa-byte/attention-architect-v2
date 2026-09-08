@@ -1,32 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import ThankYouScreen, { NAVY, GOLD, TEAL, BG_F, normalizePhone, isValidPhone, isValidEmail } from "./ThankYouScreen";
 
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
     fbq?: (...args: unknown[]) => void;
   }
-}
-
-const NAVY   = "#14284D";
-const GOLD   = "#F5A623";
-const TEAL   = "#22A38A";
-const BG_F   = `"Bricolage Grotesque", "Bricolage Grotesque Condensed", sans-serif`;
-
-function normalizePhone(raw: string): string {
-  let s = raw.replace(/[\s\-.()+]/g, "");
-  if (s.startsWith("91") && s.length === 12) s = s.slice(2);
-  return s;
-}
-
-function isValidPhone(raw: string): boolean {
-  return /^[6-9]\d{9}$/.test(normalizePhone(raw));
-}
-
-function isValidEmail(v: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
 
 export default function SimplifiedGate({
@@ -36,13 +17,14 @@ export default function SimplifiedGate({
   sessionId: string;
   childName: string;
 }) {
-  const router = useRouter();
   const [parentName, setParentName] = useState("");
   const [email, setEmail]           = useState("");
   const [phone, setPhone]           = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState<string | null>(null);
+  const [submitted, setSubmitted]   = useState(false);
+  const [submittedPhone, setSubmittedPhone] = useState("");
 
   const emailTouched = email.length > 0;
   const emailValid   = isValidEmail(email);
@@ -57,6 +39,7 @@ export default function SimplifiedGate({
     }
     setSubmitting(true);
     setError(null);
+    const normalized = normalizePhone(phone);
     try {
       const res = await fetch("/api/report/claim", {
         method: "POST",
@@ -65,7 +48,7 @@ export default function SimplifiedGate({
           sessionId,
           parentName: parentName.trim(),
           email: email.trim(),
-          phone: normalizePhone(phone),
+          phone: normalized,
           variant: "simplified",
         }),
       });
@@ -78,11 +61,24 @@ export default function SimplifiedGate({
         if (typeof window.fbq === "function")
           window.fbq("track", "Lead", {}, { eventID: `lead:${sessionId}` });
       }
-      router.refresh();
+      setSubmittedPhone(normalized);
+      setSubmitted(true);
     } catch (err) {
       setError((err as Error).message);
       setSubmitting(false);
     }
+  }
+
+  if (submitted) {
+    return (
+      <ThankYouScreen
+        sessionId={sessionId}
+        childName={childName}
+        parentName={parentName.trim()}
+        email={email.trim()}
+        phone={submittedPhone}
+      />
+    );
   }
 
   return (
@@ -222,7 +218,7 @@ export default function SimplifiedGate({
                 marginTop: 4,
               }}
             >
-              {submitting ? "Opening report…" : `Open ${childName}'s Report →`}
+              {submitting ? "Sending…" : `Send ${childName}'s Report →`}
             </button>
           </form>
 

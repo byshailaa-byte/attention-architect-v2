@@ -5,7 +5,7 @@ const D3 = `**Worked** — {{child_name}}'s instinct genuinely helped, and you l
 export const weekContent: LmsWeekContent = {
   archetype: "glue",
   week: 5,
-  weekTitle: "When It's a Fight Between the Two of Them",
+  weekTitle: "Using it beyond homework",
 
   weeklyReading: {
     introShared: `Connection has survived real, unresolved tension. This week: what happens when a sibling conflict is genuinely part of the picture — {{child_name}}'s connection-first instinct meeting a third person's stake in the same moment?`,

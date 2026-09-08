@@ -1,4 +1,9 @@
+import { redirect } from "next/navigation";
 import { getSql } from "@/lib/db/client";
+import {
+  PATTERN_LINE, MEANING, FRICTION_POINTS, TONIGHT_SAY, TONIGHT_WATCH,
+  INSTINCT_LINE, NOW_LINES, THEN_LINES, TESTIMONIAL_POOL,
+} from "@/lib/content/report-content";
 import { getLmsWeekContent } from "@/lib/lms/content";
 import {
   generateInstinctInteractionFallback,
@@ -30,28 +35,28 @@ const seenTryTonightTitles = new Set<string>();
 
 // Maps raw DB slug values to parent-readable label + description for each profile card row.
 const ATTENTION_SHAPE: Record<string, { label: string; desc: string }> = {
-  "narrow-deep":       { label: "What draws attention in",  desc: "Goes deep into chosen things; absorbs fully and stays there" },
-  "wide-shifting":     { label: "What draws attention in",  desc: "Moves between a few related things at once; broad spread" },
-  "social-anchored":   { label: "What draws attention in",  desc: "Seeks to be around or with other people" },
-  "sensation-seeking": { label: "What draws attention in",  desc: "Pursues whatever feels most exciting or active in the moment" },
+  "narrow-deep":       { label: "What gets them focused",  desc: "Something they can go right into. Once they're in, they tend to stay there." },
+  "wide-shifting":     { label: "What gets them focused",  desc: "A few related things at once. Their attention moves between them rather than settling on one." },
+  "social-anchored":   { label: "What gets them focused",  desc: "Being around other people. Company tends to hold them more than the task does." },
+  "sensation-seeking": { label: "What gets them focused",  desc: "Whatever feels most alive in the moment. Energy tends to matter more than the subject." },
 };
 const ATTENTION_COMPETITION: Record<string, { label: string; desc: string }> = {
-  "novelty":  { label: "What pulls it away", desc: "New ideas or inputs that arrive mid-task" },
-  "external": { label: "What pulls it away", desc: "Nearby noise, movement, or sensory activity" },
-  "internal": { label: "What pulls it away", desc: "Boredom or frustration building from within" },
-  "social":   { label: "What pulls it away", desc: "What's happening with other people nearby" },
+  "novelty":  { label: "What tends to pull them away", desc: "A new idea arriving mid-task. It often feels more urgent than what they were doing." },
+  "external": { label: "What tends to pull them away", desc: "Noise or movement nearby. It doesn't take much to break the thread." },
+  "internal": { label: "What tends to pull them away", desc: "Boredom or frustration building up from the inside, before anything happens around them." },
+  "social":   { label: "What tends to pull them away", desc: "Whatever is going on with the people nearby. That usually gets read first." },
 };
 const FRICTION_RESPONSE: Record<string, { label: string; desc: string }> = {
-  "avoid":           { label: "Response to friction", desc: "Tends to step back and avoid when things get hard" },
-  "solo-push":       { label: "Response to friction", desc: "Tends to push through alone, even when frustrated" },
-  "support-seek":    { label: "Response to friction", desc: "Looks for someone to help work through it" },
-  "emotional-derail":{ label: "Response to friction", desc: "Can get emotionally overwhelmed before trying again" },
+  "avoid":           { label: "What happens when things get hard", desc: "They tend to step back rather than push into it. Often quietly, before anyone notices." },
+  "solo-push":       { label: "What happens when things get hard", desc: "They keep going alone, even when it's clearly frustrating. Asking for help doesn't come easily." },
+  "support-seek":    { label: "What happens when things get hard", desc: "They look for someone to work through it with. The company matters as much as the help." },
+  "emotional-derail":{ label: "What happens when things get hard", desc: "It can become overwhelming before they get to a second attempt. Coming back takes a while." },
 };
 const RECHARGE_TYPE: Record<string, { label: string; desc: string }> = {
-  "sensory-quiet":           { label: "What helps them recharge", desc: "Quiet, low-stimulation time alone" },
-  "social-connection":       { label: "What helps them recharge", desc: "Time with trusted people; social connection" },
-  "cognitive-displacement":  { label: "What helps them recharge", desc: "Something absorbing to take the mind elsewhere" },
-  "autonomous-unstructured": { label: "What helps them recharge", desc: "Full control over their own time — no demands" },
+  "sensory-quiet":           { label: "What helps them reset", desc: "Quiet time on their own, with not much going on." },
+  "social-connection":       { label: "What helps them reset", desc: "Time with people they trust. Not necessarily talking — just not alone." },
+  "cognitive-displacement":  { label: "What helps them reset", desc: "Something absorbing enough to take their mind somewhere else entirely." },
+  "autonomous-unstructured": { label: "What helps them reset", desc: "Time that's fully theirs, with nothing being asked of them." },
 };
 
 const ARCHETYPE_DESC: Record<string, string> = {
@@ -79,12 +84,14 @@ function fallback<T>(map: Record<string, T>, key: string | undefined, def: T): T
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ session?: string }>;
+  searchParams: Promise<{ session?: string; f?: string }>;
 }) {
-  const { session } = await searchParams;
+  const { session, f } = await searchParams;
+  const fallbackMode = f === "1";
 
+  // No session or malformed UUID — send to landing page, not prototype content.
   if (!session || !UUID_RE.test(session)) {
-    return <SimplifiedFunnelClient data={null} />;
+    redirect("/simplified");
   }
 
   const sql = getSql();
@@ -92,7 +99,7 @@ export default async function Page({
     SELECT
       a.child_name, a.age_band, a.archetype, a.archetype_fit_tier,
       a.parent_pattern, a.parent_instinct_fit_tier, a.concerns, a.dimensions,
-      a.parent_name,
+      a.weakest_two, a.parent_name,
       r.narrative_moments, r.behaviour_signature
     FROM assessments a
     LEFT JOIN reports r
@@ -105,22 +112,34 @@ export default async function Page({
 
   const rows = rawRows as (Record<string, unknown> & { parent_name: string | null; child_name: string | null })[];
 
+  // Session doesn't exist in DB — clean error, not prototype content.
   if (!rows.length) {
-    return <SimplifiedFunnelClient data={null} />;
+    return <ReportNotFound />;
   }
 
   const row = rows[0];
 
-  // Contact gate: if parent hasn't submitted their details yet, show the gate.
-  // On success, the gate calls router.refresh() which re-renders this server component
-  // with parent_name set, and the report is shown.
+  // Contact gate: show gate if parent hasn't submitted details yet.
   if (!row.parent_name) {
     const childName = typeof row.child_name === "string" ? row.child_name : "Your Child";
     return <SimplifiedGate sessionId={session} childName={childName} />;
   }
 
+  // Report not published yet.
   if (!rows[0].narrative_moments) {
-    return <SimplifiedFunnelClient data={null} />;
+    if (fallbackMode) {
+      // Generating screen's 120s hard cap fired and report still isn't ready.
+      // Show a clean "still building" state — never prototype content.
+      return <StillBuilding />;
+    }
+    // Parent submitted gate but report isn't published yet — redirect to the animated
+    // waiting screen. It polls /api/report/status and redirects here when ready,
+    // passing ?f=1 on hard-cap so we fall into StillBuilding above instead of looping.
+    const childName  = typeof row.child_name === "string" ? row.child_name : "";
+    const archetype  = typeof row.archetype  === "string" ? row.archetype  : "";
+    redirect(
+      `/report/generating/${session}?name=${encodeURIComponent(childName)}&archetype=${encodeURIComponent(archetype)}&dest=simplified`,
+    );
   }
   const dims = row.dimensions as Record<string, { value: string }>;
   const moments = row.narrative_moments as { moment_id: string; title: string; content: string }[];
@@ -270,6 +289,14 @@ export default async function Page({
     `;
   }
 
+  // Record that this parent viewed their report. Fires once per page load (server render).
+  // Checked reaches here only when: session valid, parent_name set, published report exists.
+  // Use .catch so a DB hiccup never breaks the report render.
+  await sql`
+    INSERT INTO funnel_events (event_type, session_id, metadata)
+    VALUES ('simplified_report_view', ${session}::uuid, '{"variant":"simplified"}'::jsonb)
+  `.catch((e: unknown) => console.warn("[funnel] simplified_report_view:", (e as Error).message));
+
   const data: SimplifiedReportData = {
     childName: str(row.child_name, "Your Child"),
     ageBand: str(row.age_band, "10-11"),
@@ -298,7 +325,7 @@ export default async function Page({
     detail01Bullets: detail01Bullets ?? null,
     detail03Content,
     detail03Title,
-    strengths: strengths ?? null,
+    strengths: strengths?.map(s => s.text) ?? null,
     actions: actionsOutput?.actions ?? null,
     tryTonight: actionsOutput?.tryTonight ?? null,
     weekTitles: [
@@ -307,7 +334,60 @@ export default async function Page({
       weekContent[2]?.weekTitle ?? "Week 3",
     ],
     sessionId: session,
+    patternLine: PATTERN_LINE[archetype] ?? "",
+    meaning: MEANING[archetype] ?? [],
+    frictionPoints: FRICTION_POINTS[archetype] ?? [],
+    tonightSay: TONIGHT_SAY[archetype] ?? "",
+    tonightWatch: TONIGHT_WATCH[archetype] ?? "",
+    instinctLine: INSTINCT_LINE[parentPattern] ?? "",
+    nowLines: NOW_LINES,
+    thenLines: THEN_LINES,
+    ladderCurrent: 1,
+    testimonial: TESTIMONIAL_POOL[
+      parseInt(session.replace(/-/g, "").slice(0, 2), 16) % TESTIMONIAL_POOL.length
+    ],
+    drawsIn:  dims.attention_shape?.value ? (ATTENTION_SHAPE[dims.attention_shape.value]?.desc ?? "")  : "",
+    pullsAway: dims.attention_competition?.value ? (ATTENTION_COMPETITION[dims.attention_competition.value]?.desc ?? "") : "",
+    friction:  dims.friction_response?.value ? (FRICTION_RESPONSE[dims.friction_response.value]?.desc ?? "")  : "",
+    recharge:  dims.recharge_type?.value ? (RECHARGE_TYPE[dims.recharge_type.value]?.desc ?? "")  : "",
+    weakestTwo: Array.isArray(row.weakest_two) ? (row.weakest_two as string[]) : [],
+    dimValues: {
+      attention_shape:       dims.attention_shape?.value       ?? "",
+      attention_competition: dims.attention_competition?.value ?? "",
+      friction_response:     dims.friction_response?.value     ?? "",
+      recharge_type:         dims.recharge_type?.value         ?? "",
+    },
   };
 
   return <SimplifiedFunnelClient data={data} />;
+}
+
+function ReportNotFound() {
+  return (
+    <div style={{ minHeight: "100dvh", background: "#FBF9F3", display: "flex", alignItems: "center", justifyContent: "center", padding: "32px 20px" }}>
+      <div style={{ maxWidth: 420, width: "100%", textAlign: "center" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 24, width: "auto", marginBottom: 32 }} />
+        <p style={{ fontSize: 16, fontWeight: 600, color: "#14284D", marginBottom: 8 }}>Report not found</p>
+        <p style={{ fontSize: 14, color: "#5B5648", lineHeight: 1.6 }}>
+          This link may have expired or the session wasn&rsquo;t saved correctly. If you took the assessment, try going back to where you started.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function StillBuilding() {
+  return (
+    <div style={{ minHeight: "100dvh", background: "#FBF9F3", display: "flex", alignItems: "center", justifyContent: "center", padding: "32px 20px" }}>
+      <div style={{ maxWidth: 420, width: "100%", textAlign: "center" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 24, width: "auto", marginBottom: 32 }} />
+        <p style={{ fontSize: 16, fontWeight: 600, color: "#14284D", marginBottom: 8 }}>Still building your report</p>
+        <p style={{ fontSize: 14, color: "#5B5648", lineHeight: 1.6 }}>
+          This is taking a little longer than usual. You don&rsquo;t need to stay on this page — we&rsquo;ll send it to your WhatsApp as soon as it&rsquo;s ready.
+        </p>
+      </div>
+    </div>
+  );
 }

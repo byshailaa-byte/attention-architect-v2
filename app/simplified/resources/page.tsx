@@ -53,7 +53,7 @@ const ARTICLES = [
   },
   {
     slug: "six-skills", kind: "Explainer", mins: "6 min",
-    title: "The six skills, and what each looks like at 8, 11 and 14",
+    title: "The six steps, and what each looks like at 8, 11 and 14",
     dek: "For parents who want to work out where their own child sits without answering anything.",
   },
   {

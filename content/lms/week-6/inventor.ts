@@ -5,7 +5,7 @@ const D3 = `**Worked** — {{child_name}} explained {{child_pronoun_poss}} appro
 export const weekContent: LmsWeekContent = {
   archetype: "inventor",
   week: 6,
-  weekTitle: "When They Explain Why Without Being Asked",
+  weekTitle: "Running it themselves",
 
   weeklyReading: {
     introShared: `Five weeks built method-ownership — through failure, through real collaboration. This week is about noticing when {{child_name}} starts explaining or defending {{child_pronoun_poss}} approach unprompted, without needing you to ask why {{child_pronoun_subj}}'s doing it that way.`,

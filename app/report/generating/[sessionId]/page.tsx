@@ -134,7 +134,8 @@ function GeneratingScreen() {
       if (redirectedRef.current) return;
       redirectedRef.current = true;
       if (dest === "simplified") {
-        router.replace(`/preview/simplified-v1?session=${sessionId}`);
+        // hardCap=true adds &f=1 so simplified page shows StillBuilding instead of looping back here
+        router.replace(`/preview/simplified-v1?session=${sessionId}${hardCap ? "&f=1" : ""}`);
       } else {
         // hardCap=true adds ?f=1 so the report page knows not to bounce back here
         router.replace(`/report/${sessionId}${hardCap ? "?f=1" : ""}`);

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export type SimplifiedReportData = {
@@ -25,13 +25,35 @@ export type SimplifiedReportData = {
   // fixLoopRefs() is applied at render time on both paths. Trimmed to first paragraph at render.
   detail03Content: string | null;
   detail03Title: string | null;
-  // DETAIL 05 — trimmed to 2 items at render; 2 is valid when evidence supports only 2.
-  strengths: { emoji: string; text: string }[] | null;
+  // DETAIL 05 — emoji stripped at call site; text only.
+  strengths: string[] | null;
   // Try Tonight — from m_simplified_actions.tryTonight.
   actions: { emoji: string; label: string; description: string }[] | null;
   tryTonight: { title: string; steps: string[] } | null;
   weekTitles: [string, string, string];
   sessionId: string;
+  // Attention Advantage report fields
+  patternLine: string;
+  meaning: string[];
+  frictionPoints: string[];
+  instinctLine: string;
+  tonightSay: string;
+  tonightWatch: string;
+  nowLines: string[];
+  thenLines: string[];
+  ladderCurrent: number;
+  testimonial: { quote: string; who: string; detail: string };
+  drawsIn: string;
+  pullsAway: string;
+  friction: string;
+  recharge: string;
+  weakestTwo: string[];
+  dimValues: {
+    attention_shape: string;
+    attention_competition: string;
+    friction_response: string;
+    recharge_type: string;
+  };
 };
 
 type Tab = "home" | "assess" | "report" | "sell";
@@ -44,6 +66,30 @@ function fixLoopRefs(text: string): string {
   return text
     .replace(/\bThe loop\b/g, "This dynamic")
     .replace(/\bthe loop\b/g, "this dynamic");
+}
+
+// Strips leading openers that make S2 read as a continuation of S1.
+function cleanTensionOpener(s: string): string {
+  s = s.replace(/^[…\.]+\s*/, "");
+  s = s.replace(/^(But|And|Yet|So|However),?\s+/, "");
+  s = s.replace(/^The structural tension here is that\s+/i, "");
+  s = s.replace(/^The tension (here is|with this particular pattern is) that\s+/i, "");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Extracts the collision sentence for the Attention Fit tension block.
+// m_03 (loop): tension is the pull-quote — last paragraph after \n\n, < 320 chars.
+// Fallback: tension is S2 — last sentence of the single paragraph.
+// fixLoopRefs applied before splitting so "the loop" is already resolved.
+function extractTensionSentence(content: string): string {
+  const paras = fixLoopRefs(content).split(/\n\n+/).filter(Boolean);
+  if (paras.length > 1) {
+    const last = paras[paras.length - 1] ?? "";
+    if (last.length < 320) return cleanTensionOpener(last);
+  }
+  const text = paras[0] ?? content;
+  const sentences = text.trim().split(/(?<=[.!?])\s+(?=[A-Z"])/).map(s => s.trim()).filter(Boolean);
+  return cleanTensionOpener(sentences[sentences.length - 1] ?? text);
 }
 
 // Renders a narrative prose string (m_01 / m_03 content) as React paragraphs.
@@ -304,9 +350,340 @@ const css = `
   }
 `;
 
+// ─── Attention Advantage Report ──────────────────────────────────────────────
+// Full-scroll single-column report page — 7 full-bleed band sections.
+// Mock preview (data=null) continues to use SimplifiedFunnelClient tab UI.
+function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
+  const router = useRouter();
+  const c = data.childName;
+
+  const NAVY       = "#14284D";
+  const NAVY_GRAD  = "linear-gradient(160deg,#1B3059 0%,#27406E 100%)";
+  const GOLD       = "#F5A623";
+  const TEAL       = "#137A66";
+  const CREAM      = "#FDF9F1";
+  const AMBER_BG   = "#FDF1DC";
+  const AMBER_TEXT = "#B87308";
+  const AMBER_LINE = "#F2DFB8";
+  const TEAL_BG    = "#DCECE7";
+  const TEAL_LINE  = "#C4E0D7";
+  const DIM        = "#5A6472";
+  const BF         = "var(--font-bricolage),'Bricolage Grotesque',sans-serif";
+
+  // ── Eyebrow helper ──────────────────────────────────────────────────────────
+  const eyebrow = (color = GOLD): React.CSSProperties => ({
+    font: "700 10px/1.2 ‘Instrument Sans’,sans-serif",
+    letterSpacing: "0.11em",
+    textTransform: "uppercase",
+    color,
+    marginBottom: 12,
+  } as React.CSSProperties);
+
+  // ── Snapshot grouping ────────────────────────────────────────────────────────
+  const AXIS_TO_DIM: Record<string, string> = {
+    Stability:  "friction_response",
+    Resistance: "attention_competition",
+    Recovery:   "recharge_type",
+    Attention:  "attention_shape",
+  };
+  const weakKeys = new Set(
+    (data.weakestTwo ?? []).map(ax => AXIS_TO_DIM[ax]).filter(Boolean)
+  );
+
+  const DIMS: { key: string; label: string; val: string; desc: string }[] = [
+    { key: "attention_shape",      label: "How they focus",          val: data.dimValues.attention_shape       ?? "", desc: data.profile.attentionShape.desc },
+    { key: "attention_competition", label: "What breaks their focus", val: data.dimValues.attention_competition ?? "", desc: data.profile.attentionCompetition.desc },
+    { key: "friction_response",    label: "When it gets hard",       val: data.dimValues.friction_response     ?? "", desc: data.profile.frictionResponse.desc },
+    { key: "recharge_type",        label: "How they recharge",       val: data.dimValues.recharge_type         ?? "", desc: data.profile.rechargeType.desc },
+  ];
+
+  const WHERE: Record<string, Record<string, string>> = {
+    attention_shape: {
+      "narrow-deep":       "Starting something they can go right into, and staying there.",
+      "wide-shifting":     "Starting homework, a new topic, anything unfamiliar.",
+      "social-anchored":   "Anything done at the kitchen table rather than alone.",
+      "sensation-seeking": "Whatever’s most alive in the room at the time.",
+    },
+    attention_competition: {
+      novelty:  "A thought arriving mid-task, and the page stopping.",
+      external: "Screens, a sibling in the room, noise from the next flat.",
+      internal: "The moment it stops being interesting, before anything else happens.",
+      social:   "Whatever’s going on with the people nearby.",
+    },
+    friction_response: {
+      avoid:              "Whether they step back quietly, before anyone notices.",
+      "solo-push":        "Whether they ask, push on, or quietly stop.",
+      "support-seek":     "Whether they come and find you, or wait.",
+      "emotional-derail": "How long it takes to get back to it after a wobble.",
+    },
+    recharge_type: {
+      "sensory-quiet":           "What the hour after school needs to look like.",
+      "social-connection":       "Whether they want company or space after a hard day.",
+      "cognitive-displacement":  "What they reach for when they need to switch off.",
+      "autonomous-unstructured": "How much of the evening needs to be theirs.",
+    },
+  };
+
+  const tealDims = DIMS.filter(d => !weakKeys.has(d.key));
+  const amberDims = DIMS.filter(d => weakKeys.has(d.key));
+  const allOneGroup = tealDims.length === 0 || amberDims.length === 0;
+
+  // ── Attention Fit ────────────────────────────────────────────────────────────
+  const SHIFT: Record<string, string> = {
+    "The Quick Fixer":  "Count to ten before you offer. Most stalls resolve themselves inside eight seconds.",
+    "The Pusher":       "Ask one question before you push — where it got hard, not whether it did.",
+    "The Negotiator":   "Decide it once, before the task starts. Then stop discussing it tonight.",
+    "The Steady Hand":  "Keep the calm. Just offer the first step when they have not found one in a minute.",
+  };
+  const shift = SHIFT[data.parentPattern] ?? SHIFT["The Pusher"]!;
+
+  const CHILD_NEEDS: Record<string, string> = {
+    "The Storm":       "To choose what happens first",
+    "The All-In Kid":  "A protected block to go deep",
+    "The Inventor":    "Their own method left intact",
+    "The Explorer":    "The space to find their own way back",
+    "The Magnet":      "Someone nearby, not helping",
+    "The Glue":        "Things settled between you first",
+    "The Captain":     "To be trusted to run it",
+    "The Live Wire":   "Something to be at stake",
+  };
+  const PARENT_OFFERS: Record<string, string> = {
+    "The Quick Fixer": "A faster way through",
+    "The Pusher":      "Pressure to keep going",
+    "The Negotiator":  "A deal both sides can take",
+    "The Steady Hand": "Calm and space to wait",
+  };
+  const tensionSentence = data.detail03Content ? extractTensionSentence(data.detail03Content) : null;
+  const fullNarrative   = data.detail03Content ? fixLoopRefs(data.detail03Content) : null;
+
+  return (
+    <div style={{ fontFamily: "’Instrument Sans’,system-ui,sans-serif", lineHeight: 1.6, overflowX: "hidden" }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .aar-details summary::-webkit-details-marker { display: none; }
+        .aar-details summary::marker { display: none; }
+        .aar-details .aar-tog::after { content: "+"; font-size: 15px; font-weight: 400; color: #7D8CA3; }
+        .aar-details[open] .aar-tog::after { content: "−"; }
+      ` }} />
+
+      {/* Sticky header */}
+      <header style={{ position: "sticky", top: 0, zIndex: 20, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "14px 20px", borderBottom: "1px solid #EFEDE8", background: "rgba(250,250,246,.95)", backdropFilter: "blur(10px)" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto", display: "block" }} />
+        <div style={{ font: "700 10px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: "0.11em", textTransform: "uppercase", color: "#646464" }}>Attention Health</div>
+      </header>
+
+      {/* §1 Hero — navy */}
+      <div style={{ background: NAVY_GRAD }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px 32px" }}>
+          <div style={eyebrow(GOLD)}>Attention Health · Your report</div>
+          <h1 style={{ margin: "0 0 14px", font: `400 clamp(26px,5vw,34px)/1.2 ${BF}`, color: "#fff", letterSpacing: "-0.015em" }}>
+            Here&rsquo;s how {c}&rsquo;s attention tends to work
+          </h1>
+          <p style={{ margin: "0 0 20px", font: "400 16px/1.6 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>
+            Based on what you told us, in plain words.
+          </p>
+          <div style={{ paddingTop: 18, borderTop: "1px solid rgba(255,255,255,.14)", font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9FAABE" }}>
+            Assessment complete · Age band {data.ageBand}
+          </div>
+        </div>
+      </div>
+
+      {/* §2 Snapshot — cream, 2×2 grid */}
+      <div style={{ background: CREAM }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px" }}>
+          <div style={eyebrow(AMBER_TEXT)}>Attention Health Snapshot</div>
+          <h2 style={{ margin: "0 0 6px", font: `700 20px/1.18 ${BF}`, color: NAVY }}>Four things we looked at</h2>
+          <p style={{ margin: 0, font: "400 12px/1.55 ‘Instrument Sans’,sans-serif", color: DIM }}>
+            {allOneGroup ? "All four dimensions show up clearly in the pattern." : "Two are already working. Two are where the plan opens."}
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
+            {[...tealDims, ...amberDims].map(d => {
+              const isAmber = weakKeys.has(d.key);
+              const oneLine = (d.val && WHERE[d.key]?.[d.val]) ?? d.desc;
+              return (
+                <div key={d.key} style={{ background: "#fff", borderRadius: 13, padding: "14px 14px 14px", position: "relative", overflow: "hidden", boxShadow: "0 2px 10px rgba(20,40,77,.06)" }}>
+                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: isAmber ? GOLD : "#21A38A" }} />
+                  <div style={{ display: "inline-flex", alignItems: "center", fontSize: 8, letterSpacing: ".08em", textTransform: "uppercase" as const, fontWeight: 700, padding: "3px 7px", borderRadius: 5, marginBottom: 9, ...(isAmber ? { background: AMBER_BG, color: AMBER_TEXT } : { background: TEAL_BG, color: TEAL }) }}>
+                    {isAmber ? "Start here" : "Working"}
+                  </div>
+                  <div style={{ fontFamily: BF, fontSize: 14, fontWeight: 700, color: NAVY, lineHeight: 1.2 }}>{d.label}</div>
+                  <div style={{ fontSize: 11.5, lineHeight: 1.5, marginTop: 6, color: DIM }}>{oneLine}</div>
+                </div>
+              );
+            })}
+          </div>
+          {!allOneGroup && (
+            <div style={{ background: "#fff", borderRadius: 11, padding: "13px 14px", marginTop: 12, boxShadow: "0 2px 10px rgba(20,40,77,.05)", font: "400 12px/1.55 ‘Instrument Sans’,sans-serif", color: DIM }}>
+              <strong style={{ color: NAVY }}>The plan leans on the first two</strong> and opens at the other two.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* §3 Pattern reveal — navy */}
+      <div style={{ background: NAVY }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px" }}>
+          <div style={eyebrow(GOLD)}>This pattern has a name</div>
+          <h2 style={{ margin: "0 0 10px", font: `700 clamp(26px,5vw,34px)/1.15 ${BF}`, color: "#fff", letterSpacing: "-0.015em" }}>
+            {data.archetype}
+          </h2>
+          <div style={{ width: 34, height: 2, background: GOLD, marginBottom: 18 }} />
+          {data.patternLine && (
+            <p style={{ margin: "0 0 16px", font: "400 15px/1.65 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>
+              {data.patternLine}
+            </p>
+          )}
+          {data.meaning.length > 0 && (
+            <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+              {data.meaning.map((bullet, i) => (
+                <li key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "5px 0" }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: TEAL, flexShrink: 0, marginTop: 8 }} />
+                  <span style={{ font: "400 14px/1.6 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>{bullet}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* §4 Where to start — white */}
+      <div style={{ background: "#fff" }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px" }}>
+          <div style={eyebrow(AMBER_TEXT)}>Where to start</div>
+          <h2 style={{ margin: "0 0 6px", font: `700 19px/1.25 ${BF}`, color: NAVY }}>
+            One place attention takes more effort right now
+          </h2>
+          <p style={{ margin: "0 0 16px", font: "400 14px/1.55 ‘Instrument Sans’,sans-serif", color: "#646464" }}>
+            This is where the six weeks open — rather than starting at something {c} can already do.
+          </p>
+          {data.frictionPoints[0] && (
+            <div style={{ background: AMBER_BG, border: `1px solid ${AMBER_LINE}`, borderRadius: 12, padding: "16px 18px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <span style={{ color: "#9FAABE", flexShrink: 0, fontWeight: 700, marginTop: 3 }}>—</span>
+              <span style={{ font: "400 15px/1.6 ‘Instrument Sans’,sans-serif", color: "#7A5A16" }}>{data.frictionPoints[0]}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* §5 Attention Fit — navy, pairing + tension + collapsed detail */}
+      <div style={{ background: NAVY }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -70, right: -50, width: 220, height: 220, borderRadius: "50%", background: "radial-gradient(circle,rgba(245,166,35,.15),transparent 66%)", pointerEvents: "none" }} />
+          <div style={{ position: "relative" }}>
+            <div style={eyebrow(GOLD)}>Your Attention Fit</div>
+            <h2 style={{ margin: "0 0 16px", font: `700 20px/1.18 ${BF}`, color: "#fff" }}>
+              What {c} needs, and what you naturally do
+            </h2>
+            {/* Pairing row: child need | MEETS | parent offer */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 34px 1fr", alignItems: "stretch" }}>
+              <div style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.13)", borderRadius: 12, padding: 13 }}>
+                <div style={{ font: "700 8px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase" as const, color: "#8B99B0", marginBottom: 5 }}>{c} needs</div>
+                <div style={{ fontFamily: BF, fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.15 }}>
+                  {CHILD_NEEDS[data.archetype] ?? data.archetypeDesc}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ font: "700 8px/1.1 ‘Instrument Sans’,sans-serif", letterSpacing: ".09em", textTransform: "uppercase" as const, color: GOLD, writingMode: "vertical-rl" }}>meets</span>
+              </div>
+              <div style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.13)", borderRadius: 12, padding: 13 }}>
+                <div style={{ font: "700 8px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase" as const, color: "#8B99B0", marginBottom: 5 }}>You offer</div>
+                <div style={{ fontFamily: BF, fontSize: 15, fontWeight: 700, color: "#fff", lineHeight: 1.15 }}>
+                  {PARENT_OFFERS[data.parentPattern] ?? data.parentInstinctDesc}
+                </div>
+              </div>
+            </div>
+            {/* Tension block — gold bordered */}
+            {tensionSentence && (
+              <div style={{ background: "rgba(245,166,35,.11)", border: "1px solid rgba(245,166,35,.24)", borderRadius: 12, padding: 15, marginTop: 14 }}>
+                <div style={{ font: "700 8px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".11em", textTransform: "uppercase" as const, color: "#FBCB4A", marginBottom: 7 }}>Where they meet</div>
+                <div style={{ fontFamily: BF, fontSize: 15.5, fontWeight: 700, color: "#fff", lineHeight: 1.4 }}>{tensionSentence}</div>
+              </div>
+            )}
+            {/* Full narrative — collapsed */}
+            {fullNarrative && (
+              <details className="aar-details" style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,.13)", paddingTop: 11 }}>
+                <summary style={{ cursor: "pointer", fontSize: 10, letterSpacing: ".09em", textTransform: "uppercase" as const, color: "#FBCB4A", fontWeight: 700, display: "flex", justifyContent: "space-between", alignItems: "center", userSelect: "none" as const }}>
+                  <span>{data.archetype} · {data.parentPattern}</span>
+                  <span className="aar-tog" />
+                </summary>
+                <p style={{ fontSize: 12, lineHeight: 1.65, color: "#AFBACB", marginTop: 10, marginBottom: 0 }}>{fullNarrative}</p>
+              </details>
+            )}
+            {/* One shift */}
+            <div style={{ background: GOLD, borderRadius: 11, padding: 13, marginTop: 14 }}>
+              <div style={{ font: "700 8px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".11em", textTransform: "uppercase" as const, color: "#7A5410", marginBottom: 5 }}>The one shift</div>
+              <div style={{ fontFamily: BF, fontSize: 14, fontWeight: 700, color: NAVY, lineHeight: 1.4 }}>{shift}</div>
+            </div>
+            <p style={{ margin: "12px 0 0", font: "italic 400 10.5px/1.5 ‘Instrument Sans’,sans-serif", color: "#7D8CA3" }}>
+              Every instinct is a good instinct meeting a particular child. Nothing here says you&rsquo;ve been doing it wrong.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* §6 Try Tonight — cream */}
+      <div style={{ background: CREAM }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px" }}>
+          <div style={eyebrow(AMBER_TEXT)}>Try tonight</div>
+          <h2 style={{ margin: "0 0 10px", font: `700 22px/1.25 ${BF}`, color: AMBER_TEXT }}>
+            {data.tryTonight?.title ?? "Ten quiet minutes"}
+          </h2>
+          {data.tryTonight?.steps[0] && (
+            <p style={{ margin: "0 0 20px", font: "400 14px/1.55 ‘Instrument Sans’,sans-serif", color: "#8A6318" }}>
+              {data.tryTonight.steps[0]}
+            </p>
+          )}
+          <div style={{ background: "#fff", border: `1px solid ${AMBER_LINE}`, borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
+            <div style={{ font: "700 9px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase", color: TEAL, marginBottom: 8 }}>What to say</div>
+            <div style={{ font: "italic 400 16px/1.55 ‘Instrument Sans’,sans-serif", color: NAVY }}>{data.tonightSay}</div>
+          </div>
+          <div>
+            <div style={{ font: "700 9px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase", color: AMBER_TEXT, marginBottom: 8 }}>What to watch for</div>
+            <div style={{ font: "400 14px/1.6 ‘Instrument Sans’,sans-serif", color: "#7A5A16" }}>{data.tonightWatch}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* §7 CTA — navy */}
+      <div style={{ background: NAVY }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "44px 20px", textAlign: "center" }}>
+          <div style={eyebrow(GOLD)}>What to do next</div>
+          <h2 style={{ margin: "0 0 14px", font: `400 clamp(22px,4vw,28px)/1.25 ${BF}`, color: "#fff", letterSpacing: "-0.015em" }}>
+            See {c}&rsquo;s six-week plan
+          </h2>
+          <p style={{ margin: "0 auto 26px", maxWidth: 380, font: "400 16px/1.6 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>
+            Built around what&rsquo;s already working, opening where it takes the most effort.
+          </p>
+          <button
+            onClick={() => router.push(`/simplified/roadmap?session=${data.sessionId}`)}
+            style={{ all: "unset", cursor: "pointer", display: "block", width: "100%", boxSizing: "border-box", textAlign: "center", background: `linear-gradient(135deg,${GOLD},#FBCB4A)`, color: NAVY, font: `700 16px/1.3 ‘Instrument Sans’,sans-serif`, padding: "16px 24px", borderRadius: 12, boxShadow: "0 6px 20px rgba(245,166,35,.35)" }}
+          >
+            See {c}&rsquo;s six-week plan →
+          </button>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer style={{ borderTop: "1px solid #EFEDE8", background: "#F3F1EA" }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "28px 20px", display: "flex", flexDirection: "column", gap: 14, alignItems: "center", textAlign: "center" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 26, width: "auto", display: "block" }} />
+          <div style={{ font: "400 14px/1.6 ‘Instrument Sans’,sans-serif", color: "#646464" }}>Made for parents who want to understand, not diagnose.</div>
+          <div style={{ font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9A9A9A" }}>Attention Architect helps parents understand their child. It is not a medical test and it does not diagnose anything.</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 18px", justifyContent: "center", font: "400 14px/1.5 ‘Instrument Sans’,sans-serif" }}>
+            <a href="/privacy" style={{ color: NAVY, textDecoration: "none" }}>Privacy Policy</a>
+            <a href="/terms" style={{ color: NAVY, textDecoration: "none" }}>Terms of Service</a>
+            <a href="mailto:support@thehumandecision.in" style={{ color: NAVY, textDecoration: "none" }}>support@thehumandecision.in</a>
+          </div>
+          <div style={{ font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9A9A9A" }}>© 2026 The Human Decision. All rights reserved.</div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
 export default function SimplifiedFunnelClient({ data }: { data: SimplifiedReportData | null }) {
   const router = useRouter();
-  // When serving a real session, lock to the report screen; mock tabs are only for preview mode.
   const [active, setActive] = useState<Tab>(data ? "report" : "home");
   const tab = (id: Tab, label: string) => (
     <button className={`tab${active === id ? " active" : ""}`} onClick={() => setActive(id)}>{label}</button>
@@ -331,6 +708,21 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
   const metaLabel = data
     ? <><span className="live-badge"><span className="live-dot" />LIVE DATA</span> &nbsp;{c} · {archetype} · session {data.sessionId.slice(0, 8)}&hellip;</>
     : "Simplified funnel variant — v4, real brand · not final copy";
+
+  // Pre-computed for mock JSX — data is narrowed to null after the early return below.
+  const aBandText   = data?.ageBand ? `Age band: ${data.ageBand}` : null;
+  const d01         = data?.detail01Bullets ?? null;
+  const dm01Content = data?.m01Content ?? null;
+  const dm01Title   = data?.m01Title ?? null;
+  const d03         = data?.detail03Content ?? null;
+  const dStrengths  = data?.strengths ?? null;
+  const dTryTonight = data?.tryTonight ?? null;
+  const dSessionId  = data?.sessionId ?? null;
+
+  // Real session → render the full Attention Advantage report; mock tab UI is design-review only.
+  if (data) {
+    return <AttentionAdvantageReport data={data} />;
+  }
 
   return (
     <div className="sv1">
@@ -526,8 +918,8 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
               <h1>{c}&rsquo;s Attention Report</h1>
               <div className="who">A personalized report for {c}</div>
               <div className="meta-row">
-                <span>{data ? "Assessment complete" : "Taken 17 May 2026"}</span>
-                <span>{data?.ageBand ? `Age band: ${data.ageBand}` : "4 min 32 sec"}</span>
+                <span>Taken 17 May 2026</span>
+                <span>{aBandText ?? "4 min 32 sec"}</span>
               </div>
             </div>
             <div className="profile-card">
@@ -555,18 +947,18 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
           <div className="report-card">
             <span className="detail-num">DETAIL 01</span>
             <h3>What we noticed</h3>
-            {data?.detail01Bullets && data.detail01Bullets.length > 0 ? (
+            {d01 && d01.length > 0 ? (
               <ul className="recognize-list">
-                {data.detail01Bullets.map((b, i) => <li key={i}>{b}</li>)}
+                {d01.map((b, i) => <li key={i}>{b}</li>)}
               </ul>
-            ) : data?.m01Content ? (
+            ) : dm01Content ? (
               <>
-                {data.m01Title && (
+                {dm01Title && (
                   <p style={{ fontSize: "12px", fontStyle: "italic", color: "var(--dim2)", marginBottom: "14px" }}>
-                    &ldquo;{data.m01Title}&rdquo;
+                    &ldquo;{dm01Title}&rdquo;
                   </p>
                 )}
-                <NarrativeProse text={data.m01Content} />
+                <NarrativeProse text={dm01Content} />
               </>
             ) : (
               <ul className="recognize-list">
@@ -603,9 +995,9 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
           <div className="report-card">
             <span className="detail-num">DETAIL 03</span>
             <h3>How your instinct meets {c}&rsquo;s pattern</h3>
-            {data?.detail03Content ? (
+            {d03 ? (
               <>
-                <NarrativeProse text={fixLoopRefs(data.detail03Content.split(/\n\n+/)[0] ?? data.detail03Content)} />
+                <NarrativeProse text={fixLoopRefs(d03.split(/\n\n+/)[0] ?? d03)} />
                 <div className="remember-box" style={{ marginTop: "16px" }}>
                   <b>Worth knowing, not worth worrying about</b>
                   This doesn&rsquo;t mean your instinct is wrong. It means knowing when to hold it back is as useful as knowing when to use it.
@@ -622,10 +1014,10 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
           <div className="report-card">
             <span className="detail-num">DETAIL 05</span>
             <h3>{c}&rsquo;s strengths</h3>
-            {data?.strengths && data.strengths.length > 0 ? (
+            {dStrengths && dStrengths.length > 0 ? (
               <ul className="icon-list">
-                {data.strengths.slice(0, 2).map((s, i) => (
-                  <li key={i}><span className="ic">{s.emoji}</span>{s.text}</li>
+                {dStrengths.slice(0, 2).map((s, i) => (
+                  <li key={i}>{s}</li>
                 ))}
               </ul>
             ) : (
@@ -638,11 +1030,11 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
 
           <div className="tonight-box">
             <span className="detail-num">TRY TONIGHT</span>
-            {data?.tryTonight ? (
+            {dTryTonight ? (
               <>
-                <h3>{data.tryTonight.title}</h3>
+                <h3>{dTryTonight.title}</h3>
                 <ol>
-                  {data.tryTonight.steps.map((s, i) => <li key={i}>{s}</li>)}
+                  {dTryTonight.steps.map((s, i) => <li key={i}>{s}</li>)}
                 </ol>
               </>
             ) : (
@@ -664,8 +1056,8 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
             <button
               className="cta-primary gold"
               onClick={() => {
-                const dest = data
-                  ? `/simplified/roadmap?session=${data.sessionId}`
+                const dest = dSessionId
+                  ? `/simplified/roadmap?session=${dSessionId}`
                   : undefined;
                 if (dest) router.push(dest);
                 else setActive("sell");

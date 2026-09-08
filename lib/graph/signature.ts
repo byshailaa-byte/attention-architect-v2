@@ -30,7 +30,7 @@ const DIMENSION_LABELS: Record<string, string> = {
   parent_instinct: "Parent Instinct",
   attention_competition: "Attention Competition",
   recharge_type: "Recharge Type",
-  support_response: "Support Response",
+  recovery_response: "Recovery Response",
 };
 
 function resolveVotingValue(

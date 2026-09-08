@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "captain",
   week: 3,
-  weekTitle: "Running It for a Whole Week",
+  weekTitle: "Staying with it on an ordinary day",
 
   weeklyReading: {
     introShared: `Week 1 tested whether your child leads differently when a decision is genuinely theirs to make, not just theirs to be consulted on. Week 2 tested that same real ownership around screens. This week hands over something bigger: an ongoing responsibility — something that needs tending over the whole week, not decided once and finished.

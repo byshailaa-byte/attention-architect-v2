@@ -5,7 +5,7 @@ const D3 = `**Worked** — you noticed the habit running on its own and said not
 export const weekContent: LmsWeekContent = {
   archetype: "explorer",
   week: 6,
-  weekTitle: "When They Reach for It Without Reminding",
+  weekTitle: "Running it themselves",
 
   weeklyReading: {
     introShared: `Five weeks built the capture system into a standing habit. This week is about noticing when it becomes truly automatic — {{child_name}} reaching for it without any reminder, structure, or check-in from you.`,

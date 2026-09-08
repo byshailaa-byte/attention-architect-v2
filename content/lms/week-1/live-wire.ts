@@ -8,7 +8,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "live-wire",
   week: 1,
-  weekTitle: "Something Actually Riding on It",
+  weekTitle: "Getting started without the push",
 
   weeklyReading: {
     introShared: `Watch {{child_name}} in the two states {{child_pronoun_subj}} moves between, and the pattern is almost comical in its clarity. In one, {{child_pronoun_subj}}'s barely present — a task rolls past {{child_pronoun_obj}} and {{child_pronoun_subj}} can't seem to make {{child_pronoun_poss}} mind land on it, no matter how many times you ask. In the other, {{child_pronoun_subj}}'s *completely* alive — locked in, sharp, fully there, the same child you couldn't reach ten minutes ago now impossible to pull away. The difference between those two states is not mood, and it's not effort. It's stakes.

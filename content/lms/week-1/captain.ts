@@ -8,7 +8,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "captain",
   week: 1,
-  weekTitle: "Something That's Actually Theirs to Run",
+  weekTitle: "Getting started without the push",
 
   weeklyReading: {
     introShared: `Hand {{child_name}} a task to do and watch the energy drain out of {{child_pronoun_obj}}. Hand {{child_pronoun_obj}} something to *run* — really run, {{child_pronoun_poss}} call, {{child_pronoun_poss}} way — and watch a different child show up entirely. Focused, driven, capable, invested. Same task, sometimes. The only thing that changed was who was holding the wheel.

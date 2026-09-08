@@ -6,7 +6,7 @@ const D3 = `**Worked** — you noticed unprompted ownership and let it stand. Ke
 export const weekContent: LmsWeekContent = {
   archetype: "storm",
   week: 6,
-  weekTitle: "When They Decide Before You Offer",
+  weekTitle: "Running it themselves",
 
   weeklyReading: {
     introShared: `Five weeks built {{child_name}}'s ownership — through routines, real failures, and shared decisions. This week isn't a new test. It's about noticing what's already changed: moments where {{child_name}} takes ownership without you offering it first.`,

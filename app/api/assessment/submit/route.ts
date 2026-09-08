@@ -16,10 +16,11 @@ const ALL_DIMENSIONS = [
   "parent_instinct",
   "attention_competition",
   "recharge_type",
+  "recovery_response",
 ] as const;
 
-// Max possible data points (3 per dimension × 6 dimensions = 18)
-const MAX_DATA_POINTS = 18;
+// Max possible data points across all dimensions (3 per dim × 6 original + 3 always from R1/R2/R3)
+const MAX_DATA_POINTS = 21;
 
 export async function POST(req: NextRequest) {
   try {

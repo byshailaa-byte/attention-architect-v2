@@ -9,7 +9,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "storm",
   week: 1,
-  weekTitle: "Let Them Pick How It Starts",
+  weekTitle: "Getting started without the push",
 
   weeklyReading: {
     introShared: `This is the first week of a program built specifically for a Storm. It's not a course you sit and watch. It's a small set of things you try in real life — starting this week — and pay attention to what happens.

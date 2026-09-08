@@ -5,7 +5,7 @@ const D3 = `**Worked** — {{child_name}} led unprompted and you let it stand. K
 export const weekContent: LmsWeekContent = {
   archetype: "captain",
   week: 6,
-  weekTitle: "When They Step Up Without Being Asked",
+  weekTitle: "Running it themselves",
 
   weeklyReading: {
     introShared: `Five weeks built leadership — through failure, through a sibling dynamic. This week is about noticing when {{child_name}} steps into leadership on {{child_pronoun_poss}} own, without you handing {{child_pronoun_obj}} the role first.`,

@@ -106,6 +106,7 @@ function makeBaseCtx(overrides: Partial<NarrativeContext> = {}): NarrativeContex
       stability:  { value: 0.8, norm: 0.8, band: "Strong" as const, eligible: true },
       resistance: { value: 0.6, norm: 0.6, band: "Mixed" as const,  eligible: true },
       recovery:   { value: 0.5, norm: 0.5, band: "Mixed" as const,  eligible: true },
+      attention:  { value: 0.5, norm: 0.5, band: "Mixed" as const,  eligible: true },
     },
     weakest_two: ["Resistance", "Recovery"],
     honest_flag: false,

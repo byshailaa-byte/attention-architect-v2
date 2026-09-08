@@ -543,6 +543,154 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_29_handbook_leads_variant') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 31 — whatsapp_send_claimed_at: separate claim column so the send timestamp
+  // (whatsapp_report_sent_at) is set only after a confirmed successful send.
+  // The claim column acts as an atomic concurrency guard that can be released on failure,
+  // enabling retry by re-submitting the claim form. Nullable — existing rows stay NULL.
+  if (!applied.has("phase_31_wa_claim_column")) {
+    await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS whatsapp_send_claimed_at TIMESTAMPTZ`;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_31_wa_claim_column') ON CONFLICT DO NOTHING`;
+  }
+
+  // Phase 32 — whatsapp_send_attempts: counts total claim cycles for bounded retry.
+  // Incremented each time the claim is atomically acquired (claim route + cron retries).
+  // Sessions with attempts >= MAX and sent_at NULL are recoverable via admin panel.
+  if (!applied.has("phase_32_wa_send_attempts")) {
+    await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS whatsapp_send_attempts INT NOT NULL DEFAULT 0`;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_32_wa_send_attempts') ON CONFLICT DO NOTHING`;
+  }
+
+  // Phase 33 — add simplified_report_view to the funnel_events event_type CHECK constraint.
+  // Fires in /preview/simplified-v1 when a real published report renders for a gated parent.
+  // Without this, the simplified variant emits no report-view signal at all.
+  if (!applied.has("phase_33_simplified_report_view_event")) {
+    await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
+    await sql`
+      ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+        'assessment_started',
+        'assessment_question_complete',
+        'assessment_dimension_complete',
+        'assessment_complete',
+        'report_gate_view',
+        'generating_page_view',
+        'generate_lead',
+        'report_view',
+        'view_item',
+        'pricing_section_viewed',
+        'begin_checkout',
+        'checkout_modal_opened',
+        'checkout_modal_dismissed',
+        'purchase',
+        'lms_day_complete',
+        'lms_reflection_submitted',
+        'scroll_milestone',
+        'exit_intent_shown',
+        'landing_step_age',
+        'landing_step_concern',
+        'landing_step_followup',
+        'pricing_variant_assigned',
+        'phone_capture_shown',
+        'teaser_shown',
+        'paywall_shown',
+        'simplified_report_view'
+      ))
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_33_simplified_report_view_event') ON CONFLICT DO NOTHING`;
+  }
+
+  // Phase 34 — add thankyou_screen_view to the funnel_events event_type CHECK constraint.
+  // Fires once when the thank-you screen renders after a successful simplified gate submit.
+  // Fills the gap between generate_lead and simplified_report_view so drop-off at the
+  // thank-you screen is visible separately from parents who never open their WhatsApp link.
+  if (!applied.has("phase_34_thankyou_screen_view_event")) {
+    await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
+    await sql`
+      ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+        'assessment_started',
+        'assessment_question_complete',
+        'assessment_dimension_complete',
+        'assessment_complete',
+        'report_gate_view',
+        'generating_page_view',
+        'generate_lead',
+        'report_view',
+        'view_item',
+        'pricing_section_viewed',
+        'begin_checkout',
+        'checkout_modal_opened',
+        'checkout_modal_dismissed',
+        'purchase',
+        'lms_day_complete',
+        'lms_reflection_submitted',
+        'scroll_milestone',
+        'exit_intent_shown',
+        'landing_step_age',
+        'landing_step_concern',
+        'landing_step_followup',
+        'pricing_variant_assigned',
+        'phone_capture_shown',
+        'teaser_shown',
+        'paywall_shown',
+        'simplified_report_view',
+        'thankyou_screen_view'
+      ))
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_34_thankyou_screen_view_event') ON CONFLICT DO NOTHING`;
+  }
+
+  // Phase 35 — add founder_call_requested to the funnel_events event_type CHECK constraint.
+  // Fires when a parent taps "Book your free call →" on the roadmap.
+  // Must be added here AND in the ALLOWED set in /api/funnel/event/route.ts — both, always.
+  if (!applied.has("phase_35_founder_call_requested_event")) {
+    await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
+    await sql`
+      ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+        'assessment_started',
+        'assessment_question_complete',
+        'assessment_dimension_complete',
+        'assessment_complete',
+        'report_gate_view',
+        'generating_page_view',
+        'generate_lead',
+        'report_view',
+        'view_item',
+        'pricing_section_viewed',
+        'begin_checkout',
+        'checkout_modal_opened',
+        'checkout_modal_dismissed',
+        'purchase',
+        'lms_day_complete',
+        'lms_reflection_submitted',
+        'scroll_milestone',
+        'exit_intent_shown',
+        'landing_step_age',
+        'landing_step_concern',
+        'landing_step_followup',
+        'pricing_variant_assigned',
+        'phone_capture_shown',
+        'teaser_shown',
+        'paywall_shown',
+        'simplified_report_view',
+        'thankyou_screen_view',
+        'founder_call_requested'
+      ))
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_35_founder_call_requested_event') ON CONFLICT DO NOTHING`;
+  }
+
+  // Phase 30 — purchases.tier: extend CHECK to include tier1 and tier2 for roadmap pricing.
+  // tier1 = Roadmap only (₹2,999). tier2 = Roadmap + Founder Call (₹4,999).
+  // module1 / full / topup kept for backward-compat with existing paid records.
+  if (!applied.has("phase_30_purchases_tier_tiers")) {
+    await sql`
+      ALTER TABLE purchases
+        DROP CONSTRAINT IF EXISTS purchases_tier_check,
+        ADD CONSTRAINT purchases_tier_check
+          CHECK (tier IN ('module1','full','topup','tier1','tier2'))
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_30_purchases_tier_tiers') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 

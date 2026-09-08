@@ -5,7 +5,7 @@ const D3 = `**Worked** — you noticed a real signal and let it stand. Keep noti
 export const weekContent: LmsWeekContent = {
   archetype: "all-in-kid",
   week: 6,
-  weekTitle: "When They Ask for the Quiet Themselves",
+  weekTitle: "Running it themselves",
 
   weeklyReading: {
     introShared: `Five weeks protected {{child_name}}'s depth — from interruption, from its own bad stretches, from competing needs. This week is about noticing when {{child_pronoun_subj}} starts protecting it {{child_pronoun_poss}}self.`,

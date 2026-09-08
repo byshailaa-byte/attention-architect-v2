@@ -143,8 +143,8 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
   const axisFullResistance = stripMd(fill(arch?.s5AxisDescriptions?.resistance ?? TODO("archetypes/s5AxisDescriptions.resistance")));
   const axisFullRecovery   = stripMd(fill(arch?.s5AxisDescriptions?.recovery   ?? TODO("archetypes/s5AxisDescriptions.recovery")));
   const axisFullMap: Record<string, string> = { Stability: axisFullStability, Resistance: axisFullResistance, Recovery: axisFullRecovery };
-  const whyParagraph = axisFullMap[(a.weakest_two ?? [])[0] ?? "Stability"];
-  const whyPullquote = firstSentence(axisFullMap[(a.weakest_two ?? [])[1] ?? "Resistance"]);
+  const whyParagraph = axisFullMap[(a.weakest_two ?? [])[0] ?? "Stability"] ?? "";
+  const whyPullquote = firstSentence(axisFullMap[(a.weakest_two ?? [])[1] ?? "Resistance"] ?? "");
 
   const fitContent = getFitContent(a.archetype, a.parent_pattern);
   const reliefMsg = fill(reliefMessages[a.parent_pattern] ?? TODO(`relief/${a.parent_pattern}`));

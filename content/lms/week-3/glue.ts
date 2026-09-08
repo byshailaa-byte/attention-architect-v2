@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "glue",
   week: 3,
-  weekTitle: "Even on the Days It's Not Going Well",
+  weekTitle: "Staying with it on an ordinary day",
 
   weeklyReading: {
     introShared: `Week 1 tested a specific idea: that connecting with your child before asking anything of them — genuinely, without an agenda — changes what they're able to do afterward. Week 2 tested that same sequence specifically around screens. This week asks whether connection-first can become a daily standard, not just something that happens on the days there's time for it.

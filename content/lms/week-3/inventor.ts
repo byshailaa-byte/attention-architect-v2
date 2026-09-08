@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "inventor",
   week: 3,
-  weekTitle: "Their Way on Something That Takes a Week",
+  weekTitle: "Staying with it on an ordinary day",
 
   weeklyReading: {
     introShared: `Week 1 tested whether your child's own way of doing things — not your way, not the "correct" way — actually works when they're given real room to use it, on one task. Week 2 asked whether that same ownership of method could survive around screens. This week hands over something bigger: a whole project, spanning more than one sitting, with the entire approach — not just one step of it — theirs to decide.

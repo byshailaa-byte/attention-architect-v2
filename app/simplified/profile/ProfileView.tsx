@@ -270,7 +270,7 @@ export default function ProfileView({
 
         {/* ── Section 3: Mechanism ─────────────────────────────────────────── */}
         <Block>
-          <H2>Here&rsquo;s the mechanism</H2>
+          <H2>Here&rsquo;s what&rsquo;s happening</H2>
           <P>{analysis0}</P>
           <P>{analysis1}</P>
           {/* QuoteRule */}
@@ -360,7 +360,7 @@ export default function ProfileView({
           <H2>Where {childName} is on the six</H2>
           <P>This is the typical shape for children with {childName}&rsquo;s pattern.</P>
           <StageMeter breakIdx={breakIdx} />
-          <P>Children with this pattern usually hold the early skills without much trouble. The first real friction tends to arrive at <strong style={{ color: NAVY }}>{breakName}</strong> — which is where the programme opens, rather than spending two weeks on what {childName} most likely already has.</P>
+          <P>Children with this pattern usually hold the early steps without much trouble. The first real challenge tends to arrive at <strong style={{ color: NAVY }}>{breakName}</strong> — which is where the programme opens, rather than spending two weeks on what {childName} most likely already has.</P>
         </Block>
 
         {/* ── Section 7: What changes ───────────────────────────────────────── */}

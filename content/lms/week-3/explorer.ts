@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "explorer",
   week: 3,
-  weekTitle: "When Writing It Down Becomes Normal",
+  weekTitle: "Staying with it on an ordinary day",
 
   weeklyReading: {
     introShared: `Week 1 introduced something simple: a place for new ideas to go instead of getting chased mid-task or lost entirely. Week 2 tested that same system around screens, one of the biggest sources of pulling attention in a new direction. This week asks whether the system becomes something your child reaches for by default — not because you prompted it, but because it's simply how they now handle a new idea showing up at the wrong moment.

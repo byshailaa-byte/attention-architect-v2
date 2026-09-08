@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "live-wire",
   week: 4,
-  weekTitle: "When They Don't Get the Thing",
+  weekTitle: "Coming back after a slip",
 
   weeklyReading: {
     introShared: `Stakes have held across longer tasks. This week is the real test: what happens when a genuine stake {{child_name}} set doesn't pay off — no manufactured safety net, no quiet rescue of the outcome.`,

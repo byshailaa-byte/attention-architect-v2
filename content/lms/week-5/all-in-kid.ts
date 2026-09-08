@@ -5,7 +5,7 @@ const D3 = `**Worked** — {{child_name}} weighed the competing need and made a 
 export const weekContent: LmsWeekContent = {
   archetype: "all-in-kid",
   week: 5,
-  weekTitle: "When a Sibling Needs You Mid-Session",
+  weekTitle: "Using it beyond homework",
 
   weeklyReading: {
     introShared: `Depth has been protected from interruption and from its own bad stretches. This week: what happens when a sibling's genuine need competes for the same time or space {{child_name}}'s depth needs?`,

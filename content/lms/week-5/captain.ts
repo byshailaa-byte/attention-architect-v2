@@ -5,7 +5,7 @@ const D3 = `**Worked** — {{child_name}}'s leadership held with the sibling wit
 export const weekContent: LmsWeekContent = {
   archetype: "captain",
   week: 5,
-  weekTitle: "When a Sibling Has to Go Along With It",
+  weekTitle: "Using it beyond homework",
 
   weeklyReading: {
     introShared: `Leadership has survived a real failure under {{child_name}}'s charge. This week: what happens when the thing being led genuinely affects a sibling — not just {{child_name}}'s own stuff anymore?`,

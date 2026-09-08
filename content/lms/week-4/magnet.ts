@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "magnet",
   week: 4,
-  weekTitle: "Staying When It's Hard to Watch",
+  weekTitle: "Coming back after a slip",
 
   weeklyReading: {
     introShared: `Presence has been protected across longer stretches. This week is harder: staying present while something is genuinely going wrong in front of you — not stepping back, but also not stepping in.`,
