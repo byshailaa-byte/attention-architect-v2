@@ -139,12 +139,6 @@ const WHY_ATTENTION_CARDS = [
   { icon: "🕊️", bg: "var(--teal-100)",  title: "Later",      desc: "Nobody reminds a nineteen-year-old to start." },
 ];
 
-const CAPABILITIES = [
-  { label: "NOTICE",  desc: "Recognise when their attention has drifted.",            icon: "👁" },
-  { label: "DIRECT",  desc: "Choose where their attention needs to go.",              icon: "🎯" },
-  { label: "PROTECT", desc: "Reduce the things that repeatedly pull it away.",        icon: "🛡" },
-  { label: "RECOVER", desc: "Know how to return when attention is lost.",             icon: "🌱" },
-];
 
 const PROCESS_STEPS = [
   { n: 1, title: "Answer",           text: "A few real questions about your child" },
@@ -459,45 +453,22 @@ export default function SimplifiedHomepage() {
               ))}
             </div>
 
-            {/* 4 capabilities — what a child builds */}
+            {/* Capabilities closing — names + payoff line */}
             <div style={{
-              border: "1px solid var(--border-card)", borderRadius: "var(--radius-panel)",
-              padding: "var(--card-pad-lg)", background: "var(--surface-card)",
-              boxShadow: "var(--shadow-card)",
+              borderTop: "1px solid var(--border-divider)",
+              paddingTop: "var(--space-6)",
+              display: "flex", flexDirection: "column", gap: "var(--space-2)",
             }}>
               <div style={{
-                font: "var(--weight-bold) var(--text-sm)/1.3 var(--font-sans)",
+                font: "var(--weight-bold) var(--text-sm)/1.4 var(--font-sans)",
                 letterSpacing: "0.06em", textTransform: "uppercase" as const,
-                color: "var(--text-eyebrow)", marginBottom: "var(--space-6)",
+                color: "var(--text-eyebrow)",
               }}>
-                What &ldquo;without being told&rdquo; actually takes
-              </div>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                {CAPABILITIES.map(({ label, desc, icon }, i) => (
-                  <div key={label} style={{
-                    display: "flex", alignItems: "flex-start", gap: "var(--space-4)",
-                    padding: "var(--space-4) 0",
-                    borderTop: i === 0 ? "none" : "1px solid var(--border-divider)",
-                  }}>
-                    <div style={{
-                      width: 38, height: 38, borderRadius: "50%",
-                      background: "var(--amber-100)", display: "flex", alignItems: "center",
-                      justifyContent: "center", fontSize: 19, flexShrink: 0,
-                    }}>{icon}</div>
-                    <div>
-                      <div style={{
-                        font: "var(--weight-bold) var(--text-base)/1.3 var(--font-sans)",
-                        color: "var(--amber-700)", marginBottom: 4,
-                      }}>{label}</div>
-                      <div style={{ font: "var(--type-body)", color: "var(--text-body)" }}>{desc}</div>
-                    </div>
-                  </div>
-                ))}
+                Notice &middot; Direct &middot; Protect &middot; Recover
               </div>
               <div style={{
-                borderTop: "1px solid var(--border-divider)", marginTop: "var(--space-2)",
-                paddingTop: "var(--space-5)",
-                font: "var(--weight-bold) var(--text-md)/1.45 var(--font-sans)", color: "var(--navy-800)",
+                font: "var(--weight-bold) var(--text-md)/1.45 var(--font-sans)",
+                color: "var(--navy-800)",
               }}>
                 A child who can do these four does not need you in the chair.
               </div>
