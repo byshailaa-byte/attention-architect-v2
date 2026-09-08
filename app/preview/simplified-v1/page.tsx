@@ -99,7 +99,7 @@ export default async function Page({
     SELECT
       a.child_name, a.age_band, a.archetype, a.archetype_fit_tier,
       a.parent_pattern, a.parent_instinct_fit_tier, a.concerns, a.dimensions,
-      a.parent_name,
+      a.weakest_two, a.parent_name,
       r.narrative_moments, r.behaviour_signature
     FROM assessments a
     LEFT JOIN reports r
@@ -350,6 +350,13 @@ export default async function Page({
     pullsAway: dims.attention_competition?.value ? (ATTENTION_COMPETITION[dims.attention_competition.value]?.desc ?? "") : "",
     friction:  dims.friction_response?.value ? (FRICTION_RESPONSE[dims.friction_response.value]?.desc ?? "")  : "",
     recharge:  dims.recharge_type?.value ? (RECHARGE_TYPE[dims.recharge_type.value]?.desc ?? "")  : "",
+    weakestTwo: Array.isArray(row.weakest_two) ? (row.weakest_two as string[]) : [],
+    dimValues: {
+      attention_shape:       dims.attention_shape?.value       ?? "",
+      attention_competition: dims.attention_competition?.value ?? "",
+      friction_response:     dims.friction_response?.value     ?? "",
+      recharge_type:         dims.recharge_type?.value         ?? "",
+    },
   };
 
   return <SimplifiedFunnelClient data={data} />;

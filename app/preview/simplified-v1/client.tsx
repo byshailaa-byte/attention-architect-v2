@@ -47,6 +47,13 @@ export type SimplifiedReportData = {
   pullsAway: string;
   friction: string;
   recharge: string;
+  weakestTwo: string[];
+  dimValues: {
+    attention_shape: string;
+    attention_competition: string;
+    friction_response: string;
+    recharge_type: string;
+  };
 };
 
 type Tab = "home" | "assess" | "report" | "sell";
@@ -320,260 +327,297 @@ const css = `
 `;
 
 // ─── Attention Advantage Report ──────────────────────────────────────────────
-// Full-scroll single-column report page. Rendered for all real sessions.
+// Full-scroll single-column report page — 7 full-bleed band sections.
 // Mock preview (data=null) continues to use SimplifiedFunnelClient tab UI.
 function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
   const router = useRouter();
   const c = data.childName;
-  const cta = () => router.push(`/simplified/roadmap?session=${data.sessionId}`);
 
-  const NAVY  = "#14284D";
-  const GOLD  = "#F5A623";
-  const TEAL  = "#137A66";
+  const NAVY       = "#14284D";
+  const NAVY_GRAD  = "linear-gradient(160deg,#1B3059 0%,#27406E 100%)";
+  const GOLD       = "#F5A623";
+  const TEAL       = "#137A66";
+  const CREAM      = "#FDF9F1";
   const AMBER_BG   = "#FDF1DC";
   const AMBER_TEXT = "#B87308";
-  const SAGE_BG    = "#EEF1E7";
-  const SAGE_TEXT  = "#4A5A44";
-  const BG = "#FAFAF6";
+  const AMBER_LINE = "#F2DFB8";
+  const TEAL_BG    = "#DCECE7";
+  const TEAL_LINE  = "#C4E0D7";
+  const DIM        = "#5A6472";
+  const BF         = "var(--font-bricolage),'Bricolage Grotesque',sans-serif";
 
-  const eye = (color = GOLD): React.CSSProperties => ({
-    font: "700 11px/1.2 'Instrument Sans',sans-serif",
+  // ── Eyebrow helper ──────────────────────────────────────────────────────────
+  const eyebrow = (color = GOLD): React.CSSProperties => ({
+    font: "700 10px/1.2 ‘Instrument Sans’,sans-serif",
     letterSpacing: "0.11em",
     textTransform: "uppercase",
     color,
-  });
+    marginBottom: 12,
+  } as React.CSSProperties);
 
-  const card = (extra?: React.CSSProperties): React.CSSProperties => ({
-    background: "#fff",
-    border: "1px solid #E2DFDA",
-    borderRadius: 16,
-    padding: "24px 20px",
-    boxShadow: "0 1px 3px rgba(20,40,77,.05)",
-    ...extra,
-  });
+  // ── Snapshot grouping ────────────────────────────────────────────────────────
+  const AXIS_TO_DIM: Record<string, string> = {
+    Stability:  "friction_response",
+    Resistance: "attention_competition",
+    Recovery:   "recharge_type",
+  };
+  const weakKeys = new Set(
+    (data.weakestTwo ?? []).map(ax => AXIS_TO_DIM[ax]).filter(Boolean)
+  );
 
-  // Five-step loop — four versions keyed by parent instinct display name
-  const LOOP_STEPS: Record<string, [string, string, string, string, string]> = {
-    "The Quick Fixer": [
-      `${c} gets stuck`,
-      "You step in with another way to do it",
-      "The stuck moment ends before they get through it",
-      "Next time, they wait for you",
-      "Neither of you meant that to happen",
-    ],
-    "The Pusher": [
-      `${c} gets stuck`,
-      "You push them to stay with it",
-      "They feel pushed rather than helped",
-      "You push again",
-      "Everyone gets frustrated",
-    ],
-    "The Negotiator": [
-      `${c} gets stuck`,
-      "You offer a deal to keep things moving",
-      "The work restarts — for the reward",
-      "Next time, they wait for the offer",
-      "The deals get bigger",
-    ],
-    "The Steady Hand": [
-      `${c} gets stuck`,
-      "You stay calm and give them room",
-      "Nobody names what just happened",
-      "They wait it out too",
-      "The evening ends, and nothing changed",
-    ],
+  const DIMS: { key: string; label: string; val: string; desc: string }[] = [
+    { key: "attention_shape",      label: "How they focus",          val: data.dimValues.attention_shape       ?? "", desc: data.profile.attentionShape.desc },
+    { key: "attention_competition", label: "What breaks their focus", val: data.dimValues.attention_competition ?? "", desc: data.profile.attentionCompetition.desc },
+    { key: "friction_response",    label: "When it gets hard",       val: data.dimValues.friction_response     ?? "", desc: data.profile.frictionResponse.desc },
+    { key: "recharge_type",        label: "How they recharge",       val: data.dimValues.recharge_type         ?? "", desc: data.profile.rechargeType.desc },
+  ];
+
+  const WHERE: Record<string, Record<string, string>> = {
+    attention_shape: {
+      "narrow-deep":       "Starting something they can go right into, and staying there.",
+      "wide-shifting":     "Starting homework, a new topic, anything unfamiliar.",
+      "social-anchored":   "Anything done at the kitchen table rather than alone.",
+      "sensation-seeking": "Whatever’s most alive in the room at the time.",
+    },
+    attention_competition: {
+      novelty:  "A thought arriving mid-task, and the page stopping.",
+      external: "Screens, a sibling in the room, noise from the next flat.",
+      internal: "The moment it stops being interesting, before anything else happens.",
+      social:   "Whatever’s going on with the people nearby.",
+    },
+    friction_response: {
+      avoid:              "Whether they step back quietly, before anyone notices.",
+      "solo-push":        "Whether they ask, push on, or quietly stop.",
+      "support-seek":     "Whether they come and find you, or wait.",
+      "emotional-derail": "How long it takes to get back to it after a wobble.",
+    },
+    recharge_type: {
+      "sensory-quiet":           "What the hour after school needs to look like.",
+      "social-connection":       "Whether they want company or space after a hard day.",
+      "cognitive-displacement":  "What they reach for when they need to switch off.",
+      "autonomous-unstructured": "How much of the evening needs to be theirs.",
+    },
   };
 
-  // Amber box body — four versions
-  const AMBER_BODY: Record<string, string> = {
-    "The Quick Fixer":  "Stepping in works in the moment. It just doesn’t teach them what to do next time. That’s the only thing we’re changing.",
-    "The Pusher":       "Pushing works in the moment. It just doesn’t teach them what to do next time. That’s the only thing we’re changing.",
-    "The Negotiator":   "A deal works in the moment. It just doesn’t teach them what to do next time. That’s the only thing we’re changing.",
-    "The Steady Hand":  "Staying calm is genuinely rare, and it’s the right instinct. It just needs one small addition: naming the moment out loud, so they notice it too.",
-  };
+  const tealDims = DIMS.filter(d => !weakKeys.has(d.key));
+  const amberDims = DIMS.filter(d => weakKeys.has(d.key));
+  const allOneGroup = tealDims.length === 0 || amberDims.length === 0;
+  const N_WORDS = ["", "One", "Two", "Three", "Four"];
+  const nWord = N_WORDS[tealDims.length] ?? String(tealDims.length);
+  const isAre = tealDims.length === 1 ? "is" : "are";
+  const placeWord = amberDims.length === 1 ? "the one place" : "the places";
 
-  const loopSteps = LOOP_STEPS[data.parentPattern] ?? LOOP_STEPS["The Pusher"]!;
-  const amberBody = AMBER_BODY[data.parentPattern] ?? AMBER_BODY["The Pusher"]!;
+  const renderDimItem = (d: { key: string; label: string; val: string; desc: string }, amber: boolean) => (
+    <div key={d.key} style={{ paddingLeft: 13, borderLeft: `2px solid ${amber ? AMBER_LINE : TEAL_LINE}`, marginLeft: 3, padding: "6px 0 6px 13px", marginBottom: 6 }}>
+      <div style={{ font: "700 12px/1.3 ‘Instrument Sans’,sans-serif", color: NAVY, marginBottom: 3 }}>{d.label}</div>
+      <div style={{ font: "400 11.5px/1.5 ‘Instrument Sans’,sans-serif", color: DIM, marginBottom: amber ? 4 : 0 }}>{d.desc}</div>
+      {d.val && WHERE[d.key]?.[d.val] && (
+        <div style={{ font: "italic 400 11px/1.45 ‘Instrument Sans’,sans-serif", color: amber ? AMBER_TEXT : TEAL, marginTop: 4 }}>
+          Where you see it: {WHERE[d.key][d.val]}
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Attention Fit ────────────────────────────────────────────────────────────
+  const SHIFT: Record<string, string> = {
+    "The Quick Fixer":  "Count to ten before you offer. Most stalls resolve themselves inside eight seconds.",
+    "The Pusher":       "Ask one question before you push — where it got hard, not whether it did.",
+    "The Negotiator":   "Decide it once, before the task starts. Then stop discussing it tonight.",
+    "The Steady Hand":  "Keep the calm. Just offer the first step when they have not found one in a minute.",
+  };
+  const shift = SHIFT[data.parentPattern] ?? SHIFT["The Pusher"]!;
+  const fitPara = data.detail03Content
+    ? fixLoopRefs(data.detail03Content.split(/\n\n+/)[0] ?? data.detail03Content)
+    : null;
 
   return (
-    <div style={{ background: BG, fontFamily: "'Instrument Sans',system-ui,sans-serif", lineHeight: 1.6, overflowX: "hidden" }}>
+    <div style={{ fontFamily: "’Instrument Sans’,system-ui,sans-serif", lineHeight: 1.6, overflowX: "hidden" }}>
 
       {/* Sticky header */}
       <header style={{ position: "sticky", top: 0, zIndex: 20, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "14px 20px", borderBottom: "1px solid #EFEDE8", background: "rgba(250,250,246,.95)", backdropFilter: "blur(10px)" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto", display: "block" }} />
-        <div style={{ ...eye("#646464") }}>Attention Health</div>
+        <div style={{ font: "700 10px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: "0.11em", textTransform: "uppercase", color: "#646464" }}>Attention Health</div>
       </header>
 
-      <div style={{ maxWidth: 600, margin: "0 auto", padding: "28px 20px 0", display: "flex", flexDirection: "column", gap: 20 }}>
-
-        {/* 1 — Hero */}
-        <section style={{ background: "linear-gradient(160deg,#1B3059 0%,#27406E 100%)", borderRadius: 24, padding: "30px 26px", color: "#fff", boxShadow: "0 10px 30px rgba(20,40,77,.12)" }}>
-          <div style={eye()}>Attention Health · Your report</div>
-          <h1 style={{ margin: "18px 0 0", font: "400 32px/1.22 'Bricolage Grotesque',sans-serif", letterSpacing: "-0.015em" }}>
+      {/* §1 Hero — navy */}
+      <div style={{ background: NAVY_GRAD }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px 32px" }}>
+          <div style={eyebrow(GOLD)}>Attention Health · Your report</div>
+          <h1 style={{ margin: "0 0 14px", font: `400 clamp(26px,5vw,34px)/1.2 ${BF}`, color: "#fff", letterSpacing: "-0.015em" }}>
             Here&rsquo;s how {c}&rsquo;s attention tends to work
           </h1>
-          <p style={{ margin: "14px 0 0", font: "400 17px/1.6 'Instrument Sans',sans-serif", color: "#C3CBD9" }}>
+          <p style={{ margin: "0 0 20px", font: "400 16px/1.6 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>
             Based on what you told us, in plain words.
           </p>
-          <div style={{ marginTop: 26, paddingTop: 18, borderTop: "1px solid rgba(255,255,255,.14)", display: "flex", flexWrap: "wrap", gap: "8px 24px", font: "400 14px/1.5 'Instrument Sans',sans-serif", color: "#9FAABE" }}>
-            <span>Assessment complete</span><span>Age band {data.ageBand}</span>
+          <div style={{ paddingTop: 18, borderTop: "1px solid rgba(255,255,255,.14)", font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9FAABE" }}>
+            Assessment complete · Age band {data.ageBand}
           </div>
-        </section>
+        </div>
+      </div>
 
-        {/* 2 — Pattern name */}
-        <section style={{ background: SAGE_BG, border: "1px solid #DDE3D0", borderRadius: 20, padding: "30px 24px", textAlign: "center" }}>
-          <div style={{ font: "400 32px/1.2 'Bricolage Grotesque',sans-serif", color: NAVY, letterSpacing: "-0.015em" }}>{data.archetype}</div>
-          <p style={{ margin: "14px auto 0", maxWidth: 400, font: "400 17px/1.6 'Instrument Sans',sans-serif", color: SAGE_TEXT }}>{data.patternLine}</p>
-          <div style={{ marginTop: 22, paddingTop: 18, borderTop: "1px dashed #C7D0B8", font: "italic 400 15px/1.6 'Instrument Sans',sans-serif", color: "#5C6B56" }}>
-            This isn&rsquo;t a score or a label. It&rsquo;s a clearer way to understand what helps {c} focus.
+      {/* §2 Snapshot — cream */}
+      <div style={{ background: CREAM }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px" }}>
+          <div style={eyebrow(TEAL)}>Attention Health Snapshot</div>
+          <h2 style={{ margin: "0 0 6px", font: `700 19px/1.25 ${BF}`, color: NAVY }}>Four things we looked at — and where you see them.</h2>
+          <div style={{ background: "#fff", border: "1px solid #E4E0D9", borderRadius: 14, padding: "18px 16px", marginTop: 18 }}>
+            {allOneGroup ? (
+              DIMS.map(d => renderDimItem(d, false))
+            ) : (
+              <>
+                {tealDims.length > 0 && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#21A38A", flexShrink: 0 }} />
+                      <div style={{ font: "700 10.5px/1.2 ‘Instrument Sans’,sans-serif", color: TEAL }}>Already working for {c}</div>
+                    </div>
+                    {tealDims.map(d => renderDimItem(d, false))}
+                  </div>
+                )}
+                {amberDims.length > 0 && (
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: GOLD, flexShrink: 0 }} />
+                      <div style={{ font: "700 10.5px/1.2 ‘Instrument Sans’,sans-serif", color: AMBER_TEXT }}>Where the plan starts</div>
+                    </div>
+                    {amberDims.map(d => renderDimItem(d, true))}
+                  </div>
+                )}
+              </>
+            )}
+            {!allOneGroup && (
+              <div style={{ background: "#EEF1E7", border: "1px solid #DDE3D0", borderRadius: 10, padding: "10px 13px", marginTop: 14 }}>
+                <p style={{ margin: 0, font: "400 11.5px/1.5 ‘Instrument Sans’,sans-serif", color: "#4A5A44" }}>
+                  <strong style={{ color: NAVY }}>{nWord} of these {isAre} already working for {c}.</strong> The plan leans on those and opens at {placeWord} attention takes more effort.
+                </p>
+              </div>
+            )}
           </div>
-        </section>
+        </div>
+      </div>
 
-        {/* 3 — Sound familiar? */}
-        <section style={card()}>
-          <div style={{ ...eye(GOLD) }}>Sound familiar?</div>
-          <p style={{ margin: "14px 0", font: "400 19px/1.55 'Bricolage Grotesque',sans-serif", color: NAVY }}>You know {c} <em>can</em> focus.</p>
-          <p style={{ margin: "0 0 16px", font: "400 17px/1.65 'Instrument Sans',sans-serif", color: "#555" }}>You&rsquo;ve watched them spend an hour on something they love, completely in it, not hearing a word you said.</p>
-          <p style={{ margin: "0 0 14px", font: "400 17px/1.65 'Instrument Sans',sans-serif", color: "#555" }}>Then homework starts.</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "18px 20px", background: "#F7F6F1", borderRadius: 12, font: "italic 400 17px/1.5 'Instrument Sans',sans-serif", color: NAVY }}>
-            <div>&ldquo;Come on.&rdquo;</div><div>&ldquo;Focus.&rdquo;</div><div>&ldquo;How many times do I have to tell you?&rdquo;</div>
-          </div>
-          <p style={{ margin: "18px 0 0", font: "700 18px/1.55 'Instrument Sans',sans-serif", color: TEAL }}>That difference doesn&rsquo;t always mean they aren&rsquo;t trying.</p>
-        </section>
-
-        {/* 4 — What this looks like at home */}
-        <section style={card()}>
-          <div style={{ ...eye(GOLD), marginBottom: 12 }}>What this looks like at home</div>
-          <ul style={{ listStyle: "none", margin: "0 0 18px", padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-            {data.meaning.map((bullet, i) => (
-              <li key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <span style={{ color: GOLD, flexShrink: 0, fontWeight: 700, marginTop: 4, fontSize: 8 }}>●</span>
-                <span style={{ font: "400 16px/1.65 'Instrument Sans',sans-serif", color: "#555" }}>{bullet}</span>
-              </li>
-            ))}
-          </ul>
-          <div style={{ background: "#E7F4F1", border: "1px solid rgba(19,122,102,.25)", borderRadius: 12, padding: "14px 16px" }}>
-            <div style={{ font: "700 12px/1.2 'Instrument Sans',sans-serif", letterSpacing: "0.08em", textTransform: "uppercase", color: TEAL, marginBottom: 6 }}>Something to understand, not something to worry about</div>
-            <div style={{ font: "400 15px/1.6 'Instrument Sans',sans-serif", color: "#31513F" }}>This shows where {c} finds focus easy, and where it takes more out of them right now.</div>
-          </div>
-        </section>
-
-        {/* 6 — Strengths */}
-        {data.strengths && data.strengths.length > 0 && (
-          <section style={card()}>
-            <h2 style={{ margin: "0 0 4px", font: "700 21px/1.3 'Bricolage Grotesque',sans-serif", color: NAVY }}>What {c} is already good at</h2>
-            <p style={{ margin: "0 0 16px", font: "400 15px/1.55 'Instrument Sans',sans-serif", color: "#646464" }}>Easy to miss on a bad evening.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {data.strengths.map((s, i) => (
-                <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                  <span style={{ color: TEAL, fontWeight: 700, flexShrink: 0, marginTop: 2 }}>✓</span>
-                  <span style={{ font: "400 16px/1.6 'Instrument Sans',sans-serif", color: "#333" }}>{s}</span>
-                </div>
+      {/* §3 Pattern reveal — navy */}
+      <div style={{ background: NAVY }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px" }}>
+          <div style={eyebrow(GOLD)}>This pattern has a name</div>
+          <h2 style={{ margin: "0 0 10px", font: `700 clamp(26px,5vw,34px)/1.15 ${BF}`, color: "#fff", letterSpacing: "-0.015em" }}>
+            {data.archetype}
+          </h2>
+          <div style={{ width: 34, height: 2, background: GOLD, marginBottom: 18 }} />
+          {data.patternLine && (
+            <p style={{ margin: "0 0 16px", font: "400 15px/1.65 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>
+              {data.patternLine}
+            </p>
+          )}
+          {data.meaning.length > 0 && (
+            <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+              {data.meaning.map((bullet, i) => (
+                <li key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "5px 0" }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: TEAL, flexShrink: 0, marginTop: 8 }} />
+                  <span style={{ font: "400 14px/1.6 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>{bullet}</span>
+                </li>
               ))}
-            </div>
-          </section>
-        )}
+            </ul>
+          )}
+        </div>
+      </div>
 
-        {/* 7 — Friction points */}
-        <section style={card()}>
-          <h2 style={{ margin: "0 0 4px", font: "700 21px/1.3 'Bricolage Grotesque',sans-serif", color: NAVY }}>Where to start</h2>
-          <p style={{ margin: "0 0 16px", font: "400 15px/1.55 'Instrument Sans',sans-serif", color: "#646464" }}>One place attention takes more effort right now.</p>
+      {/* §4 Where to start — white */}
+      <div style={{ background: "#fff" }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px" }}>
+          <div style={eyebrow(AMBER_TEXT)}>Where to start</div>
+          <h2 style={{ margin: "0 0 6px", font: `700 19px/1.25 ${BF}`, color: NAVY }}>
+            One place attention takes more effort right now
+          </h2>
+          <p style={{ margin: "0 0 16px", font: "400 14px/1.55 ‘Instrument Sans’,sans-serif", color: "#646464" }}>
+            This is where the six weeks open — rather than starting at something {c} can already do.
+          </p>
           {data.frictionPoints[0] && (
-            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-              <span style={{ color: "#9FAABE", flexShrink: 0, marginTop: 3, fontWeight: 700 }}>—</span>
-              <span style={{ font: "400 16px/1.6 'Instrument Sans',sans-serif", color: "#555" }}>{data.frictionPoints[0]}</span>
+            <div style={{ background: AMBER_BG, border: `1px solid ${AMBER_LINE}`, borderRadius: 12, padding: "16px 18px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <span style={{ color: "#9FAABE", flexShrink: 0, fontWeight: 700, marginTop: 3 }}>—</span>
+              <span style={{ font: "400 15px/1.6 ‘Instrument Sans’,sans-serif", color: "#7A5A16" }}>{data.frictionPoints[0]}</span>
             </div>
           )}
-        </section>
+        </div>
+      </div>
 
-        {/* 8 — Pattern meets instinct */}
-        <section style={{ background: "linear-gradient(160deg,#1B3059 0%,#27406E 100%)", borderRadius: 24, padding: "30px 26px", color: "#fff", boxShadow: "0 10px 30px rgba(20,40,77,.12)" }}>
-          <div style={{ ...eye(), marginBottom: 16 }}>One more piece</div>
-          <h2 style={{ margin: 0, font: "400 26px/1.28 'Bricolage Grotesque',sans-serif", letterSpacing: "-0.01em" }}>What happens between you.</h2>
-          <p style={{ margin: "14px 0 24px", font: "400 17px/1.6 'Instrument Sans',sans-serif", color: "#C3CBD9" }}>
-            When {c} gets stuck, you step in. The plan is about them learning what to do when that happens.
+      {/* §5 Attention Fit — navy */}
+      <div style={{ background: NAVY }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px" }}>
+          <div style={eyebrow(GOLD)}>Your Attention Fit</div>
+          <h2 style={{ margin: "0 0 16px", font: `700 20px/1.25 ${BF}`, color: "#fff" }}>
+            What {c} needs, and what you naturally do
+          </h2>
+          <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 12, padding: "16px 18px" }}>
+              <div style={{ font: "700 9px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase", color: "#9AA7BC", marginBottom: 6 }}>{c} tends to</div>
+              <div style={{ font: `700 17px/1.25 ${BF}`, color: "#fff", marginBottom: 4 }}>{data.archetype}</div>
+              <p style={{ margin: 0, font: "400 13px/1.55 ‘Instrument Sans’,sans-serif", color: "#C1CAD8" }}>{data.archetypeDesc}</p>
+            </div>
+            <div style={{ textAlign: "center", font: "700 9px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".12em", textTransform: "uppercase", color: GOLD }}>meets</div>
+            <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 12, padding: "16px 18px" }}>
+              <div style={{ font: "700 9px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase", color: "#9AA7BC", marginBottom: 6 }}>You naturally</div>
+              <div style={{ font: `700 17px/1.25 ${BF}`, color: "#fff", marginBottom: 4 }}>{data.parentPattern}</div>
+              <p style={{ margin: 0, font: "400 13px/1.55 ‘Instrument Sans’,sans-serif", color: "#C1CAD8" }}>{data.parentInstinctDesc}</p>
+            </div>
+          </div>
+          {fitPara && (
+            <div style={{ borderLeft: "2px solid #F5A623", borderRadius: "0 10px 10px 0", background: "rgba(255,255,255,.05)", padding: "12px 14px", marginTop: 14 }}>
+              <p style={{ margin: 0, font: "400 13.5px/1.6 ‘Instrument Sans’,sans-serif", color: "#D6DEEA" }}>{fitPara}</p>
+            </div>
+          )}
+          <div style={{ background: AMBER_BG, borderRadius: 10, padding: "12px 14px", marginTop: 12 }}>
+            <div style={{ font: "700 9px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase", color: AMBER_TEXT, marginBottom: 6 }}>The one shift</div>
+            <p style={{ margin: 0, font: "600 13.5px/1.5 ‘Instrument Sans’,sans-serif", color: "#6B5220" }}>{shift}</p>
+          </div>
+          <p style={{ margin: "12px 0 0", font: "italic 400 12px/1.5 ‘Instrument Sans’,sans-serif", color: "#9AA7BC" }}>
+            Every instinct is a good instinct meeting a particular child. Nothing here says you&rsquo;ve been doing it wrong.
           </p>
-          <div style={{ display: "grid", gap: 12 }}>
-            <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 14, padding: "18px 20px" }}>
-              <div style={{ ...eye("#9FAABE"), marginBottom: 8 }}>{c} tends to</div>
-              <div style={{ font: "700 19px/1.3 'Bricolage Grotesque',sans-serif", color: "#fff" }}>{data.archetype}</div>
-              <div style={{ marginTop: 6, font: "400 16px/1.55 'Instrument Sans',sans-serif", color: "#C3CBD9" }}>{data.patternLine}</div>
-            </div>
-            <div style={{ textAlign: "center", ...eye(GOLD) }}>and you naturally</div>
-            <div style={{ background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 14, padding: "18px 20px" }}>
-              <div style={{ ...eye("#9FAABE"), marginBottom: 8 }}>Respond as</div>
-              <div style={{ font: "700 19px/1.3 'Bricolage Grotesque',sans-serif", color: "#fff" }}>{data.parentPattern}</div>
-              <div style={{ marginTop: 6, font: "400 16px/1.55 'Instrument Sans',sans-serif", color: "#C3CBD9" }}>{data.instinctLine}</div>
-            </div>
-          </div>
-        </section>
+        </div>
+      </div>
 
-        {/* 9 — Why you keep getting stuck */}
-        <section style={card()}>
-          <h2 style={{ margin: "0 0 4px", font: "700 21px/1.3 'Bricolage Grotesque',sans-serif", color: NAVY }}>Why you may keep getting stuck</h2>
-          <p style={{ margin: "0 0 20px", font: "400 15px/1.55 'Instrument Sans',sans-serif", color: "#646464" }}>Most evenings run the same five steps.</p>
-          <div style={{ display: "flex", flexDirection: "column", marginBottom: 20 }}>
-            {loopSteps.map((label, i) => {
-              const amber = i === loopSteps.length - 1;
-              return (
-              <div key={i}>
-                {i > 0 && <div style={{ width: 1, height: 12, background: "#D9D5CC", margin: "0 0 0 27px" }} />}
-                <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", background: amber ? AMBER_BG : "#F7F6F1", border: `1px solid ${amber ? "#FBE0AE" : "#EFEDE8"}`, borderRadius: 12 }}>
-                  <span style={{ flex: "none", width: 24, height: 24, borderRadius: 999, background: amber ? AMBER_TEXT : NAVY, color: "#fff", font: "700 12px/24px 'Instrument Sans',sans-serif", textAlign: "center" }}>{i + 1}</span>
-                  <span style={{ font: `${amber ? "700" : "400"} 16px/1.45 'Instrument Sans',sans-serif`, color: amber ? AMBER_TEXT : NAVY }}>{label}</span>
-                </div>
-              </div>
-            );
-            })}
-          </div>
-          <div style={{ background: AMBER_BG, border: "1px solid #FBE0AE", borderRadius: 12, padding: "14px 18px" }}>
-            <div style={{ font: "700 12px/1.2 'Instrument Sans',sans-serif", letterSpacing: "0.08em", textTransform: "uppercase", color: AMBER_TEXT, marginBottom: 6 }}>You&rsquo;re not doing anything wrong</div>
-            <div style={{ font: "400 15px/1.6 'Instrument Sans',sans-serif", color: "#8A6318" }}>{amberBody}</div>
-          </div>
-        </section>
-
-        {/* 10 — Try Tonight */}
-        <section style={{ background: AMBER_BG, border: "1px solid #FBE0AE", borderRadius: 16, padding: "26px 24px" }}>
-          <div style={{ ...eye(AMBER_TEXT), marginBottom: 12 }}>Try tonight</div>
-          <h2 style={{ margin: "0 0 10px", font: "700 24px/1.25 'Bricolage Grotesque',sans-serif", color: AMBER_TEXT }}>
+      {/* §6 Try Tonight — cream */}
+      <div style={{ background: CREAM }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px" }}>
+          <div style={eyebrow(AMBER_TEXT)}>Try tonight</div>
+          <h2 style={{ margin: "0 0 10px", font: `700 22px/1.25 ${BF}`, color: AMBER_TEXT }}>
             {data.tryTonight?.title ?? "Ten quiet minutes"}
           </h2>
           {data.tryTonight?.steps[0] && (
-            <p style={{ margin: "0 0 22px", font: "400 15px/1.55 'Instrument Sans',sans-serif", color: "#8A6318" }}>
+            <p style={{ margin: "0 0 20px", font: "400 14px/1.55 ‘Instrument Sans’,sans-serif", color: "#8A6318" }}>
               {data.tryTonight.steps[0]}
             </p>
           )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <div style={{ background: "#fff", border: "1px solid #F2DFB8", borderRadius: 12, padding: "16px 18px" }}>
-              <div style={{ ...eye(TEAL), marginBottom: 8 }}>What to say</div>
-              <div style={{ font: "italic 400 17px/1.55 'Instrument Sans',sans-serif", color: NAVY }}>{data.tonightSay}</div>
-            </div>
-            <div>
-              <div style={{ ...eye(AMBER_TEXT), marginBottom: 8 }}>What to watch for</div>
-              <div style={{ font: "400 16px/1.6 'Instrument Sans',sans-serif", color: "#7A5A16" }}>{data.tonightWatch}</div>
-            </div>
+          <div style={{ background: "#fff", border: `1px solid ${AMBER_LINE}`, borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
+            <div style={{ font: "700 9px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase", color: TEAL, marginBottom: 8 }}>What to say</div>
+            <div style={{ font: "italic 400 16px/1.55 ‘Instrument Sans’,sans-serif", color: NAVY }}>{data.tonightSay}</div>
           </div>
-        </section>
+          <div>
+            <div style={{ font: "700 9px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: ".1em", textTransform: "uppercase", color: AMBER_TEXT, marginBottom: 8 }}>What to watch for</div>
+            <div style={{ font: "400 14px/1.6 ‘Instrument Sans’,sans-serif", color: "#7A5A16" }}>{data.tonightWatch}</div>
+          </div>
+        </div>
+      </div>
 
-        {/* Bridge CTA */}
-        <section style={{ background: "linear-gradient(160deg,#1B3059 0%,#27406E 100%)", borderRadius: 24, padding: "30px 26px", color: "#fff", boxShadow: "0 10px 30px rgba(20,40,77,.12)", textAlign: "center" }}>
-          <div style={{ ...eye(GOLD), marginBottom: 12 }}>What to do next</div>
-          <h2 style={{ margin: "0 0 14px", font: "400 26px/1.25 ‘Bricolage Grotesque’,sans-serif", letterSpacing: "-0.015em" }}>
+      {/* §7 CTA — navy */}
+      <div style={{ background: NAVY }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "44px 20px", textAlign: "center" }}>
+          <div style={eyebrow(GOLD)}>What to do next</div>
+          <h2 style={{ margin: "0 0 14px", font: `400 clamp(22px,4vw,28px)/1.25 ${BF}`, color: "#fff", letterSpacing: "-0.015em" }}>
             See {c}&rsquo;s six-week plan
           </h2>
-          <p style={{ margin: "0 auto 26px", maxWidth: 380, font: "400 17px/1.6 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>
-            Based on what you just read. One small change each week.
+          <p style={{ margin: "0 auto 26px", maxWidth: 380, font: "400 16px/1.6 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>
+            Built around what&rsquo;s already working, opening where it takes the most effort.
           </p>
-          <button onClick={cta} style={{ all: "unset", cursor: "pointer", display: "block", width: "100%", boxSizing: "border-box", textAlign: "center", background: `linear-gradient(135deg,${GOLD},#FBCB4A)`, color: NAVY, font: "700 16px/1.3 ‘Instrument Sans’,sans-serif", padding: "16px 24px", borderRadius: 12, boxShadow: "0 6px 20px rgba(245,166,35,.35)" }}>
+          <button
+            onClick={() => router.push(`/simplified/roadmap?session=${data.sessionId}`)}
+            style={{ all: "unset", cursor: "pointer", display: "block", width: "100%", boxSizing: "border-box", textAlign: "center", background: `linear-gradient(135deg,${GOLD},#FBCB4A)`, color: NAVY, font: `700 16px/1.3 ‘Instrument Sans’,sans-serif`, padding: "16px 24px", borderRadius: 12, boxShadow: "0 6px 20px rgba(245,166,35,.35)" }}
+          >
             See {c}&rsquo;s six-week plan →
           </button>
-        </section>
-
-        <p style={{ margin: "0 0 40px", textAlign: "center", font: "400 13px/1.6 ‘Instrument Sans’,sans-serif", color: "#9A9A9A" }}>
-          Attention Architect helps parents understand their child. It is not a medical test and it does not diagnose anything.
-        </p>
-
+        </div>
       </div>
 
       {/* Footer */}
@@ -581,13 +625,14 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
         <div style={{ maxWidth: 600, margin: "0 auto", padding: "28px 20px", display: "flex", flexDirection: "column", gap: 14, alignItems: "center", textAlign: "center" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 26, width: "auto", display: "block" }} />
-          <div style={{ font: "400 15px/1.6 'Instrument Sans',sans-serif", color: "#646464" }}>Made for parents who want to understand, not diagnose.</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 18px", justifyContent: "center", font: "400 15px/1.5 'Instrument Sans',sans-serif" }}>
+          <div style={{ font: "400 14px/1.6 ‘Instrument Sans’,sans-serif", color: "#646464" }}>Made for parents who want to understand, not diagnose.</div>
+          <div style={{ font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9A9A9A" }}>Attention Architect helps parents understand their child. It is not a medical test and it does not diagnose anything.</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 18px", justifyContent: "center", font: "400 14px/1.5 ‘Instrument Sans’,sans-serif" }}>
             <a href="/privacy" style={{ color: NAVY, textDecoration: "none" }}>Privacy Policy</a>
             <a href="/terms" style={{ color: NAVY, textDecoration: "none" }}>Terms of Service</a>
             <a href="mailto:support@thehumandecision.in" style={{ color: NAVY, textDecoration: "none" }}>support@thehumandecision.in</a>
           </div>
-          <div style={{ font: "400 14px/1.5 'Instrument Sans',sans-serif", color: "#9A9A9A" }}>© 2026 The Human Decision. All rights reserved.</div>
+          <div style={{ font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9A9A9A" }}>© 2026 The Human Decision. All rights reserved.</div>
         </div>
       </footer>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { NOW_LINES, THEN_LINES, TESTIMONIAL_POOL } from "@/lib/content/report-content";
+import { TESTIMONIAL_POOL } from "@/lib/content/report-content";
 
 declare global {
   interface Window {
@@ -124,6 +124,41 @@ const THEM_LINES_BY_ARCHETYPE: Record<string, readonly [string, string, string, 
     "sets stakes outside homework too",
     "sets their own without being prompted",
   ],
+};
+
+const SCHOOL_NIGHT: Record<string, { now: [string,string,string]; then: [string,string,string] }> = {
+  "The Storm": {
+    now:  ["The evening starts with who decided what", "You ask, they push back, you ask again", "Nothing begins until someone gives in"],
+    then: ["They pick where to start and get going", "You offer once, then leave it", "The argument stops being about whose idea it was"],
+  },
+  "The All-In Kid": {
+    now:  ["Getting them in takes twenty minutes", "Getting them out takes another twenty", "Any interruption ends the session"],
+    then: ["They settle in faster because the block is protected", "Stopping stops being a fight", "One interruption doesn't end the evening"],
+  },
+  "The Inventor": {
+    now:  ["You show them the quicker way and they stop", "The long way takes an hour", "You end up doing half of it"],
+    then: ["They start their own way without waiting to be told", "The long way finishes, and it’s theirs", "You stop reaching for the shortcut"],
+  },
+  "The Explorer": {
+    now:  ["An idea arrives and the page stops moving", "You ask twice, and the second time is sharper", "Twenty minutes on, nothing’s been written"],
+    then: ["The idea gets written down and the work carries on", "You ask once, or not at all", "The page moves, even on an ordinary evening"],
+  },
+  "The Magnet": {
+    now:  ["Nothing happens unless you’re in the room", "You sit down and it starts; you leave and it stops", "You’re at the table longer than they are"],
+    then: ["They begin with you nearby but not helping", "You can leave the room and it carries on", "You get the evening back"],
+  },
+  "The Glue": {
+    now:  ["The pencil doesn’t move and nothing’s wrong with the homework", "Something unresolved is sitting between you", "You find out an hour later what it was"],
+    then: ["Things get named before the work starts", "A bad afternoon doesn’t take the whole evening", "The page moves once the air is clear"],
+  },
+  "The Captain": {
+    now:  ["Every instruction slows things down", "They do it, but at half speed", "It only moves when you’re standing over it"],
+    then: ["They run it themselves and it gets done faster", "You stop giving instructions", "You find out it’s finished without having asked"],
+  },
+  "The Live Wire": {
+    now:  ["Without a clock nothing registers as happening", "Ninety seconds in, they’re gone", "You supply the urgency, every night"],
+    then: ["They set the stake and it holds", "The energy lasts past the interesting part", "You stop being the one making it matter"],
+  },
 };
 
 export type WeekPreview = {
@@ -370,50 +405,6 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
           The goal was never a child who focuses because you asked. It is a child who runs their own attention — and that only arrives if your role changes on the way there. This is how that happens, week by week, and who you become by the end of it.
         </p>
 
-        {/* ── 2. Goal ──────────────────────────────────────────────────────── */}
-        <div style={{ background: "#FEF9EE", border: `1px solid ${GOLD}55`, borderRadius: 20, padding: "32px 28px", marginBottom: "44px" }}>
-          <div style={{ font: "700 11px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: NAVY, marginBottom: "14px" }}>THE GOAL</div>
-          <div style={{ fontFamily: BF, fontWeight: 800, fontSize: "clamp(18px,3vw,24px)", lineHeight: 1.25, marginBottom: "16px" }}>
-            <div style={{ color: NAVY }}>Not a child who focuses because you told them to.</div>
-            <div style={{ color: TEAL }}>A child who learns how to manage their own attention.</div>
-          </div>
-          <p style={{ margin: "0 0 22px", fontSize: "14px", color: DIM, lineHeight: 1.65 }}>
-            By the end of the roadmap, the goal is for {c} to gradually become better at:
-          </p>
-          <div className="rm-goal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: "20px" }}>
-            {([
-              ["01", "NOTICE",  "Spot when their attention has drifted."],
-              ["02", "DIRECT",  "Choose where it needs to go."],
-              ["03", "PROTECT", "Cut down what keeps pulling it away."],
-              ["04", "RECOVER", "Know how to get back to it."],
-            ] as [string, string, string][]).map(([num, label, desc]) => (
-              <div key={num} style={{ background: CARD, borderRadius: 12, padding: "16px 14px", display: "flex", flexDirection: "column", gap: 6, border: `1px solid ${LINE}` }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: TEAL, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", font: "700 11px/1 'Instrument Sans',system-ui", flexShrink: 0 }}>{num}</div>
-                  <div style={{ font: "700 11px/1.2 'Instrument Sans',system-ui", letterSpacing: "0.08em", textTransform: "uppercase", color: NAVY }}>{label}</div>
-                </div>
-                <p style={{ margin: 0, fontSize: "12.5px", color: DIM, lineHeight: 1.55 }}>{desc}</p>
-              </div>
-            ))}
-          </div>
-          {/* "And for you?" */}
-          <div className="rm-and-for-you" style={{ background: NAVY, borderRadius: 12, padding: "18px 20px", display: "flex", alignItems: "flex-start", gap: 14 }}>
-            <div style={{ background: "#fff", borderRadius: 10, padding: "6px 8px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="rm-and-for-you-img" src="/aa-logo.png" alt="Attention Architect" style={{ height: 30, width: "auto", display: "block" }} />
-            </div>
-            <div>
-              <div style={{ font: "700 10px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.1em", textTransform: "uppercase", color: GOLD, marginBottom: 6 }}>And for you?</div>
-              <p style={{ margin: "0 0 6px", fontSize: "13px", color: "rgba(255,255,255,.85)", lineHeight: 1.55 }}>
-                To become the parent who knows when to step in, what to change, and when to step back.
-              </p>
-              <p style={{ margin: 0, fontSize: "12px", color: GOLD, fontWeight: 600 }}>
-                That&rsquo;s the Attention Architect.
-              </p>
-            </div>
-          </div>
-        </div>
-
         {/* ── 3. Six weeks ─────────────────────────────────────────────────── */}
         <div style={{ marginBottom: "44px" }}>
           <div style={{ font: "700 11px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: TEAL, marginBottom: "10px" }}>THE SIX WEEKS</div>
@@ -429,10 +420,11 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
               const signal = archSignals?.[i] ?? "";
               const themLine = (THEM_LINES_BY_ARCHETYPE[archetype] ?? THEM_LINES_BY_ARCHETYPE["The All-In Kid"]!)[i] ?? "";
               return (
-                <div key={i} style={{ background: CARD, border: `1px solid ${LINE}`, borderLeft: `4px solid ${wc}`, borderRadius: 10, overflow: "hidden" }}>
+                <div key={i} style={{ background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, overflow: "hidden" }}>
+                  <div style={{ height: 3, background: wc }} />
                   {/* Badge + title + problem line */}
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 14px 0" }}>
-                    <div style={{ width: 24, height: 24, borderRadius: 6, background: wc, color: "#fff", fontFamily: BF, fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                    <div style={{ width: 26, height: 26, borderRadius: 8, background: wc, color: "#fff", fontFamily: BF, fontWeight: 800, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
                     <div>
                       <div style={{ fontFamily: BF, fontWeight: 700, fontSize: 14.5, color: NAVY, lineHeight: 1.25 }}>{weekTitle}</div>
                       <div style={{ fontSize: "11px", color: DIM, lineHeight: 1.45, marginTop: 3 }}>{PROBLEM_LINES[i]}</div>
@@ -441,7 +433,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
                   {/* You / Them — always visible */}
                   <div style={{ padding: "8px 14px 0 50px", display: "flex", flexDirection: "column", gap: 2 }}>
                     <div className="rm-dot-f" style={{ fontSize: "12px", lineHeight: 1.55, color: wc }}><strong style={{ color: NAVY }}>You:</strong> {day2Title}</div>
-                    <div className="rm-dot-o" style={{ fontSize: "12px", lineHeight: 1.55, color: wc }}><strong style={{ color: NAVY }}>Them:</strong> {themLine}</div>
+                    <div className="rm-dot-o" style={{ fontSize: "12px", lineHeight: 1.55, color: wc }}><strong style={{ color: NAVY }}>{c}:</strong> {themLine}</div>
                   </div>
                   {/* Accordion — one per week, week 1 open */}
                   <details open={i === 0} style={{ margin: "10px 14px 12px 50px", borderTop: `1px dashed ${LINE}`, paddingTop: 9 }}>
@@ -559,31 +551,36 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
         </div>
 
         {/* ── 6. School night, six weeks apart ─────────────────────────────── */}
-        <div style={{ marginBottom: "44px" }}>
-          <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "14px" }}>
-            A school night, six weeks apart
-          </h2>
-          <div className="rm-sn-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div style={{ background: "#FBEDEA", border: "1px solid #F3D7D0", borderRadius: 12, padding: "14px 16px" }}>
-              <div style={{ fontSize: "8.5px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: "#A8341F", marginBottom: 10 }}>Right now</div>
-              {NOW_LINES.map((line, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: i < NOW_LINES.length - 1 ? 6 : 0 }}>
-                  <span style={{ color: "#A8341F", opacity: 0.5, flexShrink: 0, lineHeight: 1.55 }}>—</span>
-                  <span style={{ fontSize: "12px", color: "#7A2E1A", lineHeight: 1.55 }}>{line}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ background: "#DCECE7", border: "1px solid #C4E0D7", borderRadius: 12, padding: "14px 16px" }}>
-              <div style={{ fontSize: "8.5px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: TEAL_D, marginBottom: 10 }}>In six weeks</div>
-              {THEN_LINES.map((line, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: i < THEN_LINES.length - 1 ? 6 : 0 }}>
-                  <span style={{ color: TEAL_D, opacity: 0.5, flexShrink: 0, lineHeight: 1.55 }}>—</span>
-                  <span style={{ fontSize: "12px", color: "#1A5E4A", lineHeight: 1.55 }}>{line}</span>
-                </div>
-              ))}
+        {(() => {
+          const sn = SCHOOL_NIGHT[archetype] ?? SCHOOL_NIGHT["The Explorer"]!;
+          return (
+          <div style={{ marginBottom: "44px" }}>
+            <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "14px" }}>
+              A school night with {c}, six weeks apart
+            </h2>
+            <div className="rm-sn-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ background: "#FBEDEA", border: "1px solid #F3D7D0", borderRadius: 12, padding: "14px 16px" }}>
+                <div style={{ fontSize: "8.5px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: "#A8341F", marginBottom: 10 }}>Right now</div>
+                {sn.now.map((line, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: i < sn.now.length - 1 ? 6 : 0 }}>
+                    <span style={{ color: "#A8341F", opacity: 0.5, flexShrink: 0, lineHeight: 1.55 }}>—</span>
+                    <span style={{ fontSize: "12px", color: "#7A2E1A", lineHeight: 1.55 }}>{line}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ background: "#DCECE7", border: "1px solid #C4E0D7", borderRadius: 12, padding: "14px 16px" }}>
+                <div style={{ fontSize: "8.5px", letterSpacing: ".1em", textTransform: "uppercase", fontWeight: 700, color: TEAL_D, marginBottom: 10 }}>In six weeks</div>
+                {sn.then.map((line, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: i < sn.then.length - 1 ? 6 : 0 }}>
+                    <span style={{ color: TEAL_D, opacity: 0.5, flexShrink: 0, lineHeight: 1.55 }}>—</span>
+                    <span style={{ fontSize: "12px", color: "#1A5E4A", lineHeight: 1.55 }}>{line}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+          );
+        })()}
 
         {/* ── 7. Pricing — three equal cards ───────────────────────────────── */}
         <div ref={pricingRef} style={{ marginBottom: "44px" }}>
