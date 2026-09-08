@@ -165,13 +165,6 @@ const WHY_ATTENTION_CARDS: {
   },
 ];
 
-const PROOF_CELLS = [
-  { stat: "6",              label: "dimensions of attention, assessed in five minutes",             bound: false },
-  { stat: "8×4",            label: "child patterns × parent instincts — the plan is built from both", bound: false },
-  { stat: "6 weeks",        label: "one change a week, because that's what holds",                 bound: false },
-  { stat: "Not diagnostic", label: "describes; never screens for or rules out a condition",         bound: true  },
-];
-
 const PROCESS_STEPS = [
   { n: 1, ramp: "#E2705F", title: "Answer",           text: "A few real questions about your child" },
   { n: 2, ramp: "#E9973F", title: "Discover",         text: "We look for patterns in how attention shows up" },
@@ -313,24 +306,12 @@ export default function SimplifiedHomepage() {
         <Wrap>
           <div style={{ padding: "var(--site-section-gap) 0", position: "relative" as const }}>
 
-            {/* Eyebrow pill */}
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 7,
-              background: "rgba(255,255,255,.74)", border: "1px solid #F2DFB8",
-              borderRadius: 20, padding: "6px 13px", marginBottom: 18,
-            }}>
-              <div style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--teal-500)", flexShrink: 0 }} />
-              <span style={{ fontSize: 10, letterSpacing: "0.10em", textTransform: "uppercase" as const, fontWeight: 700, color: "#A3781E" }}>
-                For parents of 8–14 year olds
-              </span>
-            </div>
-
             <h1 style={{
               margin: "0 0 17px", fontFamily: BF, fontWeight: 800,
               fontSize: "clamp(30px,5.5vw,46px)", lineHeight: 1.02,
               letterSpacing: "-0.035em", color: "var(--navy-800)", maxWidth: 790,
             }}>
-              Attention is the skill everything else runs on.<br />Nobody teaches it.
+              Two hours on a game.<br />Ten minutes on homework.
             </h1>
 
             <p style={{
@@ -338,41 +319,19 @@ export default function SimplifiedHomepage() {
               fontSize: "clamp(14.5px,2vw,17.5px)", lineHeight: 1.5,
               color: "var(--navy-800)", fontWeight: 600, maxWidth: 640,
             }}>
-              We do&nbsp;&mdash; in six weeks, starting from where your child actually is.
+              That gap isn&rsquo;t laziness. Attention is a skill nobody teaches &mdash; and it can be built.
             </p>
 
             <p style={{ margin: "0 0 28px", fontSize: "clamp(13px,1.5vw,15px)", lineHeight: 1.6, maxWidth: 630 }}>
-              Two hours on a game. Ten minutes on homework.{" "}
-              <strong style={{ color: "var(--navy-800)" }}>
-                That gap isn&rsquo;t laziness, and it isn&rsquo;t discipline.
-              </strong>{" "}
-              It&rsquo;s how attention was built, and attention can be rebuilt.
+              We look at how your child&rsquo;s attention actually works, and at what you do when they stall.<br />
+              Then we give you six weeks, starting from where they already are.
             </p>
 
             <div style={{ maxWidth: 380 }}>
               <button onClick={go} style={ctaBtn}>See how my child&rsquo;s attention works →</button>
               <p style={{ margin: "12px 0 0", fontSize: 12.5, color: "#8A8D94", textAlign: "center" as const }}>
-                Free · 5 minutes · Nothing for your child to sit
+                Free · 5 minutes · Not a diagnostic test · Nothing for your child to sit
               </p>
-            </div>
-
-            {/* Proof strip */}
-            <div className="aa-proof-strip">
-              {PROOF_CELLS.map(({ stat, label, bound }) => (
-                <div key={stat} className="aa-proof-cell">
-                  <div style={{
-                    fontFamily: BF, fontWeight: 800, lineHeight: 1,
-                    ...(bound
-                      ? { fontSize: 14.5, color: "var(--teal-700)", paddingTop: 6 }
-                      : { fontSize: 24,   color: "var(--navy-800)" }),
-                  }}>
-                    {stat}
-                  </div>
-                  <div style={{ fontSize: 11.5, lineHeight: 1.42, marginTop: 6, color: "var(--text-body)" }}>
-                    {label}
-                  </div>
-                </div>
-              ))}
             </div>
 
           </div>
@@ -423,12 +382,34 @@ export default function SimplifiedHomepage() {
         </Wrap>
       </section>
 
-      {/* ── S2: What makes this different ────────────────────────────────────── */}
+      {/* ── S2: Why nobody has given you this before ─────────────────────────── */}
       <section style={{ padding: "var(--site-section-gap) 0", background: "var(--surface-page-warm)", borderTop: "1px solid var(--border-divider)" }}>
+        <Wrap>
+          <SectionMarker n={2} label="Why nobody has given you this before" />
+          <h2 style={h2style}>It is the one capability no one is responsible for teaching.</h2>
+          <div className="g3">
+            <div className="gcol">
+              <div className="gct">School assumes it is already there</div>
+              <div className="gcd">Every subject is taught to a child who is presumed to be paying attention. None of them build the paying attention.</div>
+            </div>
+            <div className="gcol">
+              <div className="gct">It compounds quietly</div>
+              <div className="gcd">At eight it looks like homework. At eighteen it is whether they can run their own day without anyone standing over it.</div>
+            </div>
+            <div className="gcol">
+              <div className="gct">It is built in an order</div>
+              <div className="gcd">Six skills, and they arrive in sequence. Nothing goes wrong when a child skips one &mdash; it just means effort stops paying, and no one can say why.</div>
+            </div>
+          </div>
+        </Wrap>
+      </section>
+
+      {/* ── S3: What makes this different ────────────────────────────────────── */}
+      <section style={{ padding: "var(--site-section-gap) 0", background: "var(--white)", borderTop: "1px solid var(--border-divider)" }}>
         <Wrap>
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ maxWidth: 720, display: "flex", flexDirection: "column", gap: 14, margin: "0 auto", textAlign: "center" as const }}>
-              <SectionMarker n={2} label="What makes this different" />
+              <SectionMarker n={3} label="What makes this different" />
               <h2 style={h2style}>We look at your child. And at how you respond.</h2>
               <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.62, color: "var(--text-body)" }}>
                 Attention isn&rsquo;t something a child manages alone. It&rsquo;s shaped by how you respond when they struggle&nbsp;&mdash; and most reports only ever tell half the story.
@@ -492,12 +473,12 @@ export default function SimplifiedHomepage() {
         </Wrap>
       </section>
 
-      {/* ── S3: The process — 5 steps ────────────────────────────────────────── */}
-      <section style={{ padding: "var(--site-section-gap) 0", borderTop: "1px solid var(--border-divider)" }}>
+      {/* ── S4: The process — 5 steps ────────────────────────────────────────── */}
+      <section style={{ padding: "var(--site-section-gap) 0", background: "var(--surface-page-warm)", borderTop: "1px solid var(--border-divider)" }}>
         <Wrap>
           <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
             <div style={{ maxWidth: 720, display: "flex", flexDirection: "column", gap: 14 }}>
-              <SectionMarker n={3} label="The process" />
+              <SectionMarker n={4} label="The process" />
               <h2 style={h2style}>Five steps, one evening to start</h2>
             </div>
 
@@ -523,7 +504,7 @@ export default function SimplifiedHomepage() {
         </Wrap>
       </section>
 
-      {/* ── S4: What this is built on — navy ─────────────────────────────────── */}
+      {/* ── S5: What this is built on — navy ─────────────────────────────────── */}
       <section style={{
         padding: "var(--site-section-gap) 0", borderTop: "1px solid var(--border-divider)",
         background: "linear-gradient(165deg,var(--navy-800),#1A3159)",
@@ -537,7 +518,7 @@ export default function SimplifiedHomepage() {
         <Wrap>
           <div style={{ display: "flex", flexDirection: "column", gap: 40, position: "relative" as const }}>
             <div style={{ maxWidth: 760, margin: "0 auto", textAlign: "center" as const, display: "flex", flexDirection: "column", gap: 14 }}>
-              <SectionMarker n={4} label="What this is built on" light />
+              <SectionMarker n={5} label="What this is built on" light />
               <h2 style={{ ...h2style, color: "#fff" }}>Not opinion. Not parenting philosophy.</h2>
               <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.62, color: "#AFBACB" }}>
                 Everything here comes from established work on how attention develops in children — translated out of the literature and into the language of your evening.
@@ -578,12 +559,12 @@ export default function SimplifiedHomepage() {
         </Wrap>
       </section>
 
-      {/* ── S5: Real parents — horizontal scroll ─────────────────────────────── */}
+      {/* ── S6: Real parents — horizontal scroll ─────────────────────────────── */}
       <section style={{ padding: "var(--site-section-gap) 0", background: "var(--surface-page-warm)", borderTop: "1px solid var(--border-divider)" }}>
         <Wrap>
           <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
             <div style={{ maxWidth: 720, display: "flex", flexDirection: "column", gap: 14 }}>
-              <SectionMarker n={5} label="Real parents" />
+              <SectionMarker n={6} label="Real parents" />
               <h2 style={h2style}>What actually changed at home</h2>
             </div>
 
