@@ -290,3 +290,28 @@
     min-height:52px;
   }
 }
+
+/* Hero: h1 gold span, chips row, escalation paragraph */
+.aa-site h1 .br { color: var(--amber-500); white-space: nowrap; }
+.aa-site .chips { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 26px; }
+.aa-site .chip {
+  background: rgba(255,255,255,.8);
+  border: 1px solid var(--amber-200);
+  border-radius: 20px;
+  padding: 8px 15px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy-800);
+}
+.aa-site .chip.end {
+  background: var(--teal-100);
+  border-color: rgba(33,163,138,.3);
+  color: var(--teal-700);
+}
+.aa-site .escal { font-size: 15px; line-height: 1.65; margin-top: 18px; max-width: 640px; }
+.aa-site .escal b { color: var(--navy-800); }
+@media (max-width: 880px) {
+  .aa-site .chips { gap: 7px; margin-top: 20px; }
+  .aa-site .chip { font-size: 12px; padding: 7px 12px; }
+  .aa-site .escal { font-size: 13px; margin-top: 15px; }
+}
