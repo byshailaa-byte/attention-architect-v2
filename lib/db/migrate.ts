@@ -678,6 +678,31 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_35_founder_call_requested_event') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 36 — is_internal flag on assessments.
+  // Marks our own internal/test sessions so they can be excluded from any metric without deleting data.
+  // NOT NULL DEFAULT false: Postgres 11+ handles this as a metadata-only ADD COLUMN (no table rewrite).
+  // Backfill is intentionally separate (migrations/phase_36_is_internal_backfill.sql) — run after this phase.
+  if (!applied.has("phase_36_is_internal")) {
+    await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS is_internal BOOLEAN NOT NULL DEFAULT false`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_assessments_is_internal ON assessments (is_internal)`;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_36_is_internal') ON CONFLICT DO NOTHING`;
+  }
+
+  // Phase 37 — unique constraint: at most one live (published, non-superseded) report per assessment.
+  // Prevents duplicate published rows from backfill re-runs and auto-pipeline race conditions.
+  // PRE-CONDITION: all assessments with duplicate live reports must be resolved before running —
+  // CONCURRENTLY will fail during the build if any assessment currently violates the constraint.
+  // CONCURRENTLY: each sql`...` call is a separate autocommit HTTP request with the neon
+  // serverless driver — there is no ambient transaction block — so CONCURRENTLY is safe here.
+  if (!applied.has("phase_37_one_live_report")) {
+    await sql`
+      CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_reports_one_live_per_assessment
+        ON reports (assessment_id)
+        WHERE superseded_by IS NULL AND status = 'published'
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_37_one_live_report') ON CONFLICT DO NOTHING`;
+  }
+
   // Phase 30 — purchases.tier: extend CHECK to include tier1 and tier2 for roadmap pricing.
   // tier1 = Roadmap only (₹2,999). tier2 = Roadmap + Founder Call (₹4,999).
   // module1 / full / topup kept for backward-compat with existing paid records.
