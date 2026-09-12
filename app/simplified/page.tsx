@@ -311,7 +311,7 @@ export default function SimplifiedHomepage() {
               fontSize: "clamp(30px,5.5vw,46px)", lineHeight: 1.02,
               letterSpacing: "-0.035em", color: "var(--navy-800)", maxWidth: 790,
             }}>
-              Two hours on a game.<br />Ten minutes on homework.
+              Rebuild your child&rsquo;s focus<br />in a world <span className="br">built to break it.</span>
             </h1>
 
             <p style={{
@@ -319,15 +319,22 @@ export default function SimplifiedHomepage() {
               fontSize: "clamp(14.5px,2vw,17.5px)", lineHeight: 1.5,
               color: "var(--navy-800)", fontWeight: 600, maxWidth: 640,
             }}>
-              That gap isn&rsquo;t laziness. Attention is a skill nobody teaches &mdash; and it can be built.
+              Attention is a skill nobody teaches. It can be taught &mdash; and you are the one who teaches it.
             </p>
 
-            <p style={{ margin: "0 0 28px", fontSize: "clamp(13px,1.5vw,15px)", lineHeight: 1.6, maxWidth: 630 }}>
-              We look at how your child&rsquo;s attention actually works, and at what you do when they stall.<br />
-              Then we give you six weeks, starting from where they already are.
+            <div className="chips">
+              <div className="chip">Homework</div>
+              <div className="chip">Screens</div>
+              <div className="chip">Sleep</div>
+              <div className="chip">School</div>
+              <div className="chip end">Confidence</div>
+            </div>
+
+            <p className="escal">
+              It shows up first as homework, then as screens, then as bedtime, then as a note from school &mdash; and <b>eventually as what your child decides they are bad at.</b> They are not five problems. They are one, arriving in order.
             </p>
 
-            <div style={{ maxWidth: 380 }}>
+            <div style={{ maxWidth: 380, marginTop: 24 }}>
               <button onClick={go} style={ctaBtn}>See how my child&rsquo;s attention works →</button>
               <p style={{ margin: "12px 0 0", fontSize: 12.5, color: "#8A8D94", textAlign: "center" as const }}>
                 Free · 5 minutes · Not a diagnostic test · Nothing for your child to sit
