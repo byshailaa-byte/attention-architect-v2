@@ -276,47 +276,59 @@ export async function POST(req: NextRequest) {
   // Guards against the concurrent-trigger race: early trigger (fires at submit) and
   // claim-time trigger can both be in-flight for the same session. The loser of the
   // INSERT race sees 0 rows from RETURNING, undoes its attempt increment, and exits.
-  const insertedRows = (await sql`
-    INSERT INTO reports (
-      assessment_id,
-      behaviour_signature,
-      archetype,
-      archetype_fit_tier,
-      parent_instinct,
-      parent_instinct_fit_tier,
-      narrative_moments,
-      family_attention_loop,
-      confidence_vector,
-      status,
-      schema_version,
-      quality_check_results,
-      auto_generated,
-      promoted_at,
-      promoted_by
-    )
-    SELECT
-      ${row.id}::uuid,
-      ${JSON.stringify(sig)}::jsonb,
-      ${composed.archetype},
-      ${composed.archetype_fit_tier},
-      ${composed.parent_instinct},
-      ${composed.parent_instinct_fit_tier ?? null},
-      ${JSON.stringify(finalMoments)}::jsonb,
-      ${JSON.stringify(loop)}::jsonb,
-      ${JSON.stringify(cv)}::jsonb,
-      ${finalStatus},
-      ${composed.schema_version},
-      ${JSON.stringify(qualityResult)}::jsonb,
-      true,
-      ${promotedAt},
-      ${promotedBy}
-    WHERE NOT EXISTS (
-      SELECT 1 FROM reports
-      WHERE assessment_id = ${row.id}::uuid
-        AND superseded_by IS NULL
-    )
-    RETURNING id
-  `) as unknown as { id: string }[];
+  //
+  // With the unique index idx_reports_one_live_per_assessment in place, a race where
+  // two calls both pass the WHERE NOT EXISTS guard before either commits produces a
+  // 23505 unique violation instead of 0 RETURNING rows. Both paths are equivalent and
+  // handled identically below.
+  let insertedRows: { id: string }[] = [];
+  try {
+    insertedRows = (await sql`
+      INSERT INTO reports (
+        assessment_id,
+        behaviour_signature,
+        archetype,
+        archetype_fit_tier,
+        parent_instinct,
+        parent_instinct_fit_tier,
+        narrative_moments,
+        family_attention_loop,
+        confidence_vector,
+        status,
+        schema_version,
+        quality_check_results,
+        auto_generated,
+        promoted_at,
+        promoted_by
+      )
+      SELECT
+        ${row.id}::uuid,
+        ${JSON.stringify(sig)}::jsonb,
+        ${composed.archetype},
+        ${composed.archetype_fit_tier},
+        ${composed.parent_instinct},
+        ${composed.parent_instinct_fit_tier ?? null},
+        ${JSON.stringify(finalMoments)}::jsonb,
+        ${JSON.stringify(loop)}::jsonb,
+        ${JSON.stringify(cv)}::jsonb,
+        ${finalStatus},
+        ${composed.schema_version},
+        ${JSON.stringify(qualityResult)}::jsonb,
+        true,
+        ${promotedAt},
+        ${promotedBy}
+      WHERE NOT EXISTS (
+        SELECT 1 FROM reports
+        WHERE assessment_id = ${row.id}::uuid
+          AND superseded_by IS NULL
+      )
+      RETURNING id
+    `) as unknown as { id: string }[];
+  } catch (e) {
+    if ((e as { code?: string }).code !== "23505") throw e;
+    // Unique violation: another concurrent call won the INSERT race.
+    // Fall through to the insertedRows.length === 0 path below.
+  }
 
   if (insertedRows.length === 0) {
     // Another concurrent call already wrote the report. Undo our attempt increment so
