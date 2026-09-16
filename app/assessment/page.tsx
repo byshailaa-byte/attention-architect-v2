@@ -100,7 +100,8 @@ function AssessmentForm() {
   const hasNameParam  = params.has("name"); // true even when name=""
   const ageParam      = params.get("age") as "8-9" | "10-11" | "12-14" | null;
   const concernsParam = params.get("concerns") ?? "";
-  const followupParam = params.get("followup") ?? "";
+  const followupParam      = params.get("followup") ?? "";
+  const followupOtherParam = params.get("followupOther") ?? "";
   const genderParam   = params.get("gender") ?? null; // collected at pre-assessment
   const variantParam  = params.get("variant") ?? "";
 
@@ -259,6 +260,7 @@ function AssessmentForm() {
           questionSequence: fullSeq.map((q) => ({ id: q.id, dimension: q.dimension })),
           concerns: concernsParam.split(",").filter(Boolean),
           worryFollowup: followupParam || null,
+          worryFollowupOther: followupOtherParam || null,
           variant: variantParam || undefined,
           utm: getStoredUtm(),
         }),

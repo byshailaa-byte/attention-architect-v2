@@ -121,6 +121,9 @@ export default function SimplifiedStart() {
   const [age, setAge]             = useState<string | null>(null);
   const [concern, setConcern]     = useState<string | null>(null);
 
+  const [showOtherInput, setShowOtherInput] = useState(false);
+  const [otherText, setOtherText]           = useState("");
+
   const [oobPopup, setOobPopup]           = useState<"younger" | "older" | null>(null);
   const [oobName, setOobName]             = useState("");
   const [oobPhone, setOobPhone]           = useState("");
@@ -176,15 +179,21 @@ export default function SimplifiedStart() {
     }
   }
 
-  function goToAssessment(followup: string) {
+  function goToAssessment(followup: string, followupOther?: string) {
+    const isSomethingElse = followup === "Something else";
     fireGtag("follow_up_selected", { concern: concern ?? "", answer: followup });
-    fireEvent("landing_step_followup", getLandSid(), { concern: concern ?? "", answer: followup });
+    fireEvent("landing_step_followup", getLandSid(), {
+      concern: concern ?? "",
+      answer: followup,
+      ...(isSomethingElse ? { something_else: true } : {}),
+    });
     const p = new URLSearchParams();
     p.set("name", childName.trim());
     if (gender) p.set("gender", gender);
     if (age) p.set("age", age);
     if (concern) p.set("concerns", concern);
     p.set("followup", followup);
+    if (followupOther) p.set("followupOther", followupOther);
     p.set("variant", "simplified");
     router.push(`/assessment?${p.toString()}`);
   }
@@ -423,7 +432,7 @@ export default function SimplifiedStart() {
         <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto", marginBottom: 20 }} />
 
         <button
-          onClick={() => setStage("start")}
+          onClick={() => { setStage("start"); setShowOtherInput(false); setOtherText(""); }}
           style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", color: "var(--calm-text)", fontWeight: 600, marginBottom: "18px", padding: 0, display: "flex", alignItems: "center", gap: "6px" }}
         >
           ← Back
@@ -441,9 +450,7 @@ export default function SimplifiedStart() {
           {fuConfig?.options.map((opt) => (
             <button
               key={opt.echo}
-              onClick={() => {
-                goToAssessment(opt.echo);
-              }}
+              onClick={() => goToAssessment(opt.echo)}
               style={{
                 background: "var(--paper)", border: "1.5px solid var(--line)",
                 borderRadius: "12px", padding: "14px 16px", fontSize: "14px",
@@ -454,6 +461,57 @@ export default function SimplifiedStart() {
               {opt.label}
             </button>
           ))}
+
+          {showOtherInput ? (
+            <>
+              <button
+                style={{
+                  background: "#FFF8E6", border: `1.5px solid ${GOLD}`,
+                  borderRadius: "12px", padding: "14px 16px", fontSize: "14px",
+                  fontWeight: 500, color: "var(--ink)", cursor: "default",
+                  textAlign: "left", fontFamily: "inherit",
+                }}
+              >
+                Something else
+              </button>
+              <input
+                type="text"
+                value={otherText}
+                onChange={(e) => setOtherText(e.target.value)}
+                placeholder="Briefly describe what you're seeing"
+                autoFocus
+                style={{
+                  border: "1.5px solid var(--line)", borderRadius: "10px",
+                  padding: "12px 14px", fontSize: "14px", fontFamily: "inherit",
+                  color: "var(--ink)", background: "var(--paper)", outline: "none",
+                  width: "100%", boxSizing: "border-box",
+                }}
+              />
+              <button
+                onClick={() => goToAssessment("Something else", otherText.trim() || undefined)}
+                style={{
+                  background: NAVY, color: "#fff", border: "none",
+                  borderRadius: "12px", padding: "14px 16px", fontSize: "14px",
+                  fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                  width: "100%",
+                }}
+              >
+                Continue →
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowOtherInput(true)}
+              style={{
+                background: "var(--paper)", border: "1.5px solid var(--line)",
+                borderRadius: "12px", padding: "14px 16px", fontSize: "14px",
+                fontWeight: 500, color: "var(--ink)", cursor: "pointer",
+                textAlign: "left", fontFamily: "inherit", transition: "border-color .1s, background .1s",
+              }}
+            >
+              Something else
+            </button>
+          )}
         </div>
       </div>
     </div>

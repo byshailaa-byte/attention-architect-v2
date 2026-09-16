@@ -31,6 +31,9 @@ export interface NarrativeContext {
   // Null/absent when the parent navigated directly to /assessment without the landing page flow.
   // Used exclusively as the required anchor for m_teaser — not used in any other moment.
   worryFollowup?: string | null;
+  // Free text typed by the parent when they selected "Something else" on the follow-up screen.
+  // Null when the fixed option set covered their situation or the field was left blank.
+  worryFollowupOther?: string | null;
 
   // Resolved outputs
   archetype: string;
@@ -61,6 +64,7 @@ export function buildNarrativeContext(
     parent_instinct_fit_tier: string;
     concerns?: string[];
     worry_followup?: string | null;
+    worry_followup_other?: string | null;
   },
   hdg: HumanDecisionGraph,
   bg: BehaviourGraph,
@@ -77,6 +81,7 @@ export function buildNarrativeContext(
     parentName: assessment.parent_name,
     concerns: assessment.concerns ?? [],
     worryFollowup: assessment.worry_followup ?? null,
+    worryFollowupOther: assessment.worry_followup_other ?? null,
     pronouns: {
       subj:      resolveChildPronoun(gender, "subj"),
       obj:       resolveChildPronoun(gender, "obj"),
@@ -160,8 +165,12 @@ Pattern summary: ${loop.pattern_summary}`;
     ? `Parent's stated concerns: ${ctx.concerns.map(k => CONCERN_CARD_LABELS[k] ?? k).join("; ")}`
     : "";
 
-  const followupBlock = ctx.worryFollowup
+  const followupBlock = ctx.worryFollowup && ctx.worryFollowup !== "Something else"
     ? `Parent's own words about the specific behaviour: "${ctx.worryFollowup}"`
+    : "";
+
+  const followupOtherBlock = ctx.worryFollowupOther
+    ? `Parent's own words (typed freely): "${ctx.worryFollowupOther}"`
     : "";
 
   return `FAMILY CONTEXT:
@@ -171,6 +180,7 @@ Child's archetype: ${archetype} (fit tier: ${ctx.archetypeFitTier})
 Parent's instinct: ${parentInstinct} (fit tier: ${ctx.parentInstinctFitTier})
 ${concernsBlock}
 ${followupBlock}
+${followupOtherBlock}
 
 BEHAVIOUR DIMENSIONS (from assessment):
 ${dims}

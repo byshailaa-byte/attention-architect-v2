@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
         parent_instinct_fit_tier,
         concerns,
         worry_followup,
+        worry_followup_other,
         answers,
         dimensions AS dimensions_json,
         weakest_two,
@@ -95,6 +96,7 @@ export async function POST(req: NextRequest) {
       parent_instinct_fit_tier: string | null;
       concerns: string[];
       worry_followup: string | null;
+      worry_followup_other: string | null;
       answers: Record<string, string>;
       dimensions_json: Record<string, { value: string; consistency: number; data_points: number; winning_votes: number }>;
       weakest_two: string[];
@@ -187,6 +189,7 @@ export async function POST(req: NextRequest) {
         parent_instinct_fit_tier: row.parent_instinct_fit_tier ?? scoring.parent_instinct_fit_tier,
         concerns: row.concerns ?? [],
         worry_followup: row.worry_followup ?? null,
+        worry_followup_other: row.worry_followup_other ?? null,
       },
       hdg, bg, sig, loop, cv, scoring,
     );
