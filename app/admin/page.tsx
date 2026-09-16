@@ -82,13 +82,14 @@ function getDateBounds(
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; from?: string; to?: string; archive?: string }>;
+  searchParams: Promise<{ range?: string; from?: string; to?: string; archive?: string; internal?: string }>;
 }) {
-  const params      = await searchParams;
-  const rangeParam  = params.range ?? null;
-  const fromParam   = params.from  ?? null;
-  const toParam     = params.to    ?? null;
-  const showArchive = params.archive === "1";
+  const params       = await searchParams;
+  const rangeParam   = params.range ?? null;
+  const fromParam    = params.from  ?? null;
+  const toParam      = params.to    ?? null;
+  const showArchive  = params.archive === "1";
+  const showInternal = params.internal === "1";
 
   const sql = getSql();
 
@@ -115,25 +116,31 @@ export default async function AdminPage({
   const [kpiRows, tierRows, archetypeRows, activityRows, assessmentRows, lmsRows] = await Promise.all([
     sql`
       SELECT
-        COALESCE((SELECT SUM(amount_paise) FROM purchases WHERE status = 'paid'
-                  AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz)::bigint, 0) AS revenue_paise,
-        (SELECT COUNT(*)::int FROM purchases WHERE status = 'paid'
-         AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz)                      AS paid_count,
-        (SELECT COUNT(*)::int FROM purchases
-         WHERE created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz)                    AS total_purchases,
+        COALESCE((SELECT SUM(p.amount_paise) FROM purchases p WHERE p.status = 'paid'
+                  AND p.created_at >= ${fromISO}::timestamptz AND p.created_at <= ${toISO}::timestamptz
+                  AND EXISTS (SELECT 1 FROM assessments ax WHERE ax.id = p.assessment_id AND (${showInternal} OR NOT ax.is_internal)))::bigint, 0) AS revenue_paise,
+        (SELECT COUNT(*)::int FROM purchases p WHERE p.status = 'paid'
+         AND p.created_at >= ${fromISO}::timestamptz AND p.created_at <= ${toISO}::timestamptz
+         AND EXISTS (SELECT 1 FROM assessments ax WHERE ax.id = p.assessment_id AND (${showInternal} OR NOT ax.is_internal)))                      AS paid_count,
+        (SELECT COUNT(*)::int FROM purchases p
+         WHERE p.created_at >= ${fromISO}::timestamptz AND p.created_at <= ${toISO}::timestamptz
+         AND EXISTS (SELECT 1 FROM assessments ax WHERE ax.id = p.assessment_id AND (${showInternal} OR NOT ax.is_internal)))                      AS total_purchases,
         (SELECT COUNT(*)::int FROM assessments WHERE archetype IS NOT NULL
-         AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz)                      AS completed_count,
+         AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
+         AND (${showInternal} OR NOT is_internal))                                                               AS completed_count,
         (SELECT archetype FROM assessments WHERE archetype IS NOT NULL
          AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
+         AND (${showInternal} OR NOT is_internal)
          GROUP BY archetype ORDER BY COUNT(*) DESC LIMIT 1)                                                      AS top_archetype
     `,
 
     sql`
-      SELECT tier, COUNT(*)::int AS count, COALESCE(SUM(amount_paise), 0)::bigint AS revenue_paise
-      FROM purchases
-      WHERE status = 'paid'
-        AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
-      GROUP BY tier
+      SELECT p.tier, COUNT(*)::int AS count, COALESCE(SUM(p.amount_paise), 0)::bigint AS revenue_paise
+      FROM purchases p
+      WHERE p.status = 'paid'
+        AND p.created_at >= ${fromISO}::timestamptz AND p.created_at <= ${toISO}::timestamptz
+        AND EXISTS (SELECT 1 FROM assessments ax WHERE ax.id = p.assessment_id AND (${showInternal} OR NOT ax.is_internal))
+      GROUP BY p.tier
       ORDER BY revenue_paise DESC
     `,
 
@@ -142,6 +149,7 @@ export default async function AdminPage({
       FROM assessments
       WHERE archetype IS NOT NULL
         AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
+        AND (${showInternal} OR NOT is_internal)
       GROUP BY archetype
       ORDER BY count DESC
     `,
@@ -153,6 +161,7 @@ export default async function AdminPage({
         FROM purchases p JOIN users u ON u.id = p.user_id
         WHERE p.status = 'paid'
           AND p.created_at >= ${fromISO}::timestamptz AND p.created_at <= ${toISO}::timestamptz
+          AND EXISTS (SELECT 1 FROM assessments ax WHERE ax.id = p.assessment_id AND (${showInternal} OR NOT ax.is_internal))
 
         UNION ALL
 
@@ -161,6 +170,7 @@ export default async function AdminPage({
         FROM assessments a
         WHERE a.archetype IS NOT NULL AND a.email IS NOT NULL
           AND a.created_at >= ${fromISO}::timestamptz AND a.created_at <= ${toISO}::timestamptz
+          AND (${showInternal} OR NOT a.is_internal)
 
         UNION ALL
 
@@ -203,6 +213,7 @@ export default async function AdminPage({
         FROM lms_progress WHERE week = 1
         GROUP BY user_id
       ) lp ON lp.user_id = p.user_id
+      WHERE (${showInternal} OR NOT a.is_internal)
       ORDER BY a.created_at DESC
     `,
 
@@ -245,15 +256,17 @@ export default async function AdminPage({
   try {
     const [eventRows, dropOffRows, postDropOffRows, sinceRows, scrollRows, questionRows] = await Promise.all([
       sql`
-        SELECT event_type, COUNT(DISTINCT session_id)::int AS count
-        FROM funnel_events
-        WHERE event_type IN (
+        SELECT fe.event_type, COUNT(DISTINCT fe.session_id)::int AS count
+        FROM funnel_events fe
+        LEFT JOIN assessments ax ON ax.session_id = fe.session_id
+        WHERE fe.event_type IN (
           'assessment_started','assessment_complete','generate_lead',
           'report_view','begin_checkout','purchase',
           'landing_step_age','landing_step_concern','landing_step_followup'
         )
-        AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
-        GROUP BY event_type
+        AND fe.created_at >= ${fromISO}::timestamptz AND fe.created_at <= ${toISO}::timestamptz
+        AND (${showInternal} OR ax.is_internal IS NOT TRUE)
+        GROUP BY fe.event_type
       `,
       sql`
         SELECT
@@ -279,6 +292,7 @@ export default async function AdminPage({
             AND a2.archetype IS NOT NULL
         )
         AND last_events.last_seen < now() - INTERVAL '30 minutes'
+        AND (${showInternal} OR a.is_internal IS NOT TRUE)
         ORDER BY last_events.last_seen DESC
         LIMIT 50
       `,
@@ -307,28 +321,33 @@ export default async function AdminPage({
             SELECT 1 FROM purchases p WHERE p.assessment_id = a.id AND p.status = 'paid'
           )
           AND last_fe.last_seen < now() - INTERVAL '30 minutes'
+          AND (${showInternal} OR NOT a.is_internal)
         ORDER BY last_fe.last_seen DESC
         LIMIT 30
       `,
       sql`SELECT MIN(created_at) AS since FROM funnel_events`,
       sql`
         SELECT
-          metadata->>'page' AS page,
-          (metadata->>'depth')::int AS depth,
-          COUNT(DISTINCT session_id)::int AS count
-        FROM funnel_events
-        WHERE event_type = 'scroll_milestone'
-          AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
+          fe.metadata->>'page' AS page,
+          (fe.metadata->>'depth')::int AS depth,
+          COUNT(DISTINCT fe.session_id)::int AS count
+        FROM funnel_events fe
+        LEFT JOIN assessments ax ON ax.session_id = fe.session_id
+        WHERE fe.event_type = 'scroll_milestone'
+          AND fe.created_at >= ${fromISO}::timestamptz AND fe.created_at <= ${toISO}::timestamptz
+          AND (${showInternal} OR ax.is_internal IS NOT TRUE)
         GROUP BY page, depth
         ORDER BY page, depth
       `,
       sql`
         SELECT
-          metadata->>'question_id' AS question_id,
-          COUNT(DISTINCT session_id)::int AS count
-        FROM funnel_events
-        WHERE event_type = 'assessment_question_complete'
-          AND created_at >= ${fromISO}::timestamptz AND created_at <= ${toISO}::timestamptz
+          fe.metadata->>'question_id' AS question_id,
+          COUNT(DISTINCT fe.session_id)::int AS count
+        FROM funnel_events fe
+        LEFT JOIN assessments ax ON ax.session_id = fe.session_id
+        WHERE fe.event_type = 'assessment_question_complete'
+          AND fe.created_at >= ${fromISO}::timestamptz AND fe.created_at <= ${toISO}::timestamptz
+          AND (${showInternal} OR ax.is_internal IS NOT TRUE)
         GROUP BY question_id
         ORDER BY count DESC
       `,
@@ -489,6 +508,7 @@ export default async function AdminPage({
             AND r.superseded_by IS NULL
         )
         AND (a.child_name IS NULL OR (a.child_name NOT ILIKE 'Test%' AND a.child_name NOT ILIKE 'Smoke%'))
+        AND (${showInternal} OR NOT a.is_internal)
       ORDER BY a.created_at DESC
       LIMIT 20
     ` as unknown as { session_id: string; child_name: string | null; parent_name: string | null; phone: string | null; archetype: string | null; whatsapp_send_attempts: number; created_at: unknown }[];
@@ -523,6 +543,7 @@ export default async function AdminPage({
         AND archetype IS NOT NULL
         AND phone IS NOT NULL
         AND (child_name IS NULL OR (child_name NOT ILIKE 'Test%' AND child_name NOT ILIKE 'Smoke%'))
+        AND (${showInternal} OR NOT is_internal)
       ORDER BY created_at DESC
     ` as unknown as { session_id: string; child_name: string | null; parent_name: string | null; phone: string | null; whatsapp_send_attempts: number; created_at: unknown }[];
     waFailures = waRows.map(r => ({
@@ -569,6 +590,7 @@ export default async function AdminPage({
       campaignLaunchAt={campaignLaunchAt}
       campaign2LaunchAt={campaign2LaunchAt}
       showArchive={showArchive}
+      showInternal={showInternal}
       pendingNarrativeReviews={pendingNarrativeReviews}
       handbookLeads={handbookLeads}
       waFailures={waFailures}

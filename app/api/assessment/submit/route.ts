@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
       concerns,
       worryFollowup,
       variant,
+      utm,
     } = body as {
       sessionId: string;
       childName: string;
@@ -45,7 +46,17 @@ export async function POST(req: NextRequest) {
       concerns?: string[];
       worryFollowup?: string | null;
       variant?: string;
+      utm?: Record<string, string>;
     };
+
+    // Validate utm — must be a plain object if present, never user-controlled keys beyond the whitelist
+    const utmValue: Record<string, string> = {};
+    const ALLOWED_UTM = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid", "gclid"];
+    if (utm && typeof utm === "object" && !Array.isArray(utm)) {
+      for (const k of ALLOWED_UTM) {
+        if (typeof utm[k] === "string") utmValue[k] = utm[k].slice(0, 256);
+      }
+    }
 
     // Sessions without a concern + follow-up answer can't receive a teaser, so the gated
     // arm would degrade to a naked paywall. Force these to control so the gated bucket
@@ -102,7 +113,8 @@ export async function POST(req: NextRequest) {
         confidence_vector,
         concerns,
         worry_followup,
-        pricing_variant
+        pricing_variant,
+        utm
       ) VALUES (
         ${sessionId}::uuid,
         ${childName || null},
@@ -121,7 +133,8 @@ export async function POST(req: NextRequest) {
         ${JSON.stringify(cv)}::jsonb,
         ${concerns ?? []},
         ${worryFollowup ?? null},
-        ${pricingVariant}
+        ${pricingVariant},
+        ${JSON.stringify(utmValue)}::jsonb
       )
     `;
 

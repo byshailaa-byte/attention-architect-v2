@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { captureUtmOnce } from "@/lib/utm";
 
 declare global {
   interface Window {
@@ -125,6 +126,8 @@ export default function SimplifiedStart() {
   const [oobPhone, setOobPhone]           = useState("");
   const [oobSubmitting, setOobSubmitting] = useState(false);
   const [oobResult, setOobResult]         = useState<{ wa_sent: boolean } | null>(null);
+
+  useEffect(() => { captureUtmOnce(); }, []);
 
   // Landing session UUID — used for landing_step_* DB events.
   // Separate from the assessment session_id created when assessment starts.
