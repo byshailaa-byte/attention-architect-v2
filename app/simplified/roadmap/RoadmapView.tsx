@@ -495,17 +495,18 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
           </p>
           <div>
             {([
-              { color: "#E85D5D", name: "The Reminder Parent",     quote: RUNG1_QUOTE[parentPattern] ?? RUNG1_QUOTE["The Pusher"]!, desc: "Every parent starts here. What differs is how." },
-              { color: GOLD,      name: "The Observant Parent",    quote: "What keeps pulling their attention away?",                                            desc: "You begin noticing the patterns instead of reacting to every distraction." },
-              { color: "#3B82F6", name: "The Guiding Parent",      quote: "What would make this easier to start?",                                               desc: "You stop giving constant instructions and start changing the conditions around attention." },
-              { color: "#7C3AED", name: "The Coaching Parent",     quote: "What do you notice about your own attention?",                                        desc: "Your child begins recognising distraction, difficulty, fatigue and what helps them return." },
-              { color: TEAL,      name: "The Attention Architect", quote: "I don’t have to manage their attention. They are learning to manage it themselves.", desc: "You design the environment, teach the skills, and gradually hand ownership back to your child." },
-            ] as { color: string; name: string; quote: string; desc: string }[]).map((rung, i, arr) => (
+              { color: "#E85D5D", name: "The Reminder Parent",     quote: RUNG1_QUOTE[parentPattern] ?? RUNG1_QUOTE["The Pusher"]!, desc: "Every parent starts here. What differs is how.",                                                                        alt: "Parent gesturing urgently to a child looking at his phone, with an exclamation mark in a speech bubble" },
+              { color: GOLD,      name: "The Observant Parent",    quote: "What keeps pulling their attention away?",                 desc: "You begin noticing the patterns instead of reacting to every distraction.",                                              alt: "Parent watching quietly as a child writes, with a magnifying glass in a speech bubble" },
+              { color: "#3B82F6", name: "The Guiding Parent",      quote: "What would make this easier to start?",                   desc: "You stop giving constant instructions and start changing the conditions around attention.",                                alt: "Parent pointing and smiling as a child writes, with a lightbulb in a speech bubble" },
+              { color: "#7C3AED", name: "The Coaching Parent",     quote: "What do you notice about your own attention?",            desc: "Your child begins recognising distraction, difficulty, fatigue and what helps them return.",                              alt: "Parent sitting beside a thoughtful child, with a brain in a speech bubble" },
+              { color: TEAL,      name: "The Attention Architect", quote: "I don’t have to manage their attention. They are learning to manage it themselves.", desc: "You design the environment, teach the skills, and gradually hand ownership back to your child.", alt: "Parent and child high-fiving, with a star in a speech bubble" },
+            ] as { color: string; name: string; quote: string; desc: string; alt: string }[]).map((rung, i, arr) => (
               <div key={rung.name} style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "16px 0", borderBottom: i < arr.length - 1 ? `1px solid ${LINE}` : "none" }}>
                 {/* Thumbnail with badge overlapping top-left */}
                 <div style={{ position: "relative", flexShrink: 0, width: 100, height: 100 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/ladder-${i + 1}.png`} alt="" style={{ width: 100, height: 100, borderRadius: 10, objectFit: "cover", display: "block" }} />
+                  {/* ladder-1.png – ladder-5.png: AI-generated illustrations, reviewed and approved for launch 2026-09-16. Replace with final branded artwork before scaling paid campaigns. */}
+                  <img src={`/ladder-${i + 1}.png`} alt={rung.alt} style={{ width: 100, height: 100, borderRadius: 10, objectFit: "cover", display: "block" }} />
                   <div style={{ position: "absolute", top: -6, left: -6, width: 22, height: 22, borderRadius: "50%", background: rung.color, color: "#fff", font: "700 11px/22px 'Instrument Sans',system-ui", textAlign: "center", border: `2px solid ${BG}` }}>{i + 1}</div>
                 </div>
                 {/* Text column */}
