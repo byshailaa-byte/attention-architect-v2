@@ -2,19 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { captureUtmOnce } from "@/lib/utm";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-  }
-}
-
-function fireGtag(event: string, params?: Record<string, string | number>) {
-  if (typeof window !== "undefined" && typeof window.gtag === "function") {
-    window.gtag("event", event, params ?? {});
-  }
-}
+import { fireGtag } from "@/lib/gtag";
 
 function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
   fetch("/api/funnel/event", {
@@ -283,8 +273,7 @@ export default function SimplifiedStart() {
       <>
       <div className="funnel-screen">
         <div className="funnel-card">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto", marginBottom: 20 }} />
+          <Image src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" width={120} height={28} style={{ marginBottom: 20 }} />
 
           <div style={{ fontSize: "11px", letterSpacing: ".14em", textTransform: "uppercase", color: "var(--ink-dim)", fontWeight: 700, marginBottom: "18px" }}>
             Before You Start
@@ -428,8 +417,7 @@ export default function SimplifiedStart() {
   return (
     <div className="funnel-screen">
       <div className="funnel-card">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto", marginBottom: 20 }} />
+        <Image src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" width={120} height={28} style={{ marginBottom: 20 }} />
 
         <button
           onClick={() => { setStage("start"); setShowOtherInput(false); setOtherText(""); }}
