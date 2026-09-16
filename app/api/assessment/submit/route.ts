@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { tallyDimension, scoreAssessment, Dimensions } from "@/lib/engine/scorer";
+import { VALID_ANSWER_VALUES } from "@/lib/engine/questions";
 import { buildHdg } from "@/lib/graph/hdg";
 import { buildBehaviourGraph } from "@/lib/graph/behaviour-graph";
 import { buildBehaviourSignature } from "@/lib/graph/signature";
@@ -57,6 +58,20 @@ export async function POST(req: NextRequest) {
 
     if (!sessionId || !ageBand || !answers || !questionSequence) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // Validate every answer value against the known option sets in questions.ts.
+    // Unknown question IDs and out-of-set values both reject with 400.
+    for (const [qId, val] of Object.entries(answers)) {
+      const validValues = VALID_ANSWER_VALUES.get(qId);
+      if (!validValues) {
+        console.warn(`[assessment/submit] unknown question id="${qId}" session=${sessionId}`);
+        return NextResponse.json({ error: "Invalid answer: unknown question", question: qId }, { status: 400 });
+      }
+      if (!validValues.has(val as string)) {
+        console.warn(`[assessment/submit] invalid value="${val}" for question="${qId}" session=${sessionId}`);
+        return NextResponse.json({ error: "Invalid answer: value not in option set", question: qId, value: val }, { status: 400 });
+      }
     }
 
     // Build per-dimension answer arrays (in question-asked order)
