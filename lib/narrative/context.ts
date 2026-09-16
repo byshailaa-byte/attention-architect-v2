@@ -9,6 +9,7 @@ import type { ScoringOutput } from "@/lib/engine/scorer";
 import type { ConfidenceVector } from "@/lib/graph/confidence";
 import type { Gender } from "@/lib/report/pronouns";
 import { resolveChildPronoun } from "@/lib/report/pronouns";
+import { CONCERN_CARD_LABELS } from "@/lib/concerns";
 
 export interface Pronouns {
   subj: string;
@@ -156,7 +157,11 @@ Pattern summary: ${loop.pattern_summary}`
 Pattern summary: ${loop.pattern_summary}`;
 
   const concernsBlock = ctx.concerns.length > 0
-    ? `Parent's stated concerns: ${ctx.concerns.join(", ")}`
+    ? `Parent's stated concerns: ${ctx.concerns.map(k => CONCERN_CARD_LABELS[k] ?? k).join("; ")}`
+    : "";
+
+  const followupBlock = ctx.worryFollowup
+    ? `Parent's own words about the specific behaviour: "${ctx.worryFollowup}"`
     : "";
 
   return `FAMILY CONTEXT:
@@ -165,6 +170,7 @@ Parent: ${parentName}
 Child's archetype: ${archetype} (fit tier: ${ctx.archetypeFitTier})
 Parent's instinct: ${parentInstinct} (fit tier: ${ctx.parentInstinctFitTier})
 ${concernsBlock}
+${followupBlock}
 
 BEHAVIOUR DIMENSIONS (from assessment):
 ${dims}
