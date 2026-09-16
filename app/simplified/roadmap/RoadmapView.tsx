@@ -372,17 +372,6 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
 
   const archSignals = ARCHETYPE_SIGNALS[archetype] ?? ARCHETYPE_SIGNALS["The All-In Kid"];
 
-  function handleFounderCall() {
-    if (sessionId) {
-      fireEvent("founder_call_requested", sessionId, { source: "mid_page" });
-      fireGtag("founder_call_requested", { source: "mid_page" });
-    }
-    const msg = encodeURIComponent(
-      `Hi — I'd like to book my free 30-minute founder call. Child: ${c}. Session: ${sessionId ?? "unknown"}`
-    );
-    window.open(`https://wa.me/919993374923?text=${msg}`, "_blank", "noopener,noreferrer");
-  }
-
   // Shared tick-list style helper
   const tick = (color: string) => ({
     display: "flex", gap: 8, alignItems: "flex-start",
@@ -492,44 +481,6 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
             </div>
           );
         })()}
-
-        {/* ── 4. Mid-page free call — gift for finishing the assessment ────── */}
-        <div style={{ marginBottom: "44px" }}>
-          <div style={{ font: "700 10px/1.4 ‘Instrument Sans’,system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: TEAL_D, marginBottom: 12 }}>
-            Yours for finishing the assessment
-          </div>
-          <div style={{ background: CARD, border: `1.5px solid ${TEAL}55`, borderRadius: 14, overflow: "hidden" }}>
-            <div style={{ height: 4, background: TEAL }} />
-            <div style={{ padding: "18px 18px 20px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
-                <div style={{ fontFamily: BF, fontWeight: 700, fontSize: "16px", color: NAVY }}>A call with our founder</div>
-                <div style={{ background: TEAL, color: "#fff", fontSize: "8px", fontWeight: 700, letterSpacing: ".08em", padding: "3px 7px", borderRadius: 5, flexShrink: 0 }}>FREE FOR YOU</div>
-              </div>
-              <div style={{ fontFamily: BF, fontWeight: 800, fontSize: 28, color: TEAL_D, lineHeight: 1, marginBottom: 4 }}>
-                Free&nbsp;<s style={{ fontSize: 13, fontWeight: 600, color: "#A6ADB8" }}>₹999</s>
-              </div>
-              <div style={{ fontSize: "11px", color: DIM, marginBottom: 16 }}>30 minutes · No purchase needed</div>
-              <ul style={{ listStyle: "none", margin: "0 0 16px", padding: 0 }}>
-                {[
-                  "Bring one evening that isn’t working",
-                  "We look at it together",
-                  "Yours because you finished the assessment",
-                ].map(item => (
-                  <li key={item} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 7, fontSize: "13px", color: DIM, lineHeight: 1.5 }}>
-                    <span style={{ color: TEAL, fontWeight: 700, flexShrink: 0 }}>✓</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-              <button
-                onClick={handleFounderCall}
-                style={{ width: "100%", background: TEAL, color: "#fff", fontFamily: BF, fontWeight: 700, fontSize: "14px", padding: "13px", borderRadius: 10, border: "none", cursor: "pointer", display: "block", boxSizing: "border-box" }}
-              >
-                Book your free call →
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* ── 5. Ladder ────────────────────────────────────────────────────── */}
         <div style={{ marginBottom: "44px" }}>

@@ -3,6 +3,13 @@
 import { useState } from "react";
 import type { ReflectionOutcome } from "@/content/types";
 
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+    fbq?: (...args: unknown[]) => void;
+  }
+}
+
 const OUTCOMES: { value: ReflectionOutcome; label: string; cls: string }[] = [
   { value: "worked",     label: "✓ It worked",    cls: "sel-worked" },
   { value: "mixed",      label: "~ Mixed",         cls: "sel-mixed" },
@@ -54,6 +61,12 @@ export default function V2DayActions({
         setStep("idle");
         return;
       }
+      if (typeof window.gtag === "function") {
+        window.gtag("event", "lms_day_complete", { week, day });
+      }
+      if (typeof window.fbq === "function") {
+        window.fbq("trackCustom", "LmsDayComplete", { week, day });
+      }
       setStep(reflectionPrompt ? "reflecting" : "done");
     } catch {
       setError("Something went wrong. Try again.");
@@ -70,6 +83,12 @@ export default function V2DayActions({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ week, day, outcome, note: note || null }),
       });
+      if (typeof window.gtag === "function") {
+        window.gtag("event", "lms_reflection_submitted", { week, day, outcome });
+      }
+      if (typeof window.fbq === "function") {
+        window.fbq("trackCustom", "LmsReflectionSubmitted", { week, day, outcome });
+      }
       setStep("done");
     } catch {
       setStep("reflecting");
