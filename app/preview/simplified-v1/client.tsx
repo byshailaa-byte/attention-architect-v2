@@ -41,7 +41,6 @@ export type SimplifiedReportData = {
   tonightWatch: string;
   nowLines: string[];
   thenLines: string[];
-  ladderCurrent: number;
   testimonial: { quote: string; who: string; detail: string };
   drawsIn: string;
   pullsAway: string;

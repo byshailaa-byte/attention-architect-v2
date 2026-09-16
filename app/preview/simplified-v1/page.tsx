@@ -342,7 +342,6 @@ export default async function Page({
     instinctLine: INSTINCT_LINE[parentPattern] ?? "",
     nowLines: NOW_LINES,
     thenLines: THEN_LINES,
-    ladderCurrent: 1,
     testimonial: TESTIMONIAL_POOL[
       parseInt(session.replace(/-/g, "").slice(0, 2), 16) % TESTIMONIAL_POOL.length
     ],
