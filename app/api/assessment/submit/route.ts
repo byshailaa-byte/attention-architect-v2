@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
       questionSequence,
       concerns,
       worryFollowup,
+      worryFollowupOther,
       variant,
       utm,
     } = body as {
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
       questionSequence: Array<{ id: string; dimension: string }>;
       concerns?: string[];
       worryFollowup?: string | null;
+      worryFollowupOther?: string | null;
       variant?: string;
       utm?: Record<string, string>;
     };
@@ -83,6 +85,17 @@ export async function POST(req: NextRequest) {
         console.warn(`[assessment/submit] invalid value="${val}" for question="${qId}" session=${sessionId}`);
         return NextResponse.json({ error: "Invalid answer: value not in option set", question: qId, value: val }, { status: 400 });
       }
+    }
+
+    const worryFollowupOtherValue =
+      worryFollowupOther !== null && worryFollowupOther !== undefined
+        ? (worryFollowupOther.trim() || null)
+        : null;
+    if (worryFollowupOtherValue !== null && worryFollowupOtherValue.length > 200) {
+      return NextResponse.json(
+        { error: "worry_followup_other must be 200 characters or fewer" },
+        { status: 400 }
+      );
     }
 
     // Build per-dimension answer arrays (in question-asked order)
@@ -128,6 +141,7 @@ export async function POST(req: NextRequest) {
         confidence_vector,
         concerns,
         worry_followup,
+        worry_followup_other,
         pricing_variant,
         utm
       ) VALUES (
@@ -148,6 +162,7 @@ export async function POST(req: NextRequest) {
         ${JSON.stringify(cv)}::jsonb,
         ${concerns ?? []},
         ${worryFollowup ?? null},
+        ${worryFollowupOtherValue},
         ${pricingVariant},
         ${JSON.stringify(utmValue)}::jsonb
       )
