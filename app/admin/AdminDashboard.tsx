@@ -160,6 +160,7 @@ export type AdminDashboardProps = {
   campaignLaunchAt: string | null;
   campaign2LaunchAt: string | null;
   showArchive: boolean;
+  showInternal: boolean;
   pendingNarrativeReviews: number;
   handbookLeads: HandbookLead[];
   waFailures: WaFailureRow[];
@@ -605,6 +606,7 @@ function RangeControl({
   campaignLaunchAt,
   campaign2LaunchAt,
   showArchive,
+  showInternal,
 }: {
   rangeParam: string | null;
   fromParam: string | null;
@@ -612,6 +614,7 @@ function RangeControl({
   campaignLaunchAt: string | null;
   campaign2LaunchAt: string | null;
   showArchive: boolean;
+  showInternal: boolean;
 }) {
   const router = useRouter();
   const [customFrom, setCustomFrom] = useState(fromParam ?? "");
@@ -636,8 +639,19 @@ function RangeControl({
     : [];
   const PRESETS = [...CAMPAIGN_PRESETS, ...BASE_PRESETS];
 
+  function buildFlags(archiveOverride?: boolean, internalOverride?: boolean) {
+    const a = archiveOverride ?? showArchive;
+    const i = internalOverride ?? showInternal;
+    const flags: string[] = [];
+    if (a) flags.push("archive=1");
+    if (i) flags.push("internal=1");
+    return flags;
+  }
+
   function buildUrl(extra: string) {
-    return showArchive ? `/admin?archive=1&${extra}` : `/admin?${extra}`;
+    const flags = buildFlags();
+    const prefix = flags.length ? `?${flags.join("&")}&` : "?";
+    return `/admin${prefix}${extra}`;
   }
 
   function selectPreset(key: string) {
@@ -652,11 +666,15 @@ function RangeControl({
   }
 
   function toggleArchive() {
-    if (showArchive) {
-      router.push("/admin");
-    } else {
-      router.push("/admin?archive=1");
-    }
+    const flags = buildFlags(!showArchive, showInternal);
+    const qs = flags.length ? `?${flags.join("&")}` : "";
+    router.push(`/admin${qs}`);
+  }
+
+  function toggleInternal() {
+    const flags = buildFlags(showArchive, !showInternal);
+    const qs = flags.length ? `?${flags.join("&")}` : "";
+    router.push(`/admin${qs}`);
   }
 
   const presetBtn = (active: boolean): React.CSSProperties => ({
@@ -774,6 +792,26 @@ function RangeControl({
           {showArchive ? "✕ Hide pre-launch data" : "⊞ Show archived data"}
         </button>
       )}
+      <button
+        onClick={toggleInternal}
+        style={{
+          display: "block",
+          width: "100%",
+          background: showInternal ? `${C.yellow}28` : "none",
+          border: `1px solid ${showInternal ? C.yellow + "80" : C.border}`,
+          borderRadius: 4,
+          color: showInternal ? C.yellow : C.muted,
+          fontFamily: MONO,
+          fontSize: 9,
+          padding: "5px 8px",
+          cursor: "pointer",
+          textAlign: "left",
+          letterSpacing: "0.04em",
+          marginBottom: 4,
+        }}
+      >
+        {showInternal ? "✕ Hide internal sessions" : "⊞ Show internal sessions"}
+      </button>
     </div>
   );
 }
@@ -799,7 +837,7 @@ export default function AdminDashboard({
   funnelEvents, dropOffs, funnelSince,
   scrollMilestones, questionCompletions,
   rangeParam, fromParam, toParam,
-  campaignLaunchAt, campaign2LaunchAt, showArchive,
+  campaignLaunchAt, campaign2LaunchAt, showArchive, showInternal,
   pendingNarrativeReviews, handbookLeads, waFailures, neverGenerated,
 }: AdminDashboardProps) {
   const [active, setActive] = useState<Section>("overview");
@@ -1059,6 +1097,7 @@ export default function AdminDashboard({
           campaignLaunchAt={campaignLaunchAt}
           campaign2LaunchAt={campaign2LaunchAt}
           showArchive={showArchive}
+          showInternal={showInternal}
         />
 
         <div style={{ padding: "10px 20px 20px" }}>

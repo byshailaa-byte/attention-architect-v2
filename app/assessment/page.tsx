@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { GATEWAY_QUESTIONS, Question } from "@/lib/engine/questions";
 import { buildQuestionSequence, progressMilestone, GatewayAnswers } from "@/lib/engine/router";
+import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import SiteFooter from "@/app/components/SiteFooter";
 import ThankYouScreen from "@/app/preview/simplified-v1/ThankYouScreen";
 
@@ -152,6 +153,8 @@ function AssessmentForm() {
   const [submittedPhone, setSubmittedPhone] = useState("");
   const router = useRouter();
 
+  useEffect(() => { captureUtmOnce(); }, []);
+
   const firedStart = useRef(false);
   const firedDimensions = useRef(new Set<string>());
   useEffect(() => {
@@ -257,6 +260,7 @@ function AssessmentForm() {
           concerns: concernsParam.split(",").filter(Boolean),
           worryFollowup: followupParam || null,
           variant: variantParam || undefined,
+          utm: getStoredUtm(),
         }),
       });
       const data = await res.json();
