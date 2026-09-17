@@ -303,7 +303,10 @@ export default function SimplifiedStart() {
               Pronouns <span style={{ fontWeight: 400 }}>(optional)</span>
             </div>
             <div style={{ display: "flex", gap: "8px" }}>
-              {([["he", "He/him"], ["she", "She/her"], ["they", "They/them"]] as const).map(([val, label]) => (
+              {/* value = child_gender enum (boy/girl/non-binary); resolveChildPronoun keys off these.
+                  Label is the pronoun the parent sees. Previously stored he/she/they, which fell
+                  through to neutral pronouns for every session from this funnel. */}
+              {([["boy", "He/him"], ["girl", "She/her"], ["non-binary", "They/them"]] as const).map(([val, label]) => (
                 <button
                   key={val}
                   className={`chip-btn${gender === val ? " sel" : ""}`}
