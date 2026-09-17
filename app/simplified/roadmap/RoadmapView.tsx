@@ -40,10 +40,6 @@ const BF     = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
 // Six distinct accent colours — one per week, in order
 const W  = ["#E2705F", "#E9973F", "#DFC13C", "#4E9E86", "#3D7CB8", "#7B6BC4"] as const;
-const C1 = "#E2705F";
-const C2 = "#E9973F";
-const C3 = "#3D7CB8";
-const C4 = "#4E9E86";
 
 // Rung 1 quote — varies by parent instinct, everything else stays universal
 const RUNG1_QUOTE: Record<string, string> = {
@@ -53,140 +49,30 @@ const RUNG1_QUOTE: Record<string, string> = {
   "The Steady Hand":  "I'll wait. Whenever you're ready.",
 };
 
-// Problem each module solves — one per week, universal
-const PROBLEM_LINES = [
-  "For evenings that take three reminders before anything begins.",
-  "For when something easier is always one tap away.",
-  "For the tired Tuesday, not the good day.",
-  "For when one interruption ends the whole session.",
-  "For when it only works at the kitchen table.",
-  "For the evening you don't have to be in the room.",
-] as const;
 
-// What the child is building — per archetype × week
-const THEM_LINES_BY_ARCHETYPE: Record<string, readonly [string, string, string, string, string, string]> = {
-  "The Storm": [
-    "begins once the choice is genuinely theirs",
-    "stays with it even when it wasn't their idea",
-    "runs a whole stretch without handing it back",
-    "picks it up again after a bad call",
-    "makes their own calls outside homework too",
-    "decides before you think to offer",
-  ],
-  "The All-In Kid": [
-    "gets into something without needing a run-up",
-    "comes out of a screen like they would a book",
-    "keeps going on a day that usually derails it",
-    "a session going nowhere doesn't wreck the evening",
-    "protects their own focus somewhere new",
-    "asks for the quiet themselves",
-  ],
-  "The Inventor": [
-    "starts their own way without waiting to be told",
-    "sticks with their method when a shortcut appears",
-    "carries one approach across days, adjusting as they go",
-    "a method failing doesn't end the whole thing",
-    "uses their own way somewhere new",
-    "explains why they did it that way",
-  ],
-  "The Explorer": [
-    "writes the idea down instead of chasing it",
-    "comes back to the page after the break",
-    "keeps using it on an ordinary day",
-    "one idea going nowhere doesn't stop the next",
-    "reaches for it somewhere you never set it up",
-    "uses it without any reminder from you",
-  ],
-  "The Magnet": [
-    "begins with you nearby but not helping",
-    "stays with it when the room goes quiet",
-    "keeps going on a day you can't sit with them",
-    "works through a hard bit without you fixing it",
-    "holds their own in a group, not just with you",
-    "tells you when they want you close",
-  ],
-  "The Glue": [
-    "starts once things feel settled between you",
-    "stays with it even when something's unresolved",
-    "keeps going on a day that already went badly",
-    "a wobble doesn't take the whole evening with it",
-    "handles a sibling moment without carrying all of it",
-    "tells you how they're doing before you ask",
-  ],
-  "The Captain": [
-    "starts when it's genuinely theirs to run",
-    "keeps going when someone else sets the terms",
-    "runs something ongoing for a whole week",
-    "it going wrong doesn't stop them leading next time",
-    "takes charge somewhere outside homework",
-    "steps up before anyone asks",
-  ],
-  "The Live Wire": [
-    "starts when something's actually riding on it",
-    "keeps going after the exciting part ends",
-    "carries a stake across days, not one burst",
-    "a stake not paying off doesn't stop the next",
-    "sets stakes outside homework too",
-    "sets their own without being prompted",
-  ],
-};
 
-const SCHOOL_NIGHT: Record<string, { now: [string,string,string]; then: [string,string,string] }> = {
-  "The Storm": {
-    now:  ["The evening starts with who decided what", "You ask, they push back, you ask again", "Nothing begins until someone gives in"],
-    then: ["They pick where to start and get going", "You offer once, then leave it", "The argument stops being about whose idea it was"],
-  },
-  "The All-In Kid": {
-    now:  ["Getting them in takes twenty minutes", "Getting them out takes another twenty", "Any interruption ends the session"],
-    then: ["They settle in faster because the block is protected", "Stopping stops being a fight", "One interruption doesn't end the evening"],
-  },
-  "The Inventor": {
-    now:  ["You show them the quicker way and they stop", "The long way takes an hour", "You end up doing half of it"],
-    then: ["They start their own way without waiting to be told", "The long way finishes, and it’s theirs", "You stop reaching for the shortcut"],
-  },
-  "The Explorer": {
-    now:  ["An idea arrives and the page stops moving", "You ask twice, and the second time is sharper", "Twenty minutes on, nothing’s been written"],
-    then: ["The idea gets written down and the work carries on", "You ask once, or not at all", "The page moves, even on an ordinary evening"],
-  },
-  "The Magnet": {
-    now:  ["Nothing happens unless you’re in the room", "You sit down and it starts; you leave and it stops", "You’re at the table longer than they are"],
-    then: ["They begin with you nearby but not helping", "You can leave the room and it carries on", "You get the evening back"],
-  },
-  "The Glue": {
-    now:  ["The pencil doesn’t move and nothing’s wrong with the homework", "Something unresolved is sitting between you", "You find out an hour later what it was"],
-    then: ["Things get named before the work starts", "A bad afternoon doesn’t take the whole evening", "The page moves once the air is clear"],
-  },
-  "The Captain": {
-    now:  ["Every instruction slows things down", "They do it, but at half speed", "It only moves when you’re standing over it"],
-    then: ["They run it themselves and it gets done faster", "You stop giving instructions", "You find out it’s finished without having asked"],
-  },
-  "The Live Wire": {
-    now:  ["Without a clock nothing registers as happening", "Ninety seconds in, they’re gone", "You supply the urgency, every night"],
-    then: ["They set the stake and it holds", "The energy lasts past the interesting part", "You stop being the one making it matter"],
-  },
-};
-
-export type WeekPreview = {
-  weekTitle: string;
-  bullets: [string, string, string];
-};
-
-export type WeekContent = {
-  weekTitle: string;
-  day2Title: string;   // WHAT YOU DO — primary action → "You:" line
-  day4Title: string;   // WHAT YOU DO — secondary action (shown in accordion)
-  whatToSay: string;   // script line → "What to say" in accordion
+// One week of the goal-framed plan: the week title (WEEK_TITLES), the objective,
+// and the two outcome columns. All strings arrive already token-filled from the server.
+export type RoadmapWeek = {
+  title:         string;
+  objective:     string;
+  parentOutcome: string;  // what changes for you
+  childOutcome:  string;  // what may change for the child
 };
 
 type Props = {
   childName:     string;
   archetype:     string;
   parentPattern?: string;
-  weekContents:  WeekContent[];
   sessionId:     string | null;
   parentName?:   string;
   email?:        string;
   phone?:        string;
+  // Goal-framing (from the stored goal, or the skill's recommended goal as a fallback).
+  goalStatement: string;
+  goalIsChosen:  boolean;
+  framingLine:   string;
+  weeks:         RoadmapWeek[];
 };
 
 const MOBILE_CSS = `
@@ -289,7 +175,7 @@ const ARCHETYPE_SIGNALS: Partial<Record<string, readonly [string, string, string
   ],
 };
 
-export default function RoadmapView({ childName: c, archetype, parentPattern = "The Pusher", weekContents, sessionId, parentName = "", email = "", phone = "" }: Props) {
+export default function RoadmapView({ childName: c, archetype, parentPattern = "The Pusher", sessionId, parentName = "", email = "", phone = "", goalStatement, goalIsChosen, framingLine, weeks }: Props) {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const pricingRef = useRef<HTMLDivElement>(null);
   const firedViewItem = useRef(false);
@@ -394,18 +280,22 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
 
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "36px 18px 80px" }}>
 
-        {/* ── 1. Hero ──────────────────────────────────────────────────────── */}
+        {/* ── 1. Goal statement ────────────────────────────────────────────── */}
         <div style={{ font: "700 11px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: TEAL, marginBottom: "12px" }}>
           THE ROADMAP
         </div>
-        <h1 style={{ fontFamily: BF, fontWeight: 800, fontSize: "clamp(24px,5vw,38px)", lineHeight: 1.15, color: NAVY, marginBottom: "16px" }}>
-          It is not your child who moves first. It is you.
+        <div style={{ font: "700 10px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.1em", textTransform: "uppercase", color: goalIsChosen ? GOLD : DIM, marginBottom: "8px" }}>
+          {goalIsChosen ? "Your goal" : `What this plan works toward for ${c}`}
+        </div>
+        <h1 style={{ fontFamily: BF, fontWeight: 800, fontSize: "clamp(22px,4.5vw,32px)", lineHeight: 1.18, color: NAVY, marginBottom: "14px" }}>
+          {goalStatement}
         </h1>
-        <p style={{ fontSize: "16px", color: DIM, lineHeight: 1.7, marginBottom: "44px", maxWidth: "54ch" }}>
-          The goal was never a child who focuses because you asked. It is a child who runs their own attention — and that only arrives if your role changes on the way there. This is how that happens, week by week, and who you become by the end of it.
+        {/* ── 2. Framing line ──────────────────────────────────────────────── */}
+        <p style={{ fontSize: "15px", color: DIM, lineHeight: 1.7, marginBottom: "44px", maxWidth: "56ch" }}>
+          {framingLine}
         </p>
 
-        {/* ── 3. Six weeks — compressed timeline ───────────────────────────── */}
+        {/* ── 3. Six weeks — objective + two outcome columns ───────────────── */}
         <div style={{ marginBottom: "44px" }}>
           <div style={{ font: "700 11px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: TEAL, marginBottom: "10px" }}>THE SIX WEEKS</div>
           <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "10px" }}>
@@ -415,28 +305,24 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
             Each week works on you first, then on {c}.
           </p>
           <div style={{ position: "relative" }}>
-            {weekContents.slice(0, 6).map(({ weekTitle, day2Title, whatToSay }, i) => {
+            {weeks.slice(0, 6).map((wk, i) => {
               const wc = W[i] ?? TEAL;
-              const themLine = (THEM_LINES_BY_ARCHETYPE[archetype] ?? THEM_LINES_BY_ARCHETYPE["The All-In Kid"]!)[i] ?? "";
               return (
                 <div key={i} className="rm-wk-row">
                   <div style={{ width: 29, height: 29, borderRadius: 9, background: wc, color: "#fff", fontFamily: BF, fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, zIndex: 1 }}>{i + 1}</div>
                   <div className="rm-wk-body">
-                    <div style={{ fontFamily: BF, fontWeight: 700, fontSize: 14.5, color: NAVY, lineHeight: 1.2 }}>{weekTitle}</div>
-                    <div style={{ fontSize: 11.5, lineHeight: 1.5, marginTop: 4, color: DIM }}>{PROBLEM_LINES[i]}</div>
-                    <details className="rm-wk-det" style={{ marginTop: 8 }}>
-                      <summary>What you do <span className="rm-wk-icon" /></summary>
-                      <div style={{ marginTop: 9, background: CARD, borderRadius: 10, padding: 12, boxShadow: "0 2px 8px rgba(20,40,77,.05)" }}>
-                        <div className="rm-dot-f" style={{ fontSize: 11.5, lineHeight: 1.5, color: wc, marginBottom: 4 }}><strong style={{ fontSize: 9, letterSpacing: ".06em", textTransform: "uppercase" as const, color: NAVY, opacity: 0.6, display: "inline" }}>You </strong>{day2Title}</div>
-                        <div className="rm-dot-o" style={{ fontSize: 11.5, lineHeight: 1.5, color: wc }}><strong style={{ fontSize: 9, letterSpacing: ".06em", textTransform: "uppercase" as const, color: NAVY, opacity: 0.6, display: "inline" }}>{c} </strong>{themLine}</div>
-                        {whatToSay && (
-                          <div style={{ background: NAVY, borderRadius: 8, padding: "9px 11px", marginTop: 9 }}>
-                            <div style={{ fontSize: 7.5, letterSpacing: ".1em", textTransform: "uppercase" as const, color: GOLD, fontWeight: 700 }}>Say</div>
-                            <div style={{ fontSize: 11.5, fontStyle: "italic", color: "#fff", marginTop: 3, fontFamily: BF, fontWeight: 600 }}>&ldquo;{whatToSay}&rdquo;</div>
-                          </div>
-                        )}
+                    <div style={{ fontFamily: BF, fontWeight: 700, fontSize: 14.5, color: NAVY, lineHeight: 1.2 }}>{wk.title}</div>
+                    <div style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 5, color: INK }}>{wk.objective}</div>
+                    <div className="rm-goal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+                      <div style={{ background: CARD, borderRadius: 10, padding: "10px 12px", boxShadow: "0 2px 8px rgba(20,40,77,.05)" }}>
+                        <div style={{ fontSize: 8.5, letterSpacing: ".07em", textTransform: "uppercase" as const, fontWeight: 700, color: NAVY, opacity: 0.55, marginBottom: 4 }}>What changes for you</div>
+                        <div style={{ fontSize: 11.5, lineHeight: 1.5, color: DIM }}>{wk.parentOutcome}</div>
                       </div>
-                    </details>
+                      <div style={{ background: CARD, borderRadius: 10, padding: "10px 12px", boxShadow: "0 2px 8px rgba(20,40,77,.05)" }}>
+                        <div style={{ fontSize: 8.5, letterSpacing: ".07em", textTransform: "uppercase" as const, fontWeight: 700, color: wc, marginBottom: 4 }}>What may change for {c}</div>
+                        <div style={{ fontSize: 11.5, lineHeight: 1.5, color: DIM }}>{wk.childOutcome}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
@@ -444,44 +330,26 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
           </div>
         </div>
 
-        {/* ── The arc — school-night before/after merged into stages 1 & 2 ── */}
-        {(() => {
-          const sn = SCHOOL_NIGHT[archetype] ?? SCHOOL_NIGHT["The Explorer"]!;
-          const arcSteps: { dot: string; label: string; when: string; title: string; line: string }[] = [
-            { dot: C1, label: "NOW", when: "Tonight",          title: "You’re the reason it happens",     line: [sn.now[0], sn.now[1]].filter(Boolean).join(". ") + "." },
-            { dot: C2, label: "6W",  when: "By week six",      title: "They start without being asked",       line: sn.then[0] ?? "" },
-            { dot: C3, label: "→",   when: "The months after", title: "It turns up elsewhere",                 line: "Somewhere nobody taught it. They notice their own drift." },
-            { dot: C4, label: "∞",   when: "What you’re building", title: "A child who runs their own attention", line: "The skill nobody hands out at nineteen." },
-          ];
-          return (
-            <div style={{ marginBottom: "44px", borderRadius: 14, overflow: "hidden", background: NAVY }}>
-              <div style={{ padding: "22px 20px 24px" }}>
-                <div style={{ fontSize: 8.5, letterSpacing: "0.13em", textTransform: "uppercase" as const, fontWeight: 700, color: "#FBCB4A", marginBottom: 7 }}>Where this goes</div>
-                <div style={{ fontFamily: BF, fontWeight: 700, fontSize: "clamp(18px,3.5vw,22px)", lineHeight: 1.16, color: "#fff", marginBottom: 9 }}>
-                  A school night with {c}
-                </div>
-                <div style={{ fontSize: 12.5, lineHeight: 1.6, color: "#AFBACB", marginBottom: 17 }}>
-                  Six weeks is the start of it, not the whole of it.
-                </div>
-                <div>
-                  {arcSteps.map((s, i, arr) => (
-                    <div key={i} style={{ display: "flex", gap: 12, paddingBottom: i < arr.length - 1 ? 16 : 0, position: "relative" }}>
-                      {i < arr.length - 1 && (
-                        <div style={{ position: "absolute", left: 15, top: 32, bottom: 0, width: 2, background: "rgba(255,255,255,.16)" }} />
-                      )}
-                      <div style={{ width: 31, height: 31, borderRadius: "50%", background: s.dot, color: "#fff", fontFamily: BF, fontWeight: 800, fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, zIndex: 1 }}>{s.label}</div>
-                      <div style={{ flex: 1, paddingTop: 3 }}>
-                        <div style={{ fontSize: 8, letterSpacing: "0.11em", textTransform: "uppercase" as const, fontWeight: 700, color: s.dot }}>{s.when}</div>
-                        <div style={{ fontFamily: BF, fontSize: 14.5, fontWeight: 700, color: "#fff", marginTop: 3, lineHeight: 1.22 }}>{s.title}</div>
-                        <div style={{ fontSize: 11.5, lineHeight: 1.5, color: "#AFBACB", marginTop: 5 }}>{s.line}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+        {/* ── 4. Goal restated + week-1 / week-6 measurement ───────────────── */}
+        <div style={{ marginBottom: "44px", background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: "22px 20px" }}>
+          <div style={{ font: "700 11px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: TEAL, marginBottom: "10px" }}>THE GOAL</div>
+          <div style={{ fontFamily: BF, fontWeight: 700, fontSize: "18px", color: NAVY, lineHeight: 1.3, marginBottom: "6px" }}>
+            {goalStatement}
+          </div>
+          <p style={{ fontSize: "13px", color: DIM, lineHeight: 1.6, marginBottom: "18px", maxWidth: "52ch" }}>
+            Note where {c} starts and where {c} lands. Six weeks apart.
+          </p>
+          <div className="rm-goal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ border: `1.5px dashed ${LINE}`, borderRadius: 10, padding: "12px 14px", minHeight: 92, background: BG }}>
+              <div style={{ fontSize: 8.5, letterSpacing: ".08em", textTransform: "uppercase" as const, fontWeight: 700, color: NAVY, opacity: 0.55, marginBottom: 6 }}>Week 1 · where you start</div>
+              <div style={{ fontSize: 11, color: "#B9BEC6", fontStyle: "italic" }}>Your baseline</div>
             </div>
-          );
-        })()}
+            <div style={{ border: `1.5px dashed ${TEAL}`, borderRadius: 10, padding: "12px 14px", minHeight: 92, background: BG }}>
+              <div style={{ fontSize: 8.5, letterSpacing: ".08em", textTransform: "uppercase" as const, fontWeight: 700, color: TEAL, marginBottom: 6 }}>Week 6 · where {c} lands</div>
+              <div style={{ fontSize: 11, color: "#B9BEC6", fontStyle: "italic" }}>The goal, measured</div>
+            </div>
+          </div>
+        </div>
 
         {/* ── 5. Ladder ────────────────────────────────────────────────────── */}
         <div style={{ marginBottom: "44px" }}>
