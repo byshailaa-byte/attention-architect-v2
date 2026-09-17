@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle } from "../_shared";
+import { BREAK_IDX, SKILL_NAMES, DEFAULT_BREAK_IDX } from "@/lib/report/skills";
 
 type Archetype = {
   id: string;
@@ -10,9 +11,14 @@ type Archetype = {
   gloss: string;
   home: string;
   strength: string;
-  breaks: string;
   lever?: string;
 };
+
+// The break skill is derived from the shared archetype→skill map, not stored
+// inline — keeps this library and the profile "STARTS HERE" in lockstep.
+function breaksFor(name: string): string {
+  return SKILL_NAMES[BREAK_IDX[name] ?? DEFAULT_BREAK_IDX];
+}
 
 const ARCHETYPES: Archetype[] = [
   {
@@ -21,56 +27,48 @@ const ARCHETYPES: Archetype[] = [
     home: "Works hard on something they chose. The same task, assigned, gets nothing.",
     strength: "Real drive, entirely her own. Nobody has to manufacture it.",
     lever: "Ownership",
-    breaks: "Starting",
   },
   {
     id: "all-in-kid", n: "02", name: "The All-In Kid",
     gloss: "Goes very deep, and pays an unusually high price for being interrupted",
     home: "Can sit with one thing for two straight hours without looking up. Switching or stopping is the hard part.",
     strength: "Goes deeper than almost anyone when left alone with something.",
-    breaks: "Carrying it over",
   },
   {
     id: "inventor", n: "03", name: "The Inventor",
     gloss: "Will do it — but his own way",
     home: "Rebuilds something four different wrong ways before it's finally right, and never looks bored doing it.",
     strength: "Builds real, durable understanding by getting it wrong their own way first.",
-    breaks: "Starting",
   },
   {
     id: "explorer", n: "04", name: "The Explorer",
     gloss: "Ideas arrive mid-task and have to be chased",
     home: "Ten good minutes, then a question about something unrelated. Twenty minutes later they can tell you three new facts and none were on the worksheet.",
     strength: "Curiosity that goes further and connects more than a fixed lesson plan ever could.",
-    breaks: "Holding on",
   },
   {
     id: "magnet", n: "05", name: "The Magnet",
     gloss: "Attention holds while someone is nearby — company, not supervision",
     home: "Forty minutes of focused work at the kitchen table. Can't manage ten alone in their room on the same task.",
     strength: "Genuinely does better work, more consistently, in the presence of someone else.",
-    breaks: "Running it themselves",
   },
   {
     id: "glue", n: "06", name: "The Glue",
     gloss: "Cannot concentrate across an unresolved gap with you",
     home: "Staring at homework, pencil not moving. Solve the tension in one sentence and they finish the page in ten minutes.",
     strength: "Deeply attuned to the emotional temperature of a room — often the first to notice when something's actually wrong.",
-    breaks: "Holding on",
   },
   {
     id: "captain", n: "07", name: "The Captain",
     gloss: "Rises to genuine ownership, deflates under supervised participation",
     home: "Tell them how to do it and they slow-walk every step. Say 'your call' and the same task is done in half the time.",
     strength: "Takes real ownership and drives hard the moment something is genuinely theirs to run.",
-    breaks: "Running it themselves",
   },
   {
     id: "live-wire", n: "08", name: "The Live Wire",
     gloss: "Effort tracks stakes, not importance",
     home: "A timed challenge gets full, locked-in effort. The identical untimed version gets ninety seconds.",
     strength: "Brings real, sustained intensity to anything that offers genuine stakes or challenge.",
-    breaks: "Staying with it",
   },
 ];
 
@@ -123,7 +121,7 @@ function ArchetypeCard({ a, expanded, onToggle }: { a: Archetype; expanded: bool
               padding: "4px 12px", borderRadius: "var(--radius-pill)",
               background: "var(--amber-100)", border: "1px solid var(--amber-200)",
               font: "var(--weight-medium) var(--text-sm)/1.4 var(--font-sans)", color: "var(--amber-700)",
-            }}>Usually breaks at: {a.breaks}</span>
+            }}>Usually breaks at: {breaksFor(a.name)}</span>
           </div>
         </div>
       ) : (

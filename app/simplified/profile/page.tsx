@@ -6,30 +6,9 @@ import { archetypeContent, patternContent, fitContent } from "@/content";
 import { fillTokens } from "@/lib/report/tokens";
 import { buildPronounTokens } from "@/lib/report/pronouns";
 import type { Gender } from "@/lib/report/pronouns";
+import { BREAK_IDX, SKILL_NAMES } from "@/lib/report/skills";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-// Break-point index (0-based) per archetype.
-// Source of truth: app/simplified/children/page.tsx ARCHETYPES[].breaks
-const BREAK_IDX: Record<string, number> = {
-  "The Storm":      0,
-  "The All-In Kid": 4,
-  "The Inventor":   0,
-  "The Explorer":   1,
-  "The Magnet":     5,
-  "The Glue":       1,
-  "The Captain":    5,
-  "The Live Wire":  2,
-};
-
-const SKILL_NAMES = [
-  "Starting",
-  "Holding on",
-  "Staying with it",
-  "Recovering",
-  "Carrying it over",
-  "Running it themselves",
-];
 
 // Archetype-specific SceneCard closing line — what the parent didn't know.
 const SCENE_CLOSINGS: Record<string, string> = {
