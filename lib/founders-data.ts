@@ -17,8 +17,8 @@ export const SHASHI: Person = {
 
 export const SHAILY: Person = {
   name: "Shaily Badonia",
-  role: "Chief Intelligence Officer",
-  credential: null,
+  role: "Co-Founder and Chief Intelligence Officer",
+  credential: "10+ years of experience",
   alt: "Shaily Badonia",
 };
 
