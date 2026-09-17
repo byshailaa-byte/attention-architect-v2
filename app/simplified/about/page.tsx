@@ -90,6 +90,7 @@ export default function AboutPage() {
                 founders={[
                   {
                     ...SHASHI,
+                    photo: "/shashi-headshot-square.png",
                     nameStyle: { font: "var(--weight-bold) var(--text-lg)/1.3 var(--font-sans)", color: "var(--navy-800)" },
                     metaStyle: { font: "var(--type-body-sm)", color: "var(--text-muted)" },
                     ...(SHASHI.credential ? {
