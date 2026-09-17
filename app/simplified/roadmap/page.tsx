@@ -5,18 +5,9 @@ import { SAY_BY_ARCHETYPE, WEEK6_SCRIPT } from "@/content/lms/what-to-say";
 import SiteFooter from "@/app/components/SiteFooter";
 import RoadmapView from "./RoadmapView";
 import type { WeekContent } from "./RoadmapView";
+import { WEEK_TITLES } from "@/lib/report/skills";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-// Six shared week titles — same for every parent. Source: THE_PLAN.pdf.
-const SHARED_WEEK_TITLES: Record<number, string> = {
-  1: "Getting started without the push",
-  2: "Handling what pulls them away",
-  3: "Staying with it on an ordinary day",
-  4: "Coming back after a slip",
-  5: "Using it beyond homework",
-  6: "Running it themselves",
-};
 
 // Resolve template variables to gender-neutral fallbacks for the roadmap context.
 function cleanTitle(title: string, childName: string): string {
@@ -44,7 +35,7 @@ function extractWeekContent(
     ? WEEK6_SCRIPT
     : (archetypeScripts?.[weekNum - 1] ?? WEEK6_SCRIPT);
   return {
-    weekTitle: SHARED_WEEK_TITLES[weekNum] ?? content.weekTitle,
+    weekTitle: WEEK_TITLES[weekNum] ?? content.weekTitle,
     day2Title: fill(day2?.title ?? ""),
     day4Title: fill(day4?.title ?? ""),
     whatToSay,

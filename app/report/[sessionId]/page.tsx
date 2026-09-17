@@ -48,9 +48,16 @@ export default async function ReportPage({
       a.email,
       a.phone,
       a.concerns,
+      a.worry_followup,
       a.tried,
       a.better,
-      a.pricing_variant
+      a.pricing_variant,
+      -- Goal state for GoalSection. Gate 3: goal_flagged and goal_free_text are
+      -- deliberately NOT selected — they never leave the DB into the report.
+      a.goal_skill,
+      a.goal_key,
+      a.goal_text,
+      a.goal_source
     FROM assessments a
     WHERE a.session_id = ${sessionId}::uuid
     LIMIT 1
@@ -73,9 +80,14 @@ export default async function ReportPage({
     email: string | null;
     phone: string | null;
     concerns: string[];
+    worry_followup: string | null;
     tried: string[] | null;
     better: string[] | null;
     pricing_variant: string | null;
+    goal_skill: string | null;
+    goal_key: string | null;
+    goal_text: string | null;
+    goal_source: string | null;
   }[];
 
   if (rows.length === 0) {
@@ -197,6 +209,9 @@ export default async function ReportPage({
           email={row.email ?? ""}
           phone={row.phone ?? ""}
           concerns={row.concerns ?? []}
+          worryFollowup={row.worry_followup ?? null}
+          childGender={gender}
+          initialGoal={{ skill: row.goal_skill, key: row.goal_key, text: row.goal_text, source: row.goal_source }}
           sessionId={sessionId}
           pronouns={pronouns}
           hasPurchase={hasPurchase}
