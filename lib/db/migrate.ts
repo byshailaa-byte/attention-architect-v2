@@ -704,7 +704,7 @@ async function migrate() {
   }
 
   // Phase 30 — purchases.tier: extend CHECK to include tier1 and tier2 for roadmap pricing.
-  // tier1 = Roadmap only (₹2,999). tier2 = Roadmap + Founder Call (₹4,999).
+  // tier1 = Roadmap only (₹2,999). tier2 = Roadmap + three sessions with Shashank Agrawal (₹4,999).
   // module1 / full / topup kept for backward-compat with existing paid records.
   if (!applied.has("phase_30_purchases_tier_tiers")) {
     await sql`

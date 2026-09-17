@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SHASHANK } from "@/lib/founders-data";
 
 type Props = {
   childName: string;
@@ -78,7 +79,7 @@ export default function V2Sidebar({ childName, archetype, ageBand, currentWeek }
       {/* Help card */}
       <div style={{ marginTop:"auto", background:"var(--v2-gold-tint)", border:"1px solid var(--v2-gold-line)", borderRadius:11, padding:13 }}>
         <b style={{ display:"block", fontFamily:BG, fontSize:12.5, color:"var(--v2-navy)" }}>Stuck this week?</b>
-        <p style={{ fontSize:11.5, margin:"3px 0 9px", color:"#8A6A28" }}>30 minutes with Shaily, who wrote the programme.</p>
+        <p style={{ fontSize:11.5, margin:"3px 0 9px", color:"#8A6A28" }}>30 minutes with {SHASHANK.name}, {SHASHANK.role}.</p>
         <a href="#" style={{ display:"block", textAlign:"center", background:"#fff", border:"1px solid var(--v2-gold-line)", borderRadius:8, padding:7, fontSize:12, fontWeight:700, color:"var(--v2-navy)", fontFamily:BG }}>Book a call →</a>
       </div>
     </aside>

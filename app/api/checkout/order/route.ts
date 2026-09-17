@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { getRazorpayClient, getPublicKeyId } from "@/lib/razorpay/client";
 import { assertBootGuards } from "@/lib/boot-guard";
+import { SHASHANK } from "@/lib/founders-data";
 
 assertBootGuards();
 
@@ -10,7 +11,7 @@ const TIERS = {
   full:    { amount_paise:  99900, label: "Full 6-Module Roadmap" },
   topup:   { amount_paise:  50000, label: "Upgrade to Full Roadmap" },
   tier1:   { amount_paise: 299900, label: "Roadmap" },
-  tier2:   { amount_paise: 499900, label: "Roadmap + Founder Call" },
+  tier2:   { amount_paise: 499900, label: `Roadmap + three sessions with ${SHASHANK.name}` },
 } as const;
 
 type Tier = keyof typeof TIERS;

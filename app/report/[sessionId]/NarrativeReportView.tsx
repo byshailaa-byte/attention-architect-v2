@@ -14,7 +14,8 @@
 
 import type { AttentionMoment } from "@/lib/narrative/types";
 import { FounderByline } from "@/app/components/FounderByline";
-import { SHAILY, SHASHANK, FOUNDER_PHOTOS } from "@/lib/founders";
+import { SHASHI, SHAILY, SHASHANK, FOUNDER_PHOTOS, roleLine } from "@/lib/founders";
+import { ENTITY } from "@/lib/entity";
 import type { FamilyAttentionLoop } from "@/lib/graph/loop";
 import { TestimonialsCarousel } from "./TestimonialsCarousel";
 import PriceCards from "./PriceCards";
@@ -997,16 +998,23 @@ function FounderSection({ sectionN }: { sectionN: number }) {
               photoBorder={`2px solid ${T.paperDeep}`}
               founders={[
                 {
+                  ...SHASHI,
+                  photo: FOUNDER_PHOTOS.shashi,
+                  role: roleLine(SHASHI),
+                  nameStyle: { fontFamily: FRAUNCES, fontWeight: 700, fontSize: "15px", color: T.ink, lineHeight: 1.3 },
+                  metaStyle: { fontFamily: PUBLIC_SANS, fontSize: "12px", color: T.inkFaint, marginTop: "2px" },
+                },
+                {
                   ...SHAILY,
                   photo: FOUNDER_PHOTOS.shaily,
-                  role: `${SHAILY.role} · ${SHAILY.credential}`,
+                  role: roleLine(SHAILY),
                   nameStyle: { fontFamily: FRAUNCES, fontWeight: 700, fontSize: "15px", color: T.ink, lineHeight: 1.3 },
                   metaStyle: { fontFamily: PUBLIC_SANS, fontSize: "12px", color: T.inkFaint, marginTop: "2px" },
                 },
                 {
                   ...SHASHANK,
                   photo: FOUNDER_PHOTOS.shashank,
-                  role: `${SHASHANK.role} · ${SHASHANK.credential}`,
+                  role: roleLine(SHASHANK),
                   nameStyle: { fontFamily: FRAUNCES, fontWeight: 700, fontSize: "15px", color: T.ink, lineHeight: 1.3 },
                   metaStyle: { fontFamily: PUBLIC_SANS, fontSize: "12px", color: T.inkFaint, marginTop: "2px" },
                 },
@@ -1340,7 +1348,7 @@ function FooterSection() {
           textAlign: "center",
           margin: 0,
         }}>
-          Attention Architect · by The Human Decision · Made for parents who want to understand, not diagnose.
+          Attention Architect · by {ENTITY.legalName} · Made for parents who want to understand, not diagnose.
         </p>
       </Shell>
     </footer>

@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { ENTITY } from "@/lib/entity";
 
 // ─── Nav items (all hrefs wired) ─────────────────────────────────────────────
 
@@ -166,17 +167,20 @@ export function SiteFooterFull() {
           </div>
           <div style={col}>
             <div style={colHead}>Contact</div>
-            <span style={lnk}>support@thehumandecision.in</span>
-            <span style={lnk}>+91 99933 74923</span>
-            <span style={lnk}>The Human Decision, India</span>
+            <span style={lnk}>{ENTITY.supportEmail}</span>
+            <span style={lnk}>{ENTITY.phoneDisplay}</span>
+            <span style={lnk}>{ENTITY.legalName}, India</span>
           </div>
         </div>
         <div style={{ borderTop: "1px solid rgba(255,255,255,.08)", padding: "var(--space-6) 0 var(--space-10)" }}>
           <p style={{ margin: "0 0 var(--space-3)", font: "var(--type-body-sm)", color: "var(--text-on-navy-muted)", opacity: 0.7, maxWidth: 720 }}>
             Attention Architect helps parents understand their child. It is not a medical or diagnostic service. Nothing here names, rules out, or tests for any condition. If something at home worries you, please speak to a qualified professional.
           </p>
+          <p style={{ margin: "0 0 var(--space-1)", font: "var(--type-body-sm)", color: "var(--text-on-navy-muted)", opacity: 0.6 }}>
+            {ENTITY.brandLine}
+          </p>
           <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-on-navy-muted)", opacity: 0.5 }}>
-            © 2026 The Human Decision. All rights reserved.{"  "} Made with care for parents.
+            {ENTITY.copyright}{"  "} Made with care for parents.
           </p>
         </div>
       </Wrap>
