@@ -65,6 +65,8 @@ export default async function RoadmapPage({
     redirect("/start");
   }
 
+  // Group D fallback: RoadmapView threads this through the whole page, both
+  // sentence-initial and mid-sentence — needs per-slot capitalisation, not a source change.
   const childName     = rows[0].child_name    || "your child";
   const archetype     = rows[0].archetype     || "The All-In Kid";
   const parentPattern = rows[0].parent_pattern || "The Pusher";
@@ -77,6 +79,7 @@ export default async function RoadmapPage({
     const wc = getLmsWeekContent(fallbackArchetype, w);
     const fallbackScript = w === 6 ? WEEK6_SCRIPT : (SAY_BY_ARCHETYPE[fallbackArchetype]?.[w - 1] ?? WEEK6_SCRIPT);
     return wc
+      // Group D fallback (mixed-position week content) — per-slot capitalisation, not a source change.
       ? extractWeekContent(wc, "your child", w, fallbackArchetype)
       : { weekTitle: `Week ${w}`, day2Title: "", day4Title: "", whatToSay: fallbackScript };
   });

@@ -6,6 +6,7 @@ import { GATEWAY_QUESTIONS, Question } from "@/lib/engine/questions";
 import { buildQuestionSequence, progressMilestone, GatewayAnswers } from "@/lib/engine/router";
 import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import SiteFooter from "@/app/components/SiteFooter";
+import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 import ThankYouScreen from "@/app/preview/simplified-v1/ThankYouScreen";
 
 declare global {
@@ -493,7 +494,7 @@ function AssessmentForm() {
               {currentIdx + 1} of {questions.length}
             </div>
             <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "26px", lineHeight: 1.3, marginBottom: "32px", color: "var(--ink)" }}>
-              {q.text.replace(/\{name\}/g, childName || "your child")}
+              {q.text.replace(/\{name\}/g, childName || CHILD_NAME_FALLBACK_MID)}
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {q.options.map((opt) => (
@@ -531,7 +532,7 @@ function AssessmentForm() {
     const emailTouchedG = email.length > 0;
     const emailValidG   = isValidEmail(email);
     const gateReady     = parentName.trim().length > 0 && emailValidG && phone.trim().length > 0;
-    const kidName       = childName || "your child";
+    const kidName       = childName || CHILD_NAME_FALLBACK_MID;
 
     return (
       <div style={{ minHeight: "100dvh", background: "#FBF9F3", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px" }}>
@@ -635,7 +636,7 @@ function AssessmentForm() {
         {/* Right: form */}
         <div className="form-col">
           <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: "20px", color: "var(--ink)", marginBottom: "8px" }}>
-            One last step before we open {childName || "your child"}&rsquo;s report.
+            One last step before we open {childName || CHILD_NAME_FALLBACK_MID}&rsquo;s report.
           </h2>
 
           {/* Parent name — required */}

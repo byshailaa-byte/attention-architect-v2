@@ -27,7 +27,7 @@ import { screenGoalText } from "@/lib/safeguarding/goal-screen";
 import { goalsBySkill, SAFEGUARDING_RESPONSE } from "@/content/goals";
 import { SKILL_NAMES } from "@/lib/report/skills";
 import { fillLmsContent } from "@/lib/lms/render";
-import type { Gender } from "@/lib/report/pronouns";
+import { CHILD_NAME_FALLBACK, type Gender } from "@/lib/report/pronouns";
 
 assertBootGuards();
 
@@ -35,6 +35,12 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const MAX_FREE_TEXT = 200;
 const VALID_SOURCES = new Set(["recommended", "chosen", "free_text"]);
 const SKILL_SET = new Set<string>(SKILL_NAMES);
+
+// Sentence-safe: authored goals may open with {{child_name}}, so the rendered
+// goal_text must start capitalised regardless of the name's own casing (a
+// lowercase-typed real name, or the fallback).
+const capitaliseFirst = (s: string): string =>
+  s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 
 type Body = {
   sessionId?: string;
@@ -133,12 +139,12 @@ export async function POST(req: NextRequest) {
       if (rows.length === 0) {
         return NextResponse.json({ error: "Session not found" }, { status: 404 });
       }
-      const childName = rows[0].child_name || "your child";
+      const childName = rows[0].child_name || CHILD_NAME_FALLBACK;
       const childGender = (rows[0].child_gender ?? null) as Gender;
       // Pronoun source: assessments.child_gender, via fillLmsContent → buildPronounTokens
       // (they/their fallback when null) — the same substitution the LMS uses.
       goalKeyToStore = goal.key;
-      goalTextToStore = fillLmsContent(goal.text, childName, childGender);
+      goalTextToStore = capitaliseFirst(fillLmsContent(goal.text, childName, childGender));
       freeTextToStore = null;
     }
 

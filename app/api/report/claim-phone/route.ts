@@ -3,6 +3,7 @@ import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { sendWhatsAppReport } from "@/lib/whatsapp";
 import { sendCapiEvents } from "@/lib/meta/capi";
+import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
 assertBootGuards();
 
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
           const wa = rows[0];
           await sendWhatsAppReport({
             parentName: wa.parent_name  ?? row.parent_name ?? "Parent",
-            childName:  wa.child_name   ?? row.child_name  ?? "your child",
+            childName:  wa.child_name   ?? row.child_name  ?? CHILD_NAME_FALLBACK_MID,
             sessionId,
             rawPhone:   wa.phone        ?? normalizedPhone,
           });

@@ -23,6 +23,7 @@ import { reformatM01 } from "@/lib/narrative/simplified-reformatter";
 import { checkTryTonightTitle } from "@/lib/quality/checks";
 import SimplifiedFunnelClient from "./client";
 import SimplifiedGate from "./SimplifiedGate";
+import { CHILD_NAME_FALLBACK } from "@/lib/report/pronouns";
 import type { SimplifiedReportData } from "./client";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -125,6 +126,9 @@ export default async function Page({
 
   // Contact gate: show gate if parent hasn't submitted details yet.
   if (!row.parent_name) {
+    // Group D fallback: SimplifiedGate uses this value both sentence-initial
+    // ("{name}'s Report is Ready") and mid-sentence ("We'll send {name}'s report"),
+    // so no single casing is correct — needs per-slot capitalisation, not a source change.
     const childName = typeof row.child_name === "string" ? row.child_name : "Your Child";
     return <SimplifiedGate sessionId={session} childName={childName} />;
   }
@@ -180,7 +184,10 @@ export default async function Page({
   // Accumulates moments generated this request; persisted to DB at the end.
   const newMoments: { moment_id: string; title: string; content: string }[] = [];
 
-  const childName = str(row.child_name, "Your Child");
+  // Match the goal picker's fallback (data.childName) so a nameless session
+  // doesn't show "Your child" in the picker but "Your Child" in the generated
+  // strengths/actions built from this value.
+  const childName = str(row.child_name, "").trim() || CHILD_NAME_FALLBACK;
 
   // DETAIL 05: serve from cache if present; otherwise generate and queue for persistence.
   let strengths: Strength[] | null = null;
@@ -302,7 +309,7 @@ export default async function Page({
   `.catch((e: unknown) => console.warn("[funnel] simplified_report_view:", (e as Error).message));
 
   const data: SimplifiedReportData = {
-    childName: str(row.child_name, "Your Child"),
+    childName: str(row.child_name, "").trim() || CHILD_NAME_FALLBACK,
     ageBand: str(row.age_band, "10-11"),
     archetype,
     archetypeFitTier: str(row.archetype_fit_tier, "primary"),

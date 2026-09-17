@@ -26,6 +26,9 @@ const COLORS = {
 } as const;
 
 function buildMessages(firstName: string, archetype: string): { headline: string; sub: string }[] {
+  // Group D fallback: used both sentence-initial ("{child} is {archetype}") and
+  // mid-sentence ("Building {child}'s report") — one casing can't fit both;
+  // needs per-slot capitalisation, not a source change.
   const child = firstName || "your child";
   const hasArchetype = archetype.length > 0;
 
@@ -98,6 +101,8 @@ function GeneratingScreen() {
   const isSimplified = dest === "simplified";
   const C = isSimplified ? COLORS.simplified : COLORS.default;
 
+  // Group D fallback: feeds buildMessages, which uses it both sentence-initial and
+  // mid-sentence — per-slot capitalisation needed, not a source change.
   const firstName  = childName.split(" ")[0] || "your child";
   const messages   = buildMessages(firstName, archetype);
 
