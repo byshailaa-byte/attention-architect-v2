@@ -133,6 +133,46 @@ export type TimelineScene = {
   wk6: string;
 };
 
+// ── Goal content (Phase 2 — goal-framed roadmap) ──────────────────────────────
+// Keyed by the six attention skills (SKILL_NAMES from lib/report/skills.ts).
+// A parent selects a goal on the report; it frames the six-week roadmap and
+// drives LMS tracking. Content is keyed by the child's break skill (archetype-
+// derived), not by axis.
+
+// One selectable goal option within a skill. 4 per skill.
+export type Goal = {
+  key: string;          // stable identifier, unique within the skill (stored as goal_key)
+  text: string;         // the goal as the parent sees it ({{child_name}} tokens allowed)
+  why: string;          // why this goal matters for a child working on this skill
+  recommended: boolean; // the default option surfaced first
+};
+
+// One weekly objective. 6 per skill, weeks 1–6.
+export type Objective = {
+  week: number;         // 1–6
+  objective: string;    // what the week works on, framed by the goal
+  parentOutcome: string;// what the parent does / notices that week
+  childOutcome: string; // what the child does / notices that week
+};
+
+// Bridge line — connects the parent's stated concern to this skill's goal.
+// Keyed by concern; the seven keys are the current canonical concern cards from
+// lib/concerns.ts (the set a parent can actually pick on the landing page).
+export type BridgeConcern =
+  | "homework"
+  | "reminders"
+  | "screens"
+  | "confidence"
+  | "giveup"
+  | "finish"
+  | "other";
+
+export type GoalSkillContent = {
+  goals: Goal[];                            // 4
+  objectives: Objective[];                  // 6, weeks 1–6
+  bridges: Record<BridgeConcern, string>;   // 7, keyed by concern
+};
+
 // ── LMS content ───────────────────────────────────────────────────────────────
 // Phase 6. LmsWeekContent stores both the main weekly reading and the daily action cards.
 
