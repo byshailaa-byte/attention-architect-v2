@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { tallyDimension, scoreAssessment, Dimensions } from "@/lib/engine/scorer";
 import { VALID_ANSWER_VALUES } from "@/lib/engine/questions";
@@ -9,6 +9,12 @@ import { buildConfidenceVector } from "@/lib/graph/confidence";
 import { assertBootGuards } from "@/lib/boot-guard";
 
 assertBootGuards();
+
+// The eager auto-generate trigger runs in an after() block that awaits the full
+// generation (~48s). Pin maxDuration so that background work isn't cut short —
+// matches the auto-generate and claim routes. Does not affect response latency:
+// the response is flushed before after() runs.
+export const maxDuration = 300;
 
 const ALL_DIMENSIONS = [
   "attention_shape",
@@ -174,19 +180,40 @@ export async function POST(req: NextRequest) {
       VALUES ('assessment_complete', ${sessionId}::uuid, ${JSON.stringify({ archetype: scoring.archetype })}::jsonb)
     `.catch((e: unknown) => console.warn("[funnel] assessment_complete:", (e as Error).message));
 
-    // Eager auto-generation: trigger the narrative report pipeline (fire-and-forget).
+    // Eager auto-generation: trigger the narrative report pipeline so the report is
+    // often ready by the time the parent finishes the details form.
     // The auto-generate route checks the master switch, phase gate, and generation cap —
     // so calling it unconditionally here is safe. Errors are swallowed; the parent still
     // sees the static ReportView if generation fails or is disabled.
-    const autoGenUrl = new URL("/api/internal/report/auto-generate", req.nextUrl.origin);
-    fetch(autoGenUrl.toString(), {
-      method:  "POST",
-      headers: {
-        "Content-Type":      "application/json",
-        "X-Internal-Secret": process.env.INTERNAL_API_SECRET ?? "",
-      },
-      body: JSON.stringify({ sessionId }),
-    }).catch((e: unknown) => console.warn("[auto-generate] trigger failed:", (e as Error).message));
+    //
+    // Wrapped in after() — Vercel keeps the function alive past the response, so the
+    // trigger survives. A bare fetch().catch() (the previous code) was killed when
+    // NextResponse.json returns below, which is why 80 of 84 affected sessions had
+    // generation_attempts = 0. after() adds 0ms to response latency — the response is
+    // flushed first, generation runs in the background.
+    const autoGenUrl = new URL("/api/internal/report/auto-generate", req.nextUrl.origin).toString();
+    const internalSecret = process.env.INTERNAL_API_SECRET ?? "";
+    after(async () => {
+      // Race against a 240s cap so a network hang can't hold the function to maxDuration.
+      try {
+        const genTimeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("generation timeout after 240s")), 240_000),
+        );
+        await Promise.race([
+          fetch(autoGenUrl, {
+            method:  "POST",
+            headers: {
+              "Content-Type":      "application/json",
+              "X-Internal-Secret": internalSecret,
+            },
+            body: JSON.stringify({ sessionId }),
+          }),
+          genTimeout,
+        ]);
+      } catch (e: unknown) {
+        console.warn("[auto-generate] trigger failed:", (e as Error).message);
+      }
+    });
 
     // Return scoring (but NEVER honest_flag or honest_trigger — Gate 3)
     return NextResponse.json({
