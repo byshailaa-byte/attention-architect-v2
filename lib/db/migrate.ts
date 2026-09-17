@@ -716,6 +716,39 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_30_purchases_tier_tiers') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 39 — goal system: goal fields on assessments + weekly goal-count table.
+  // All goal_* columns are nullable except goal_flagged. Postgres 11+ treats
+  // ADD COLUMN ... DEFAULT false as a metadata-only add (no table rewrite).
+  // Run manually on prod with DATABASE_URL override before deploying the UI —
+  // production endpoint ep-green-truth-aqxygaj2 (never by branch label).
+  if (!applied.has("phase_39_goal")) {
+    await sql`
+      ALTER TABLE assessments
+        ADD COLUMN IF NOT EXISTS goal_skill     TEXT,
+        ADD COLUMN IF NOT EXISTS goal_key       TEXT,
+        ADD COLUMN IF NOT EXISTS goal_text      TEXT,
+        ADD COLUMN IF NOT EXISTS goal_source    TEXT CHECK (goal_source IN ('recommended','chosen','free_text')),
+        ADD COLUMN IF NOT EXISTS goal_free_text TEXT,
+        -- SENSITIVE: Gate 3 — goal_flagged must NEVER appear in admin views, parent
+        -- APIs, report rendering, analytics events, pixels, or marketing segmentation.
+        -- Stored only. Treat exactly like honest_flag. See lib/safeguarding/goal-screen.ts.
+        ADD COLUMN IF NOT EXISTS goal_flagged   BOOLEAN NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS goal_baseline  INTEGER,
+        ADD COLUMN IF NOT EXISTS goal_final     INTEGER
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS lms_weekly_goal_count (
+        id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id    UUID NOT NULL REFERENCES users(id),
+        week       INTEGER NOT NULL,
+        count      INTEGER NOT NULL DEFAULT 0,
+        logged_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (user_id, week)
+      )
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_39_goal') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 
