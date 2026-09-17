@@ -99,7 +99,11 @@ export default async function Page({
     SELECT
       a.child_name, a.age_band, a.archetype, a.archetype_fit_tier,
       a.parent_pattern, a.parent_instinct_fit_tier, a.concerns, a.dimensions,
-      a.weakest_two, a.parent_name,
+      a.weakest_two, a.parent_name, a.child_gender, a.worry_followup,
+      -- Goal state for GoalSectionSimplified. Gate 3: goal_flagged and
+      -- goal_free_text are deliberately NOT selected — they never leave the DB
+      -- into the report.
+      a.goal_skill, a.goal_key, a.goal_text, a.goal_source,
       r.narrative_moments, r.behaviour_signature
     FROM assessments a
     LEFT JOIN reports r
@@ -355,6 +359,17 @@ export default async function Page({
       attention_competition: dims.attention_competition?.value ?? "",
       friction_response:     dims.friction_response?.value     ?? "",
       recharge_type:         dims.recharge_type?.value         ?? "",
+    },
+    // Goal picker inputs. child_gender drives pronoun fills; worry_followup feeds
+    // the concern bridge. Gate 3: goal_flagged / goal_free_text are never read.
+    childGender: (typeof row.child_gender === "string" ? row.child_gender : null),
+    concerns: Array.isArray(row.concerns) ? (row.concerns as string[]) : [],
+    worryFollowup: (typeof row.worry_followup === "string" ? row.worry_followup : null),
+    initialGoal: {
+      skill:  typeof row.goal_skill  === "string" ? row.goal_skill  : null,
+      key:    typeof row.goal_key    === "string" ? row.goal_key    : null,
+      text:   typeof row.goal_text   === "string" ? row.goal_text   : null,
+      source: typeof row.goal_source === "string" ? row.goal_source : null,
     },
   };
 

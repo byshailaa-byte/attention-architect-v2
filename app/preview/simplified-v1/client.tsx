@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ENTITY } from "@/lib/entity";
+import { GoalSectionSimplified } from "./GoalSectionSimplified";
+import type { Gender } from "@/lib/report/pronouns";
 
 export type SimplifiedReportData = {
   childName: string;
@@ -54,6 +56,12 @@ export type SimplifiedReportData = {
     friction_response: string;
     recharge_type: string;
   };
+  // Goal picker inputs (GoalSectionSimplified). Gate 3: goal_flagged /
+  // goal_free_text are never carried here.
+  childGender: string | null;
+  concerns: string[];
+  worryFollowup: string | null;
+  initialGoal: { skill: string | null; key: string | null; text: string | null; source: string | null };
 };
 
 type Tab = "home" | "assess" | "report" | "sell";
@@ -643,6 +651,17 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
           </div>
         </div>
       </div>
+
+      {/* Goal picker — parent chooses a goal, then §7 frames the roadmap by it */}
+      <GoalSectionSimplified
+        sessionId={data.sessionId}
+        archetype={data.archetype}
+        childName={data.childName}
+        childGender={(data.childGender ?? null) as Gender}
+        concerns={data.concerns ?? []}
+        worryFollowup={data.worryFollowup ?? null}
+        initialGoal={data.initialGoal}
+      />
 
       {/* §7 CTA — navy */}
       <div style={{ background: NAVY }}>
