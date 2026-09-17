@@ -1,5 +1,7 @@
 "use client";
 
+import { SKILL_LABELS } from "@/lib/report/skills";
+
 const NAVY   = "#14284D";
 const AMBER  = "#F5A623";
 const TEAL   = "#22A38A";
@@ -32,24 +34,6 @@ type Props = {
   breakName:    string;
   sessionId:    string;
 };
-
-const SKILL_LABELS = [
-  "STARTING",
-  "HOLDING ON",
-  "STAYING WITH IT",
-  "RECOVERING",
-  "CARRYING IT OVER",
-  "RUNNING IT THEMSELVES",
-] as const;
-
-const SKILL_NAMES = [
-  "Starting",
-  "Holding on",
-  "Staying with it",
-  "Recovering",
-  "Carrying it over",
-  "Running it themselves",
-];
 
 const CSS = `
   .pv-skill-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
