@@ -162,3 +162,7 @@ export const lmsWeek2Content: Record<string, LmsWeekContent> = {
 export { objectivePhrases } from "./phrases/objective";
 export { triedPhrases }     from "./phrases/tried";
 export { betterPhrases }    from "./phrases/better";
+
+// ── Goals (Phase 2 — goal-framed roadmap) ─────────────────────────────────────
+
+export { goalsBySkill } from "./goals";
