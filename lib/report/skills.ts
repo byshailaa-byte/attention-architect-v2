@@ -64,3 +64,14 @@ export function skillForArchetype(archetype: string): { idx: number; name: strin
 export function weekForSkill(idx: number): number {
   return idx + 1;
 }
+
+// Six shared week titles — same for every parent. Source: THE_PLAN.pdf.
+// Single source of truth for both the roadmap and the goal-section framing line.
+export const WEEK_TITLES: Record<number, string> = {
+  1: "Getting started without the push",
+  2: "Handling what pulls them away",
+  3: "Staying with it on an ordinary day",
+  4: "Coming back after a slip",
+  5: "Using it beyond homework",
+  6: "Running it themselves",
+};

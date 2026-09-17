@@ -170,6 +170,10 @@ export default async function ReportPreviewDetailPage({ params }: { params: Para
         email=""
         phone=""
         concerns={row.concerns ?? []}
+        worryFollowup={null}
+        childGender={gender}
+        initialGoal={{ skill: null, key: null, text: null, source: null }}
+        hideGoal
         sessionId={row.session_id}
         pronouns={pronouns}
       />

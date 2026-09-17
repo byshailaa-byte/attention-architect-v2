@@ -16,6 +16,8 @@ import type { AttentionMoment } from "@/lib/narrative/types";
 import { FounderByline } from "@/app/components/FounderByline";
 import { SHASHI, SHAILY, SHASHANK, FOUNDER_PHOTOS, roleLine } from "@/lib/founders";
 import { ENTITY } from "@/lib/entity";
+import { GoalSection } from "./GoalSection";
+import type { Gender } from "@/lib/report/pronouns";
 import type { FamilyAttentionLoop } from "@/lib/graph/loop";
 import { TestimonialsCarousel } from "./TestimonialsCarousel";
 import PriceCards from "./PriceCards";
@@ -1367,11 +1369,15 @@ export default function NarrativeReportView({
   parentName,
   email,
   phone,
-  concerns: _concerns,
+  concerns,
+  worryFollowup,
+  childGender,
+  initialGoal,
   sessionId,
   pronouns,
   hasPurchase = false,
   purchaseTier = null,
+  hideGoal = false,
 }: {
   moments: AttentionMoment[];
   archetype: string;
@@ -1383,10 +1389,14 @@ export default function NarrativeReportView({
   email: string;
   phone: string;
   concerns: string[];
+  worryFollowup: string | null;
+  childGender: Gender;
+  initialGoal: { skill: string | null; key: string | null; text: string | null; source: string | null };
   sessionId: string;
   pronouns: { subj: string; obj: string; poss: string; reflexive: string };
   hasPurchase?: boolean;
   purchaseTier?: string | null;
+  hideGoal?: boolean;
 }) {
   // childName is optional at intake — normalize to a grammatically safe fallback
   // so every sub-component gets a renderable string, not an empty interpolation
@@ -1472,6 +1482,20 @@ export default function NarrativeReportView({
           moment={bySection.get("Future Story")}
           sectionN={6 + loopOffset}
         />
+
+        {/* Goal picker — un-numbered interactive band; frames the roadmap that follows.
+            Hidden on the admin preview (hideGoal) — it can POST to a real session. */}
+        {!hideGoal && (
+          <GoalSection
+            sessionId={sessionId}
+            archetype={archetype}
+            childName={childName}
+            childGender={childGender}
+            concerns={concerns}
+            worryFollowup={worryFollowup}
+            initialGoal={initialGoal}
+          />
+        )}
 
         {/* 07 or 08 — Roadmap */}
         <RoadmapSection
