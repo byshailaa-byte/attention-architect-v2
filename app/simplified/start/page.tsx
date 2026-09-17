@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { captureUtmOnce } from "@/lib/utm";
 import { fireGtag } from "@/lib/gtag";
+import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
 function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
   fetch("/api/funnel/event", {
@@ -325,7 +326,7 @@ export default function SimplifiedStart() {
           {/* Age */}
           <div style={{ marginBottom: "20px" }}>
             <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-dim)", marginBottom: "9px" }}>
-              How old is {childName.trim() ? childName.trim() : "your child"}?
+              How old is {childName.trim() ? childName.trim() : CHILD_NAME_FALLBACK_MID}?
             </div>
             {/* In-range chips */}
             <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>

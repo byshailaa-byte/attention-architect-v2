@@ -1399,7 +1399,11 @@ export default function NarrativeReportView({
   hideGoal?: boolean;
 }) {
   // childName is optional at intake — normalize to a grammatically safe fallback
-  // so every sub-component gets a renderable string, not an empty interpolation
+  // so every sub-component gets a renderable string, not an empty interpolation.
+  // Group D fallback: the report threads this both sentence-initial and mid-sentence,
+  // so no single casing is right — per-slot capitalisation needed, not a source change.
+  // (Largely superseded now: page.tsx passes CHILD_NAME_FALLBACK, so childNameRaw is
+  //  already non-empty for the null case.)
   const childName = (childNameRaw.trim() || "your child") as string;
 
   const bySection = new Map<string, AttentionMoment>();

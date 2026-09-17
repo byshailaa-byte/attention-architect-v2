@@ -8,7 +8,7 @@ import ScrollTracker from "./ScrollTracker";
 import SiteFooter from "@/app/components/SiteFooter";
 import type { AxisResult } from "@/lib/engine/scorer";
 import { fetchPublishedNarrativeReport } from "@/lib/report/fetch-narrative";
-import { resolveChildPronoun } from "@/lib/report/pronouns";
+import { resolveChildPronoun, CHILD_NAME_FALLBACK } from "@/lib/report/pronouns";
 import type { Gender } from "@/lib/report/pronouns";
 
 type Params = Promise<{ sessionId: string }>;
@@ -126,7 +126,7 @@ export default async function ReportPage({
           hasPhone={!!row.phone}
           initialPhone={row.phone ?? ""}
           teaserText={teaserMoment?.content ?? null}
-          childName={row.child_name || "your child"}
+          childName={row.child_name || CHILD_NAME_FALLBACK}
         />
       );
     }
@@ -204,7 +204,7 @@ export default async function ReportPage({
           archetypeFitTier={nr.archetype_fit_tier ?? "primary"}
           parentInstinct={nr.parent_instinct}
           familyLoop={nr.family_attention_loop}
-          childName={row.child_name || "your child"}
+          childName={row.child_name || CHILD_NAME_FALLBACK}
           parentName={row.parent_name ?? "you"}
           email={row.email ?? ""}
           phone={row.phone ?? ""}

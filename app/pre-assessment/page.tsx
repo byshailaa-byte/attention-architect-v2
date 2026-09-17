@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import SiteFooter from "@/app/components/SiteFooter";
+import { CHILD_NAME_FALLBACK, CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
@@ -90,7 +91,7 @@ function PreAssessmentForm() {
 
         <div style={{ marginBottom: "20px" }}>
           <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--ink)", marginBottom: "9px" }}>
-            {trimmed ? `${trimmed}'s` : "Your child's"} gender{" "}
+            {trimmed ? `${trimmed}'s` : `${CHILD_NAME_FALLBACK}'s`} gender{" "}
             <span style={{ fontWeight: 400, color: "var(--ink-dim)" }}>(optional)</span>
           </div>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -117,7 +118,7 @@ function PreAssessmentForm() {
         <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "24px" }}>
           {[
             "This adapts as you go — some answers lead to more questions, some don't. That's by design.",
-            `Answer for how ${trimmed || "your child"} actually is right now — not how you wish they were.`,
+            `Answer for how ${trimmed || CHILD_NAME_FALLBACK_MID} actually is right now — not how you wish they were.`,
             "No pass, no fail. Every honest answer makes the result more accurate.",
           ].map((rule, i) => (
             <div key={i} style={{ display: "flex", gap: "12px", fontSize: "14.5px", color: "var(--ink-dim)", lineHeight: 1.5 }}>
@@ -129,7 +130,7 @@ function PreAssessmentForm() {
 
         <div style={{ background: "var(--calm-tint)", borderRadius: "12px", padding: "18px 20px", fontSize: "13.5px", color: "var(--calm-text)", lineHeight: 1.6, marginBottom: "24px" }}>
           <strong>You&rsquo;ll get three things at the end:</strong>{" "}
-          {trimmed ? `${trimmed}'s` : "your child's"} Attention Type, your own Instinct Pattern
+          {trimmed ? `${trimmed}'s` : `${CHILD_NAME_FALLBACK_MID}'s`} Attention Type, your own Instinct Pattern
           — and how the two actually interact.
         </div>
 

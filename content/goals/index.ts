@@ -66,7 +66,7 @@ export function bridgeConcernFor(key: string | null | undefined): BridgeConcern 
 // {{N}} (break-week number) and {{week_title}} are runtime values supplied by the
 // render layer — NOT child tokens, so fillLmsContent leaves them untouched.
 export const GOAL_FRAMING_LINE =
-  "The six weeks run in order, because the skills build on each other. {{child_name}} already has the first {{n}} — those weeks will move quickly. The work is week {{N}}: {{week_title}}.";
+  "The six weeks run in order, because the skills build on each other. {{child_name}} is already steady through week {{n}}, so that ground is quick to cover. The work is week {{N}}: {{week_title}}.";
 
 // Special case for Starting (break = week 1), where "already has the first {{n}}"
 // would be empty. Skills: "starting" (or archetypes The Storm / The Inventor).

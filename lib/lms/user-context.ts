@@ -71,6 +71,9 @@ export async function getLmsUserContext(): Promise<LmsUserContext> {
   return {
     userId,
     assessmentId: a.id,
+    // Group D fallback: LMS lessons substitute {{child_name}} in many positions,
+    // both sentence-initial and mid-sentence — per-slot capitalisation needed, not a
+    // source change. (?? also won't catch an empty-string name; matches the family's gap.)
     childName: a.child_name ?? "your child",
     childGender: normalizeGender(a.child_gender),
     ageBand: a.age_band,

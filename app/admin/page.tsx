@@ -12,6 +12,7 @@ import {
 } from "@/lib/engine/questions";
 import AdminDashboard from "./AdminDashboard";
 import type { AdminDashboardProps, DropOffRow, HandbookLead, WaFailureRow, NeverGeneratedRow, ScrollMilestone, QuestionCompletion } from "./AdminDashboard";
+import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
 // ── Question lookup ───────────────────────────────────────────────────────────
 
@@ -435,7 +436,7 @@ export default async function AdminPage({
       parent_pattern: a.parent_pattern,
       age_band: a.age_band,
       created_at,
-      resolved_answers: resolveAnswers(a.answers ?? {}, a.child_name ?? "your child"),
+      resolved_answers: resolveAnswers(a.answers ?? {}, a.child_name ?? CHILD_NAME_FALLBACK_MID),
       concerns: a.concerns ?? [],
       tried: a.tried ?? null,
       better: a.better ?? null,

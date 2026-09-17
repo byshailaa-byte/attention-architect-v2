@@ -66,6 +66,9 @@ export default async function ProfilePage({
   }
 
   const row = rows[0];
+  // Group D fallback: ProfileView uses this both sentence-initial ("{name}'s Attention
+  // Report") and mid-sentence ("Where {name} is on the six") — no single casing fits;
+  // needs per-slot capitalisation, not a source change.
   const childName    = row.child_name    || "your child";
   const ageBand      = (row.age_band     || "10-11") as "8-9" | "10-11" | "12-14";
   const archetype    = row.archetype     || "The All-In Kid";

@@ -113,6 +113,8 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
   const arch    = archetypeContent[a.archetype];
   const pattern = patternContent[a.parent_pattern];
 
+  // Group D fallback: threaded through the whole static report, both sentence-initial
+  // and mid-sentence — needs per-slot capitalisation, not a source change.
   const childName  = a.child_name || "your child";
   const parentName = a.parent_name;
 

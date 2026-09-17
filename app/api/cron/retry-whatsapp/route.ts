@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { sendWhatsAppReport } from "@/lib/whatsapp";
+import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
 // Runs hourly via Vercel Cron. Retries released WhatsApp claims that haven't
 // hit the attempt ceiling. Logs exhausted sessions at error level for admin recovery.
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest) {
     try {
       await sendWhatsAppReport({
         parentName: row.parent_name ?? c.parent_name ?? "Parent",
-        childName:  row.child_name  ?? c.child_name  ?? "your child",
+        childName:  row.child_name  ?? c.child_name  ?? CHILD_NAME_FALLBACK_MID,
         sessionId:  c.session_id,
         rawPhone:   row.phone       ?? c.phone       ?? "",
       });
