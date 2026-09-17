@@ -58,3 +58,27 @@ export function bridgeConcernFor(key: string | null | undefined): BridgeConcern 
   if (CANONICAL.has(key)) return key as BridgeConcern;
   return LEGACY_CONCERN_ALIAS[key] ?? "other";
 }
+
+// ── Framing line (Part 4) ─────────────────────────────────────────────────────
+// Shown once in the goal section and once on the roadmap. Resolves the tension
+// between a universal six-week sequence and the child's per-skill break week.
+// {{child_name}} is filled by fillLmsContent; {{n}} (skills already strong),
+// {{N}} (break-week number) and {{week_title}} are runtime values supplied by the
+// render layer — NOT child tokens, so fillLmsContent leaves them untouched.
+export const GOAL_FRAMING_LINE =
+  "The six weeks run in order, because the skills build on each other. {{child_name}} already has the first {{n}} — those weeks will move quickly. The work is week {{N}}: {{week_title}}.";
+
+// Special case for Starting (break = week 1), where "already has the first {{n}}"
+// would be empty. Skills: "starting" (or archetypes The Storm / The Inventor).
+export const GOAL_FRAMING_LINE_STARTING =
+  "The six weeks run in order, because the skills build on each other. For {{child_name}}, the work starts at week one and the rest builds from there.";
+
+// ── Safeguarding response (Part 5) ────────────────────────────────────────────
+// Fixed copy. Never generated. Shown instead of any goal mapping when the screen
+// fires. The triggering wordlist is deliberately not here — it needs clinical
+// review (see lib/safeguarding, Step 2).
+export const SAFEGUARDING_RESPONSE =
+  "**Thank you for telling us that.**\n\n" +
+  "What you've described is beyond what a programme like this should handle, and we don't want to hand you an attention plan when something more important is going on.\n\n" +
+  "Speaking to your child's doctor, or a child mental health professional, is the right next step — and worth doing soon rather than waiting to see.\n\n" +
+  "Your assessment and report are saved and unchanged. Nothing has been sent to anyone. You can come back to the plan whenever you want to.";
