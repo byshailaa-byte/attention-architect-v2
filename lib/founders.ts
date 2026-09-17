@@ -4,26 +4,26 @@
 import fs from "fs";
 import path from "path";
 
-export { SHAILY, SHASHANK } from "./founders-data";
+export { SHASHI, SHAILY, SHASHANK, TEAM, roleLine } from "./founders-data";
+export type { Person } from "./founders-data";
 
 // Module-level: read once on first import, cached for the process lifetime.
-const _shailyB64 = (() => {
+function readB64(rel: string): string {
   try {
-    return fs
-      .readFileSync(path.join(process.cwd(), "public/shaily-headshot-square.png"))
-      .toString("base64");
-  } catch { return ""; }
-})();
+    return fs.readFileSync(path.join(process.cwd(), rel)).toString("base64");
+  } catch {
+    return "";
+  }
+}
 
-const _shashankB64 = (() => {
-  try {
-    return fs
-      .readFileSync(path.join(process.cwd(), "public/founder.jpg"))
-      .toString("base64");
-  } catch { return ""; }
-})();
+const _shailyB64   = readB64("public/shaily-headshot-square.png");
+const _shashankB64 = readB64("public/founder.jpg");
+// No photo file for the founder yet — resolves to null so the byline renders an
+// initials monogram rather than a broken image or a placeholder.
+const _shashiB64   = readB64("public/shashi-headshot-square.png");
 
 export const FOUNDER_PHOTOS = {
+  shashi:   _shashiB64   ? `data:image/png;base64,${_shashiB64}`    : null,
   shaily:   _shailyB64   ? `data:image/png;base64,${_shailyB64}`    : "/shaily-headshot-square.png",
   shashank: _shashankB64 ? `data:image/jpeg;base64,${_shashankB64}` : "/founder.jpg",
-};
+} as const;

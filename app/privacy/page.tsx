@@ -1,4 +1,5 @@
 import SiteFooter from "@/app/components/SiteFooter";
+import { ENTITY } from "@/lib/entity";
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
@@ -13,6 +14,17 @@ export default function PrivacyPage() {
           <p style={{ fontSize: "13px", color: "var(--ink-dim)", marginBottom: "40px" }}>
             Last updated: 12-Feb-2026
           </p>
+
+          <Section title="Who We Are">
+            <p style={p}>
+              Attention Architect is a brand of {ENTITY.legalName}, a proprietorship
+              registered under the {ENTITY.registrationAct} (registration no.{" "}
+              {ENTITY.registrationNumber}), with its registered address at {ENTITY.address}.
+              In this policy, &ldquo;we&rdquo;, &ldquo;us&rdquo; and &ldquo;our&rdquo; refer
+              to {ENTITY.legalName}, which is the data fiduciary responsible for the personal
+              data described below.
+            </p>
+          </Section>
 
           <Section title="1. What We Collect">
             <p style={p}>
@@ -48,7 +60,7 @@ export default function PrivacyPage() {
           <Section title="5. Your Rights">
             <p style={p}>
               You can request a copy of the data we hold about you, or ask us to delete it, by emailing{" "}
-              <a href="mailto:support@thehumandecision.in" style={{ color: "var(--calm-text)" }}>support@thehumandecision.in</a>.
+              <a href={`mailto:${ENTITY.supportEmail}`} style={{ color: "var(--calm-text)" }}>{ENTITY.supportEmail}</a>.
             </p>
           </Section>
 
@@ -64,8 +76,9 @@ export default function PrivacyPage() {
             </p>
             <p style={p}>
               <strong>Shashank Agrawal</strong><br />
+              {ENTITY.legalName}, {ENTITY.address}<br />
               Email:{" "}
-              <a href="mailto:shashankagrawal033@gmail.com" style={{ color: "var(--calm-text)" }}>shashankagrawal033@gmail.com</a>
+              <a href={`mailto:${ENTITY.supportEmail}`} style={{ color: "var(--calm-text)" }}>{ENTITY.supportEmail}</a>
             </p>
             <p style={p}>
               If you have a complaint about how your data (or your child&rsquo;s data) has been handled, you can write directly to the Grievance Officer above.
@@ -75,9 +88,9 @@ export default function PrivacyPage() {
           <Section title="8. Contact">
             <p style={p}>
               General questions about this policy:{" "}
-              <a href="mailto:support@thehumandecision.in" style={{ color: "var(--calm-text)" }}>support@thehumandecision.in</a>
+              <a href={`mailto:${ENTITY.supportEmail}`} style={{ color: "var(--calm-text)" }}>{ENTITY.supportEmail}</a>
               {" "}or call{" "}
-              <a href="tel:9993374923" style={{ color: "var(--calm-text)" }}>9993374923</a>.
+              <a href={`tel:${ENTITY.phone}`} style={{ color: "var(--calm-text)" }}>{ENTITY.phone}</a>.
             </p>
           </Section>
         </div>

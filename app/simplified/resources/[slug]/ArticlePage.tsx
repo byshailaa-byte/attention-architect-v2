@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { SiteNav, SiteFooterFull, CloseBand, Wrap, Eyebrow } from "../../_shared";
 import { notFound } from "next/navigation";
+import { ENTITY } from "@/lib/entity";
 
 // ─── Article metadata ────────────────────────────────────────────────────────
 
@@ -347,7 +348,7 @@ function Professional() {
       <h2 style={h2Style}>And if you do go</h2>
       <p style={body}>Everything on this site still stands. Understanding how your particular child&rsquo;s attention works is useful alongside professional support, not instead of it. A diagnosis, if there is one, tells you what you are dealing with. It does not tell you what to do at 6:40pm on a Tuesday.</p>
       <p style={body}>But the order matters. Professional first, if any of the above is true. We will be here afterwards.</p>
-      <p style={body}>If you are unsure, write to us at <a href="mailto:support@thehumandecision.in" style={{ color: "var(--navy-800)" }}>support@thehumandecision.in</a>. If we think you should be talking to someone else, we will say so, even when that ends the conversation.</p>
+      <p style={body}>If you are unsure, write to us at <a href={`mailto:${ENTITY.supportEmail}`} style={{ color: "var(--navy-800)" }}>{ENTITY.supportEmail}</a>. If we think you should be talking to someone else, we will say so, even when that ends the conversation.</p>
     </div>
   );
 }

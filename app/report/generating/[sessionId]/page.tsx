@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { ENTITY } from "@/lib/entity";
 
 const COLORS = {
   default: {
@@ -226,7 +227,7 @@ function GeneratingScreen() {
       </div>
 
       <div style={{ position: "absolute", bottom: "24px", fontSize: "12px", color: C.inkFaint, textAlign: "center", fontFamily: C.body }}>
-        The Human Decision
+        {ENTITY.legalName}
       </div>
     </div>
   );

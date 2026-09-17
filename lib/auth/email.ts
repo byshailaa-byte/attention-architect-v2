@@ -1,5 +1,7 @@
+import { ENTITY } from "@/lib/entity";
+
 // RESEND_FROM must be a verified sender on the Resend account.
-// Verified domain: attentionarchitect.thehumandecision.in
+// Verified domain: attentionarchitect.thehumandecision.in (unchanged — domain migration is separate).
 // All links inside emails must point to attentionparents.thehumandecision.in (v2 domain).
 const FROM =
   process.env.RESEND_FROM ?? "no-reply@attentionarchitect.thehumandecision.in";
@@ -189,14 +191,14 @@ function buildReceiptHtml(params: {
               </tr>
             </table>
 
-            <p style="margin:0;color:#555;font-size:13px">Questions? Email <a href="mailto:support@thehumandecision.in" style="color:#555">support@thehumandecision.in</a> or call <a href="tel:9993374923" style="color:#555">9993374923</a>.</p>
+            <p style="margin:0;color:#555;font-size:13px">Questions? Email <a href="mailto:${ENTITY.supportEmail}" style="color:#555">${ENTITY.supportEmail}</a> or call <a href="tel:${ENTITY.phone}" style="color:#555">${ENTITY.phone}</a>.</p>
           </td>
         </tr>
 
         <tr>
           <td style="padding:20px 40px;border-top:1px solid #eeeeee">
             <p style="margin:0 0 6px;font-size:12px;color:#aaa">Attention Architect &mdash; this is a transaction confirmation, not a request for payment.</p>
-            <p style="margin:0;font-size:12px;color:#aaa">The Human Decision &middot; support@thehumandecision.in &middot; 9993374923</p>
+            <p style="margin:0;font-size:12px;color:#aaa">${ENTITY.legalName} &middot; ${ENTITY.supportEmail} &middot; ${ENTITY.phone}</p>
           </td>
         </tr>
 

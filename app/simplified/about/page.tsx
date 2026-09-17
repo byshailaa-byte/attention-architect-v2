@@ -2,7 +2,8 @@
 import { useRouter } from "next/navigation";
 import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle } from "../_shared";
 import { FounderByline } from "@/app/components/FounderByline";
-import { SHAILY, SHASHANK } from "@/lib/founders-data";
+import { SHASHI, SHAILY, SHASHANK } from "@/lib/founders-data";
+import { ENTITY } from "@/lib/entity";
 
 const PRINCIPLES = [
   {
@@ -88,37 +89,55 @@ export default function AboutPage() {
                 innerGap={20}
                 founders={[
                   {
+                    ...SHASHI,
+                    nameStyle: { font: "var(--weight-bold) var(--text-lg)/1.3 var(--font-sans)", color: "var(--navy-800)" },
+                    metaStyle: { font: "var(--type-body-sm)", color: "var(--text-muted)" },
+                    ...(SHASHI.credential ? {
+                      badge: {
+                        label: SHASHI.credential,
+                        style: {
+                          background: "var(--teal-100)", border: "1px solid var(--teal-200)",
+                          font: "var(--weight-medium) var(--text-xs)/1.4 var(--font-sans)", color: "var(--teal-700)",
+                        },
+                      },
+                    } : {}),
+                  },
+                  {
                     ...SHAILY,
                     photo: "/shaily-headshot-square.png",
                     nameStyle: { font: "var(--weight-bold) var(--text-lg)/1.3 var(--font-sans)", color: "var(--navy-800)" },
                     metaStyle: { font: "var(--type-body-sm)", color: "var(--text-muted)" },
-                    badge: {
-                      label: SHAILY.credential,
-                      style: {
-                        background: "var(--teal-100)", border: "1px solid var(--teal-200)",
-                        font: "var(--weight-medium) var(--text-xs)/1.4 var(--font-sans)", color: "var(--teal-700)",
+                    ...(SHAILY.credential ? {
+                      badge: {
+                        label: SHAILY.credential,
+                        style: {
+                          background: "var(--teal-100)", border: "1px solid var(--teal-200)",
+                          font: "var(--weight-medium) var(--text-xs)/1.4 var(--font-sans)", color: "var(--teal-700)",
+                        },
                       },
-                    },
+                    } : {}),
                   },
                   {
                     ...SHASHANK,
                     photo: "/founder.jpg",
                     nameStyle: { font: "var(--weight-bold) var(--text-lg)/1.3 var(--font-sans)", color: "var(--navy-800)" },
                     metaStyle: { font: "var(--type-body-sm)", color: "var(--text-muted)" },
-                    badge: {
-                      label: `${SHASHANK.credential} Alumnus`,
-                      style: {
-                        background: "var(--amber-100)", border: "1px solid var(--amber-200)",
-                        font: "var(--weight-medium) var(--text-xs)/1.4 var(--font-sans)", color: "var(--amber-700)",
+                    ...(SHASHANK.credential ? {
+                      badge: {
+                        label: SHASHANK.credential,
+                        style: {
+                          background: "var(--amber-100)", border: "1px solid var(--amber-200)",
+                          font: "var(--weight-medium) var(--text-xs)/1.4 var(--font-sans)", color: "var(--amber-700)",
+                        },
                       },
-                    },
+                    } : {}),
                   },
                 ]}
               />
 
               <div style={{ borderTop: "1px solid var(--border-divider)", paddingTop: "var(--space-5)" }}>
                 <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-muted)" }}>
-                  Operating as The Human Decision. support@thehumandecision.in · +91 99933 74923
+                  {ENTITY.brandLine} {ENTITY.supportEmail} · {ENTITY.phoneDisplay}
                 </p>
               </div>
             </div>
@@ -186,7 +205,7 @@ export default function AboutPage() {
               </div>
               <div style={{ borderTop: "1px solid var(--border-divider)", paddingTop: "var(--space-4)" }}>
                 <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-body)" }}>
-                  Write to us and you get a written answer, usually the same day. support@thehumandecision.in
+                  Write to us and you get a written answer, usually the same day. {ENTITY.supportEmail}
                 </p>
               </div>
             </div>

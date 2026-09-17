@@ -17,7 +17,7 @@ import ReportViewTracker from "./ReportViewTracker";
 import ExitIntentPopup from "./ExitIntentPopup";
 import StickyCta from "./StickyCta";
 import { FounderByline } from "@/app/components/FounderByline";
-import { SHAILY, SHASHANK, FOUNDER_PHOTOS } from "@/lib/founders";
+import { SHASHI, SHAILY, SHASHANK, FOUNDER_PHOTOS } from "@/lib/founders";
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
@@ -327,18 +327,25 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
               innerGap={16}
               founders={[
                 {
+                  ...SHASHI,
+                  photo: FOUNDER_PHOTOS.shashi,
+                  nameStyle: { fontFamily: BG, fontWeight: 800, fontSize: "15px", color: "var(--ink)", lineHeight: 1.3, marginBottom: "3px" },
+                  metaStyle: { fontSize: "12.5px", color: "var(--ink-dim)", marginBottom: "8px" },
+                  ...(SHASHI.credential ? { badge: { label: SHASHI.credential, style: { background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", fontSize: "11px", fontWeight: 600, color: "#9a7c10" } } } : {}),
+                },
+                {
                   ...SHAILY,
                   photo: FOUNDER_PHOTOS.shaily,
                   nameStyle: { fontFamily: BG, fontWeight: 800, fontSize: "15px", color: "var(--ink)", lineHeight: 1.3, marginBottom: "3px" },
                   metaStyle: { fontSize: "12.5px", color: "var(--ink-dim)", marginBottom: "8px" },
-                  badge: { label: SHAILY.credential, style: { background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", fontSize: "11px", fontWeight: 600, color: "#9a7c10" } },
+                  ...(SHAILY.credential ? { badge: { label: SHAILY.credential, style: { background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", fontSize: "11px", fontWeight: 600, color: "#9a7c10" } } } : {}),
                 },
                 {
                   ...SHASHANK,
                   photo: FOUNDER_PHOTOS.shashank,
                   nameStyle: { fontFamily: BG, fontWeight: 800, fontSize: "15px", color: "var(--ink)", lineHeight: 1.3, marginBottom: "3px" },
                   metaStyle: { fontSize: "12.5px", color: "var(--ink-dim)", marginBottom: "8px" },
-                  badge: { label: `🎓 ${SHASHANK.credential}`, style: { background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", fontSize: "11px", fontWeight: 600, color: "#9a7c10" } },
+                  ...(SHASHANK.credential ? { badge: { label: SHASHANK.credential, style: { background: "rgba(240,197,80,.18)", border: "1px solid rgba(240,197,80,.4)", fontSize: "11px", fontWeight: 600, color: "#9a7c10" } } } : {}),
                 },
               ]}
             />

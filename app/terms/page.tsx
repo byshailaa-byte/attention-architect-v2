@@ -1,4 +1,5 @@
 import SiteFooter from "@/app/components/SiteFooter";
+import { ENTITY } from "@/lib/entity";
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
@@ -15,6 +16,12 @@ export default function TermsPage() {
           </p>
 
           <Section title="1. What This Service Is">
+            <p style={p}>
+              Attention Architect is a brand of {ENTITY.legalName}, a proprietorship
+              registered under the {ENTITY.registrationAct} (registration no.{" "}
+              {ENTITY.registrationNumber}), registered address {ENTITY.address}. The service
+              is operated by {ENTITY.legalName}.
+            </p>
             <p style={p}>
               Attention Architect provides a free assessment and, for purchasers, a paid weekly course (&ldquo;Attention System&rdquo;) based on your child&rsquo;s assessment results. This is educational content designed to help parents understand and support their child&rsquo;s attention —{" "}
               <strong>it is not a medical diagnosis, psychological evaluation, or substitute for professional advice.</strong>
@@ -55,9 +62,9 @@ export default function TermsPage() {
           <Section title="7. Contact">
             <p style={p}>
               Questions about these terms:{" "}
-              <a href="mailto:support@thehumandecision.in" style={{ color: "var(--calm-text)" }}>support@thehumandecision.in</a>
+              <a href={`mailto:${ENTITY.supportEmail}`} style={{ color: "var(--calm-text)" }}>{ENTITY.supportEmail}</a>
               {" "}or call{" "}
-              <a href="tel:9993374923" style={{ color: "var(--calm-text)" }}>9993374923</a>.
+              <a href={`tel:${ENTITY.phone}`} style={{ color: "var(--calm-text)" }}>{ENTITY.phone}</a>.
             </p>
           </Section>
         </div>

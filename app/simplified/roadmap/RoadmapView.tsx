@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { TESTIMONIAL_POOL } from "@/lib/content/report-content";
+import { SHASHANK } from "@/lib/founders-data";
 
 declare global {
   interface Window {
@@ -322,7 +323,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
 
   async function openCheckout(tier: "tier1" | "tier2") {
     if (!sessionId || checkoutLoading) return;
-    const label = tier === "tier1" ? "Roadmap" : "Roadmap + Founder Calls";
+    const label = tier === "tier1" ? "Roadmap" : `Roadmap + three sessions with ${SHASHANK.name}`;
     const value = tier === "tier1" ? 2999 : 4999;
     setCheckoutLoading(true);
     fireEvent("begin_checkout", sessionId, { tier, value, source: "roadmap" });
@@ -539,7 +540,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
             <div style={{ height: 4, background: GOLD }} />
             <div style={{ padding: "14px 16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
-                <div style={{ fontSize: "12px", fontWeight: 600, color: DIM }}>Roadmap + three founder calls</div>
+                <div style={{ fontSize: "12px", fontWeight: 600, color: DIM }}>Roadmap + three sessions with {SHASHANK.name}</div>
                 <div style={{ background: GOLD, color: NAVY, fontSize: "8px", fontWeight: 700, letterSpacing: ".08em", padding: "3px 7px", borderRadius: 5, flexShrink: 0 }}>RECOMMENDED</div>
               </div>
               <div style={{ fontFamily: BF, fontWeight: 800, fontSize: 27, color: NAVY, lineHeight: 1, marginBottom: 4 }}>
@@ -549,7 +550,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
               <ul style={{ listStyle: "none", margin: "0 0 14px", padding: 0 }}>
                 {[
                   `The personalised six-week roadmap built around ${c}`,
-                  "Three founder calls, not one",
+                  `Three 30-minute sessions with ${SHASHANK.name}, ${SHASHANK.role}`,
                   "Full refund if it isn’t worth it",
                 ].map(item => (
                   <li key={item} style={tick(GOLD)}>

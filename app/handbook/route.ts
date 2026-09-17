@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ENTITY } from "@/lib/entity";
 
 const HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -111,7 +112,7 @@ const HTML = `<!DOCTYPE html>
 <section class="cover">
   <div class="cover-inner">
     <img src="/logo-horizontal-with-tagline.png" alt="Attention Architect" style="height:44px;width:auto;margin-bottom:28px;filter:brightness(3);opacity:0.9">
-    <div class="eyebrow">The Human Decision</div>
+    <div class="eyebrow">${ENTITY.legalName}</div>
     <h1>The Attention Handbook</h1>
     <p class="sub">The invisible skill behind every report card. A field guide for parents — free to read, free to share.</p>
     <div class="rcard">
@@ -276,7 +277,7 @@ const HTML = `<!DOCTYPE html>
   </div>
 </section>
 
-<footer>Attention Architect · by The Human Decision · Made for parents who want to understand, not diagnose.</footer>
+<footer>Attention Architect · by ${ENTITY.legalName} · Made for parents who want to understand, not diagnose.</footer>
 
 </body>
 </html>`;

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ENTITY } from "@/lib/entity";
 
 export type SimplifiedReportData = {
   childName: string;
@@ -672,9 +673,10 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 18px", justifyContent: "center", font: "400 14px/1.5 ‘Instrument Sans’,sans-serif" }}>
             <a href="/privacy" style={{ color: NAVY, textDecoration: "none" }}>Privacy Policy</a>
             <a href="/terms" style={{ color: NAVY, textDecoration: "none" }}>Terms of Service</a>
-            <a href="mailto:support@thehumandecision.in" style={{ color: NAVY, textDecoration: "none" }}>support@thehumandecision.in</a>
+            <a href={`mailto:${ENTITY.supportEmail}`} style={{ color: NAVY, textDecoration: "none" }}>{ENTITY.supportEmail}</a>
           </div>
-          <div style={{ font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9A9A9A" }}>© 2026 The Human Decision. All rights reserved.</div>
+          <div style={{ font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9A9A9A" }}>{ENTITY.brandLine}</div>
+          <div style={{ font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9A9A9A" }}>{ENTITY.copyright}</div>
         </div>
       </footer>
     </div>

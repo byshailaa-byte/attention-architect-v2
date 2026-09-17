@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ENTITY } from "@/lib/entity";
 
 export default function SiteFooter() {
   return (
@@ -31,11 +32,11 @@ export default function SiteFooter() {
             <Link href="/terms" style={{ color: "#9c9aa8", textDecoration: "none", fontSize: "13.5px", fontWeight: 500 }}>
               Terms of Service
             </Link>
-            <a href="mailto:support@thehumandecision.in" style={{ color: "#9c9aa8", textDecoration: "none", fontSize: "13.5px", fontWeight: 500 }}>
-              support@thehumandecision.in
+            <a href={`mailto:${ENTITY.supportEmail}`} style={{ color: "#9c9aa8", textDecoration: "none", fontSize: "13.5px", fontWeight: 500 }}>
+              {ENTITY.supportEmail}
             </a>
-            <a href="tel:9993374923" style={{ color: "#9c9aa8", textDecoration: "none", fontSize: "13.5px", fontWeight: 500 }}>
-              9993374923
+            <a href={`tel:${ENTITY.phone}`} style={{ color: "#9c9aa8", textDecoration: "none", fontSize: "13.5px", fontWeight: 500 }}>
+              {ENTITY.phone}
             </a>
           </div>
         </div>
@@ -49,7 +50,10 @@ export default function SiteFooter() {
           fontSize: "12px",
           color: "#5c5a68",
         }}>
-          <div>© 2026 The Human Decision. All rights reserved.</div>
+          <div>
+            <div>{ENTITY.brandLine}</div>
+            <div>{ENTITY.copyright}</div>
+          </div>
           <div>Made for parents who want to understand, not diagnose.</div>
         </div>
       </div>
