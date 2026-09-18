@@ -74,12 +74,15 @@ export function GoalSectionSimplified({
   // positional so the fallback never renders "Your child" mid-sentence.
   const bridge = buildBridge(content.bridges[bridgeConcernFor(concerns[0] ?? null)], worryFollowup, childName, childGender);
 
+  // The assessment's own answer — pre-selected so a parent who agrees taps once.
+  const recommendedKey = content.goals.find((g) => g.recommended)?.key ?? null;
+
   // ── State ──────────────────────────────────────────────────────────────────
   const [chosen, setChosen] = useState<ChosenGoal | null>(
     initialGoal.source ? { key: initialGoal.key, text: initialGoal.text ?? "", source: initialGoal.source } : null,
   );
   const [editing, setEditing] = useState(false);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null); // authored key or "__free__"
+  const [selectedKey, setSelectedKey] = useState<string | null>(recommendedKey); // authored key or "__free__"
   const [freeText, setFreeText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
