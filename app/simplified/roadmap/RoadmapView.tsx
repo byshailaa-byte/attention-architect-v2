@@ -396,6 +396,10 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
 
 
         {/* ── 6. Testimonials (moved before pricing; content unchanged) ─────── */}
+        <div style={{ marginBottom: "18px" }}>
+          <div style={kick}>From parents who&rsquo;ve done it</div>
+          <h2 style={h2s}>What changed, in their words</h2>
+        </div>
         <div className="rm-testimonials-scroll" style={{ display: "flex", overflowX: "auto", gap: 14, marginBottom: "44px", scrollSnapType: "x mandatory", paddingBottom: 4 }}>
           {TESTIMONIAL_POOL.map((t, i) => (
             <div key={i} style={{ flex: "0 0 280px", scrollSnapAlign: "start", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 16, padding: "22px 20px", boxShadow: "0 4px 14px rgba(20,40,77,.05)" }}>
