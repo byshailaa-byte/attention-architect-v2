@@ -5,6 +5,8 @@ import type { GoalSkillContent } from "@/content/types";
 // {{child_name}} = child's first name; {{child_pronoun_*}} resolve from child_gender
 // (they/their fallback), filled by fillLmsContent at render.
 export const starting: GoalSkillContent = {
+  problem:
+    "The report found that {{child_name}}'s attention breaks right at the beginning — the gap between knowing what to do and doing the first line of it. That's why reminders land badly: they arrive into a moment that has no first step in it, so they add pressure without adding direction. Nothing further along can be fixed while beginning is still the hard part.",
   goals: [
     { key: "starting-1", text: "{{child_name}} begins homework without being asked twice", why: "four nights out of five, instead of forty minutes of circling", recommended: true },
     { key: "starting-2", text: "The gap between sitting down and starting drops under five minutes", why: "same work, less of the run-up", recommended: false },

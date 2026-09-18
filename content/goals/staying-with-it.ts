@@ -5,6 +5,8 @@ import type { GoalSkillContent } from "@/content/types";
 // {{child_name}} = child's first name; {{child_pronoun_*}} resolve from child_gender
 // (they/their fallback), filled by fillLmsContent at render.
 export const stayingWithIt: GoalSkillContent = {
+  problem:
+    "{{child_name}} holds attention while something is interesting and stops where it turns ordinary — which is most of homework. The report found the break isn't difficulty; it's the dull middle, and there's currently nothing carrying {{child_pronoun_obj}} across it.",
   goals: [
     { key: "staying-with-it-1", text: "{{child_name}} stays with work past the point it stops being interesting", why: "four nights out of five", recommended: true },
     { key: "staying-with-it-2", text: "Homework takes one sitting instead of three", why: "the same work, without the restarts", recommended: false },

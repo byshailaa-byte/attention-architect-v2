@@ -5,6 +5,8 @@ import type { GoalSkillContent } from "@/content/types";
 // {{child_name}} = child's first name; {{child_pronoun_*}} resolve from child_gender
 // (they/their fallback), filled by fillLmsContent at render.
 export const runningItThemselves: GoalSkillContent = {
+  problem:
+    "Most of what holds {{child_name}}'s attention together is currently you. The report found that works — right up until nobody is there to do it. The break is that the system is yours, not {{child_pronoun_poss}} own.",
   goals: [
     { key: "running-it-themselves-1", text: "{{child_name}} notices {{child_pronoun_poss}} own attention and adjusts it", why: "without being told to", recommended: true },
     { key: "running-it-themselves-2", text: "{{child_name}} asks for what {{child_pronoun_subj}} needs instead of me guessing", why: "{{child_pronoun_subj}} names it; you stop interpreting", recommended: false },
