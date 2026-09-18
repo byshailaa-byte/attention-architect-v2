@@ -12,6 +12,17 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const capitaliseFirst = (s: string): string =>
   s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 
+// Positional {{child_name}} for the null-name fallback: "Your child" only at a
+// sentence boundary, "your child" mid-sentence (the problem paragraph and method
+// point 1 put the name mid-sentence). Real names are proper nouns, kept as given.
+function placeName(template: string, name: string): string {
+  if (name !== CHILD_NAME_FALLBACK) return template.replace(/\{\{child_name\}\}/g, name);
+  return template.replace(/\{\{child_name\}\}/g, (_m, offset: number, full: string) => {
+    const before = full.slice(0, offset).replace(/\s+$/, "");
+    return before === "" || /[.!?:—]$/.test(before) ? "Your child" : "your child";
+  });
+}
+
 export default async function RoadmapPage({
   searchParams,
 }: {
@@ -101,6 +112,16 @@ export default async function RoadmapPage({
     childOutcome: fill(o.childOutcome),
   }));
 
+  // Problem paragraph + method point 1 — the name can sit mid-sentence here, so
+  // fill with positional casing (not the plain fill used above).
+  const fillName = (s: string) => fillLmsContent(placeName(s, goalChildName), goalChildName, gender);
+  const problem = fillName(content.problem);
+  const methodPoint1 = fillName(
+    skill.idx === 0
+      ? "For {{child_name}} the work starts at week one, and the rest builds from there."
+      : `{{child_name}} is already steady through week ${skill.idx}, so that ground moves quickly.`,
+  );
+
   return (
     <>
       <RoadmapView
@@ -112,8 +133,10 @@ export default async function RoadmapPage({
         email={row.email ?? ""}
         phone={row.phone ?? ""}
         goalStatement={goalStatement}
-        goalIsChosen={goalIsChosen}
         framingLine={framingLine}
+        problem={problem}
+        methodPoint1={methodPoint1}
+        breakWeek={N}
         weeks={weeks}
       />
       <SiteFooter />

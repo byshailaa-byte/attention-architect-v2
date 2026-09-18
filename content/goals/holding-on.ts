@@ -5,6 +5,8 @@ import type { GoalSkillContent } from "@/content/types";
 // {{child_name}} = child's first name; {{child_pronoun_*}} resolve from child_gender
 // (they/their fallback), filled by fillLmsContent at render.
 export const holdingOn: GoalSkillContent = {
+  problem:
+    "{{child_name}} starts perfectly well. The report found the break is what happens next — a new idea, a notification, a sibling, and the page is gone. {{child_pronoun_poss|cap}} attention isn't absent; it keeps getting taken. Which is why \"concentrate\" is advice about the wrong moment.",
   goals: [
     { key: "holding-on-1", text: "{{child_name}} stays with homework when a new idea arrives", why: "four nights out of five, instead of drifting within minutes", recommended: true },
     { key: "holding-on-2", text: "{{child_name}} comes back on {{child_pronoun_poss}} own after drifting", why: "without me noticing and calling {{child_pronoun_obj}} back", recommended: false },

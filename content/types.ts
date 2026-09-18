@@ -171,6 +171,9 @@ export type GoalSkillContent = {
   goals: Goal[];                            // 4
   objectives: Objective[];                  // 6, weeks 1–6
   bridges: Record<BridgeConcern, string>;   // 7, keyed by concern
+  // The problem, in one paragraph — skill-keyed, shown at the top of the roadmap.
+  // {{child_name}} + {{child_pronoun_*}} tokens, filled at render.
+  problem: string;
 };
 
 // ── LMS content ───────────────────────────────────────────────────────────────

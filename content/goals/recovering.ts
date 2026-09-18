@@ -5,6 +5,8 @@ import type { GoalSkillContent } from "@/content/types";
 // {{child_name}} = child's first name; {{child_pronoun_*}} resolve from child_gender
 // (they/their fallback), filled by fillLmsContent at render.
 export const recovering: GoalSkillContent = {
+  problem:
+    "{{child_name}} doesn't lose focus so much as fail to return to it. The report found that one hard question, one mistake, and the evening is over. The break is the coming back — a different skill from the staying, and the one that's missing.",
   goals: [
     { key: "recovering-1", text: "{{child_name}} comes back after a hard question instead of stopping for the night", why: "four nights out of five", recommended: true },
     { key: "recovering-2", text: "A mistake stops ending the evening", why: "the recovery takes minutes, not the rest of the night", recommended: false },

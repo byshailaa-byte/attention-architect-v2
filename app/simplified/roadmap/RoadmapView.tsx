@@ -39,7 +39,6 @@ const CARD   = "#FFFFFF";
 const BF     = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
 // Six distinct accent colours — one per week, in order
-const W  = ["#E2705F", "#E9973F", "#DFC13C", "#4E9E86", "#3D7CB8", "#7B6BC4"] as const;
 
 // Rung 1 quote — varies by parent instinct, everything else stays universal
 const RUNG1_QUOTE: Record<string, string> = {
@@ -70,8 +69,10 @@ type Props = {
   phone?:        string;
   // Goal-framing (from the stored goal, or the skill's recommended goal as a fallback).
   goalStatement: string;
-  goalIsChosen:  boolean;
   framingLine:   string;
+  problem:       string;  // the problem, in one paragraph (skill-keyed)
+  methodPoint1:  string;  // method step 1 body — skill-specific ("starts where the break is")
+  breakWeek:     number;  // the week the work starts (1-based) — open + highlighted by default
   weeks:         RoadmapWeek[];
 };
 
@@ -108,75 +109,18 @@ const MOBILE_CSS = `
   }
 `;
 
-const ARCHETYPE_SIGNALS: Partial<Record<string, readonly [string, string, string, string, string, string]>> = {
-  "The Storm": [
-    "They pick one and get going, instead of arguing about which.",
-    "They turn it off at the limit they chose, without the negotiation.",
-    "They see a whole task through without checking in at every step.",
-    "They stop looking at you first to check whether a decision is allowed.",
-    "They start factoring their sibling in before it becomes a fight.",
-    "They decide something before you've thought to offer the choice.",
-  ],
-  "The All-In Kid": [
-    "They get into something without needing a run-up.",
-    "They come out of a screen stretch the way they'd come out of a book.",
-    "They keep going on a day that would normally derail it.",
-    "A session that goes nowhere doesn't wreck the rest of the day.",
-    "They handle a sibling interrupting without it becoming a scene.",
-    "They ask for the quiet themselves, before you've offered it.",
-  ],
-  "The Inventor": [
-    "They start their own way instead of waiting to be told how.",
-    "They set up a screen task deliberately, not just by default.",
-    "They stick with an approach across days, adjusting as they go.",
-    "A method failing doesn't make them abandon the whole project.",
-    "They take on someone else's idea without it feeling like losing.",
-    "They explain why they did it that way, without being asked.",
-  ],
-  "The Explorer": [
-    "An idea gets written down instead of chased mid-homework.",
-    "They come back to what they were doing after a screen break.",
-    "Reaching for the notepad stops needing a reminder.",
-    "An idea going nowhere doesn't stop them having the next one.",
-    "They notice they've interrupted someone, without being told.",
-    "You find the system being used somewhere you never set it up.",
-  ],
-  "The Magnet": [
-    "They settle into something with you nearby but not involved.",
-    "They don't need you watching to stay with a screen task.",
-    "They stay with something longer without checking you're still there.",
-    "They work through a hard moment while you're in the room, not for you.",
-    "They hold their own in a group, not just one-to-one.",
-    "They tell you when they want you around — and when they don't.",
-  ],
-  "The Glue": [
-    "Homework starts without the resistance it used to start with.",
-    "Screen conversations stop beginning as an argument.",
-    "A bad day stops taking the whole evening with it.",
-    "Something unresolved doesn't mean the night is ruined.",
-    "They stop carrying the whole weight of a sibling fight.",
-    "They tell you how they're doing before you've asked.",
-  ],
-  "The Captain": [
-    "They run something without checking each step with you.",
-    "They keep a rule they set themselves.",
-    "Something ongoing keeps running without your reminders.",
-    "It going wrong doesn't stop them wanting to run the next thing.",
-    "They lead something a sibling has to go along with, and it holds.",
-    "They step in and take charge before anyone hands it to them.",
-  ],
-  "The Live Wire": [
-    "Something matters enough to start without a push.",
-    "A screen limit holds because they set the stakes on it.",
-    "The energy lasts past the exciting first stretch.",
-    "Not getting the thing doesn't stop them setting the next stake.",
-    "They handle a shared outcome, including someone else losing too.",
-    "They set their own stakes without being prompted.",
-  ],
-};
 
-export default function RoadmapView({ childName: c, archetype, parentPattern = "The Pusher", sessionId, parentName = "", email = "", phone = "", goalStatement, goalIsChosen, framingLine, weeks }: Props) {
+// Founder discovery call — Calendly. The slot panel is intentionally NOT rendered:
+// showing counts we can't verify would be fabricated scarcity. Wire a real-availability
+// panel here when Calendly availability can actually be read.
+const CALENDLY_URL = "https://calendly.com/attentionarchitect/attention-architect-discovery";
+
+export default function RoadmapView({ childName: c, archetype, parentPattern = "The Pusher", sessionId, parentName = "", email = "", phone = "", goalStatement, framingLine, problem, methodPoint1, breakWeek, weeks }: Props) {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  // Six-week accordion: the parent's own week (breakWeek) is open by default.
+  const [openWeeks, setOpenWeeks] = useState<Set<number>>(() => new Set([breakWeek - 1]));
+  const toggleWeek = (i: number) =>
+    setOpenWeeks((prev) => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
   const pricingRef = useRef<HTMLDivElement>(null);
   const firedViewItem = useRef(false);
 
@@ -257,13 +201,16 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
     }
   }
 
-  const archSignals = ARCHETYPE_SIGNALS[archetype] ?? ARCHETYPE_SIGNALS["The All-In Kid"];
 
   // Shared tick-list style helper
   const tick = (color: string) => ({
     display: "flex", gap: 8, alignItems: "flex-start",
     marginBottom: 7, fontSize: "13px", color: DIM, lineHeight: 1.5,
   } as React.CSSProperties);
+
+  // Section eyebrow + heading, shared across the v2 bands.
+  const kick: React.CSSProperties = { font: "700 10.5px/1.4 'Instrument Sans',system-ui", letterSpacing: ".12em", textTransform: "uppercase", color: "#A3781E", marginBottom: 11 };
+  const h2s: React.CSSProperties = { fontFamily: BF, fontWeight: 800, fontSize: "clamp(22px,4vw,28px)", lineHeight: 1.16, color: NAVY, letterSpacing: "-0.03em" };
 
   return (
     <div style={{ background: BG, minHeight: "100dvh", fontFamily: "'Instrument Sans', system-ui, sans-serif", color: INK }}>
@@ -280,49 +227,77 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
 
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "36px 18px 80px" }}>
 
-        {/* ── 1. Goal statement ────────────────────────────────────────────── */}
-        <div style={{ font: "700 11px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: TEAL, marginBottom: "12px" }}>
-          THE ROADMAP
+        {/* ── 1. Problem ───────────────────────────────────────────────────── */}
+        <div style={{ marginBottom: "40px" }}>
+          <div style={kick}>What the report found</div>
+          <h2 style={h2s}>The problem, in one paragraph</h2>
+          <div style={{ background: CARD, border: `1px solid ${LINE}`, borderLeft: "3px solid #C9503A", borderRadius: "0 14px 14px 0", padding: "22px 24px", marginTop: 16 }}>
+            <div style={{ font: "700 10.5px/1.4 'Instrument Sans',system-ui", letterSpacing: ".1em", textTransform: "uppercase", color: "#C9503A", marginBottom: 9 }}>Where it breaks</div>
+            <p style={{ fontSize: "16.5px", lineHeight: 1.62, color: NAVY, margin: 0 }}>{problem}</p>
+          </div>
         </div>
-        <div style={{ font: "700 10px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.1em", textTransform: "uppercase", color: goalIsChosen ? GOLD : DIM, marginBottom: "8px" }}>
-          {goalIsChosen ? "Your goal" : `What this plan works toward for ${c}`}
-        </div>
-        <h1 style={{ fontFamily: BF, fontWeight: 800, fontSize: "clamp(22px,4.5vw,32px)", lineHeight: 1.18, color: NAVY, marginBottom: "14px" }}>
-          {goalStatement}
-        </h1>
-        {/* ── 2. Framing line ──────────────────────────────────────────────── */}
-        <p style={{ fontSize: "15px", color: DIM, lineHeight: 1.7, marginBottom: "44px", maxWidth: "56ch" }}>
-          {framingLine}
-        </p>
 
-        {/* ── 3. Six weeks — objective + two outcome columns ───────────────── */}
-        <div style={{ marginBottom: "44px" }}>
-          <div style={{ font: "700 11px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: TEAL, marginBottom: "10px" }}>THE SIX WEEKS</div>
-          <h2 style={{ fontFamily: BF, fontWeight: 700, fontSize: "20px", color: NAVY, marginBottom: "10px" }}>
-            One change a week
-          </h2>
-          <p style={{ fontSize: "14px", color: DIM, lineHeight: 1.65, marginBottom: "18px", maxWidth: "56ch" }}>
-            Each week works on you first, then on {c}.
+        {/* ── 2. Method ────────────────────────────────────────────────────── */}
+        <div style={{ marginBottom: "40px" }}>
+          <div style={kick}>How this fixes it</div>
+          <h2 style={h2s}>You move first. Every week.</h2>
+          <p style={{ fontSize: "16px", color: DIM, lineHeight: 1.6, margin: "13px 0 0", maxWidth: "56ch" }}>
+            Not a programme {c} has to sit through. A change to what you do, made one week at a time, in the order the skills build.
           </p>
-          <div style={{ position: "relative" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 24 }}>
+            {([
+              ["It starts where the break is", methodPoint1],
+              ["One change a week", "Small enough to survive a normal Tuesday. Comprehensive overhauls don't last; single adjustments do."],
+              ["You change first, then they practise", `Every week asks something of you before it asks anything of ${c}. That's the part you control.`],
+              ["You measure it yourself", "Week one you count what's happening now. Week six you count the same thing, the same way. No score, no test."],
+            ] as const).map(([h, b], i) => (
+              <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", background: CARD, border: `1px solid ${LINE}`, borderRadius: 13, padding: "16px 18px" }}>
+                <div style={{ width: 26, height: 26, borderRadius: 8, background: "#FDF1DC", color: "#8A5F0F", fontFamily: BF, fontWeight: 800, fontSize: 12.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</div>
+                <div>
+                  <b style={{ display: "block", fontFamily: BF, fontSize: 16, color: NAVY, marginBottom: 3 }}>{h}</b>
+                  <span style={{ fontSize: 14.5, color: DIM, lineHeight: 1.55 }}>{b}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── 3. The six weeks — accordion, the parent's week open by default ─ */}
+        <div style={{ marginBottom: "40px" }}>
+          <div style={kick}>The six weeks</div>
+          <h2 style={h2s}>One change a week, in order</h2>
+          <p style={{ fontSize: "16px", color: DIM, lineHeight: 1.6, margin: "13px 0 0", maxWidth: "60ch" }}>{framingLine}</p>
+          <div style={{ marginTop: 20 }}>
             {weeks.slice(0, 6).map((wk, i) => {
-              const wc = W[i] ?? TEAL;
+              const open = openWeeks.has(i);
+              const isBreak = i === breakWeek - 1;
+              const isLast = i === 5;
+              const numBg = isLast ? "#DCECE7" : isBreak ? "#FDF1DC" : "#fff";
+              const numBorder = isLast ? TEAL : isBreak ? GOLD : LINE;
               return (
-                <div key={i} className="rm-wk-row">
-                  <div style={{ width: 29, height: 29, borderRadius: 9, background: wc, color: "#fff", fontFamily: BF, fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, zIndex: 1 }}>{i + 1}</div>
-                  <div className="rm-wk-body">
-                    <div style={{ fontFamily: BF, fontWeight: 700, fontSize: 14.5, color: NAVY, lineHeight: 1.2 }}>{wk.title}</div>
-                    <div style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 5, color: INK }}>{wk.objective}</div>
-                    <div className="rm-goal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
-                      <div style={{ background: CARD, borderRadius: 10, padding: "10px 12px", boxShadow: "0 2px 8px rgba(20,40,77,.05)" }}>
-                        <div style={{ fontSize: 8.5, letterSpacing: ".07em", textTransform: "uppercase" as const, fontWeight: 700, color: NAVY, opacity: 0.55, marginBottom: 4 }}>What changes for you</div>
-                        <div style={{ fontSize: 11.5, lineHeight: 1.5, color: DIM }}>{wk.parentOutcome}</div>
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "40px 1fr", gap: 14 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 9, background: numBg, border: `1.5px solid ${numBorder}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: BF, fontWeight: 800, fontSize: 13.5, color: NAVY, marginTop: 16 }}>{i + 1}</div>
+                    {!isLast && <div style={{ width: 2, flex: 1, background: LINE, margin: "4px 0" }} />}
+                  </div>
+                  <div style={{ padding: "14px 0 4px" }}>
+                    <h4 onClick={() => toggleWeek(i)} style={{ fontFamily: BF, fontSize: 16.5, fontWeight: 700, color: NAVY, lineHeight: 1.3, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, cursor: "pointer", margin: 0 }}>
+                      {wk.title}
+                      <span style={{ fontFamily: "'Instrument Sans',system-ui", fontSize: 18, fontWeight: 400, color: DIM, flexShrink: 0, lineHeight: 1, transform: open ? "rotate(45deg)" : "none", transition: "transform .2s" }}>+</span>
+                    </h4>
+                    <div onClick={() => toggleWeek(i)} style={{ fontSize: 14.5, color: DIM, marginTop: 5, cursor: "pointer" }}>{wk.objective}</div>
+                    {open && (
+                      <div className="rm-goal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginTop: 10 }}>
+                        <div style={{ background: "#FDF1DC", borderRadius: 10, padding: "11px 13px" }}>
+                          <div style={{ fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase" as const, fontWeight: 700, color: "#8A5F0F", marginBottom: 5 }}>What changes for you</div>
+                          <div style={{ fontSize: 13.3, lineHeight: 1.5, color: "#5E4712" }}>{wk.parentOutcome}</div>
+                        </div>
+                        <div style={{ background: "#DCECE7", borderRadius: 10, padding: "11px 13px" }}>
+                          <div style={{ fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase" as const, fontWeight: 700, color: TEAL, marginBottom: 5 }}>What may change for {c}</div>
+                          <div style={{ fontSize: 13.3, lineHeight: 1.5, color: "#2C5C51" }}>{wk.childOutcome}</div>
+                        </div>
                       </div>
-                      <div style={{ background: CARD, borderRadius: 10, padding: "10px 12px", boxShadow: "0 2px 8px rgba(20,40,77,.05)" }}>
-                        <div style={{ fontSize: 8.5, letterSpacing: ".07em", textTransform: "uppercase" as const, fontWeight: 700, color: wc, marginBottom: 4 }}>What may change for {c}</div>
-                        <div style={{ fontSize: 11.5, lineHeight: 1.5, color: DIM }}>{wk.childOutcome}</div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               );
@@ -330,25 +305,48 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
           </div>
         </div>
 
-        {/* ── 4. Goal restated + week-1 / week-6 measurement ───────────────── */}
-        <div style={{ marginBottom: "44px", background: CARD, border: `1px solid ${LINE}`, borderRadius: 14, padding: "22px 20px" }}>
-          <div style={{ font: "700 11px/1.4 'Instrument Sans',system-ui", letterSpacing: "0.12em", textTransform: "uppercase", color: TEAL, marginBottom: "10px" }}>THE GOAL</div>
-          <div style={{ fontFamily: BF, fontWeight: 700, fontSize: "18px", color: NAVY, lineHeight: 1.3, marginBottom: "6px" }}>
-            {goalStatement}
+        {/* ── 4. Success ───────────────────────────────────────────────────── */}
+        <div style={{ marginBottom: "40px" }}>
+          <div style={kick}>What success looks like</div>
+          <h2 style={h2s}>How you&rsquo;ll know it worked</h2>
+          <div style={{ background: "linear-gradient(135deg,#DCECE7,#EAF5F1)", border: "1.5px solid rgba(33,163,138,.3)", borderRadius: 16, padding: 24, marginTop: 16 }}>
+            <div style={{ font: "700 10.5px/1.4 'Instrument Sans',system-ui", letterSpacing: ".12em", textTransform: "uppercase", color: TEAL, marginBottom: 9 }}>Six weeks from now</div>
+            <h3 style={{ fontFamily: BF, fontWeight: 700, fontSize: 19, lineHeight: 1.35, color: NAVY, margin: "0 0 9px" }}>{goalStatement}</h3>
+            <p style={{ fontSize: 14.5, color: DIM, lineHeight: 1.6, margin: 0 }}>
+              Week one, you count it. Week six, you count the same thing the same way. Two numbers, both your own observation — nothing scored, nothing graded.
+            </p>
+            <div className="rm-goal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 11, marginTop: 16 }}>
+              {([["Week 1", "where you start"], ["Week 6", `where ${c} lands`]] as const).map(([t, s]) => (
+                <div key={t} style={{ background: "#fff", border: "1px dashed rgba(33,163,138,.4)", borderRadius: 11, padding: "14px 16px" }}>
+                  <div style={{ fontSize: 9.5, letterSpacing: ".09em", textTransform: "uppercase" as const, fontWeight: 700, color: DIM }}>{t}</div>
+                  <b style={{ display: "block", fontFamily: BF, fontSize: 19, color: NAVY, margin: "5px 0 0" }}>&mdash;</b>
+                  <span style={{ fontSize: 11.5, color: DIM }}>{s}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <p style={{ fontSize: "13px", color: DIM, lineHeight: 1.6, marginBottom: "18px", maxWidth: "52ch" }}>
-            Note where {c} starts and where {c} lands. Six weeks apart.
+          <p style={{ fontSize: 12.5, color: DIM, lineHeight: 1.6, marginTop: 16, maxWidth: "62ch" }}>
+            Not a guarantee. The pace depends on {c} and on the week. What the plan changes is the conditions — reliably, one at a time.
           </p>
-          <div className="rm-goal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div style={{ border: `1.5px dashed ${LINE}`, borderRadius: 10, padding: "12px 14px", minHeight: 92, background: BG }}>
-              <div style={{ fontSize: 8.5, letterSpacing: ".08em", textTransform: "uppercase" as const, fontWeight: 700, color: NAVY, opacity: 0.55, marginBottom: 6 }}>Week 1 · where you start</div>
-              <div style={{ fontSize: 11, color: "#B9BEC6", fontStyle: "italic" }}>Your baseline</div>
-            </div>
-            <div style={{ border: `1.5px dashed ${TEAL}`, borderRadius: 10, padding: "12px 14px", minHeight: 92, background: BG }}>
-              <div style={{ fontSize: 8.5, letterSpacing: ".08em", textTransform: "uppercase" as const, fontWeight: 700, color: TEAL, marginBottom: 6 }}>Week 6 · where {c} lands</div>
-              <div style={{ fontSize: 11, color: "#B9BEC6", fontStyle: "italic" }}>The goal, measured</div>
-            </div>
-          </div>
+        </div>
+
+        {/* ── 5. Founder call — navy band. Slot panel intentionally omitted (no
+                fabricated scarcity); wire real Calendly availability here later. ─ */}
+        <div style={{ marginBottom: "40px", background: `linear-gradient(140deg,${NAVY},#1E3A66)`, borderRadius: 16, padding: "30px 26px" }}>
+          <div style={{ font: "700 10.5px/1.4 'Instrument Sans',system-ui", letterSpacing: ".12em", textTransform: "uppercase", color: "#FBCB4A", marginBottom: 11 }}>Before you decide</div>
+          <h2 style={{ fontFamily: BF, fontWeight: 800, fontSize: "clamp(21px,3.6vw,26px)", lineHeight: 1.16, color: "#fff", letterSpacing: "-0.03em" }}>
+            Fifteen minutes with {SHASHANK.name.split(" ")[0]}, free.
+          </h2>
+          <p style={{ fontSize: 15.5, color: "#C2CEE0", lineHeight: 1.6, margin: "14px 0 0", maxWidth: "60ch" }}>
+            If you want to talk it through before paying for anything — what the report found, whether the six weeks fits your evenings, what it won&rsquo;t do. No pitch, and no obligation to buy afterwards.
+          </p>
+          <p style={{ fontSize: 15.5, color: "#C2CEE0", lineHeight: 1.6, margin: "11px 0 0", maxWidth: "60ch" }}>
+            This is separate from the three 30-minute sessions in the guided plan. Those are for during the six weeks; this one is for deciding whether to start.
+          </p>
+          <a href={CALENDLY_URL} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", background: "linear-gradient(135deg,#FBCB4A,#F5A623)", color: NAVY, borderRadius: 11, padding: "14px 26px", fontFamily: BF, fontWeight: 700, fontSize: 15, marginTop: 16, textDecoration: "none" }}>
+            Book a free 15 minutes →
+          </a>
+          <div style={{ fontSize: 12.5, color: "#8EA0BC", marginTop: 10 }}>{SHASHANK.name}, Chief Attention Architect</div>
         </div>
 
         {/* ── 5. Ladder ────────────────────────────────────────────────────── */}
@@ -396,6 +394,22 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
           </div>
         </div>
 
+
+        {/* ── 6. Testimonials (moved before pricing; content unchanged) ─────── */}
+        <div style={{ marginBottom: "18px" }}>
+          <div style={kick}>From parents who&rsquo;ve done it</div>
+          <h2 style={h2s}>What changed, in their words</h2>
+        </div>
+        <div className="rm-testimonials-scroll" style={{ display: "flex", overflowX: "auto", gap: 14, marginBottom: "44px", scrollSnapType: "x mandatory", paddingBottom: 4 }}>
+          {TESTIMONIAL_POOL.map((t, i) => (
+            <div key={i} style={{ flex: "0 0 280px", scrollSnapAlign: "start", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 16, padding: "22px 20px", boxShadow: "0 4px 14px rgba(20,40,77,.05)" }}>
+              <div style={{ fontSize: "14px", fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 12 }}>★★★★★</div>
+              <p style={{ margin: "0 0 14px", fontStyle: "italic", fontSize: "14px", color: INK, lineHeight: 1.6 }}>&ldquo;{t.quote}&rdquo;</p>
+              <div style={{ fontSize: "12.5px", fontWeight: 700, color: NAVY }}>{t.who}</div>
+              <div style={{ fontSize: "12.5px", color: DIM, marginTop: 2 }}>{t.detail}</div>
+            </div>
+          ))}
+        </div>
 
         {/* ── 7. Pricing — three equal cards ───────────────────────────────── */}
         <div ref={pricingRef} style={{ marginBottom: "44px" }}>
@@ -469,18 +483,6 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
           </div>
 
           <div style={{ textAlign: "center", fontSize: "11px", color: "#8A9097", marginTop: 6 }}>One-time payment · Secured by Razorpay</div>
-        </div>
-
-        {/* ── 8. Testimonials ───────────────────────────────────────────────── */}
-        <div className="rm-testimonials-scroll" style={{ display: "flex", overflowX: "auto", gap: 14, marginBottom: "44px", scrollSnapType: "x mandatory", paddingBottom: 4 }}>
-          {TESTIMONIAL_POOL.map((t, i) => (
-            <div key={i} style={{ flex: "0 0 280px", scrollSnapAlign: "start", background: "#fff", border: `1px solid ${LINE}`, borderRadius: 16, padding: "22px 20px", boxShadow: "0 4px 14px rgba(20,40,77,.05)" }}>
-              <div style={{ fontSize: "14px", fontWeight: 700, color: GOLD, letterSpacing: 2, marginBottom: 12 }}>★★★★★</div>
-              <p style={{ margin: "0 0 14px", fontStyle: "italic", fontSize: "14px", color: INK, lineHeight: 1.6 }}>&ldquo;{t.quote}&rdquo;</p>
-              <div style={{ fontSize: "12.5px", fontWeight: 700, color: NAVY }}>{t.who}</div>
-              <div style={{ fontSize: "12.5px", color: DIM, marginTop: 2 }}>{t.detail}</div>
-            </div>
-          ))}
         </div>
 
         {/* ── 9. FAQ ───────────────────────────────────────────────────────── */}

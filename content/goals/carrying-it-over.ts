@@ -5,6 +5,8 @@ import type { GoalSkillContent } from "@/content/types";
 // {{child_name}} = child's first name; {{child_pronoun_*}} resolve from child_gender
 // (they/their fallback), filled by fillLmsContent at render.
 export const carryingItOver: GoalSkillContent = {
+  problem:
+    "{{child_name}} manages this well where you've set it up, and not at all where you haven't. The report found the skill is real but hasn't travelled — it currently lives in the conditions you create rather than in {{child_pronoun_obj}}.",
   goals: [
     { key: "carrying-it-over-1", text: "{{child_name}} uses it somewhere I'm not watching", why: "outside homework, without a prompt", recommended: true },
     { key: "carrying-it-over-2", text: "The same approach shows up outside homework", why: "not just at the desk, not just in the evening", recommended: false },
