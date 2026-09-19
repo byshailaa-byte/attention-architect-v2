@@ -491,7 +491,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
           <div style={eyebrow(AMBER_TEXT)}>Attention Health Snapshot</div>
           <h2 style={{ margin: "0 0 6px", font: `700 20px/1.18 ${BF}`, color: NAVY }}>Four things we looked at</h2>
           <p style={{ margin: 0, font: "400 12px/1.55 ‘Instrument Sans’,sans-serif", color: DIM }}>
-            Four things we looked at. Each one is a description, not a score.
+            Each one is a description, not a score.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
             {DIMS.map(d => {
