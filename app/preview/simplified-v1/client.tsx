@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ENTITY } from "@/lib/entity";
 import { GoalSectionSimplified } from "./GoalSectionSimplified";
-import type { Gender } from "@/lib/report/pronouns";
+import { CHILD_NAME_FALLBACK, type Gender } from "@/lib/report/pronouns";
 
 export type SimplifiedReportData = {
   childName: string;
@@ -364,6 +364,9 @@ const css = `
 function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
   const router = useRouter();
   const c = data.childName;
+  // Mid-sentence form: for the null-name fallback ("Your child") render lowercase
+  // where the name sits mid-sentence. Real names are proper nouns, kept as given.
+  const cMid = c === CHILD_NAME_FALLBACK ? "your child" : c;
 
   const NAVY       = "#14284D";
   const NAVY_GRAD  = "linear-gradient(160deg,#1B3059 0%,#27406E 100%)";
@@ -485,7 +488,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
         <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px 32px" }}>
           <div style={eyebrow(GOLD)}>Attention Health · Your report</div>
           <h1 style={{ margin: "0 0 14px", font: `400 clamp(26px,5vw,34px)/1.2 ${BF}`, color: "#fff", letterSpacing: "-0.015em" }}>
-            Here&rsquo;s how {c}&rsquo;s attention tends to work
+            Here&rsquo;s how {cMid}&rsquo;s attention tends to work
           </h1>
           <p style={{ margin: "0 0 20px", font: "400 16px/1.6 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>
             Based on what you told us, in plain words.
@@ -562,7 +565,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
             One place attention takes more effort right now
           </h2>
           <p style={{ margin: "0 0 16px", font: "400 14px/1.55 ‘Instrument Sans’,sans-serif", color: "#646464" }}>
-            This is where the six weeks open — rather than starting at something {c} can already do.
+            This is where the six weeks open — rather than starting at something {cMid} can already do.
           </p>
           {data.frictionPoints[0] && (
             <div style={{ background: AMBER_BG, border: `1px solid ${AMBER_LINE}`, borderRadius: 12, padding: "16px 18px", display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -580,7 +583,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
           <div style={{ position: "relative" }}>
             <div style={eyebrow(GOLD)}>Your Attention Fit</div>
             <h2 style={{ margin: "0 0 16px", font: `700 20px/1.18 ${BF}`, color: "#fff" }}>
-              What {c} needs, and what you naturally do
+              What {cMid} needs, and what you naturally do
             </h2>
             {/* Pairing row: child need | MEETS | parent offer */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 34px 1fr", alignItems: "stretch" }}>
@@ -668,7 +671,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
         <div style={{ maxWidth: 600, margin: "0 auto", padding: "44px 20px", textAlign: "center" }}>
           <div style={eyebrow(GOLD)}>What to do next</div>
           <h2 style={{ margin: "0 0 14px", font: `400 clamp(22px,4vw,28px)/1.25 ${BF}`, color: "#fff", letterSpacing: "-0.015em" }}>
-            See {c}&rsquo;s six-week plan
+            See {cMid}&rsquo;s six-week plan
           </h2>
           <p style={{ margin: "0 auto 26px", maxWidth: 380, font: "400 16px/1.6 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>
             Built around what&rsquo;s already working, opening where it takes the most effort.
@@ -677,7 +680,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
             onClick={() => router.push(`/simplified/roadmap?session=${data.sessionId}`)}
             style={{ all: "unset", cursor: "pointer", display: "block", width: "100%", boxSizing: "border-box", textAlign: "center", background: `linear-gradient(135deg,${GOLD},#FBCB4A)`, color: NAVY, font: `700 16px/1.3 ‘Instrument Sans’,sans-serif`, padding: "16px 24px", borderRadius: 12, boxShadow: "0 6px 20px rgba(245,166,35,.35)" }}
           >
-            See {c}&rsquo;s six-week plan →
+            See {cMid}&rsquo;s six-week plan →
           </button>
         </div>
       </div>

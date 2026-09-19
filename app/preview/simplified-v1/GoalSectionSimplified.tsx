@@ -316,7 +316,7 @@ function buildBridge(raw: string, followUp: string | null, childName: string, ge
     const opener = raw.slice(0, idx).replace(/\.\s*$/, "").trim();
     let finding = raw.slice(idx + marker.length).replace(/^(?:exactly that:\s*|more specific:\s*|that\s+)/, "");
     const openerOut = opener
-      ? `${opener}${fu ? ` — ${fu}` : ""}. `
+      ? `${opener}${fu ? `, and specifically: ${fu}` : ""}. `
       : (fu ? `${fu}. ` : "");
     out = `${openerOut}The assessment found what sits underneath it. ${finding}`;
   }

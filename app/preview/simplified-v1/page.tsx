@@ -23,7 +23,7 @@ import { reformatM01 } from "@/lib/narrative/simplified-reformatter";
 import { checkTryTonightTitle } from "@/lib/quality/checks";
 import SimplifiedFunnelClient from "./client";
 import SimplifiedGate from "./SimplifiedGate";
-import { CHILD_NAME_FALLBACK } from "@/lib/report/pronouns";
+import { CHILD_NAME_FALLBACK, resolveChildPronoun, type Gender } from "@/lib/report/pronouns";
 import type { SimplifiedReportData } from "./client";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -219,8 +219,14 @@ export default async function Page({
   } else {
     const fallbackDims = selectFallbackDimensions(sigDimensions);
     if (fallbackDims.length > 0) {
+      const fbGender = (typeof row.child_gender === "string" ? row.child_gender : null) as Gender;
       const generated = await generateInstinctInteractionFallback({
         childName,
+        childPronouns: {
+          subj: resolveChildPronoun(fbGender, "subj"),
+          obj:  resolveChildPronoun(fbGender, "obj"),
+          poss: resolveChildPronoun(fbGender, "poss"),
+        },
         ageBand: str(row.age_band, "10-11"),
         archetype,
         archetypeFitTier: str(row.archetype_fit_tier, "primary"),
