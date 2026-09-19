@@ -23,11 +23,11 @@ export const carryingItOver: GoalSkillContent = {
   ],
   bridges: {
     homework:   "You came in about homework. What the assessment found is that homework goes well when you've set it up — and that nothing like it happens anywhere you haven't.",
-    reminders:  "You came in because you're reminding constantly. What the assessment found is why the reminding never ends: the focus is real, but it currently only exists where you've put it.",
+    reminders:  "You came in because you're reminding constantly. What the assessment found is that the reminding never ends because the focus is real, but it currently only exists where you've put it.",
     screens:    "You came in worried about screens. What the assessment found is that {{child_name}} manages this well when you've set it up, and not at all when you haven't. The screen wins in the rooms you aren't in.",
     confidence: "You came in about confidence. What the assessment found is that {{child_name}}'s sense of what {{child_pronoun_subj}} can do is tied to where you are. It doesn't travel with {{child_pronoun_obj}}.",
     giveup:     "You came in because {{child_name}} gives up. What the assessment found is that {{child_pronoun_subj}} doesn't, where you've set things up. {{child_pronoun_subj|cap}} gives up in the settings that have no setup in them.",
-    finish:     "You came in about things not getting finished. What the assessment found is a pattern in which ones: the ones you didn't set up.",
+    finish:     "You came in about things not getting finished. What the assessment found is that there's a pattern in which ones get finished: the ones you didn't set up.",
     other:      "What the assessment found is that it works where you've arranged it, and nowhere else. The skill hasn't travelled yet.",
   },
 };

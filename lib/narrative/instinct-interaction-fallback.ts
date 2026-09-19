@@ -43,6 +43,9 @@ const DIM_LABEL: Record<string, string> = {
 
 export interface FallbackGenerationInput {
   childName: string;
+  // Resolved from child_gender (they/them fallback) via resolveChildPronoun — same
+  // source the m_03 loop path uses. Passed so the model never guesses the pronoun.
+  childPronouns: { subj: string; obj: string; poss: string };
   ageBand: string;
   archetype: string;           // display name e.g. "The All-In Kid"
   archetypeFitTier: string;
@@ -63,7 +66,7 @@ export async function generateInstinctInteractionFallback(
   input: FallbackGenerationInput,
 ): Promise<AttentionMoment> {
   const client = getClient();
-  const { childName, ageBand, archetype, archetypeFitTier, parentInstinct,
+  const { childName, childPronouns, ageBand, archetype, archetypeFitTier, parentInstinct,
           parentInstinctDisplay, parentInstinctFitTier, dimensions } = input;
 
   const instinctMechanism = INSTINCT_MECHANISM[parentInstinct]
@@ -81,6 +84,7 @@ export async function generateInstinctInteractionFallback(
 
   const userPrompt = `FAMILY CONTEXT:
 Child: ${childName}, age band ${ageBand}
+Child's pronouns: ${childPronouns.subj}/${childPronouns.obj}/${childPronouns.poss} — use these when a pronoun is needed; do NOT guess or infer a different gender.
 Child's archetype: ${archetype} (fit tier: ${archetypeFitTier})
 Parent's instinct: ${parentInstinctDisplay} (fit tier: ${parentInstinctFitTier})
 
@@ -104,6 +108,7 @@ A fixed closing line is appended in code — do NOT write it or anything after s
 HARD RULES — any violation triggers regeneration:
 • NEVER claim this specific dynamic was observed in this family. No loop was detected here. Use tendency language: "tends to," "the natural pull is toward," "with this pattern," "the kind of moment where," "can work against" — NEVER "you do this," "this is what happens," "you always."
 • No clinical language. No guilt or blame. No urgency. No fabricated statistics.
+• Use ${childName}'s pronouns exactly as given above (${childPronouns.subj}/${childPronouns.obj}/${childPronouns.poss}). Never substitute a different gender and never default to "he".
 • Exactly 2 sentences of generated prose. No closing sentence — the fixed line handles it.
 • Write ONLY the prose. No headings, no labels, no JSON.`;
 

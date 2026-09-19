@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ENTITY } from "@/lib/entity";
 import { GoalSectionSimplified } from "./GoalSectionSimplified";
-import type { Gender } from "@/lib/report/pronouns";
+import { CHILD_NAME_FALLBACK, type Gender } from "@/lib/report/pronouns";
 
 export type SimplifiedReportData = {
   childName: string;
@@ -364,6 +364,9 @@ const css = `
 function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
   const router = useRouter();
   const c = data.childName;
+  // Mid-sentence form: for the null-name fallback ("Your child") render lowercase
+  // where the name sits mid-sentence. Real names are proper nouns, kept as given.
+  const cMid = c === CHILD_NAME_FALLBACK ? "your child" : c;
 
   const NAVY       = "#14284D";
   const NAVY_GRAD  = "linear-gradient(160deg,#1B3059 0%,#27406E 100%)";
@@ -373,7 +376,6 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
   const AMBER_BG   = "#FDF1DC";
   const AMBER_TEXT = "#B87308";
   const AMBER_LINE = "#F2DFB8";
-  const TEAL_BG    = "#DCECE7";
   const TEAL_LINE  = "#C4E0D7";
   const DIM        = "#5A6472";
   const BF         = "var(--font-bricolage),'Bricolage Grotesque',sans-serif";
@@ -387,17 +389,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
     marginBottom: 12,
   } as React.CSSProperties);
 
-  // ── Snapshot grouping ────────────────────────────────────────────────────────
-  const AXIS_TO_DIM: Record<string, string> = {
-    Stability:  "friction_response",
-    Resistance: "attention_competition",
-    Recovery:   "recharge_type",
-    Attention:  "attention_shape",
-  };
-  const weakKeys = new Set(
-    (data.weakestTwo ?? []).map(ax => AXIS_TO_DIM[ax]).filter(Boolean)
-  );
-
+  // ── Snapshot dimensions (neutral — no weakest_two ranking; see §4 for where-to-start) ──
   const DIMS: { key: string; label: string; val: string; desc: string }[] = [
     { key: "attention_shape",      label: "How they focus",          val: data.dimValues.attention_shape       ?? "", desc: data.profile.attentionShape.desc },
     { key: "attention_competition", label: "What breaks their focus", val: data.dimValues.attention_competition ?? "", desc: data.profile.attentionCompetition.desc },
@@ -432,9 +424,6 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
     },
   };
 
-  const tealDims = DIMS.filter(d => !weakKeys.has(d.key));
-  const amberDims = DIMS.filter(d => weakKeys.has(d.key));
-  const allOneGroup = tealDims.length === 0 || amberDims.length === 0;
 
   // ── Attention Fit ────────────────────────────────────────────────────────────
   const SHIFT: Record<string, string> = {
@@ -485,7 +474,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
         <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px 32px" }}>
           <div style={eyebrow(GOLD)}>Attention Health · Your report</div>
           <h1 style={{ margin: "0 0 14px", font: `400 clamp(26px,5vw,34px)/1.2 ${BF}`, color: "#fff", letterSpacing: "-0.015em" }}>
-            Here&rsquo;s how {c}&rsquo;s attention tends to work
+            Here&rsquo;s how {cMid}&rsquo;s attention tends to work
           </h1>
           <p style={{ margin: "0 0 20px", font: "400 16px/1.6 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>
             Based on what you told us, in plain words.
@@ -502,29 +491,19 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
           <div style={eyebrow(AMBER_TEXT)}>Attention Health Snapshot</div>
           <h2 style={{ margin: "0 0 6px", font: `700 20px/1.18 ${BF}`, color: NAVY }}>Four things we looked at</h2>
           <p style={{ margin: 0, font: "400 12px/1.55 ‘Instrument Sans’,sans-serif", color: DIM }}>
-            {allOneGroup ? "All four dimensions show up clearly in the pattern." : "Two are already working. Two are where the plan opens."}
+            Four things we looked at. Each one is a description, not a score.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
-            {[...tealDims, ...amberDims].map(d => {
-              const isAmber = weakKeys.has(d.key);
+            {DIMS.map(d => {
               const oneLine = (d.val && WHERE[d.key]?.[d.val]) ?? d.desc;
               return (
-                <div key={d.key} style={{ background: "#fff", borderRadius: 13, padding: "14px 14px 14px", position: "relative", overflow: "hidden", boxShadow: "0 2px 10px rgba(20,40,77,.06)" }}>
-                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: isAmber ? GOLD : "#21A38A" }} />
-                  <div style={{ display: "inline-flex", alignItems: "center", fontSize: 8, letterSpacing: ".08em", textTransform: "uppercase" as const, fontWeight: 700, padding: "3px 7px", borderRadius: 5, marginBottom: 9, ...(isAmber ? { background: AMBER_BG, color: AMBER_TEXT } : { background: TEAL_BG, color: TEAL }) }}>
-                    {isAmber ? "Start here" : "Working"}
-                  </div>
+                <div key={d.key} style={{ background: "#fff", borderRadius: 13, padding: "14px", boxShadow: "0 2px 10px rgba(20,40,77,.06)" }}>
                   <div style={{ fontFamily: BF, fontSize: 14, fontWeight: 700, color: NAVY, lineHeight: 1.2 }}>{d.label}</div>
                   <div style={{ fontSize: 11.5, lineHeight: 1.5, marginTop: 6, color: DIM }}>{oneLine}</div>
                 </div>
               );
             })}
           </div>
-          {!allOneGroup && (
-            <div style={{ background: "#fff", borderRadius: 11, padding: "13px 14px", marginTop: 12, boxShadow: "0 2px 10px rgba(20,40,77,.05)", font: "400 12px/1.55 ‘Instrument Sans’,sans-serif", color: DIM }}>
-              <strong style={{ color: NAVY }}>The plan leans on the first two</strong> and opens at the other two.
-            </div>
-          )}
         </div>
       </div>
 
@@ -562,7 +541,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
             One place attention takes more effort right now
           </h2>
           <p style={{ margin: "0 0 16px", font: "400 14px/1.55 ‘Instrument Sans’,sans-serif", color: "#646464" }}>
-            This is where the six weeks open — rather than starting at something {c} can already do.
+            This is where the six weeks open — rather than starting at something {cMid} can already do.
           </p>
           {data.frictionPoints[0] && (
             <div style={{ background: AMBER_BG, border: `1px solid ${AMBER_LINE}`, borderRadius: 12, padding: "16px 18px", display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -580,7 +559,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
           <div style={{ position: "relative" }}>
             <div style={eyebrow(GOLD)}>Your Attention Fit</div>
             <h2 style={{ margin: "0 0 16px", font: `700 20px/1.18 ${BF}`, color: "#fff" }}>
-              What {c} needs, and what you naturally do
+              What {cMid} needs, and what you naturally do
             </h2>
             {/* Pairing row: child need | MEETS | parent offer */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 34px 1fr", alignItems: "stretch" }}>
@@ -668,7 +647,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
         <div style={{ maxWidth: 600, margin: "0 auto", padding: "44px 20px", textAlign: "center" }}>
           <div style={eyebrow(GOLD)}>What to do next</div>
           <h2 style={{ margin: "0 0 14px", font: `400 clamp(22px,4vw,28px)/1.25 ${BF}`, color: "#fff", letterSpacing: "-0.015em" }}>
-            See {c}&rsquo;s six-week plan
+            See {cMid}&rsquo;s six-week plan
           </h2>
           <p style={{ margin: "0 auto 26px", maxWidth: 380, font: "400 16px/1.6 ‘Instrument Sans’,sans-serif", color: "#C3CBD9" }}>
             Built around what&rsquo;s already working, opening where it takes the most effort.
@@ -677,7 +656,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
             onClick={() => router.push(`/simplified/roadmap?session=${data.sessionId}`)}
             style={{ all: "unset", cursor: "pointer", display: "block", width: "100%", boxSizing: "border-box", textAlign: "center", background: `linear-gradient(135deg,${GOLD},#FBCB4A)`, color: NAVY, font: `700 16px/1.3 ‘Instrument Sans’,sans-serif`, padding: "16px 24px", borderRadius: 12, boxShadow: "0 6px 20px rgba(245,166,35,.35)" }}
           >
-            See {c}&rsquo;s six-week plan →
+            See {cMid}&rsquo;s six-week plan →
           </button>
         </div>
       </div>

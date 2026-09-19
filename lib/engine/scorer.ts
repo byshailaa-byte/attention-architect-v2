@@ -168,7 +168,9 @@ function computeStability(dims: Dimensions): AxisResult {
 
   // [CALIBRATE] consistency from attention_shape (primary dimension)
   const value = polarity * (0.5 + 0.5 * shape.consistency);
-  const norm  = normalize(value, STABILITY_MIN, STABILITY_MAX);
+  // clamp to [0,1] to match Resistance/Recovery/Attention — an unclamped norm can go
+  // negative (value < STABILITY_MIN) and always sorts as "most weak" in selectWeakestTwo.
+  const norm  = clamp(normalize(value, STABILITY_MIN, STABILITY_MAX), 0, 1);
   return { value, norm, band: toBand(norm), eligible: true };
 }
 
