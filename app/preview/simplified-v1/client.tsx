@@ -4,6 +4,13 @@ import { useRouter } from "next/navigation";
 import { ENTITY } from "@/lib/entity";
 import { GoalSectionSimplified } from "./GoalSectionSimplified";
 import { CHILD_NAME_FALLBACK, type Gender } from "@/lib/report/pronouns";
+import {
+  SNAPSHOT_SECTION,
+  SNAPSHOT_DIMENSIONS,
+  SNAPSHOT_COPY,
+  SNAPSHOT_GENERIC_FALLBACK,
+} from "@/lib/report/snapshot-content";
+import { rarityTag, barSegments } from "@/lib/report/snapshot";
 
 export type SimplifiedReportData = {
   childName: string;
@@ -371,6 +378,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
   const NAVY       = "#14284D";
   const NAVY_GRAD  = "linear-gradient(160deg,#1B3059 0%,#27406E 100%)";
   const GOLD       = "#F5A623";
+  const BAR_GREY   = "#E2DCCF";
   const TEAL       = "#137A66";
   const CREAM      = "#FDF9F1";
   const AMBER_BG   = "#FDF1DC";
@@ -388,42 +396,6 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
     color,
     marginBottom: 12,
   } as React.CSSProperties);
-
-  // ── Snapshot dimensions (neutral — no weakest_two ranking; see §4 for where-to-start) ──
-  const DIMS: { key: string; label: string; val: string; desc: string }[] = [
-    { key: "attention_shape",      label: "How they focus",          val: data.dimValues.attention_shape       ?? "", desc: data.profile.attentionShape.desc },
-    { key: "attention_competition", label: "What breaks their focus", val: data.dimValues.attention_competition ?? "", desc: data.profile.attentionCompetition.desc },
-    { key: "friction_response",    label: "When it gets hard",       val: data.dimValues.friction_response     ?? "", desc: data.profile.frictionResponse.desc },
-    { key: "recharge_type",        label: "How they recharge",       val: data.dimValues.recharge_type         ?? "", desc: data.profile.rechargeType.desc },
-  ];
-
-  const WHERE: Record<string, Record<string, string>> = {
-    attention_shape: {
-      "narrow-deep":       "Starting something they can go right into, and staying there.",
-      "wide-shifting":     "Starting homework, a new topic, anything unfamiliar.",
-      "social-anchored":   "Anything done at the kitchen table rather than alone.",
-      "sensation-seeking": "Whatever’s most alive in the room at the time.",
-    },
-    attention_competition: {
-      novelty:  "A thought arriving mid-task, and the page stopping.",
-      external: "Screens, a sibling in the room, noise from the next flat.",
-      internal: "The moment it stops being interesting, before anything else happens.",
-      social:   "Whatever’s going on with the people nearby.",
-    },
-    friction_response: {
-      avoid:              "Whether they step back quietly, before anyone notices.",
-      "solo-push":        "Whether they ask, push on, or quietly stop.",
-      "support-seek":     "Whether they come and find you, or wait.",
-      "emotional-derail": "How long it takes to get back to it after a wobble.",
-    },
-    recharge_type: {
-      "sensory-quiet":           "What the hour after school needs to look like.",
-      "social-connection":       "Whether they want company or space after a hard day.",
-      "cognitive-displacement":  "What they reach for when they need to switch off.",
-      "autonomous-unstructured": "How much of the evening needs to be theirs.",
-    },
-  };
-
 
   // ── Attention Fit ────────────────────────────────────────────────────────────
   const SHIFT: Record<string, string> = {
@@ -485,21 +457,39 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
         </div>
       </div>
 
-      {/* §2 Snapshot — cream, 2×2 grid */}
+      {/* §2 Snapshot — cream, four rows (one per dimension) */}
       <div style={{ background: CREAM }}>
         <div style={{ maxWidth: 600, margin: "0 auto", padding: "36px 20px" }}>
-          <div style={eyebrow(AMBER_TEXT)}>Attention Health Snapshot</div>
-          <h2 style={{ margin: "0 0 6px", font: `700 20px/1.18 ${BF}`, color: NAVY }}>Four things we looked at</h2>
-          <p style={{ margin: 0, font: "400 12px/1.55 ‘Instrument Sans’,sans-serif", color: DIM }}>
-            Each one is a description, not a score.
+          <div style={eyebrow(AMBER_TEXT)}>{SNAPSHOT_SECTION.kicker}</div>
+          <h2 style={{ margin: "0 0 6px", font: `700 20px/1.18 ${BF}`, color: NAVY }}>{SNAPSHOT_SECTION.heading}</h2>
+          <p style={{ margin: "0 0 18px", font: "400 12px/1.55 ‘Instrument Sans’,sans-serif", color: DIM }}>
+            {SNAPSHOT_SECTION.lede}
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
-            {DIMS.map(d => {
-              const oneLine = (d.val && WHERE[d.key]?.[d.val]) ?? d.desc;
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {SNAPSHOT_DIMENSIONS.map(({ key, label }) => {
+              const value    = data.dimValues[key] ?? "";
+              const entry    = SNAPSHOT_COPY[key]?.[value];
+              const answer   = entry?.answer ?? SNAPSHOT_GENERIC_FALLBACK[key];
+              const insight  = entry?.insight ?? null;
+              const tag      = rarityTag(key, value);
+              const segments = barSegments(key, value);
               return (
-                <div key={d.key} style={{ background: "#fff", borderRadius: 13, padding: "14px", boxShadow: "0 2px 10px rgba(20,40,77,.06)" }}>
-                  <div style={{ fontFamily: BF, fontSize: 14, fontWeight: 700, color: NAVY, lineHeight: 1.2 }}>{d.label}</div>
-                  <div style={{ fontSize: 11.5, lineHeight: 1.5, marginTop: 6, color: DIM }}>{oneLine}</div>
+                <div key={key} style={{ background: "#fff", borderRadius: 13, padding: "14px 16px", boxShadow: "0 2px 10px rgba(20,40,77,.06)" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+                    <div style={{ font: "700 10px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: "0.08em", textTransform: "uppercase" as const, color: DIM }}>{label}</div>
+                    {tag && (
+                      <div style={{ font: "700 10px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: "0.04em", textTransform: "uppercase" as const, color: AMBER_TEXT, whiteSpace: "nowrap" }}>{tag}</div>
+                    )}
+                  </div>
+                  <div style={{ fontFamily: BF, fontSize: 16, fontWeight: 700, color: NAVY, lineHeight: 1.25, marginTop: 6 }}>{answer}</div>
+                  <div style={{ display: "flex", gap: 1.5, height: 6, borderRadius: 4, overflow: "hidden", background: "#fff", marginTop: 11 }}>
+                    {segments.map(s => (
+                      <div key={s.value} style={{ flex: s.share, background: s.isChild ? GOLD : BAR_GREY }} />
+                    ))}
+                  </div>
+                  {insight && (
+                    <div style={{ fontSize: 12.5, lineHeight: 1.55, marginTop: 11, color: DIM }}>{insight}</div>
+                  )}
                 </div>
               );
             })}
