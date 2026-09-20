@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Instrument_Sans, Caveat } from "next/font/google";
 import { AnalyticsLoader } from "./analytics";
+import { WhatsAppWidget } from "./components/WhatsAppWidget";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -46,6 +47,7 @@ export default function RootLayout({
       <head />
       <body className="min-h-full flex flex-col">
         {children}
+        <WhatsAppWidget />
         <AnalyticsLoader gaId={GA_ID} pixelId={PIXEL_ID} />
       </body>
     </html>
