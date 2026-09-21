@@ -526,33 +526,41 @@ export default async function AdminPage({
     // reports table may not be migrated yet — safe to show empty
   }
 
-  // WhatsApp recovery: sessions that exhausted all send attempts without a confirmed send
+  // WhatsApp delivery: every phone-bearing session with a published report that
+  // hasn't been sent yet — regardless of attempt count. Status (Sending / Not
+  // attempted / Retrying / Exhausted) is derived per row in the dashboard.
   let waFailures: WaFailureRow[] = [];
   try {
     const waRows = await sql`
       SELECT
-        session_id::text,
-        child_name,
-        parent_name,
-        phone,
-        whatsapp_send_attempts,
-        created_at
-      FROM assessments
-      WHERE whatsapp_report_sent_at  IS NULL
-        AND whatsapp_send_attempts   >= 5
-        AND whatsapp_send_claimed_at IS NULL
-        AND archetype IS NOT NULL
-        AND phone IS NOT NULL
-        AND (child_name IS NULL OR (child_name NOT ILIKE 'Test%' AND child_name NOT ILIKE 'Smoke%'))
-        AND (${showInternal} OR NOT is_internal)
-      ORDER BY created_at DESC
-    ` as unknown as { session_id: string; child_name: string | null; parent_name: string | null; phone: string | null; whatsapp_send_attempts: number; created_at: unknown }[];
+        a.session_id::text,
+        a.child_name,
+        a.parent_name,
+        a.phone,
+        a.whatsapp_send_attempts,
+        (a.whatsapp_send_claimed_at IS NOT NULL) AS claimed,
+        a.created_at
+      FROM assessments a
+      WHERE a.whatsapp_report_sent_at IS NULL
+        AND a.archetype IS NOT NULL
+        AND a.phone IS NOT NULL
+        AND (a.child_name IS NULL OR (a.child_name NOT ILIKE 'Test%' AND a.child_name NOT ILIKE 'Smoke%'))
+        AND (${showInternal} OR NOT a.is_internal)
+        AND EXISTS (
+          SELECT 1 FROM reports r
+          WHERE r.assessment_id = a.id
+            AND r.status = 'published'
+            AND r.superseded_by IS NULL
+        )
+      ORDER BY a.created_at DESC
+    ` as unknown as { session_id: string; child_name: string | null; parent_name: string | null; phone: string | null; whatsapp_send_attempts: number; claimed: boolean; created_at: unknown }[];
     waFailures = waRows.map(r => ({
       session_id: r.session_id,
       child_name: r.child_name,
       parent_name: r.parent_name,
       phone: r.phone,
       whatsapp_send_attempts: r.whatsapp_send_attempts,
+      claimed: r.claimed,
       created_at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
     }));
   } catch {
