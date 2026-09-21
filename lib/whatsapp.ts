@@ -101,58 +101,63 @@ export async function sendWhatsAppReport({
   sessionId: string;
   rawPhone: string;
 }): Promise<void> {
-  const to = normalizePhone(rawPhone);
+  const to = normalizePhone(rawPhone); // 91XXXXXXXXXX — WATI wants the country code
   if (!to) throw new Error(`invalid phone: "${rawPhone}"`);
 
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const accessToken   = process.env.WHATSAPP_ACCESS_TOKEN;
-
-  if (!phoneNumberId || !accessToken) {
-    throw new Error("WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_ACCESS_TOKEN not set");
+  // Transport moved from the Meta Cloud API to WATI (the number 9993374923 now
+  // lives on WATI). Everything around this call — the claim, dedup flags, retry
+  // cron, MAX_WA_ATTEMPTS — is unchanged; only the HTTP call differs, and the
+  // function still THROWS on any failure so callers retry / release the claim.
+  const endpoint = process.env.WATI_API_ENDPOINT;
+  const token    = process.env.WATI_ACCESS_TOKEN;
+  if (!endpoint || !token) {
+    throw new Error("WATI_API_ENDPOINT or WATI_ACCESS_TOKEN not set");
   }
 
+  // WATI's sendTemplateMessage takes a FLAT `parameters` array of {name, value}
+  // for ALL template variables — body vars AND the URL-button suffix — not Meta's
+  // typed body/button components. Each `name` must match the variable placeholder
+  // in the approved WATI `report_ready` template, case-sensitive.
+  // ⚠ VERIFY these three names against the WATI template before enabling sends —
+  // WATI fixes no universal name for the URL-button variable (docs.wati.io).
   const body = {
-    messaging_product: "whatsapp",
-    to,
-    type: "template",
-    template: {
-      name: "report_ready",
-      language: { code: "en" },
-      components: [
-        {
-          type: "body",
-          parameters: [
-            { type: "text", parameter_name: "parent_name", text: parentName },
-            { type: "text", parameter_name: "child_name", text: childName },
-          ],
-        },
-        {
-          type: "button",
-          sub_type: "url",
-          index: "0",
-          parameters: [
-            { type: "text", text: `report/${sessionId}` },
-          ],
-        },
-      ],
-    },
+    template_name: "report_ready",
+    broadcast_name: "report_ready",
+    parameters: [
+      { name: "parent_name", value: parentName },
+      { name: "child_name",  value: childName },
+      { name: "report_url",  value: `report/${sessionId}` }, // URL-button suffix
+    ],
   };
 
-  const res = await fetch(
-    `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const res = await fetch(
+      `${endpoint}/api/v1/sendTemplateMessage?whatsappNumber=${to}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token.replace(/^Bearer\s+/i, "")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      }
+    );
+    const data = await res.json().catch(() => ({})) as Record<string, unknown>;
+    // WATI can return HTTP 200 with { result: false } (e.g. invalid number,
+    // template not approved) — treat that as a failure too, so the caller retries.
+    if (!res.ok || data.result === false) {
+      throw new Error(`WATI sendTemplateMessage ${res.status}: ${JSON.stringify(data)}`);
     }
-  );
-
-  const data = await res.json().catch(() => ({})) as Record<string, unknown>;
-  if (!res.ok) {
-    throw new Error(`WhatsApp API ${res.status}: ${JSON.stringify(data)}`);
+    console.log("[whatsapp] WATI sent to", to, "session", sessionId, JSON.stringify(data));
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("WATI sendTemplateMessage timed out after 8s");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  console.log("[whatsapp] sent to", to, "session", sessionId, JSON.stringify(data));
 }

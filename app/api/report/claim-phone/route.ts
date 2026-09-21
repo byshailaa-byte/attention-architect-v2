@@ -77,23 +77,76 @@ export async function POST(req: NextRequest) {
         console.warn("[auto-generate] claim-phone trigger:", (e as Error).message);
       }
 
-      // WhatsApp — same dedup guard as the control arm's claim route
+      // WhatsApp — robust path, mirroring the control arm's claim route:
+      // publish-check → claim whatsapp_send_claimed_at → send → set
+      // whatsapp_report_sent_at ONLY on confirmed success → release the claim on
+      // failure so the retry cron picks it up. (Previously this arm set sent_at
+      // optimistically before sending and never released, so a failed send both
+      // stranded the parent and hid the session from the cron.)
+      const MAX_WA_ATTEMPTS = 5;
       try {
-        const rows = await sql`
-          UPDATE assessments
-          SET whatsapp_report_sent_at = NOW()
-          WHERE session_id = ${sessionId}::uuid
-            AND whatsapp_report_sent_at IS NULL
-          RETURNING child_name, parent_name, phone
-        ` as unknown as { child_name: string | null; parent_name: string | null; phone: string | null }[];
-        if (rows.length > 0) {
-          const wa = rows[0];
-          await sendWhatsAppReport({
-            parentName: wa.parent_name  ?? row.parent_name ?? "Parent",
-            childName:  wa.child_name   ?? row.child_name  ?? CHILD_NAME_FALLBACK_MID,
-            sessionId,
-            rawPhone:   wa.phone        ?? normalizedPhone,
-          });
+        const reportReadyRows = await sql`
+          SELECT r.id FROM reports r
+          JOIN assessments a ON a.id = r.assessment_id
+          WHERE a.session_id = ${sessionId}::uuid
+            AND r.status = 'published'
+            AND r.superseded_by IS NULL
+          LIMIT 1
+        ` as unknown as { id: string }[];
+
+        if (reportReadyRows.length === 0) {
+          console.error("[whatsapp] report not published after generation — recording attempt for cron pickup:", sessionId);
+          await sql`
+            UPDATE assessments
+            SET whatsapp_send_attempts = whatsapp_send_attempts + 1
+            WHERE session_id = ${sessionId}::uuid
+              AND whatsapp_send_claimed_at IS NULL
+              AND whatsapp_report_sent_at   IS NULL
+              AND whatsapp_send_attempts    < ${MAX_WA_ATTEMPTS}
+          `.catch((e: unknown) => console.error("[whatsapp] attempt increment failed:", (e as Error).message));
+        } else {
+          let waClaimRows: { child_name: string | null; parent_name: string | null; phone: string | null }[] = [];
+          try {
+            waClaimRows = await sql`
+              UPDATE assessments
+              SET whatsapp_send_claimed_at = NOW(),
+                  whatsapp_send_attempts   = whatsapp_send_attempts + 1
+              WHERE session_id = ${sessionId}::uuid
+                AND whatsapp_send_claimed_at IS NULL
+                AND whatsapp_report_sent_at   IS NULL
+                AND whatsapp_send_attempts    < ${MAX_WA_ATTEMPTS}
+              RETURNING child_name, parent_name, phone
+            ` as unknown as { child_name: string | null; parent_name: string | null; phone: string | null }[];
+          } catch (e: unknown) {
+            console.error("[whatsapp] claim failed:", (e as Error).message);
+          }
+
+          if (waClaimRows.length > 0) {
+            const wa = waClaimRows[0];
+            let sent = false;
+            for (let attempt = 0; attempt <= 1 && !sent; attempt++) {
+              if (attempt === 1) await new Promise((r) => setTimeout(r, 20_000));
+              try {
+                await sendWhatsAppReport({
+                  parentName: wa.parent_name ?? row.parent_name ?? "Parent",
+                  childName:  wa.child_name  ?? row.child_name  ?? CHILD_NAME_FALLBACK_MID,
+                  sessionId,
+                  rawPhone:   wa.phone       ?? normalizedPhone,
+                });
+                await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${sessionId}::uuid`;
+                sent = true;
+              } catch (e: unknown) {
+                console.error(`[whatsapp] attempt ${attempt + 1} failed:`, (e as Error).message);
+              }
+            }
+            if (!sent) {
+              console.error("[whatsapp] in-process attempts exhausted — releasing for cron:", sessionId);
+              await sql`
+                UPDATE assessments SET whatsapp_send_claimed_at = NULL
+                WHERE session_id = ${sessionId}::uuid
+              `.catch((e: unknown) => console.error("[whatsapp] claim release failed:", (e as Error).message));
+            }
+          }
         }
       } catch (e: unknown) {
         console.warn("[whatsapp] claim-phone:", (e as Error).message);
