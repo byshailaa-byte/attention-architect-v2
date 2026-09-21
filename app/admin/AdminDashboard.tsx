@@ -130,8 +130,17 @@ export type WaFailureRow = {
   parent_name: string | null;
   phone: string | null;
   whatsapp_send_attempts: number;
+  claimed: boolean;
   created_at: string;
 };
+
+// Delivery status derived from a not-yet-sent row (claim first, then attempts).
+function waDeliveryStatus(row: { claimed: boolean; whatsapp_send_attempts: number }): { label: string; color: string } {
+  if (row.claimed) return { label: "Sending", color: C.blue };
+  if (row.whatsapp_send_attempts >= 5) return { label: "Exhausted", color: C.red };
+  if (row.whatsapp_send_attempts >= 1) return { label: "Retrying", color: C.yellow };
+  return { label: "Not attempted", color: C.muted };
+}
 
 export type NeverGeneratedRow = {
   session_id: string;
@@ -236,6 +245,7 @@ const EVENT_LABEL: Record<string, string> = {
   lms_reflection_submitted: "LMS reflection",
   scroll_milestone: "Scroll milestone",
   whatsapp_sent: "WhatsApp report sent",
+  whatsapp_failed: "WhatsApp send failed",
 };
 
 const EVENT_COLOR: Record<string, string> = {
@@ -256,6 +266,7 @@ const EVENT_COLOR: Record<string, string> = {
   lms_reflection_submitted: C.blue,
   scroll_milestone: C.muted,
   whatsapp_sent: C.green,
+  whatsapp_failed: C.red,
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -1218,33 +1229,38 @@ export default function AdminDashboard({
             )}
 
             {waFailures.length > 0 && (
-              <Card style={{ marginBottom: 24, borderColor: `${C.red}60`, background: `${C.red}08` }}>
+              <Card style={{ marginBottom: 24, borderColor: `${C.yellow}60`, background: `${C.yellow}08` }}>
                 <SectionLabel>
-                  <span style={{ color: C.red }}>
-                    WhatsApp Recovery — {waFailures.length} session{waFailures.length !== 1 ? "s" : ""} exhausted all retries
+                  <span style={{ color: C.text }}>
+                    WhatsApp delivery — not yet sent — {waFailures.length} session{waFailures.length !== 1 ? "s" : ""}
                   </span>
                 </SectionLabel>
                 <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 14px", lineHeight: 1.6 }}>
-                  These parents were promised a WhatsApp report but never received one.
-                  All {5} automatic attempts failed. Contact manually or re-trigger via the claim endpoint.
+                  Phone-bearing sessions with a published report that hasn&apos;t been delivered yet.
+                  Status is derived per row from the send-attempt state.
                 </p>
                 <div style={{ overflowX: "auto" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
                     <thead>
                       <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                        {["Child", "Parent", "Phone", "Attempts", "Session", "When"].map(h => (
+                        {["Child", "Parent", "Phone", "Attempts", "Status", "Session", "When"].map(h => (
                           <th key={h} style={{ textAlign: "left", padding: "0 12px 8px 0", color: C.muted, fontWeight: 400, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {waFailures.map(row => (
+                      {waFailures.map(row => {
+                        const status = waDeliveryStatus(row);
+                        return (
                         <tr key={row.session_id} style={{ borderBottom: `1px solid ${C.border}` }}>
                           <td style={{ padding: "10px 12px 10px 0", color: C.text }}>{row.child_name ?? "—"}</td>
                           <td style={{ padding: "10px 12px 10px 0", color: C.muted }}>{row.parent_name ?? "—"}</td>
                           <td style={{ padding: "10px 12px 10px 0", color: C.muted, fontFamily: MONO }}>{row.phone ?? "—"}</td>
                           <td style={{ padding: "10px 12px 10px 0" }}>
-                            <Badge text={String(row.whatsapp_send_attempts)} color={C.red} />
+                            <Badge text={String(row.whatsapp_send_attempts)} color={C.muted} />
+                          </td>
+                          <td style={{ padding: "10px 12px 10px 0" }}>
+                            <Badge text={status.label} color={status.color} />
                           </td>
                           <td style={{ padding: "10px 12px 10px 0", color: C.muted, fontSize: 10 }}>
                             <a
@@ -1260,7 +1276,8 @@ export default function AdminDashboard({
                             {fmtDateTime(row.created_at)}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

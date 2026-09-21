@@ -25,7 +25,7 @@ export async function GET(
       ORDER BY created_at ASC
     `,
     sql`
-      SELECT whatsapp_report_sent_at
+      SELECT whatsapp_report_sent_at, whatsapp_send_attempts
       FROM assessments
       WHERE session_id = ${sessionId}::uuid
       LIMIT 1
@@ -34,8 +34,9 @@ export async function GET(
 
   type EventRow = { event_type: string; created_at: unknown; metadata: Record<string, unknown> };
 
-  const waRow = (assessmentRows as unknown as { whatsapp_report_sent_at: unknown }[])[0];
+  const waRow = (assessmentRows as unknown as { whatsapp_report_sent_at: unknown; whatsapp_send_attempts: number | null }[])[0];
   const waTs = waRow?.whatsapp_report_sent_at;
+  const waAttempts = Number(waRow?.whatsapp_send_attempts ?? 0);
 
   const toISO = (v: unknown) => v instanceof Date ? v.toISOString() : String(v);
 
@@ -48,6 +49,10 @@ export async function GET(
   if (waTs) {
     rows.push({ event_type: "whatsapp_sent", created_at: toISO(waTs), metadata: {} });
     rows.sort((a, b) => a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0);
+  } else if (waAttempts > 0) {
+    // No per-attempt timestamp is stored, so mark the current outstanding state at
+    // view time — it sorts last as the latest event. Shows the attempt count.
+    rows.push({ event_type: "whatsapp_failed", created_at: new Date().toISOString(), metadata: { attempts: waAttempts } });
   }
 
   return NextResponse.json(rows);
