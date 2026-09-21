@@ -116,17 +116,16 @@ export async function sendWhatsAppReport({
 
   // WATI's sendTemplateMessage takes a FLAT `parameters` array of {name, value}
   // for ALL template variables — body vars AND the URL-button suffix — not Meta's
-  // typed body/button components. Each `name` must match the variable placeholder
-  // in the approved WATI `report_ready` template, case-sensitive.
-  // ⚠ VERIFY these three names against the WATI template before enabling sends —
-  // WATI fixes no universal name for the URL-button variable (docs.wati.io).
+  // typed body/button components. Names match the approved WATI Utility template
+  // `report_new_users` exactly (case-sensitive): body vars parent_name / child_name,
+  // and button URL variable "1" whose value is the session id suffix.
   const body = {
-    template_name: "report_ready",
-    broadcast_name: "report_ready",
+    template_name: "report_new_users",
+    broadcast_name: "report_new_users",
     parameters: [
       { name: "parent_name", value: parentName },
       { name: "child_name",  value: childName },
-      { name: "report_url",  value: `report/${sessionId}` }, // URL-button suffix
+      { name: "1",           value: sessionId }, // URL-button suffix = session id
     ],
   };
 
