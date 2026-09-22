@@ -54,6 +54,9 @@ export interface ActionDimension {
 
 export interface ActionsInput {
   childName: string;
+  // Resolved from child_gender via resolveChildPronoun (they/them fallback) — the
+  // same source the instinct fallback uses, so the model never guesses gender.
+  childPronouns: { subj: string; obj: string; poss: string };
   ageBand: string;
   archetype: string;
   parentInstinct: string;        // slug e.g. "quick-fixer"
@@ -153,7 +156,7 @@ export async function generateSimplifiedActions(
   input: ActionsInput,
 ): Promise<ActionsOutput> {
   const client = getClient();
-  const { childName, ageBand, archetype, parentInstinct, parentInstinctDisplay, dimensions } = input;
+  const { childName, childPronouns, ageBand, archetype, parentInstinct, parentInstinctDisplay, dimensions } = input;
 
   const instinctMechanism = INSTINCT_MECHANISM[parentInstinct]
     ?? `${parentInstinctDisplay} — your own way of responding when the child struggles.`;
@@ -170,6 +173,7 @@ export async function generateSimplifiedActions(
 
   const userPrompt = `FAMILY CONTEXT:
 Child: ${childName}, age band ${ageBand}
+Child's pronouns: ${childPronouns.subj}/${childPronouns.obj}/${childPronouns.poss} — if a pronoun is needed, use exactly these; do NOT guess or infer a different gender.
 Child's archetype: ${archetype}
 Parent's instinct: ${parentInstinctDisplay}
 
@@ -213,6 +217,7 @@ HARD RULES — any violation triggers regeneration:
 • Try Tonight: one ACTION line only — what the parent does, one complete sentence, under 15 words; do not describe what to pick or observe first — just the behaviour
 • No clinical language, no diagnostic framing
 • Do NOT fabricate traits not supported by the evidence above
+• If a pronoun is needed, use ${childPronouns.subj}/${childPronouns.obj}/${childPronouns.poss} exactly — never guess gender, never default to "he"
 • Write ONLY the structured output — no preamble, no commentary after`;
 
   const response = await client.messages.create({
