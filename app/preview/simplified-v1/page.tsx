@@ -192,6 +192,15 @@ export async function SimplifiedReportBody({
   // strengths/actions built from this value.
   const childName = str(row.child_name, "").trim() || CHILD_NAME_FALLBACK;
 
+  // Resolved pronouns from child_gender (they/them fallback) — passed to every
+  // generator that may need a pronoun, so none guesses gender.
+  const genderForPronouns = (typeof row.child_gender === "string" ? row.child_gender : null) as Gender;
+  const childPronouns = {
+    subj: resolveChildPronoun(genderForPronouns, "subj"),
+    obj:  resolveChildPronoun(genderForPronouns, "obj"),
+    poss: resolveChildPronoun(genderForPronouns, "poss"),
+  };
+
   // DETAIL 05: serve from cache if present; otherwise generate and queue for persistence.
   let strengths: Strength[] | null = null;
   if (mCachedStrengths) {
@@ -202,6 +211,7 @@ export async function SimplifiedReportBody({
     if (strengthDims.length > 0) {
       strengths = await generateSimplifiedStrengths({
         childName,
+        childPronouns,
         ageBand: str(row.age_band, "10-11"),
         archetype,
         dimensions: strengthDims,
@@ -255,6 +265,7 @@ export async function SimplifiedReportBody({
     if (actionDims.length > 0) {
       actionsOutput = await generateSimplifiedActions({
         childName,
+        childPronouns,
         ageBand: str(row.age_band, "10-11"),
         archetype,
         parentInstinct: parentInstinctSlug,
@@ -267,6 +278,7 @@ export async function SimplifiedReportBody({
         if (titleFailure) {
           actionsOutput = await generateSimplifiedActions({
             childName,
+            childPronouns,
             ageBand: str(row.age_band, "10-11"),
             archetype,
             parentInstinct: parentInstinctSlug,

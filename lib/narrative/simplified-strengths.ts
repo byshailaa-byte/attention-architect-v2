@@ -54,6 +54,9 @@ export interface StrengthDimension {
 
 export interface StrengthsInput {
   childName: string;
+  // Resolved from child_gender via resolveChildPronoun (they/them fallback) — the
+  // same source the instinct fallback uses, so the model never guesses gender.
+  childPronouns: { subj: string; obj: string; poss: string };
   ageBand: string;
   archetype: string;
   dimensions: StrengthDimension[];
@@ -113,7 +116,7 @@ export async function generateSimplifiedStrengths(
   input: StrengthsInput,
 ): Promise<Strength[]> {
   const client = getClient();
-  const { childName, ageBand, archetype, dimensions } = input;
+  const { childName, childPronouns, ageBand, archetype, dimensions } = input;
   const hasAvoidFriction = dimensions.some(d => d.isAvoidType);
 
   const dimEvidence = dimensions
@@ -140,6 +143,7 @@ Two strong, honest bullets are better than three where one is stretched.`
 
   const userPrompt = `FAMILY CONTEXT:
 Child: ${childName}, age band ${ageBand}
+Child's pronouns: ${childPronouns.subj}/${childPronouns.obj}/${childPronouns.poss} — if a pronoun is needed, use exactly these; do NOT guess or infer a different gender.
 Child's archetype: ${archetype}
 
 EVIDENCE — draw ONLY on these sources, nothing else:
@@ -167,6 +171,7 @@ HARD RULES — any violation triggers regeneration:
 • No generic filler: avoid "is creative", "tries hard", "is kind", "works well with others", "is imaginative", "is smart"
 • Strengths describe what this child already does — not aspirational ("will be able to") or conditional ("can if they want")
 • Third person only — no "your child", no "they can learn to"
+• If a pronoun is needed, use ${childPronouns.subj}/${childPronouns.obj}/${childPronouns.poss} exactly — never guess gender, never default to "he"
 • No clinical labels, no diagnostic framing, no "ADHD-like", no "neurodivergent"
 • Do NOT fabricate traits not supported by the evidence above
 • No introductory text, no headings, no explanations — ONLY the 2 or 3 lines`;
