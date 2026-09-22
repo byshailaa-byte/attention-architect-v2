@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { getSql } from "@/lib/db/client";
 import {
   PATTERN_LINE, MEANING, FRICTION_POINTS, TONIGHT_SAY, TONIGHT_WATCH,
@@ -82,14 +83,16 @@ function fallback<T>(map: Record<string, T>, key: string | undefined, def: T): T
   return (key && map[key]) ? map[key] : def;
 }
 
-export default async function Page({
-  searchParams,
+// Shared body: renders the simplified report for a session. Exported so
+// /report/[sessionId] can render this surface DIRECTLY (no redirect hop) while
+// keeping /preview/simplified-v1?session= working for old links via the wrapper below.
+export async function SimplifiedReportBody({
+  session,
+  fallbackMode,
 }: {
-  searchParams: Promise<{ session?: string; f?: string }>;
+  session: string;
+  fallbackMode: boolean;
 }) {
-  const { session, f } = await searchParams;
-  const fallbackMode = f === "1";
-
   // No session or malformed UUID — send to landing page, not prototype content.
   if (!session || !UUID_RE.test(session)) {
     redirect("/simplified");
@@ -306,13 +309,15 @@ export default async function Page({
     `;
   }
 
-  // Record that this parent viewed their report. Fires once per page load (server render).
-  // Checked reaches here only when: session valid, parent_name set, published report exists.
-  // Use .catch so a DB hiccup never breaks the report render.
-  await sql`
-    INSERT INTO funnel_events (event_type, session_id, metadata)
-    VALUES ('simplified_report_view', ${session}::uuid, '{"variant":"simplified"}'::jsonb)
-  `.catch((e: unknown) => console.warn("[funnel] simplified_report_view:", (e as Error).message));
+  // Record that this parent viewed their report — moved OFF the render path via after()
+  // so the analytics write never adds a round-trip to TTFB. Reaches here only when:
+  // session valid, parent_name set, published report exists.
+  after(async () => {
+    await sql`
+      INSERT INTO funnel_events (event_type, session_id, metadata)
+      VALUES ('simplified_report_view', ${session}::uuid, '{"variant":"simplified"}'::jsonb)
+    `.catch((e: unknown) => console.warn("[funnel] simplified_report_view:", (e as Error).message));
+  });
 
   const data: SimplifiedReportData = {
     childName: str(row.child_name, "").trim() || CHILD_NAME_FALLBACK,
@@ -417,4 +422,14 @@ function StillBuilding() {
       </div>
     </div>
   );
+}
+
+// Canonical preview URL — keeps /preview/simplified-v1?session= working for old links.
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ session?: string; f?: string }>;
+}) {
+  const { session, f } = await searchParams;
+  return <SimplifiedReportBody session={session ?? ""} fallbackMode={f === "1"} />;
 }

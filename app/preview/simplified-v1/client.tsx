@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ENTITY } from "@/lib/entity";
 import { GoalSectionSimplified } from "./GoalSectionSimplified";
@@ -436,8 +437,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
 
       {/* Sticky header */}
       <header style={{ position: "sticky", top: 0, zIndex: 20, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "14px 20px", borderBottom: "1px solid #EFEDE8", background: "rgba(250,250,246,.95)", backdropFilter: "blur(10px)" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 28, width: "auto", display: "block" }} />
+        <Image src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" width={120} height={28} priority style={{ height: 28, width: "auto", display: "block" }} />
         <div style={{ font: "700 10px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: "0.11em", textTransform: "uppercase", color: "#646464" }}>Attention Health</div>
       </header>
 
@@ -654,8 +654,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
       {/* Footer */}
       <footer style={{ borderTop: "1px solid #EFEDE8", background: "#F3F1EA" }}>
         <div style={{ maxWidth: 600, margin: "0 auto", padding: "28px 20px", display: "flex", flexDirection: "column", gap: 14, alignItems: "center", textAlign: "center" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 26, width: "auto", display: "block" }} />
+          <Image src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" width={111} height={26} style={{ height: 26, width: "auto", display: "block" }} />
           <div style={{ font: "400 14px/1.6 ‘Instrument Sans’,sans-serif", color: "#646464" }}>Made for parents who want to understand, not diagnose.</div>
           <div style={{ font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9A9A9A" }}>Attention Architect helps parents understand their child. It is not a medical test and it does not diagnose anything.</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 18px", justifyContent: "center", font: "400 14px/1.5 ‘Instrument Sans’,sans-serif" }}>
