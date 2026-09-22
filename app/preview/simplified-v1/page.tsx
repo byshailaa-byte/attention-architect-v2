@@ -6,34 +6,14 @@ import {
   INSTINCT_LINE, NOW_LINES, THEN_LINES, TESTIMONIAL_POOL,
 } from "@/lib/content/report-content";
 import { getLmsWeekContent } from "@/lib/lms/content";
-import {
-  generateInstinctInteractionFallback,
-  selectFallbackDimensions,
-} from "@/lib/narrative/instinct-interaction-fallback";
-import {
-  generateSimplifiedStrengths,
-  selectStrengthDimensions,
-} from "@/lib/narrative/simplified-strengths";
 import type { Strength } from "@/lib/narrative/simplified-strengths";
-import {
-  generateSimplifiedActions,
-  selectActionDimensions,
-} from "@/lib/narrative/simplified-actions";
 import type { ActionsOutput } from "@/lib/narrative/simplified-actions";
-import { reformatM01 } from "@/lib/narrative/simplified-reformatter";
-import { checkTryTonightTitle } from "@/lib/quality/checks";
 import SimplifiedFunnelClient from "./client";
 import SimplifiedGate from "./SimplifiedGate";
-import { CHILD_NAME_FALLBACK, resolveChildPronoun, type Gender } from "@/lib/report/pronouns";
+import { CHILD_NAME_FALLBACK } from "@/lib/report/pronouns";
 import type { SimplifiedReportData } from "./client";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-// In-memory store of recently seen Try Tonight titles for cross-session collision detection.
-// Does not persist across server restarts or multiple instances — acceptable for local
-// preview testing. Requires a real persistence layer before production traffic.
-// (same category of gap as the worry_followup migration — flag, don't forget)
-const seenTryTonightTitles = new Set<string>();
 
 // Maps raw DB slug values to parent-readable label + description for each profile card row.
 const ATTENTION_SHAPE: Record<string, { label: string; desc: string }> = {
@@ -155,15 +135,6 @@ export async function SimplifiedReportBody({
   const dims = row.dimensions as Record<string, { value: string }>;
   const moments = row.narrative_moments as { moment_id: string; title: string; content: string }[];
 
-  type SigDimension = {
-    dimension: string;
-    validated: boolean;
-    evidence_tier: string;
-    expression: { type?: string; value?: string } | null;
-  };
-  const behaviourSig = (row.behaviour_signature ?? {}) as { dimensions?: SigDimension[] };
-  const sigDimensions: SigDimension[] = behaviourSig.dimensions ?? [];
-
   const m01 = moments.find((m) => m.moment_id === "m_01");
   const m03 = moments.find((m) => m.moment_id === "m_03");
 
@@ -171,8 +142,6 @@ export async function SimplifiedReportBody({
 
   const archetype = str(row.archetype, "The All-In Kid");
   const parentPattern = str(row.parent_pattern, "The Quick Fixer");
-  // Convert display name → slug expected by generation functions
-  const parentInstinctSlug = parentPattern.toLowerCase().replace(/^the /, "").replace(/\s+/g, "-");
 
   const weekContent = [1, 2, 3].map((w) => getLmsWeekContent(archetype, w));
 
@@ -184,43 +153,20 @@ export async function SimplifiedReportBody({
   const mCachedFallback  = moments.find(m => m.moment_id === "m_instinct_interaction_fallback");
   const mCachedDetail01  = moments.find(m => m.moment_id === "m_01_simplified");
 
-  // Accumulates moments generated this request; persisted to DB at the end.
-  const newMoments: { moment_id: string; title: string; content: string }[] = [];
-
   // Match the goal picker's fallback (data.childName) so a nameless session
-  // doesn't show "Your child" in the picker but "Your Child" in the generated
-  // strengths/actions built from this value.
+  // doesn't show "Your child" in the picker but "Your Child" downstream.
   const childName = str(row.child_name, "").trim() || CHILD_NAME_FALLBACK;
 
-  // Resolved pronouns from child_gender (they/them fallback) — passed to every
-  // generator that may need a pronoun, so none guesses gender.
-  const genderForPronouns = (typeof row.child_gender === "string" ? row.child_gender : null) as Gender;
-  const childPronouns = {
-    subj: resolveChildPronoun(genderForPronouns, "subj"),
-    obj:  resolveChildPronoun(genderForPronouns, "obj"),
-    poss: resolveChildPronoun(genderForPronouns, "poss"),
+  // Pure read (Phase 3): the four derived moments are generated at publish time in
+  // auto-generate, so the render never calls the model and never writes. A missing
+  // derived moment leaves its section null and the client hides that section.
+  const parseMoment = <T,>(m: { content: string } | undefined): T | null => {
+    if (!m) return null;
+    try { return JSON.parse(m.content) as T; } catch { return null; }
   };
+  const strengths: Strength[] | null = parseMoment<Strength[]>(mCachedStrengths);
 
-  // DETAIL 05: serve from cache if present; otherwise generate and queue for persistence.
-  let strengths: Strength[] | null = null;
-  if (mCachedStrengths) {
-    try { strengths = JSON.parse(mCachedStrengths.content) as Strength[]; } catch {}
-  }
-  if (!strengths) {
-    const strengthDims = selectStrengthDimensions(sigDimensions);
-    if (strengthDims.length > 0) {
-      strengths = await generateSimplifiedStrengths({
-        childName,
-        childPronouns,
-        ageBand: str(row.age_band, "10-11"),
-        archetype,
-        dimensions: strengthDims,
-      });
-      newMoments.push({ moment_id: "m_simplified_strengths", title: "strengths", content: JSON.stringify(strengths) });
-    }
-  }
-
-  // DETAIL 03: prefer m_03 (loop detected); then cached fallback; then generate fallback.
+  // DETAIL 03: prefer the loop moment (m_03); else the pre-generated instinct fallback.
   let detail03Content: string | null = null;
   let detail03Title: string | null = null;
   if (m03) {
@@ -229,97 +175,11 @@ export async function SimplifiedReportBody({
   } else if (mCachedFallback) {
     detail03Content = mCachedFallback.content;
     detail03Title = mCachedFallback.title;
-  } else {
-    const fallbackDims = selectFallbackDimensions(sigDimensions);
-    if (fallbackDims.length > 0) {
-      const fbGender = (typeof row.child_gender === "string" ? row.child_gender : null) as Gender;
-      const generated = await generateInstinctInteractionFallback({
-        childName,
-        childPronouns: {
-          subj: resolveChildPronoun(fbGender, "subj"),
-          obj:  resolveChildPronoun(fbGender, "obj"),
-          poss: resolveChildPronoun(fbGender, "poss"),
-        },
-        ageBand: str(row.age_band, "10-11"),
-        archetype,
-        archetypeFitTier: str(row.archetype_fit_tier, "primary"),
-        parentInstinct: parentInstinctSlug,
-        parentInstinctDisplay: parentPattern,
-        parentInstinctFitTier: str(row.parent_instinct_fit_tier, "primary"),
-        dimensions: fallbackDims,
-      });
-      detail03Content = generated.content;
-      detail03Title = generated.section;
-      newMoments.push({ moment_id: "m_instinct_interaction_fallback", title: generated.section, content: generated.content });
-    }
   }
 
-  // DETAIL 06 + Try Tonight: serve from cache if present; otherwise generate and persist.
-  // Title collision check fires only on first generation (cached titles are already stored).
-  let actionsOutput: ActionsOutput | null = null;
-  if (mCachedActions) {
-    try { actionsOutput = JSON.parse(mCachedActions.content) as ActionsOutput; } catch {}
-  }
-  if (!actionsOutput) {
-    const actionDims = selectActionDimensions(sigDimensions);
-    if (actionDims.length > 0) {
-      actionsOutput = await generateSimplifiedActions({
-        childName,
-        childPronouns,
-        ageBand: str(row.age_band, "10-11"),
-        archetype,
-        parentInstinct: parentInstinctSlug,
-        parentInstinctDisplay: parentPattern,
-        dimensions: actionDims,
-      });
-      if (actionsOutput.tryTonight) {
-        const priorTitles = [...seenTryTonightTitles];
-        const titleFailure = checkTryTonightTitle(actionsOutput.tryTonight.title, priorTitles);
-        if (titleFailure) {
-          actionsOutput = await generateSimplifiedActions({
-            childName,
-            childPronouns,
-            ageBand: str(row.age_band, "10-11"),
-            archetype,
-            parentInstinct: parentInstinctSlug,
-            parentInstinctDisplay: parentPattern,
-            dimensions: actionDims,
-          });
-        }
-      }
-      if (actionsOutput.tryTonight) {
-        seenTryTonightTitles.add(actionsOutput.tryTonight.title);
-      }
-      newMoments.push({ moment_id: "m_simplified_actions", title: "actions", content: JSON.stringify(actionsOutput) });
-    }
-  }
-
-  // DETAIL 01 (m_01_simplified): reformat m_01 prose into 3-4 checklist bullets.
-  // Input is the already-generated m_01 content; no new evidence introduced.
-  let detail01Bullets: string[] | null = null;
-  if (mCachedDetail01) {
-    try { detail01Bullets = JSON.parse(mCachedDetail01.content) as string[]; } catch {}
-  }
-  if (!detail01Bullets && m01) {
-    detail01Bullets = await reformatM01(m01.content);
-    newMoments.push({ moment_id: "m_01_simplified", title: "detail01_bullets", content: JSON.stringify(detail01Bullets) });
-  }
-
-  // Persist any newly generated moments back to the report so subsequent visits are served
-  // from cache. Uses JSONB array concatenation; safe because narrative_moments is an array
-  // for all sessions with a published report.
-  if (newMoments.length > 0) {
-    const newMomentsJson = JSON.stringify(newMoments);
-    await sql`
-      UPDATE reports
-      SET narrative_moments = narrative_moments || ${newMomentsJson}::jsonb
-      WHERE assessment_id = (
-        SELECT id FROM assessments WHERE session_id = ${session}::uuid LIMIT 1
-      )
-        AND superseded_by IS NULL
-        AND status = 'published'
-    `;
-  }
+  // DETAIL 06 + Try Tonight, and DETAIL 01 bullets — pure reads (generated at publish).
+  const actionsOutput: ActionsOutput | null = parseMoment<ActionsOutput>(mCachedActions);
+  const detail01Bullets: string[] | null = parseMoment<string[]>(mCachedDetail01);
 
   // Record that this parent viewed their report — moved OFF the render path via after()
   // so the analytics write never adds a round-trip to TTFB. Reaches here only when:

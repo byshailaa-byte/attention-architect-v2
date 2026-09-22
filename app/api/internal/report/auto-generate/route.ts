@@ -27,6 +27,13 @@ import { scoreAssessment } from "@/lib/engine/scorer";
 import { buildNarrativeContext } from "@/lib/narrative/context";
 import { composeReport, TEASER_FIXED_CLOSE } from "@/lib/narrative/compose-report";
 import { runQualityEngine } from "@/lib/quality/engine";
+// Derived simplified-surface moments — generated at publish time (Phase 3) so the
+// simplified render is a pure read. Same generators the render used to call lazily.
+import { generateSimplifiedStrengths, selectStrengthDimensions } from "@/lib/narrative/simplified-strengths";
+import { generateSimplifiedActions, selectActionDimensions } from "@/lib/narrative/simplified-actions";
+import { reformatM01 } from "@/lib/narrative/simplified-reformatter";
+import { generateInstinctInteractionFallback, selectFallbackDimensions } from "@/lib/narrative/instinct-interaction-fallback";
+import { CHILD_NAME_FALLBACK, resolveChildPronoun, type Gender } from "@/lib/report/pronouns";
 import type { AttentionMoment } from "@/lib/narrative/types";
 import type { Dimensions } from "@/lib/engine/scorer";
 
@@ -269,6 +276,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ stored: false, reason: "quality_failed", failures: qualityResult.failures });
   }
 
+  // ── Derived simplified-surface moments (strengths, actions, detail-01, instinct
+  // fallback), generated HERE at publish time so a published report is always
+  // complete and the simplified render is a pure read. Independent → Promise.all.
+  // If ANY generator throws, this throws and nothing is stored — never publish
+  // incomplete; the existing retry path re-runs. Missing sig-dims / m_01 legitimately
+  // skip a moment (that section hides on render); only a thrown error blocks publish.
+  const derivedStart = Date.now();
+  const childName = (row.child_name ?? "").trim() || CHILD_NAME_FALLBACK;
+  const dGender = (row.child_gender ?? null) as Gender;
+  const childPronouns = { subj: resolveChildPronoun(dGender, "subj"), obj: resolveChildPronoun(dGender, "obj"), poss: resolveChildPronoun(dGender, "poss") };
+  const parentInstinctSlug = row.parent_pattern.toLowerCase().replace(/^the /, "").replace(/\s+/g, "-");
+  const sigDims = (sig.dimensions ?? []) as { dimension: string; validated: boolean; evidence_tier: string; expression: { type?: string; value?: string } | null }[];
+  const ageBand = row.age_band;
+  const arche = composed.archetype;
+  const m01Moment = finalMoments.find((m) => m.moment_id === "m_01");
+  const hasM03 = finalMoments.some((m) => m.moment_id === "m_03");
+  const strengthDims = selectStrengthDimensions(sigDims);
+  const actionDims = selectActionDimensions(sigDims);
+  const fallbackDims = hasM03 ? [] : selectFallbackDimensions(sigDims);
+
+  const [strengths, actions, detail01Bullets, fallbackGen] = await Promise.all([
+    strengthDims.length ? generateSimplifiedStrengths({ childName, childPronouns, ageBand, archetype: arche, dimensions: strengthDims }) : Promise.resolve(null),
+    actionDims.length ? generateSimplifiedActions({ childName, childPronouns, ageBand, archetype: arche, parentInstinct: parentInstinctSlug, parentInstinctDisplay: row.parent_pattern, dimensions: actionDims }) : Promise.resolve(null),
+    m01Moment ? reformatM01(m01Moment.content) : Promise.resolve(null),
+    fallbackDims.length ? generateInstinctInteractionFallback({ childName, childPronouns, ageBand, archetype: arche, archetypeFitTier: row.archetype_fit_tier ?? "primary", parentInstinct: parentInstinctSlug, parentInstinctDisplay: row.parent_pattern, parentInstinctFitTier: row.parent_instinct_fit_tier ?? "primary", dimensions: fallbackDims }) : Promise.resolve(null),
+  ]);
+
+  const derivedMoments: { moment_id: string; title: string; content: string }[] = [];
+  if (strengths) derivedMoments.push({ moment_id: "m_simplified_strengths", title: "strengths", content: JSON.stringify(strengths) });
+  if (fallbackGen) derivedMoments.push({ moment_id: "m_instinct_interaction_fallback", title: fallbackGen.section, content: fallbackGen.content });
+  if (actions) derivedMoments.push({ moment_id: "m_simplified_actions", title: "actions", content: JSON.stringify(actions) });
+  if (detail01Bullets) derivedMoments.push({ moment_id: "m_01_simplified", title: "detail01_bullets", content: JSON.stringify(detail01Bullets) });
+  const momentsToStore = [...finalMoments, ...derivedMoments];
+  console.log(`[auto-generate] session=${sessionId} derived=[${derivedMoments.map((m) => m.moment_id).join(", ")}] in ${Date.now() - derivedStart}ms`);
+
   // Decide final status
   const shouldAutoPublish = !inGatingWindow;
   const finalStatus = shouldAutoPublish ? "published" : "draft";
@@ -311,7 +353,7 @@ export async function POST(req: NextRequest) {
         ${composed.archetype_fit_tier},
         ${composed.parent_instinct},
         ${composed.parent_instinct_fit_tier ?? null},
-        ${JSON.stringify(finalMoments)}::jsonb,
+        ${JSON.stringify(momentsToStore)}::jsonb,
         ${JSON.stringify(loop)}::jsonb,
         ${JSON.stringify(cv)}::jsonb,
         ${finalStatus},
