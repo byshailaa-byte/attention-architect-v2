@@ -1,7 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { verifyWebhookSignature } from "@/lib/razorpay/client";
-import { capturePayment } from "@/lib/razorpay/capture";
+import { capturePayment, setWatiPurchasedAttributes } from "@/lib/razorpay/capture";
 import { sendPurchaseReceipt } from "@/lib/auth/email";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { sendCapiEvents } from "@/lib/meta/capi";
@@ -105,6 +105,10 @@ export async function POST(req: NextRequest) {
           }[];
           const row = rows[0];
           if (!row) return;
+
+          // Purchase confirmed → stop the WATI drip for this buyer (purchased=yes + tier).
+          await setWatiPurchasedAttributes(row.phone, row.tier);
+
           await sendCapiEvents([{
             event_name: "Purchase",
             event_time: Math.floor(Date.now() / 1000),
