@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
-import { sendWhatsAppReport } from "@/lib/whatsapp";
+import { sendWhatsAppReport, upsertWatiContactAfterSend } from "@/lib/whatsapp";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
 // Runs hourly via Vercel Cron. Retries released WhatsApp claims that haven't
@@ -83,6 +83,9 @@ export async function GET(req: NextRequest) {
         rawPhone:   row.phone       ?? c.phone       ?? "",
       });
       await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${c.session_id}::uuid`;
+      // Send succeeded → upsert the WATI contact with purchased=no + attributes.
+      // Cron is a background job (no render path); the helper never throws.
+      await upsertWatiContactAfterSend(sql, c.session_id, row.phone ?? c.phone ?? "", row.parent_name ?? c.parent_name ?? "Parent");
       results.push({ sessionId: c.session_id, result: "sent" });
     } catch (e: unknown) {
       console.error("[cron/retry-whatsapp] send failed:", c.session_id, (e as Error).message);

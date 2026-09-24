@@ -1,7 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
-import { sendWhatsAppReport } from "@/lib/whatsapp";
+import { sendWhatsAppReport, upsertWatiContactAfterSend } from "@/lib/whatsapp";
 import { sendCapiEvents } from "@/lib/meta/capi";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
@@ -135,6 +135,8 @@ export async function POST(req: NextRequest) {
                 });
                 await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${sessionId}::uuid`;
                 sent = true;
+                // Send succeeded → upsert the WATI contact with purchased=no + attributes.
+                await upsertWatiContactAfterSend(sql, sessionId, wa.phone ?? normalizedPhone, wa.parent_name ?? row.parent_name ?? "Parent");
               } catch (e: unknown) {
                 console.error(`[whatsapp] attempt ${attempt + 1} failed:`, (e as Error).message);
               }

@@ -1,3 +1,6 @@
+// Loose sql type so this file needn't import the db client's concrete type.
+type WaSqlFn = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown>;
+
 export function normalizePhone(raw: string): string | null {
   const digits = raw.replace(/\D/g, "");
   if (digits.length === 10) return "91" + digits;
@@ -159,5 +162,95 @@ export async function sendWhatsAppReport({
     throw err;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+// Upserts the WATI contact with lifecycle attributes — call this ONLY after a report
+// send has succeeded and whatsapp_report_sent_at is stamped. WATI's addContact endpoint
+// creates-or-updates, so the contact the send just created is updated in place.
+//
+// purchased="no" is a POSITIVE CONTROL: it is always written, so a contact is only ever
+// enrolled in a drip with a known purchase state (never by absence of the field).
+//
+// This function NEVER throws — a failed attribute write must not fail the send — but it
+// logs LOUDLY, because a contact that never received purchased=no must NOT be enrolled in
+// any drip. Fetches archetype / parent_instinct / assessment date / utm source itself so
+// the three send sites (claim, claim-phone, retry cron) call it identically.
+export async function upsertWatiContactAfterSend(
+  sql: WaSqlFn,
+  sessionId: string,
+  rawPhone: string,
+  parentName: string,
+): Promise<void> {
+  const to = normalizePhone(rawPhone);
+  if (!to) {
+    console.error(`[wati] contact upsert SKIPPED — invalid phone, session ${sessionId} NOT stamped purchased=no (do not enrol)`);
+    return;
+  }
+  const endpoint = process.env.WATI_API_ENDPOINT;
+  const token = process.env.WATI_ACCESS_TOKEN;
+  if (!endpoint || !token) {
+    console.error(`[wati] contact upsert SKIPPED — WATI not configured, session ${sessionId} NOT stamped purchased=no (do not enrol)`);
+    return;
+  }
+  try {
+    const rows = (await sql`
+      SELECT r.archetype, r.parent_instinct, a.created_at, a.utm->>'source' AS utm_source
+      FROM reports r
+      JOIN assessments a ON a.id = r.assessment_id
+      WHERE a.session_id = ${sessionId}::uuid AND r.status = 'published'
+      ORDER BY r.created_at DESC
+      LIMIT 1
+    `) as { archetype: string | null; parent_instinct: string | null; created_at: string | Date | null; utm_source: string | null }[];
+    const row = rows[0] ?? { archetype: null, parent_instinct: null, created_at: null, utm_source: null };
+
+    const d = row.created_at ? new Date(row.created_at) : new Date();
+    const assessmentDate = `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
+    // First-touch UTM is not captured yet (utm is {} for every production session), so
+    // source is "unknown" today; it flows through automatically once utm.source is populated.
+    const source = row.utm_source ?? "unknown";
+
+    const body = {
+      name: parentName,
+      customParams: [
+        { name: "session_id", value: sessionId },
+        { name: "purchased", value: "no" },
+        { name: "consent", value: "report" },
+        { name: "assessment_date", value: assessmentDate },
+        { name: "source", value: source },
+        { name: "archetype", value: row.archetype ?? "" },
+        { name: "parent_instinct", value: row.parent_instinct ?? "" },
+      ],
+    };
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8_000);
+    try {
+      const res = await fetch(`${endpoint}/api/v1/addContact/${to}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token.replace(/^Bearer\s+/i, "")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!res.ok || data.result === false) {
+        console.error(`[wati] contact upsert FAILED — ****${to.slice(-4)} session ${sessionId} NOT stamped purchased=no (do not enrol): ${res.status} ${JSON.stringify(data)}`);
+        return;
+      }
+      console.log(`[wati] contact upsert ok ****${to.slice(-4)} session ${sessionId} purchased=no source=${source}`);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        console.error(`[wati] contact upsert TIMEOUT (8s) — ****${to.slice(-4)} session ${sessionId} NOT stamped purchased=no (do not enrol)`);
+      } else {
+        console.error(`[wati] contact upsert error — session ${sessionId} NOT stamped purchased=no (do not enrol):`, (err as Error).message);
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (err) {
+    console.error(`[wati] contact upsert DB/error — session ${sessionId} NOT stamped purchased=no (do not enrol):`, (err as Error).message);
   }
 }
