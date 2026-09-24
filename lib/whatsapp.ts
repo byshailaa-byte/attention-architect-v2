@@ -195,7 +195,7 @@ export async function upsertWatiContactAfterSend(
   }
   try {
     const rows = (await sql`
-      SELECT r.archetype, r.parent_instinct, a.created_at, a.utm->>'source' AS utm_source
+      SELECT r.archetype, r.parent_instinct, a.created_at, a.utm->>'utm_source' AS utm_source
       FROM reports r
       JOIN assessments a ON a.id = r.assessment_id
       WHERE a.session_id = ${sessionId}::uuid AND r.status = 'published'

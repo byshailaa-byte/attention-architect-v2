@@ -240,7 +240,10 @@ const TESTIMONIALS = [
 
 export default function SimplifiedHomepage() {
   const router = useRouter();
-  function go() { router.push("/start"); }
+  // Preserve the query string (utm_*, fbclid, gclid) across the client nav so
+  // /start still sees it — belt-and-braces with the first-touch capture in the
+  // shared layout (UtmCapture), which already grabs these params on this page.
+  function go() { router.push(`/start${typeof window !== "undefined" ? window.location.search : ""}`); }
 
   const h2style: React.CSSProperties = {
     margin: 0,
