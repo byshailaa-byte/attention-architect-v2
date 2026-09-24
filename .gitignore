@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local debug scripts & scratch screenshots (never commit — swept in by an
+# accidental `git add -A`; these carried hardcoded creds. See standing rule:
+# stage named files only.)
+scripts/_*
+tmp-*/
