@@ -1,0 +1,6 @@
+Submitted: 2026-09-01T21:00:08.508Z
+URL before: https://attentionparents.thehumandecision.in/assessment?name=Arjun&age=10-11&concerns=homework&followup=They+delay+starting+as+long+as+possible&variant=simplified
+URL after: https://attentionparents.thehumandecision.in/assessment?name=Arjun&age=10-11&concerns=homework&followup=They+delay+starting+as+long+as+possible&variant=simplified
+Phone: 7389070676
+DB query (run against production):
+SELECT session_id::text, whatsapp_report_sent_at, whatsapp_send_claimed_at, whatsapp_send_attempts, created_at FROM assessments WHERE phone='7389070676' ORDER BY created_at DESC LIMIT 1;
