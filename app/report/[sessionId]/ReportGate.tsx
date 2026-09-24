@@ -165,7 +165,7 @@ export default function ReportGate({ sessionId }: { sessionId: string }) {
               <p style={{ color: "var(--redpen)", fontSize: 12, marginTop: 4 }}>{phoneError}</p>
             ) : (
               <p style={{ color: "var(--ink-dim)", fontSize: 12, marginTop: 4 }}>
-                We&rsquo;ll send your report to this number on WhatsApp — we won&rsquo;t share it elsewhere.
+                We&rsquo;ll message you on WhatsApp with your report and follow-up ideas for your child&rsquo;s attention. Reply STOP any time.
               </p>
             )}
           </div>

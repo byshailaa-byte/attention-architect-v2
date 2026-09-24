@@ -190,7 +190,7 @@ export default function SimplifiedGate({
               {phoneError ? (
                 <div style={{ fontSize: 12, color: "#D94F3D", marginTop: 5 }}>{phoneError}</div>
               ) : (
-                <div style={{ fontSize: 12, color: "#8B8570", marginTop: 5 }}>Used only to send the report — never shared.</div>
+                <div style={{ fontSize: 12, color: "#8B8570", marginTop: 5 }}>We&rsquo;ll message you on WhatsApp with your report and follow-up ideas for your child&rsquo;s attention. Reply STOP any time.</div>
               )}
             </div>
 
