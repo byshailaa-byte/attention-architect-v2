@@ -45,3 +45,11 @@ next-env.d.ts
 # stage named files only.)
 scripts/_*
 tmp-*/
+
+# broad rule: no ad-hoc scripts or root screenshot scripts can be swept in by
+# a future `git add`. Intentional committed scripts must be force-added (git add -f).
+scripts/*.mts
+scripts/*.mjs
+scripts/*.ts
+scripts/*.py
+/take-screenshots.mjs
