@@ -11,7 +11,7 @@ import {
   SNAPSHOT_COPY,
   SNAPSHOT_GENERIC_FALLBACK,
 } from "@/lib/report/snapshot-content";
-import { rarityTag, barSegments } from "@/lib/report/snapshot";
+import { barSegments } from "@/lib/report/snapshot";
 
 export type SimplifiedReportData = {
   childName: string;
@@ -471,15 +471,13 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
               const entry    = SNAPSHOT_COPY[key]?.[value];
               const answer   = entry?.answer ?? SNAPSHOT_GENERIC_FALLBACK[key];
               const insight  = entry?.insight ?? null;
-              const tag      = rarityTag(key, value);
               const segments = barSegments(key, value);
+              // Caption share = the child's own bar segment, so caption and bar can never disagree.
+              const childShare = segments.find(s => s.isChild)?.share ?? null;
               return (
                 <div key={key} style={{ background: "#fff", borderRadius: 13, padding: "14px 16px", boxShadow: "0 2px 10px rgba(20,40,77,.06)" }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
                     <div style={{ font: "700 10px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: "0.08em", textTransform: "uppercase" as const, color: DIM }}>{label}</div>
-                    {tag && (
-                      <div style={{ font: "700 10px/1.2 ‘Instrument Sans’,sans-serif", letterSpacing: "0.04em", textTransform: "uppercase" as const, color: AMBER_TEXT, whiteSpace: "nowrap" }}>{tag}</div>
-                    )}
                   </div>
                   <div style={{ fontFamily: BF, fontSize: 16, fontWeight: 700, color: NAVY, lineHeight: 1.25, marginTop: 6 }}>{answer}</div>
                   <div style={{ display: "flex", gap: 1.5, height: 6, borderRadius: 4, overflow: "hidden", background: "#fff", marginTop: 11 }}>
@@ -487,6 +485,15 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
                       <div key={s.value} style={{ flex: s.share, background: s.isChild ? GOLD : BAR_GREY }} />
                     ))}
                   </div>
+                  {childShare != null && Number.isFinite(childShare) && childShare > 0 && (
+                    <div style={{ fontSize: 11.5, color: "#8B8570", marginTop: 8 }}>
+                      {childShare > 0.5
+                        ? "More than half of parents chose this one"
+                        : childShare < 0.05
+                          ? "Fewer than 1 in 20 parents chose this one"
+                          : <><b style={{ color: "#B8863B", fontWeight: 600 }}>1 in {Math.round(1 / childShare)}</b> parents chose this one</>}
+                    </div>
+                  )}
                   {insight && (
                     <div style={{ fontSize: 12.5, lineHeight: 1.55, marginTop: 11, color: DIM }}>{insight}</div>
                   )}
