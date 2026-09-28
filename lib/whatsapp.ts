@@ -195,20 +195,32 @@ export async function upsertWatiContactAfterSend(
   }
   try {
     const rows = (await sql`
-      SELECT r.archetype, r.parent_instinct, a.created_at, a.utm->>'utm_source' AS utm_source
+      SELECT r.archetype, r.parent_instinct, a.created_at, a.utm->>'utm_source' AS utm_source, a.child_name
       FROM reports r
       JOIN assessments a ON a.id = r.assessment_id
       WHERE a.session_id = ${sessionId}::uuid AND r.status = 'published'
       ORDER BY r.created_at DESC
       LIMIT 1
-    `) as { archetype: string | null; parent_instinct: string | null; created_at: string | Date | null; utm_source: string | null }[];
-    const row = rows[0] ?? { archetype: null, parent_instinct: null, created_at: null, utm_source: null };
+    `) as { archetype: string | null; parent_instinct: string | null; created_at: string | Date | null; utm_source: string | null; child_name: string | null }[];
+    const row = rows[0] ?? { archetype: null, parent_instinct: null, created_at: null, utm_source: null, child_name: null };
 
     const d = row.created_at ? new Date(row.created_at) : new Date();
     const assessmentDate = `${String(d.getUTCDate()).padStart(2, "0")}/${String(d.getUTCMonth() + 1).padStart(2, "0")}/${d.getUTCFullYear()}`;
     // First-touch UTM is not captured yet (utm is {} for every production session), so
     // source is "unknown" today; it flows through automatically once utm.source is populated.
     const source = row.utm_source ?? "unknown";
+
+    // child_name (WATI Text). Trim like the report; empty -> literal "your child" (never
+    // omit — templates read "…for your child"). If the trimmed value is entirely lowercase,
+    // Title-Case each word; otherwise send exactly as entered. Casing lives here only —
+    // the report's own rendering is untouched.
+    const trimmedChild = (row.child_name ?? "").trim();
+    const childName =
+      trimmedChild === ""
+        ? "your child"
+        : trimmedChild === trimmedChild.toLowerCase()
+          ? trimmedChild.replace(/(^|\s)(\S)/g, (_m, sp, ch) => sp + ch.toUpperCase())
+          : trimmedChild;
 
     const body = {
       name: parentName,
@@ -220,6 +232,7 @@ export async function upsertWatiContactAfterSend(
         { name: "source", value: source },
         { name: "archetype", value: row.archetype ?? "" },
         { name: "parent_instinct", value: row.parent_instinct ?? "" },
+        { name: "child_name", value: childName },
       ],
     };
 
@@ -240,7 +253,7 @@ export async function upsertWatiContactAfterSend(
         console.error(`[wati] contact upsert FAILED — ****${to.slice(-4)} session ${sessionId} NOT stamped purchased=no (do not enrol): ${res.status} ${JSON.stringify(data)}`);
         return;
       }
-      console.log(`[wati] contact upsert ok ****${to.slice(-4)} session ${sessionId} purchased=no source=${source}`);
+      console.log(`[wati] contact upsert ok ****${to.slice(-4)} session ${sessionId} purchased=no source=${source} child_name_source=${trimmedChild === "" ? "fallback" : "entered"}`);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         console.error(`[wati] contact upsert TIMEOUT (8s) — ****${to.slice(-4)} session ${sessionId} NOT stamped purchased=no (do not enrol)`);
