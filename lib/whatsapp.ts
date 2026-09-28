@@ -165,6 +165,20 @@ export async function sendWhatsAppReport({
   }
 }
 
+// Normalises a child's name for the WATI `child_name` attribute. Single source of truth,
+// shared by the report-send upsert and the one-off backfill. Behaviour: trim; empty →
+// literal "your child" (never omitted, so the payload can't be rejected and templates read
+// "…for your child"); entirely lowercase → Title-Case each word; otherwise exactly as
+// entered. This casing is for the WATI sync only — the report's own rendering is untouched.
+export function normalizeChildName(raw: string | null | undefined): string {
+  const trimmed = (raw ?? "").trim();
+  if (trimmed === "") return "your child";
+  if (trimmed === trimmed.toLowerCase()) {
+    return trimmed.replace(/(^|\s)(\S)/g, (_m, sp, ch) => sp + ch.toUpperCase());
+  }
+  return trimmed;
+}
+
 // Upserts the WATI contact with lifecycle attributes — call this ONLY after a report
 // send has succeeded and whatsapp_report_sent_at is stamped. WATI's addContact endpoint
 // creates-or-updates, so the contact the send just created is updated in place.
@@ -210,17 +224,7 @@ export async function upsertWatiContactAfterSend(
     // source is "unknown" today; it flows through automatically once utm.source is populated.
     const source = row.utm_source ?? "unknown";
 
-    // child_name (WATI Text). Trim like the report; empty -> literal "your child" (never
-    // omit — templates read "…for your child"). If the trimmed value is entirely lowercase,
-    // Title-Case each word; otherwise send exactly as entered. Casing lives here only —
-    // the report's own rendering is untouched.
-    const trimmedChild = (row.child_name ?? "").trim();
-    const childName =
-      trimmedChild === ""
-        ? "your child"
-        : trimmedChild === trimmedChild.toLowerCase()
-          ? trimmedChild.replace(/(^|\s)(\S)/g, (_m, sp, ch) => sp + ch.toUpperCase())
-          : trimmedChild;
+    const childName = normalizeChildName(row.child_name);
 
     const body = {
       name: parentName,
@@ -253,7 +257,7 @@ export async function upsertWatiContactAfterSend(
         console.error(`[wati] contact upsert FAILED — ****${to.slice(-4)} session ${sessionId} NOT stamped purchased=no (do not enrol): ${res.status} ${JSON.stringify(data)}`);
         return;
       }
-      console.log(`[wati] contact upsert ok ****${to.slice(-4)} session ${sessionId} purchased=no source=${source} child_name_source=${trimmedChild === "" ? "fallback" : "entered"}`);
+      console.log(`[wati] contact upsert ok ****${to.slice(-4)} session ${sessionId} purchased=no source=${source} child_name_source=${childName === "your child" ? "fallback" : "entered"}`);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         console.error(`[wati] contact upsert TIMEOUT (8s) — ****${to.slice(-4)} session ${sessionId} NOT stamped purchased=no (do not enrol)`);
