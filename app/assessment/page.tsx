@@ -572,7 +572,7 @@ function AssessmentForm() {
                 <input type="tel" placeholder="98765 43210" value={phone} onChange={(e) => { setPhone(e.target.value); setPhoneError(null); }}
                   style={{ width: "100%", padding: "13px 16px", fontSize: "15px", border: `2px solid ${phoneError ? "#D94F3D" : "#F5A623"}`, borderRadius: 10, fontFamily: "inherit", background: "#FBF9F3", color: "#14284D", outline: "none", boxSizing: "border-box" }} />
                 {phoneError ? <div style={{ fontSize: 12, color: "#D94F3D", marginTop: 5 }}>{phoneError}</div>
-                  : <div style={{ fontSize: 12, color: "#8B8570", marginTop: 5 }}>Used only to send the report — never shared.</div>}
+                  : <div style={{ fontSize: 12, color: "#8B8570", marginTop: 5 }}>We&rsquo;ll message you on WhatsApp with your report and follow-up ideas for your child&rsquo;s attention. Reply STOP any time.</div>}
               </div>
               {error && <div style={{ background: "#fdf0ee", color: "#D94F3D", border: "1px solid #e8c4be", borderRadius: 8, padding: "12px 16px", fontSize: 13 }}>{error}</div>}
               <button
