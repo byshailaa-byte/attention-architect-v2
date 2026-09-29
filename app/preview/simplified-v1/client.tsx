@@ -1163,7 +1163,7 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
             <div style={{ fontSize: "13px", fontWeight: 700, marginBottom: "10px", opacity: .85 }}>{c}&rsquo;s Personalized Attention Health Roadmap</div>
             <div className="price">₹2,999</div>
             <div className="price-feat-row"><span>One-time payment</span><span>No hidden fees</span><span>Instant access</span><span>7-day guarantee</span></div>
-            <button className="cta-primary gold" style={{ marginTop: "18px" }} onClick={() => fireRoadmapCta(dSessionId, "closing")}>Build {c}&rsquo;s Roadmap — ₹2,999 →</button>
+            <button className="cta-primary gold" style={{ marginTop: "18px" }} onClick={() => { fireRoadmapCta(dSessionId, "closing"); router.push(`/simplified/roadmap?session=${data.sessionId}`); }}>Build {c}&rsquo;s Roadmap — ₹2,999 →</button>
             <div className="guarantee">Secure payment · Instant access · If it&rsquo;s not helping, tell us within 7 days</div>
             <div className="pay-logos"><span>VISA</span><span>Mastercard</span><span>RuPay</span><span>UPI</span></div>
           </div>
