@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { sendWhatsAppReport, upsertWatiContactAfterSend } from "@/lib/whatsapp";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
+import { sendOpsAlert } from "@/lib/alerts/notify";
 
 // Runs hourly via Vercel Cron. Retries released WhatsApp claims that haven't
 // hit the attempt ceiling. Logs exhausted sessions at error level for admin recovery.
@@ -139,6 +140,39 @@ export async function GET(req: NextRequest) {
     console.error(
       `[cron/retry-whatsapp] ${neverGenerated} session(s) have no published report after gate submission.`,
       "Report generation may have failed — see Admin > Overview > Report Generation Failed.",
+    );
+  }
+
+  // Email ops alert for genuinely RECENT failures only (created in the last 7 days), so the
+  // all-time backlog above doesn't cause a daily alert. Session ids only — no PII.
+  const recentNeverGenRows = await sql`
+    SELECT a.session_id::text AS session_id
+    FROM assessments a
+    WHERE a.parent_name IS NOT NULL
+      AND a.archetype IS NOT NULL
+      AND a.phone IS NOT NULL
+      AND a.created_at < NOW() - INTERVAL '10 minutes'
+      AND a.created_at > NOW() - INTERVAL '7 days'
+      AND NOT EXISTS (
+        SELECT 1 FROM reports r
+        WHERE r.assessment_id = a.id
+          AND r.status = 'published'
+          AND r.superseded_by IS NULL
+      )
+      AND (a.child_name IS NULL OR (a.child_name NOT ILIKE 'Test%' AND a.child_name NOT ILIKE 'Smoke%'))
+    ORDER BY a.created_at DESC
+  ` as unknown as { session_id: string }[];
+  const recentIds = recentNeverGenRows.map(r => r.session_id);
+  if (recentIds.length > 0) {
+    await sendOpsAlert(
+      `Report generation never completed — ${recentIds.length} session(s) in last 7 days`,
+      [
+        `stage: cron/never-generated`,
+        `count: ${recentIds.length}`,
+        `timestamp: ${new Date().toISOString()}`,
+        `session_ids:`,
+        ...recentIds,
+      ].join("\n"),
     );
   }
 
