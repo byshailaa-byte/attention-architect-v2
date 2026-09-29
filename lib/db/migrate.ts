@@ -749,6 +749,50 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_39_goal') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 40 — add roadmap_cta_click and whatsapp_click to the funnel_events event_type
+  // CHECK constraint. roadmap_cta_click fires (keepalive) before navigation from the report's
+  // roadmap CTAs (hero/mid/closing); whatsapp_click fires on the floating WhatsApp widget's
+  // chat link. Must be added here AND in the ALLOWED set in /api/funnel/event/route.ts.
+  // Run manually on prod with DATABASE_URL override — endpoint ep-green-truth-aqxygaj2.
+  if (!applied.has("phase_40_click_events")) {
+    await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
+    await sql`
+      ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+        'assessment_started',
+        'assessment_question_complete',
+        'assessment_dimension_complete',
+        'assessment_complete',
+        'report_gate_view',
+        'generating_page_view',
+        'generate_lead',
+        'report_view',
+        'view_item',
+        'pricing_section_viewed',
+        'begin_checkout',
+        'checkout_modal_opened',
+        'checkout_modal_dismissed',
+        'purchase',
+        'lms_day_complete',
+        'lms_reflection_submitted',
+        'scroll_milestone',
+        'exit_intent_shown',
+        'landing_step_age',
+        'landing_step_concern',
+        'landing_step_followup',
+        'pricing_variant_assigned',
+        'phone_capture_shown',
+        'teaser_shown',
+        'paywall_shown',
+        'simplified_report_view',
+        'thankyou_screen_view',
+        'founder_call_requested',
+        'roadmap_cta_click',
+        'whatsapp_click'
+      ))
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_40_click_events') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 

@@ -92,13 +92,19 @@ export function WhatsAppWidget() {
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [href, setHref] = useState(`https://wa.me/${PHONE}`);
+  const [session, setSession] = useState<string | null>(null);
 
   useEffect(() => {
     window.__waWidgetReady = () => setReady(true);
-    // Give support the 8-char session ref only, never the full URL.
-    const session = new URLSearchParams(window.location.search).get("session");
+    // Resolve the session from ?session= OR a /report/<uuid> path; used for both the
+    // whatsapp_click event and the support "Ref:" prefill. Give support the 8-char ref
+    // only, never the full URL.
+    const qs = new URLSearchParams(window.location.search).get("session");
+    const m = pathname.match(/\/report\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+    const resolved = qs || (m ? m[1] : null);
+    setSession(resolved);
     let prefill = "Hi! I have a question about my child's attention report.";
-    if (session) prefill += "\n\nRef: " + session.slice(0, 8);
+    if (resolved) prefill += "\n\nRef: " + resolved.slice(0, 8);
     setHref(`https://wa.me/${PHONE}?text=${encodeURIComponent(prefill)}`);
   }, [pathname]);
 
@@ -134,7 +140,24 @@ export function WhatsAppWidget() {
                 {"Question about your child's assessment or your report? Message us on WhatsApp — a real person reads these."}
               </div>
             </div>
-            <a className="wa-cta" target="_blank" rel="noopener" href={href}>
+            <a
+              className="wa-cta"
+              target="_blank"
+              rel="noopener"
+              href={href}
+              onClick={() => {
+                // funnel_events.session_id is NOT NULL — skip the event when no session resolves.
+                if (!session) return;
+                try {
+                  fetch("/api/funnel/event", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ event_type: "whatsapp_click", session_id: session, metadata: { path: pathname } }),
+                    keepalive: true,
+                  }).catch(() => {});
+                } catch { /* ignore */ }
+              }}
+            >
               Chat on WhatsApp
             </a>
           </div>

@@ -13,6 +13,20 @@ import {
 } from "@/lib/report/snapshot-content";
 import { barSegments } from "@/lib/report/snapshot";
 
+// Fire roadmap_cta_click before navigating. keepalive so the beacon survives the page
+// change; never awaited, never throws. Skipped without a session (the event requires one).
+function fireRoadmapCta(sessionId: string | null, position: "hero" | "mid" | "closing") {
+  if (!sessionId) return;
+  try {
+    fetch("/api/funnel/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_type: "roadmap_cta_click", session_id: sessionId, metadata: { position } }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch { /* ignore */ }
+}
+
 export type SimplifiedReportData = {
   childName: string;
   ageBand: string;
@@ -650,7 +664,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
             Built around what&rsquo;s already working, opening where it takes the most effort.
           </p>
           <button
-            onClick={() => router.push(`/simplified/roadmap?session=${data.sessionId}`)}
+            onClick={() => { fireRoadmapCta(data.sessionId, "hero"); router.push(`/simplified/roadmap?session=${data.sessionId}`); }}
             style={{ all: "unset", cursor: "pointer", display: "block", width: "100%", boxSizing: "border-box", textAlign: "center", background: `linear-gradient(135deg,${GOLD},#FBCB4A)`, color: NAVY, font: `700 16px/1.3 ‘Instrument Sans’,sans-serif`, padding: "16px 24px", borderRadius: 12, boxShadow: "0 6px 20px rgba(245,166,35,.35)" }}
           >
             See {cMid}&rsquo;s six-week plan →
@@ -1051,6 +1065,7 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
             <button
               className="cta-primary gold"
               onClick={() => {
+                fireRoadmapCta(dSessionId, "mid");
                 const dest = dSessionId
                   ? `/simplified/roadmap?session=${dSessionId}`
                   : undefined;
@@ -1148,7 +1163,7 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
             <div style={{ fontSize: "13px", fontWeight: 700, marginBottom: "10px", opacity: .85 }}>{c}&rsquo;s Personalized Attention Health Roadmap</div>
             <div className="price">₹2,999</div>
             <div className="price-feat-row"><span>One-time payment</span><span>No hidden fees</span><span>Instant access</span><span>7-day guarantee</span></div>
-            <button className="cta-primary gold" style={{ marginTop: "18px" }}>Build {c}&rsquo;s Roadmap — ₹2,999 →</button>
+            <button className="cta-primary gold" style={{ marginTop: "18px" }} onClick={() => fireRoadmapCta(dSessionId, "closing")}>Build {c}&rsquo;s Roadmap — ₹2,999 →</button>
             <div className="guarantee">Secure payment · Instant access · If it&rsquo;s not helping, tell us within 7 days</div>
             <div className="pay-logos"><span>VISA</span><span>Mastercard</span><span>RuPay</span><span>UPI</span></div>
           </div>
