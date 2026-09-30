@@ -793,6 +793,39 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_40_click_events') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 41 — WhatsApp inbound leads: contacts + events for the WATI webhook.
+  // phone is the NORMALised key ("+91" + 10 digits). We never store message text.
+  // Run manually on prod with DATABASE_URL override — endpoint ep-green-truth-aqxygaj2.
+  if (!applied.has("phase_41_wa_leads")) {
+    await sql`
+      CREATE TABLE IF NOT EXISTS wa_contacts (
+        phone              TEXT PRIMARY KEY,
+        name               TEXT,
+        first_seen_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+        last_seen_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+        first_source_id    TEXT,
+        first_source_url   TEXT,
+        first_source_type  TEXT,
+        needs_human        BOOLEAN NOT NULL DEFAULT false,
+        needs_human_reason TEXT,
+        needs_human_at     TIMESTAMPTZ,
+        handled_at         TIMESTAMPTZ
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS wa_events (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        phone           TEXT NOT NULL,
+        event_type      TEXT NOT NULL CHECK (event_type IN ('ad_click','inbound','handoff','handled')),
+        wati_message_id TEXT UNIQUE,
+        source_id       TEXT,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_wa_events_phone ON wa_events(phone, created_at)`;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_41_wa_leads') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 
