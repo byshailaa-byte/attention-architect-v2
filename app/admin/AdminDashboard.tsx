@@ -1603,6 +1603,8 @@ export default function AdminDashboard({
                   ["view_item",      "Pricing section scrolled into view", "DB funnel_events","fire-and-forget", "tiers"],
                   ["begin_checkout", "Checkout button clicked",       "DB funnel_events",    "fire-and-forget", "tier, value, source"],
                   ["scroll_milestone","Scroll depth threshold hit",   "DB + GA4",            "fire-and-forget", "page, depth"],
+                  ["roadmap_cta_click","Roadmap CTA clicked (report/roadmap: hero, mid, closing, goal)", "DB funnel_events", "fire-and-forget (keepalive)", "position"],
+                  ["whatsapp_click", "WhatsApp widget chat link clicked", "DB funnel_events", "fire-and-forget (keepalive)", "path"],
                 ],
               },
               {

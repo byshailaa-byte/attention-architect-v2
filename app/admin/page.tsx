@@ -263,7 +263,8 @@ export default async function AdminPage({
         WHERE fe.event_type IN (
           'assessment_started','assessment_complete','generate_lead',
           'report_view','begin_checkout','purchase',
-          'landing_step_age','landing_step_concern','landing_step_followup'
+          'landing_step_age','landing_step_concern','landing_step_followup',
+          'roadmap_cta_click','whatsapp_click'
         )
         AND fe.created_at >= ${fromISO}::timestamptz AND fe.created_at <= ${toISO}::timestamptz
         AND (${showInternal} OR ax.is_internal IS NOT TRUE)
