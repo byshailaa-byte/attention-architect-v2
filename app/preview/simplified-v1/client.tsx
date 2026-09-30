@@ -1185,7 +1185,7 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
       {/* Persistent footer — outside all screens */}
       <div className="hp-footer">
         <img src="/aa-logo.png" alt="Attention Architect" />
-        <div><a href="#">Privacy Policy</a><a href="#">Terms of Use</a><a href="#">Support</a></div>
+        <div><a href="/privacy">Privacy Policy</a><a href="/terms">Terms of Use</a><a href="#">Support</a></div>
         <div>© 2026 · Made with care for parents</div>
       </div>
     </div>
