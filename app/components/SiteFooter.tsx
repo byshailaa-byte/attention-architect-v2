@@ -32,6 +32,9 @@ export default function SiteFooter() {
             <Link href="/terms" style={{ color: "#9c9aa8", textDecoration: "none", fontSize: "13.5px", fontWeight: 500 }}>
               Terms of Service
             </Link>
+            <Link href="/contact" style={{ color: "#9c9aa8", textDecoration: "none", fontSize: "13.5px", fontWeight: 500 }}>
+              Contact
+            </Link>
             <a href={`mailto:${ENTITY.supportEmail}`} style={{ color: "#9c9aa8", textDecoration: "none", fontSize: "13.5px", fontWeight: 500 }}>
               {ENTITY.supportEmail}
             </a>

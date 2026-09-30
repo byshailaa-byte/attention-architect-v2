@@ -6,6 +6,7 @@ import Image from "next/image";
 import { captureUtmOnce } from "@/lib/utm";
 import { fireGtag } from "@/lib/gtag";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
+import ReportFooterLinks from "@/app/components/ReportFooterLinks";
 
 function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
   fetch("/api/funnel/event", {
@@ -412,6 +413,7 @@ export default function SimplifiedStart() {
         </div>
       </div>
       {oobModal}
+      <ReportFooterLinks />
       </>
     );
   }
@@ -419,6 +421,7 @@ export default function SimplifiedStart() {
   // ── Stage: followup ───────────────────────────────────────────────────────────
   const fuConfig = concern ? FOLLOW_UP[concern] : null;
   return (
+    <>
     <div className="funnel-screen">
       <div className="funnel-card">
         <Image src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" width={120} height={28} style={{ marginBottom: 20 }} />
@@ -507,5 +510,7 @@ export default function SimplifiedStart() {
         </div>
       </div>
     </div>
+      <ReportFooterLinks />
+      </>
   );
 }

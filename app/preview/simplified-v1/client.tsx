@@ -12,6 +12,7 @@ import {
   SNAPSHOT_GENERIC_FALLBACK,
 } from "@/lib/report/snapshot-content";
 import { barSegments } from "@/lib/report/snapshot";
+import ReportFooterLinks from "@/app/components/ReportFooterLinks";
 
 // Fire roadmap_cta_click before navigating. keepalive so the beacon survives the page
 // change; never awaited, never throws. Skipped without a session (the event requires one).
@@ -678,11 +679,7 @@ function AttentionAdvantageReport({ data }: { data: SimplifiedReportData }) {
           <Image src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" width={111} height={26} style={{ height: 26, width: "auto", display: "block" }} />
           <div style={{ font: "400 14px/1.6 ‘Instrument Sans’,sans-serif", color: "#646464" }}>Made for parents who want to understand, not diagnose.</div>
           <div style={{ font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9A9A9A" }}>Attention Architect helps parents understand their child. It is not a medical test and it does not diagnose anything.</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 18px", justifyContent: "center", font: "400 14px/1.5 ‘Instrument Sans’,sans-serif" }}>
-            <a href="/privacy" style={{ color: NAVY, textDecoration: "none" }}>Privacy Policy</a>
-            <a href="/terms" style={{ color: NAVY, textDecoration: "none" }}>Terms of Service</a>
-            <a href={`mailto:${ENTITY.supportEmail}`} style={{ color: NAVY, textDecoration: "none" }}>{ENTITY.supportEmail}</a>
-          </div>
+          <ReportFooterLinks />
           <div style={{ font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9A9A9A" }}>{ENTITY.brandLine}</div>
           <div style={{ font: "400 13px/1.5 ‘Instrument Sans’,sans-serif", color: "#9A9A9A" }}>{ENTITY.copyright}</div>
         </div>
@@ -1163,7 +1160,7 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
             <div style={{ fontSize: "13px", fontWeight: 700, marginBottom: "10px", opacity: .85 }}>{c}&rsquo;s Personalized Attention Health Roadmap</div>
             <div className="price">₹2,999</div>
             <div className="price-feat-row"><span>One-time payment</span><span>No hidden fees</span><span>Instant access</span><span>7-day guarantee</span></div>
-            <button className="cta-primary gold" style={{ marginTop: "18px" }} onClick={() => { fireRoadmapCta(dSessionId, "closing"); router.push(`/simplified/roadmap?session=${data.sessionId}`); }}>Build {c}&rsquo;s Roadmap — ₹2,999 →</button>
+            <button className="cta-primary gold" style={{ marginTop: "18px" }} onClick={() => { fireRoadmapCta(dSessionId, "closing"); if (dSessionId) router.push(`/simplified/roadmap?session=${dSessionId}`); }}>Build {c}&rsquo;s Roadmap — ₹2,999 →</button>
             <div className="guarantee">Secure payment · Instant access · If it&rsquo;s not helping, tell us within 7 days</div>
             <div className="pay-logos"><span>VISA</span><span>Mastercard</span><span>RuPay</span><span>UPI</span></div>
           </div>
@@ -1185,7 +1182,7 @@ export default function SimplifiedFunnelClient({ data }: { data: SimplifiedRepor
       {/* Persistent footer — outside all screens */}
       <div className="hp-footer">
         <img src="/aa-logo.png" alt="Attention Architect" />
-        <div><a href="/privacy">Privacy Policy</a><a href="/terms">Terms of Use</a><a href="#">Support</a></div>
+        <div><a href="/privacy">Privacy Policy</a><a href="/terms">Terms of Use</a><a href="/contact">Support</a></div>
         <div>© 2026 · Made with care for parents</div>
       </div>
     </div>
