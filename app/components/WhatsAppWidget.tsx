@@ -137,7 +137,7 @@ export function WhatsAppWidget() {
             </div>
             <div className="wa-body">
               <div className="wa-msg">
-                {"Question about your child's assessment or your report? Message us on WhatsApp — a real person reads these."}
+                {"Question about your child's assessment or your report? Message us on WhatsApp. Our assistant replies first, and you can ask for a person any time."}
               </div>
             </div>
             <a
