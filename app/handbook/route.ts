@@ -121,7 +121,7 @@ const HTML = `<!DOCTYPE html>
       <div class="row"><span>Science</span><span class="n">95</span></div>
       <div class="row attn"><span><strong>Attention</strong></span><span class="q">?</span></div>
     </div>
-    <div class="tag">A Field Guide for Parents · attentionparents.thehumandecision.in</div>
+    <div class="tag">A Field Guide for Parents · Attention Architect</div>
   </div>
 </section>
 

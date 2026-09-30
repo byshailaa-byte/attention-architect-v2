@@ -250,7 +250,19 @@ export function GoalSectionSimplified({
                 ))}
               </div>
               <button
-                onClick={() => router.push(`/roadmap?session=${sessionId}`)}
+                onClick={() => {
+                  // Fire roadmap_cta_click before navigating. keepalive so the beacon
+                  // survives the page change; never awaited, never throws.
+                  try {
+                    fetch("/api/funnel/event", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ event_type: "roadmap_cta_click", session_id: sessionId, metadata: { position: "goal" } }),
+                      keepalive: true,
+                    }).catch(() => {});
+                  } catch { /* ignore */ }
+                  router.push(`/roadmap?session=${sessionId}`);
+                }}
                 style={{ display: "block", width: "100%", background: `linear-gradient(135deg,${GOLD_LT},${GOLD})`, color: NAVY, borderRadius: 12, padding: 15, font: `800 15.5px/1 ${BF}`, marginTop: 16, border: "none", cursor: "pointer", textAlign: "center", boxShadow: "0 6px 18px rgba(245,166,35,.32)" }}
               >
                 See how the six weeks get you there →
