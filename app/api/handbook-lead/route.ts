@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
-import { sendWhatsAppHandbook } from "@/lib/whatsapp";
+import { sendWatiHandbook } from "@/lib/whatsapp";
+import { normalizePhone } from "@/lib/phone";
+import { sendOpsAlert, opsAlertBody } from "@/lib/alerts/notify";
 
 assertBootGuards();
 
@@ -16,6 +18,16 @@ export async function POST(req: NextRequest) {
 
     if (!name?.trim() || !phone?.trim() || !ageBand) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    // Validate the phone BEFORE saving: a number we can't normalize can never be
+    // delivered on WhatsApp, so reject it and don't create a dead row.
+    const normalized = normalizePhone(phone);
+    if (!normalized) {
+      return NextResponse.json(
+        { error: "Please enter a valid 10-digit mobile number" },
+        { status: 400 },
+      );
     }
 
     const sql = getSql();
@@ -33,6 +45,16 @@ export async function POST(req: NextRequest) {
     `;
     await sql`ALTER TABLE handbook_leads ADD COLUMN IF NOT EXISTS variant TEXT NOT NULL DEFAULT 'production'`;
 
+    // Dedupe: if this normalized number already submitted in the last 10 minutes,
+    // don't send again (avoid a double WhatsApp). Return success either way.
+    const recent = (await sql`
+      SELECT phone FROM handbook_leads
+      WHERE created_at > now() - interval '10 minutes'
+    `) as unknown as { phone: string }[];
+    if (recent.some((r) => normalizePhone(r.phone) === normalized)) {
+      return NextResponse.json({ saved: true, wa_sent: false, deduped: true });
+    }
+
     const src = (variant ?? "production").trim() || "production";
     const [row] = (await sql`
       INSERT INTO handbook_leads (name, phone, age_band, variant)
@@ -40,20 +62,30 @@ export async function POST(req: NextRequest) {
       RETURNING id
     `) as unknown as { id: number }[];
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
-    const handbookUrl = `${baseUrl}/handbook`;
-
-    const waSent = await sendWhatsAppHandbook({
-      name: name.trim(),
+    // Deliver over WATI (the number 9993374923 now lives on WATI, not Meta Cloud).
+    const firstName = name.trim().split(/\s+/)[0] ?? "";
+    const result = await sendWatiHandbook({
+      firstName,
+      contactName: name.trim(),
       rawPhone: phone.trim(),
-      handbookUrl,
     });
 
-    if (waSent) {
+    if (result.ok) {
       await sql`UPDATE handbook_leads SET wa_sent = true WHERE id = ${row.id}`;
+    } else {
+      // Leave wa_sent = false, log, and alert ops — lead id + WATI error, NO phone.
+      console.error(`[handbook-lead] WATI send failed for lead ${row.id}: ${result.error}`);
+      await sendOpsAlert(
+        "handbook WhatsApp send failed",
+        opsAlertBody({
+          stage: "handbook_wa_send",
+          sessionId: `handbook_lead:${row.id}`,
+          error: result.error ?? "(unknown WATI error)",
+        }),
+      );
     }
 
-    return NextResponse.json({ saved: true, wa_sent: waSent });
+    return NextResponse.json({ saved: true, wa_sent: result.ok });
   } catch (e) {
     console.error("[handbook-lead]", e);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

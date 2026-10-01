@@ -9,88 +9,9 @@ export function normalizePhone(raw: string): string | null {
   return null;
 }
 
-// Returns true if the message was actually sent, false if skipped (template not yet approved).
-// Set HANDBOOK_WA_TEMPLATE to the Meta-approved template name to enable sends.
-export async function sendWhatsAppHandbook({
-  name,
-  rawPhone,
-  handbookUrl,
-}: {
-  name: string;
-  rawPhone: string;
-  handbookUrl: string;
-}): Promise<boolean> {
-  const templateName = process.env.HANDBOOK_WA_TEMPLATE ?? "";
-  if (!templateName) {
-    console.log("[whatsapp] HANDBOOK_WA_TEMPLATE not set — handbook lead saved, WhatsApp skipped until template approved");
-    return false;
-  }
-
-  try {
-    const to = normalizePhone(rawPhone);
-    if (!to) return false;
-
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-    const accessToken   = process.env.WHATSAPP_ACCESS_TOKEN;
-
-    if (!phoneNumberId || !accessToken) {
-      console.warn("[whatsapp] credentials not set — skipping handbook send");
-      return false;
-    }
-
-    // Template parameters depend on the approved template structure.
-    // Assumed: one body text variable (parent name) + one URL button variable (url suffix).
-    // Update component list to match the approved template when available.
-    const body = {
-      messaging_product: "whatsapp",
-      to,
-      type: "template",
-      template: {
-        name: templateName,
-        language: { code: "en" },
-        components: [
-          {
-            type: "body",
-            parameters: [
-              { type: "text", parameter_name: "customer_name", text: name },
-            ],
-          },
-          {
-            type: "button",
-            sub_type: "url",
-            index: "0",
-            parameters: [
-              { type: "text", text: "handbook" },
-            ],
-          },
-        ],
-      },
-    };
-
-    const res = await fetch(
-      `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      console.error("[whatsapp] handbook API error", res.status, JSON.stringify(data));
-      return false;
-    }
-    console.log("[whatsapp] handbook sent to", to, JSON.stringify(data));
-    return true;
-  } catch (e) {
-    console.error("[whatsapp] handbook unexpected error:", e);
-    return false;
-  }
-}
+// Handbook WhatsApp delivery moved from the Meta Cloud API to WATI when the
+// number 9993374923 moved to WATI — see sendWatiHandbook at the bottom of this
+// file. The old Meta Cloud sender (and HANDBOOK_WA_TEMPLATE) was removed.
 
 // Throws on any failure so the caller's try/catch can release the claim and skip sent_at.
 export async function sendWhatsAppReport({
@@ -269,5 +190,85 @@ export async function upsertWatiContactAfterSend(
     }
   } catch (err) {
     console.error(`[wati] contact upsert DB/error — session ${sessionId} NOT stamped purchased=no (do not enrol):`, (err as Error).message);
+  }
+}
+
+// Handbook delivery over WATI. Same call shape as sendWhatsAppReport.
+//
+// 1. addContact sets name + source=handbook. We NEVER set the "consent"
+//    attribute: a WATI automation rule triggers on it and would double-send.
+//    This step is best-effort (logged, non-fatal) — WATI auto-creates the
+//    contact on template send, so a failed attribute write must not block it.
+// 2. sendTemplateMessage("handbook_send") with ONE body param `name` (the
+//    parent's first name, "there" when empty). The template's button is a
+//    STATIC URL, so NO button parameter is sent.
+//
+// Returns { ok: true } on a confirmed send, else { ok: false, error } with
+// WATI's error (no phone number in the message, for the caller's ops alert).
+export async function sendWatiHandbook({
+  firstName,
+  contactName,
+  rawPhone,
+}: {
+  firstName: string;
+  contactName: string;
+  rawPhone: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const to = normalizePhone(rawPhone);
+  if (!to) return { ok: false, error: `invalid phone` };
+
+  const endpoint = process.env.WATI_API_ENDPOINT;
+  const token = process.env.WATI_ACCESS_TOKEN;
+  if (!endpoint || !token) return { ok: false, error: "WATI_API_ENDPOINT or WATI_ACCESS_TOKEN not set" };
+
+  const headers = {
+    Authorization: `Bearer ${token.replace(/^Bearer\s+/i, "")}`,
+    "Content-Type": "application/json",
+  };
+
+  // 1. addContact — source=handbook. NO "consent" attribute (double-send rule).
+  try {
+    const cRes = await fetch(`${endpoint}/api/v1/addContact/${to}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name: contactName, customParams: [{ name: "source", value: "handbook" }] }),
+    });
+    const cData = (await cRes.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!cRes.ok || cData.result === false) {
+      console.error(`[whatsapp] handbook addContact non-fatal fail ****${to.slice(-4)}: ${cRes.status} ${JSON.stringify(cData)}`);
+    }
+  } catch (e) {
+    console.error(`[whatsapp] handbook addContact error ****${to.slice(-4)}:`, (e as Error).message);
+  }
+
+  // 2. sendTemplateMessage — handbook_send, one body param `name`; static-URL button → no button param.
+  const body = {
+    template_name: "handbook_send",
+    broadcast_name: "handbook_send",
+    parameters: [{ name: "name", value: firstName || "there" }],
+  };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const res = await fetch(`${endpoint}/api/v1/sendTemplateMessage?whatsappNumber=${to}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok || data.result === false) {
+      return { ok: false, error: `WATI sendTemplateMessage ${res.status}: ${JSON.stringify(data)}` };
+    }
+    console.log("[whatsapp] WATI handbook sent to", to, JSON.stringify(data));
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { ok: false, error: "WATI sendTemplateMessage timed out after 8s" };
+    }
+    return { ok: false, error: (err as Error).message };
+  } finally {
+    clearTimeout(timer);
   }
 }
