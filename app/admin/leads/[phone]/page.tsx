@@ -3,9 +3,9 @@
 
 import { getSql } from "@/lib/db/client";
 import { normalizePhone } from "@/lib/phone";
-import { fetchLeadSources } from "@/lib/leads/fetch";
+import { fetchLeadSources, fetchInternalPhones } from "@/lib/leads/fetch";
 import { mergeLeads, CHANNEL_LABEL, type Lead, type AssessmentRow, type WaContactRow } from "@/lib/leads/merge";
-import { C, BG, MONO, Badge, UrgentStatus, timeAgo, rupees } from "../ui";
+import { C, BG, MONO, Badge, UrgentStatus, SafetyStatus, timeAgo, rupees } from "../ui";
 import MarkHandledButton from "./MarkHandledButton";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +37,7 @@ const WA_TITLES: Record<string, { title: string; urgent?: boolean }> = {
   ad_click: { title: "Tapped a Click-to-WhatsApp ad" },
   inbound: { title: "Inbound WhatsApp message" },
   handoff: { title: "Handed to a human", urgent: true },
-  handled: { title: "Marked handled by a human" },
+  handled: { title: "Marked handled" },
 };
 
 export default async function LeadDetailPage({ params }: { params: Promise<{ phone: string }> }) {
@@ -49,8 +49,8 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ pho
   }
 
   const sql = getSql();
-  const sources = await fetchLeadSources(sql);
-  const lead: Lead | undefined = mergeLeads(sources).find((l) => l.phone === phone);
+  const [sources, internalPhones] = await Promise.all([fetchLeadSources(sql), fetchInternalPhones(sql)]);
+  const lead: Lead | undefined = mergeLeads(sources, internalPhones).find((l) => l.phone === phone);
 
   const myAssessments: AssessmentRow[] = sources.assessments.filter((a) => normalizePhone(a.phone) === phone);
   const waContact: WaContactRow | undefined = sources.waContacts.find((w) => normalizePhone(w.phone) === phone);
@@ -149,10 +149,19 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ pho
         {/* Side panels */}
         <aside style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {lead.needsHuman && (
-            <section aria-label="Next action" style={{ background: `${C.yellow}12`, border: `1px solid ${C.yellow}55`, borderRadius: 12, padding: "16px 18px" }}>
-              <h2 style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700 }}>Needs your reply</h2>
+            <section
+              aria-label="Next action"
+              style={{
+                background: lead.statusSeverity === "safety" ? `${C.red}14` : `${C.yellow}12`,
+                border: `1px solid ${lead.statusSeverity === "safety" ? C.red : C.yellow}66`,
+                borderRadius: 12, padding: "16px 18px",
+              }}
+            >
+              <h2 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700 }}>
+                {lead.statusSeverity === "safety" ? <SafetyStatus text={lead.status} /> : <UrgentStatus text={lead.status} />}
+              </h2>
               <p style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.5, color: C.text }}>
-                {lead.status} {lead.needsHumanAt ? timeAgo(lead.needsHumanAt) : ""}. Assistant stopped replying.
+                Needs your reply{lead.needsHumanAt ? ` — raised ${timeAgo(lead.needsHumanAt)}` : ""}. Assistant stopped replying.
               </p>
               <MarkHandledButton phone={lead.phone} />
             </section>
@@ -181,9 +190,6 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ pho
             <Row label="Campaign / ad" value={lead.campaignAd ?? "—"} mono={!!lead.campaignAd} />
           </section>
 
-          {lead.statusUrgent && (
-            <div><UrgentStatus text={lead.status} /></div>
-          )}
         </aside>
       </div>
     </Shell>

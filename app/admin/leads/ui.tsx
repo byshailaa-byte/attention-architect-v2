@@ -78,6 +78,29 @@ export function UrgentStatus({ text }: { text: string }) {
   );
 }
 
+// Safety flags get the most prominent treatment: solid red, uppercased.
+export function SafetyStatus({ text }: { text: string }) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        fontFamily: MONO,
+        fontSize: 11,
+        fontWeight: 800,
+        color: "#fff",
+        background: "#B91C1C",
+        borderRadius: 10,
+        padding: "3px 10px",
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
 export function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, ...style }}>

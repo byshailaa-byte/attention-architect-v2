@@ -6,7 +6,7 @@
 // channel, and hands a plain array to the client view.
 
 import { getSql } from "@/lib/db/client";
-import { fetchLeadSources } from "@/lib/leads/fetch";
+import { fetchLeadSources, fetchInternalPhones } from "@/lib/leads/fetch";
 import { mergeLeads, type Lead, type Channel } from "@/lib/leads/merge";
 import LeadsView from "./LeadsView";
 
@@ -40,8 +40,8 @@ export default async function AdminLeadsPage({
   let error: string | null = null;
   try {
     const sql = getSql();
-    const sources = await fetchLeadSources(sql);
-    const all = mergeLeads(sources);
+    const [sources, internalPhones] = await Promise.all([fetchLeadSources(sql), fetchInternalPhones(sql)]);
+    const all = mergeLeads(sources, internalPhones);
     // Period filter: leads with activity inside the window.
     leads = all.filter((l) => {
       const t = new Date(l.lastActivityAt).getTime();

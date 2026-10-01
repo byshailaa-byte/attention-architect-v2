@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   mergeLeads,
+  reasonToStatus,
   type AssessmentRow,
   type HandbookRow,
   type WaContactRow,
@@ -113,5 +114,46 @@ describe("mergeLeads", () => {
     expect(leads[0].furthestRank).toBe(6);
     expect(leads[0].status).toBe("Customer");
     expect(leads[0].amountPaise).toBe(499900);
+  });
+
+  it("merge: an internal phone appearing only in handbook_leads and wa_contacts is excluded", () => {
+    const INTERNAL = "9998887776";
+    const leads = mergeLeads(
+      {
+        ...EMPTY,
+        assessments: [assessment({ phone: "9876543210" })], // a normal lead
+        handbook: [{ id: 9, phone: INTERNAL, name: "Staff", age_band: "6-7", wa_sent: true, created_at: "2026-09-29T10:00:00.000Z" }],
+        waContacts: [waContact({ phone: "+91" + INTERNAL, first_seen_at: "2026-09-20T00:00:00.000Z", last_seen_at: "2026-09-20T00:00:00.000Z" })],
+      },
+      [INTERNAL], // internal set (10-digit; mergeLeads normalizes)
+    );
+    // Only the internal person is dropped — the normal lead survives.
+    expect(leads).toHaveLength(1);
+    expect(leads[0].phone).toBe("+919876543210");
+    expect(leads.some((l) => l.phone === "+91" + INTERNAL)).toBe(false);
+  });
+});
+
+describe("reasonToStatus — one label per needs_human reason group", () => {
+  it("refund → Refund", () => {
+    expect(reasonToStatus("refund")).toBe("Refund");
+  });
+  it("payment / paid / not received → Payment issue", () => {
+    for (const w of ["payment", "paid", "not received"]) expect(reasonToStatus(w)).toBe("Payment issue");
+  });
+  it("talk to / call me / speak to / a person / real person / human → Asked for a person", () => {
+    for (const w of ["talk to", "call me", "speak to", "a person", "real person", "human"]) {
+      expect(reasonToStatus(w)).toBe("Asked for a person");
+    }
+  });
+  it("doctor / medicine / medication / adhd / autism → Medical question", () => {
+    for (const w of ["doctor", "medicine", "medication", "adhd", "autism"]) expect(reasonToStatus(w)).toBe("Medical question");
+  });
+  it("suicide / kill / hurt / abuse / beat / harm → Safety — reply now", () => {
+    for (const w of ["suicide", "kill", "hurt", "abuse", "beat", "harm"]) expect(reasonToStatus(w)).toBe("Safety — reply now");
+  });
+  it("unknown / null → Needs reply", () => {
+    expect(reasonToStatus("gibberish")).toBe("Needs reply");
+    expect(reasonToStatus(null)).toBe("Needs reply");
   });
 });

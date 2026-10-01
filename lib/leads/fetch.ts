@@ -124,6 +124,24 @@ export async function fetchPurchases(sql: SqlFn): Promise<PurchaseRow[]> {
   }));
 }
 
+// Internal-exclusion inputs: normalizePhone() of every is_internal assessment
+// phone, plus the optional comma-separated INTERNAL_PHONES env var. Returned raw
+// (unnormalized) — mergeLeads() normalizes. NB: fetchAssessments already drops
+// is_internal rows, so this is what lets us also drop an internal person who
+// shows up only via handbook_leads / wa_contacts / purchases.
+export function parseInternalPhonesEnv(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+export async function fetchInternalPhones(sql: SqlFn): Promise<string[]> {
+  const rows = (await sql`
+    SELECT phone FROM assessments WHERE is_internal = true AND phone IS NOT NULL
+  `) as Record<string, unknown>[];
+  const dbPhones = rows.map((r) => String(r.phone));
+  return [...dbPhones, ...parseInternalPhonesEnv(process.env.INTERNAL_PHONES)];
+}
+
 // Convenience: run all four and return the merge input.
 export async function fetchLeadSources(sql: SqlFn) {
   const [assessments, handbook, waContacts, purchases] = await Promise.all([

@@ -124,6 +124,7 @@ export type Lead = {
   needsHumanAt: string | null;
   status: string;
   statusUrgent: boolean;
+  statusSeverity: "safety" | "urgent" | "none";
   amountPaise: number | null;
   sessionId: string | null;        // latest assessment session, for the report link
   mergedFrom: { assessments: number; handbook: number; waContact: boolean; purchases: number };
@@ -141,23 +142,42 @@ type Acc = {
 const maxISO = (a: string | null, b: string | null): string | null =>
   !a ? b : !b ? a : a >= b ? a : b;
 
-// needs_human reason → the dark-orange Status label (see the Leads list legend).
-const PAYMENT_WORDS = ["refund", "paid", "payment", "money", "not received"];
-const PERSON_WORDS = ["a person", "real person", "person", "human", "talk to", "call me", "speak to"];
-const SAFETY_WORDS = ["doctor", "medicine", "medication", "adhd", "autism", "suicide", "kill", "hurt", "abuse", "beat", "harm"];
+// needs_human reason → the Status label (see the Leads list legend). Safety is
+// checked first and is the most prominent style; refund is distinct from other
+// payment issues.
+const SAFETY_WORDS = ["suicide", "kill", "hurt", "abuse", "beat", "harm"];
+const REFUND_WORDS = ["refund"];
+const PAYMENT_WORDS = ["payment", "paid", "not received", "money"];
+const PERSON_WORDS = ["talk to", "call me", "speak to", "a person", "real person", "human", "person"];
+const MEDICAL_WORDS = ["doctor", "medicine", "medication", "adhd", "autism"];
+
+export function isSafetyReason(reason: string | null): boolean {
+  if (!reason) return false;
+  const r = reason.toLowerCase();
+  return SAFETY_WORDS.some((w) => r.includes(w));
+}
 
 export function reasonToStatus(reason: string | null): string {
   if (!reason) return "Needs reply";
   const r = reason.toLowerCase();
+  if (SAFETY_WORDS.some((w) => r.includes(w))) return "Safety — reply now";
+  if (REFUND_WORDS.some((w) => r.includes(w))) return "Refund";
   if (PAYMENT_WORDS.some((w) => r.includes(w))) return "Payment issue";
   if (PERSON_WORDS.some((w) => r.includes(w))) return "Asked for a person";
-  if (SAFETY_WORDS.some((w) => r.includes(w))) return "Safety flag";
+  if (MEDICAL_WORDS.some((w) => r.includes(w))) return "Medical question";
   return "Needs reply";
 }
 
 // ── Merge ──────────────────────────────────────────────────────────────────────
 
-export function mergeLeads(src: LeadSources): Lead[] {
+export function mergeLeads(src: LeadSources, internalPhones: Iterable<string> = []): Lead[] {
+  // Internal-exclusion set: normalized phones to drop from EVERY source.
+  const internal = new Set<string>();
+  for (const p of internalPhones) {
+    const n = normalizePhone(p);
+    if (n) internal.add(n);
+  }
+
   const byPhone = new Map<string, Acc>();
   const acc = (phone: string): Acc => {
     let a = byPhone.get(phone);
@@ -188,6 +208,7 @@ export function mergeLeads(src: LeadSources): Lead[] {
 
   const leads: Lead[] = [];
   for (const [phone, a] of byPhone) {
+    if (internal.has(phone)) continue; // internal: drop regardless of which source it came from
     leads.push(buildLead(phone, a));
   }
   // Default order: most recent activity first.
@@ -252,9 +273,11 @@ function buildLead(phone: string, a: Acc): Lead {
 
   let status = "—";
   let statusUrgent = false;
+  let statusSeverity: "safety" | "urgent" | "none" = "none";
   if (needsHuman) {
     status = reasonToStatus(needsHumanReason);
     statusUrgent = true;
+    statusSeverity = isSafetyReason(needsHumanReason) ? "safety" : "urgent";
   } else if (paid) {
     status = "Customer";
   }
@@ -287,6 +310,7 @@ function buildLead(phone: string, a: Acc): Lead {
     needsHumanAt,
     status,
     statusUrgent,
+    statusSeverity,
     amountPaise,
     sessionId: latestAssessment?.session_id ?? null,
     mergedFrom: {

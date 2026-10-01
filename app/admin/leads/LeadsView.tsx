@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { maskPhone } from "@/lib/phone";
 import { CHANNEL_LABEL, type Channel, type Lead } from "@/lib/leads/merge";
 import type { SourceCounts } from "./page";
-import { C, BG, MONO, Badge, ChannelBadge, UrgentStatus, timeAgo, rupees } from "./ui";
+import { C, BG, MONO, Badge, ChannelBadge, UrgentStatus, SafetyStatus, timeAgo, rupees } from "./ui";
 
 type ChipKey = "all" | Channel;
 
@@ -195,7 +195,8 @@ export default function LeadsView({
                 </td>
                 <td style={{ ...TD, color: C.muted }}>{timeAgo(l.lastActivityAt)}</td>
                 <td style={TD}>
-                  {l.statusUrgent ? <UrgentStatus text={l.status} />
+                  {l.statusSeverity === "safety" ? <SafetyStatus text={l.status} />
+                    : l.statusSeverity === "urgent" ? <UrgentStatus text={l.status} />
                     : l.status === "Customer" ? <Badge text="Customer" color={C.green} />
                     : <span style={{ color: C.muted }}>—</span>}
                 </td>
