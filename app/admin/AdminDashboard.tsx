@@ -1088,6 +1088,18 @@ export default function AdminDashboard({
           {/* External tools */}
           <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 8, paddingTop: 8 }}>
             <a
+              href="/admin/leads"
+              style={{
+                display: "flex", alignItems: "center", width: "100%", textAlign: "left",
+                background: "none", borderRadius: 6, color: C.muted,
+                fontFamily: MONO, fontSize: 12, padding: "9px 12px",
+                textDecoration: "none", marginBottom: 2, letterSpacing: "0.04em",
+              }}
+            >
+              Leads
+              <span style={{ fontSize: 9, fontWeight: 700, marginLeft: 6, padding: "1px 5px", borderRadius: 8, background: C.yellow, color: "#000", letterSpacing: "0.06em" }}>NEW</span>
+            </a>
+            <a
               href="/admin/lms-user"
               style={{
                 display: "block", width: "100%", textAlign: "left",
