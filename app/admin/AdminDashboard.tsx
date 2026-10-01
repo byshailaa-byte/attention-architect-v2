@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { normalizePhone } from "@/lib/phone";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
@@ -857,6 +858,34 @@ export default function AdminDashboard({
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Handbook backfill: N = queued rows whose phone is actually sendable.
+  const queuedHandbookCount = useMemo(
+    () => handbookLeads.filter(l => !l.wa_sent && normalizePhone(l.phone) !== null).length,
+    [handbookLeads],
+  );
+  const [sendingQueued, setSendingQueued] = useState(false);
+  const [queuedResult, setQueuedResult] = useState<string | null>(null);
+
+  async function sendQueuedHandbooks() {
+    if (sendingQueued) return;
+    if (!window.confirm(`Send the handbook to ${queuedHandbookCount} queued number${queuedHandbookCount === 1 ? "" : "s"}? This sends real WhatsApp messages.`)) return;
+    setSendingQueued(true);
+    setQueuedResult(null);
+    try {
+      const res = await fetch("/api/admin/handbook/send-queued", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setQueuedResult(`Error: ${data.error ?? res.status}`);
+        return;
+      }
+      setQueuedResult(`sent ${data.sent} · failed ${data.failed} · invalid ${data.invalid} · duplicates ${data.skipped_duplicates} — refresh to update`);
+    } catch {
+      setQueuedResult("Something went wrong, please try again.");
+    } finally {
+      setSendingQueued(false);
+    }
+  }
+
   function handleNav(section: Section) {
     setActive(section);
     if (isMobile) setSidebarOpen(false);
@@ -1691,12 +1720,28 @@ export default function AdminDashboard({
                 <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No submissions yet.</p>
               ) : (
                 <>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
                     <SectionLabel>
                       {handbookLeads.length} submission{handbookLeads.length !== 1 ? "s" : ""} ·{" "}
                       {handbookLeads.filter(l => l.wa_sent).length} sent ·{" "}
                       {handbookLeads.filter(l => !l.wa_sent).length} queued
                     </SectionLabel>
+                    {queuedHandbookCount > 0 && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        {queuedResult && <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>{queuedResult}</span>}
+                        <button
+                          onClick={sendQueuedHandbooks}
+                          disabled={sendingQueued}
+                          style={{
+                            background: C.yellow, color: "#000", border: "none", borderRadius: 6,
+                            fontFamily: MONO, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
+                            padding: "9px 14px", cursor: sendingQueued ? "default" : "pointer", opacity: sendingQueued ? 0.6 : 1,
+                          }}
+                        >
+                          {sendingQueued ? "Sending…" : `Send handbook to queued (${queuedHandbookCount})`}
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
