@@ -121,6 +121,7 @@ export default function SimplifiedStart() {
   const [oobPhone, setOobPhone]           = useState("");
   const [oobSubmitting, setOobSubmitting] = useState(false);
   const [oobResult, setOobResult]         = useState<{ wa_sent: boolean } | null>(null);
+  const [oobError, setOobError]           = useState<string | null>(null);
 
   useEffect(() => { captureUtmOnce(); }, []);
 
@@ -150,11 +151,28 @@ export default function SimplifiedStart() {
     setOobPhone("");
     setOobSubmitting(false);
     setOobResult(null);
+    setOobError(null);
     fireGtag("age_out_of_band", { age_band: band });
   }
 
+  // Mirror of the server's acceptance: strip +91 / 91 / spaces, then require
+  // exactly 10 digits starting 6–9.
+  function isValidMobile(raw: string): boolean {
+    let d = raw.replace(/\D/g, "");
+    if (d.length === 12 && d.startsWith("91")) d = d.slice(2);
+    return /^[6-9]\d{9}$/.test(d);
+  }
+
   async function submitOobPopup() {
-    if (!oobName.trim() || !oobPhone.trim() || !oobPopup) return;
+    if (!oobName.trim() || !oobPhone.trim() || !oobPopup || oobSubmitting) return;
+
+    // Client-side guard: don't even submit an obviously-invalid number.
+    if (!isValidMobile(oobPhone)) {
+      setOobError("Please enter a valid 10-digit mobile number");
+      return;
+    }
+
+    setOobError(null);
     setOobSubmitting(true);
     try {
       const res = await fetch("/api/handbook-lead", {
@@ -162,10 +180,16 @@ export default function SimplifiedStart() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: oobName.trim(), phone: oobPhone.trim(), ageBand: oobPopup, variant: "simplified" }),
       });
+      if (!res.ok) {
+        // Keep the form open, show the server's message inline — NO success state.
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        setOobError(data.error || "Please enter a valid 10-digit mobile number");
+        return;
+      }
       const data = await res.json().catch(() => ({})) as { wa_sent?: boolean };
       setOobResult({ wa_sent: data.wa_sent ?? false });
     } catch {
-      setOobResult({ wa_sent: false });
+      setOobError("Something went wrong, please try again.");
     } finally {
       setOobSubmitting(false);
     }
@@ -226,9 +250,15 @@ export default function SimplifiedStart() {
                 type="tel"
                 placeholder="WhatsApp number"
                 value={oobPhone}
-                onChange={(e) => setOobPhone(e.target.value)}
-                style={{ border: "1.5px solid var(--line)", borderRadius: "10px", padding: "12px 14px", fontSize: "14.5px", fontFamily: "inherit", color: "var(--ink)", background: "var(--paper)", outline: "none", width: "100%", boxSizing: "border-box" }}
+                onChange={(e) => { setOobPhone(e.target.value); if (oobError) setOobError(null); }}
+                aria-invalid={oobError ? true : undefined}
+                style={{ border: `1.5px solid ${oobError ? "#c0392b" : "var(--line)"}`, borderRadius: "10px", padding: "12px 14px", fontSize: "14.5px", fontFamily: "inherit", color: "var(--ink)", background: "var(--paper)", outline: "none", width: "100%", boxSizing: "border-box" }}
               />
+              {oobError && (
+                <p role="alert" style={{ margin: "-2px 2px 0", fontSize: "13px", color: "#c0392b", lineHeight: 1.5 }}>
+                  {oobError}
+                </p>
+              )}
             </div>
             <button
               onClick={submitOobPopup}
@@ -254,7 +284,7 @@ export default function SimplifiedStart() {
             <p style={{ fontSize: "14px", color: "var(--ink-dim)", lineHeight: 1.6 }}>
               {oobResult.wa_sent
                 ? "Check your WhatsApp — the link is on its way."
-                : "We'll send you the Attention Handbook on WhatsApp in 1–2 days, once our messaging setup is live."}
+                : "Check WhatsApp — your Attention Handbook is on its way. It usually arrives within a minute."}
             </p>
             <button
               onClick={() => setOobPopup(null)}
