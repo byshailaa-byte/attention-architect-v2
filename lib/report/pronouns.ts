@@ -37,11 +37,26 @@ export function resolveChildPronoun(gender: Gender, form: PronounForm): string {
   }
 }
 
-export function buildPronounTokens(gender: Gender): Record<string, string> {
+// Pronoun tokens for content substitution.
+// boy/girl → he/him/his/himself or she/her/her/herself.
+// Anything else (null, non-binary, prefer-not-to-say) → the child's DISPLAY NAME
+// instead of they/them, so singular verb agreement always reads correctly
+// ("Shailaa wanders", "Shailaa is", "Shailaa's choice"); reflexive stays
+// "themself". childName should be the already-display-cased name.
+export function buildPronounTokens(gender: Gender, childName?: string): Record<string, string> {
+  if (gender === "boy" || gender === "girl") {
+    return {
+      child_pronoun_subj:      resolveChildPronoun(gender, "subj"),
+      child_pronoun_obj:       resolveChildPronoun(gender, "obj"),
+      child_pronoun_poss:      resolveChildPronoun(gender, "poss"),
+      child_pronoun_reflexive: resolveChildPronoun(gender, "reflexive"),
+    };
+  }
+  const name = (childName ?? "").trim() || CHILD_NAME_FALLBACK_MID;
   return {
-    child_pronoun_subj:      resolveChildPronoun(gender, "subj"),
-    child_pronoun_obj:       resolveChildPronoun(gender, "obj"),
-    child_pronoun_poss:      resolveChildPronoun(gender, "poss"),
-    child_pronoun_reflexive: resolveChildPronoun(gender, "reflexive"),
+    child_pronoun_subj:      name,          // "Shailaa wanders" (singular)
+    child_pronoun_obj:       name,          // "…helps Shailaa"
+    child_pronoun_poss:      `${name}'s`,   // "Shailaa's choice"
+    child_pronoun_reflexive: "themself",
   };
 }

@@ -127,7 +127,7 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
   const tokens: Record<string, string> = {
     child_name: childName,
     name: parentName,
-    ...buildPronounTokens(a.child_gender as Gender),
+    ...buildPronounTokens(a.child_gender as Gender, childName),
   };
 
   function fill(text: string): string {

@@ -15,7 +15,7 @@ export default async function OnboardingPage() {
 
   // Recap = the exact field the free report shows under "This pattern has a name"
   // (ArchetypeContent.s2Anecdote / ProfileView `anecdote`), filled the same way.
-  const recap = fillTokens(archC.s2Anecdote, { ...buildPronounTokens(ctx.childGender), child_name: childName });
+  const recap = fillTokens(archC.s2Anecdote, { ...buildPronounTokens(ctx.childGender, childName), child_name: childName });
 
   return (
     <V2Onboarding

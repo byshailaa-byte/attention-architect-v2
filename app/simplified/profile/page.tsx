@@ -81,7 +81,7 @@ export default async function ProfilePage({
   const pattC = patternContent[parentPattern] ?? patternContent["The Pusher"];
   const fitC  = fitContent[`${archetype}|${parentPattern}`] ?? { fitReveal: "" };
 
-  const pronouns     = buildPronounTokens(gender);
+  const pronouns     = buildPronounTokens(gender, childName);
   const baseTokens   = { ...pronouns, child_name: childName };
   // s4ReframeClose may itself contain pronoun tokens — fill those before using it as a substitution value.
   const reframeClose = fillTokens(archC.s4ReframeClose, baseTokens);

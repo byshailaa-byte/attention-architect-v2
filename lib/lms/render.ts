@@ -126,7 +126,7 @@ function inlineMarkdown(text: string): string {
 export function fillLmsContent(text: string, childName: string, childGender: Gender): string {
   const tokens: Record<string, string> = {
     child_name: childName,
-    ...buildPronounTokens(childGender),
+    ...buildPronounTokens(childGender, childName),
   };
   return text.replace(/\{\{(\w+)(?:\|(\w+))?\}\}/g, (match, key, modifier) => {
     const value = tokens[key] ?? match;
