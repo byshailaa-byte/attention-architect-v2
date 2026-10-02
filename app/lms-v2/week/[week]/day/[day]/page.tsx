@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLmsUserContext } from "@/lib/lms/user-context";
 import { getLmsWeekContent, getDayCard } from "@/lib/lms/content";
-import { getUserProgress, isDayUnlocked } from "@/lib/lms/progress";
+import { getUserProgress, isDayUnlocked, UNLOCK_DELAY_MS } from "@/lib/lms/progress";
 import { renderMarkdown, fillLmsContent } from "@/lib/lms/render";
 import type { ReflectionOutcome } from "@/content/types";
 import { getSql } from "@/lib/db/client";
@@ -49,7 +49,7 @@ export default async function DayPage({ params }: { params: Promise<{ week: stri
   }
 
   const nextHref = day === 5 ? `/lms-v2/week/${week}/weekend` : `/lms-v2/week/${week}/day/${day + 1}`;
-  const unlockHint = day === 5 ? "The weekend review unlocks tomorrow" : `Day ${day + 1} unlocks tomorrow evening`;
+  const nextLabel = day === 5 ? "Back to the week" : `Next: Day ${day + 1} →`;
 
   const Header = (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "14px 22px 0" }}>
@@ -62,13 +62,17 @@ export default async function DayPage({ params }: { params: Promise<{ week: stri
   );
 
   if (!unlocked) {
+    // Real unlock time from the 24h rule, in IST: previous day's completion + 24h.
+    const prereqProg = day === 1 ? prevWeekProgress : progress;
+    const prereqDay = day === 1 ? 5 : day - 1;
+    const prereqTime = prereqProg?.completionTimes.get(prereqDay);
     return (
       <div style={{ fontFamily: BODY, color: V2.navy, minHeight: "100dvh", background: V2.cream }}>
         {Header}
         <div style={{ padding: "40px 22px" }}>
           <div style={{ background: V2.white, border: `1px solid ${V2.line}`, borderRadius: 18, padding: 24, textAlign: "center" }}>
             <p style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700 }}>Day {day} isn&rsquo;t available yet</p>
-            <p style={{ margin: "0 0 16px", fontSize: 14, color: V2.dim }}>Each day unlocks about a day after the last one.</p>
+            <p style={{ margin: "0 0 16px", fontSize: 14, color: V2.dim }}>{unlockLine(day, prereqTime, now)}</p>
             <Link href={`/lms-v2/week/${week}`} style={{ display: "inline-block", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600, background: V2.navy, color: V2.white, textDecoration: "none" }}>Back to the week</Link>
           </div>
         </div>
@@ -92,13 +96,26 @@ export default async function DayPage({ params }: { params: Promise<{ week: stri
         <V2DayActions
           week={week}
           day={day}
-          reflectionPrompt={dayCard.reflection?.prompt ?? null}
+          reflectionPrompt={dayCard.reflection ? "How did it go?" : null}
           alreadyComplete={alreadyComplete}
           existingReflection={existingReflection}
           nextHref={nextHref}
-          unlockHint={unlockHint}
+          nextLabel={nextLabel}
         />
       </div>
     </div>
   );
+}
+
+// "Day 3 unlocks tomorrow at 9:40 pm" — real 24h-rule time, in IST.
+function unlockLine(day: number, prereqTime: Date | undefined, now: Date): string {
+  if (!prereqTime) return `Day ${day} unlocks once the previous day is complete.`;
+  const unlockAt = new Date(prereqTime.getTime() + UNLOCK_DELAY_MS);
+  const istDay = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  const time = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true }).format(unlockAt).toLowerCase();
+  const today = istDay(now);
+  const tomorrow = istDay(new Date(now.getTime() + 86_400_000));
+  const u = istDay(unlockAt);
+  const when = u === today ? "today" : u === tomorrow ? "tomorrow" : `on ${new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(unlockAt)}`;
+  return `Day ${day} unlocks ${when} at ${time}.`;
 }

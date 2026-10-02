@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ReflectionOutcome } from "@/content/types";
-import { V2, BODY, OUTCOMES } from "@/app/lms-v2/v2ui";
+import { V2, BODY, OUTCOMES, OUTCOME_LABEL } from "@/app/lms-v2/v2ui";
 
 export default function V2DayActions({
   week,
@@ -12,15 +12,15 @@ export default function V2DayActions({
   alreadyComplete,
   existingReflection,
   nextHref,
-  unlockHint,
+  nextLabel,
 }: {
   week: number;
   day: number;
-  reflectionPrompt: string | null;
+  reflectionPrompt: string | null; // null = Day 1 (observe only)
   alreadyComplete: boolean;
   existingReflection: ReflectionOutcome | null;
   nextHref: string;
-  unlockHint: string;
+  nextLabel: string;
 }) {
   const router = useRouter();
   const needsReflection = reflectionPrompt !== null; // days 2–5
@@ -59,6 +59,24 @@ export default function V2DayActions({
     }
   }
 
+  // ── Completed state (E4): saved record + "Done ✓" + "Next" — never an unlock line.
+  if (alreadyComplete) {
+    return (
+      <>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: V2.tintGreen, border: `1px solid rgba(47,93,58,0.3)`, borderRadius: 14, padding: "14px 18px" }}>
+          <span style={{ fontSize: 18, color: V2.green, fontWeight: 800 }}>✓</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: V2.greenInk }}>
+            Done{existingReflection ? ` · you recorded "${OUTCOME_LABEL[existingReflection]}"` : ""}
+          </span>
+        </div>
+        <button type="button" onClick={() => router.push(nextHref)}
+          style={{ minHeight: 52, borderRadius: 12, border: 0, background: V2.navy, color: V2.white, font: "inherit", fontFamily: BODY, fontSize: 16, fontWeight: 600, cursor: "pointer" }}>
+          {nextLabel}
+        </button>
+      </>
+    );
+  }
+
   const ready = !needsReflection || !!selected;
 
   return (
@@ -88,9 +106,8 @@ export default function V2DayActions({
 
       <button type="button" onClick={done} disabled={busy || !ready}
         style={{ minHeight: 52, borderRadius: 12, border: 0, background: V2.navy, color: V2.white, font: "inherit", fontFamily: BODY, fontSize: 16, fontWeight: 600, cursor: busy || !ready ? "default" : "pointer", opacity: busy || !ready ? 0.55 : 1 }}>
-        {busy ? "Saving…" : alreadyComplete ? "Continue" : "Done for today"}
+        {busy ? "Saving…" : "Done for today"}
       </button>
-      <p style={{ margin: 0, textAlign: "center", fontSize: 13, color: V2.dim }}>{unlockHint}</p>
     </>
   );
 }

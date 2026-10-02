@@ -105,11 +105,12 @@ export default async function LmsV2Home() {
           {weeks.map((ws) => {
             const title = WEEK_TITLES[ws.week] ?? `Week ${ws.week}`;
             const isNow = ws.week === currentWeek;
+            const done = ws.weekendDone; // week fully complete once the weekend review is recorded (E3)
             const inner = (
               <>
-                <span style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700, background: isNow ? V2.gold : "transparent", color: isNow ? V2.navy : V2.dim2, border: isNow ? "none" : "1px solid #CFC6B4" }}>{ws.week}</span>
+                <span style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700, background: done ? V2.tintGreen : isNow ? V2.gold : "transparent", color: done ? V2.green : isNow ? V2.navy : V2.dim2, border: done || isNow ? "none" : "1px solid #CFC6B4" }}>{done ? "✓" : ws.week}</span>
                 <span style={{ flexGrow: 1, fontSize: 15, fontWeight: isNow ? 600 : 400 }}>{title}</span>
-                {isNow && <span style={{ fontSize: 12, fontWeight: 700, color: V2.darkGold }}>NOW</span>}
+                {isNow && !done && <span style={{ fontSize: 12, fontWeight: 700, color: V2.darkGold }}>NOW</span>}
               </>
             );
             const base: React.CSSProperties = { display: "flex", gap: 12, alignItems: "center", borderRadius: 12, padding: 12, minHeight: 52, textDecoration: "none" };

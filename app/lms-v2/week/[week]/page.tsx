@@ -38,15 +38,20 @@ export default async function WeekOverview({ params }: { params: Promise<{ week:
   if (!content) notFound();
 
   const now = new Date();
-  const [prog, prevProg, totalRows] = await Promise.all([
+  const [prog, prevProg, totalRows, readRows] = await Promise.all([
     getUserProgress(ctx.userId, week),
     week > 1 ? getUserProgress(ctx.userId, week - 1) : Promise.resolve(null),
     getSql()`SELECT COUNT(*)::int AS cnt FROM lms_progress WHERE user_id = ${ctx.userId} AND day BETWEEN 1 AND 5` as unknown as Promise<{ cnt: number }[]>,
+    getSql()`SELECT module FROM lms_module_reads WHERE user_id = ${ctx.userId} AND week = ${week}` as unknown as Promise<{ module: number }[]>,
   ]);
   const totalCompleted = totalRows[0]?.cnt ?? 0;
+  const readModules = new Set(readRows.map((r) => r.module));
 
   const fill = (s: string) => fillLmsContent(s, ctx.childName, ctx.childGender);
   const modules = buildModules(content, ctx.ageBand);
+  // Gold "start here" highlight goes on the first UNREAD module (none if all read).
+  const firstUnreadIdx = modules.findIndex((m) => !readModules.has(m.index));
+  const weekendDone = prog.completedDays.has(0);
 
   const dayRows = [1, 2, 3, 4, 5].map((d) => ({
     day: d,
@@ -78,15 +83,19 @@ export default async function WeekOverview({ params }: { params: Promise<{ week:
         </div>
 
         <h2 style={{ margin: "6px 0 0", fontSize: 17, fontWeight: 700 }}>Read</h2>
-        {modules.map((m, i) => (
-          <Link key={m.index} href={`/lms-v2/week/${week}/module/${m.index}`} style={{ display: "flex", gap: 12, alignItems: "center", background: V2.white, border: `${i === 0 ? 1.5 : 1}px solid ${i === 0 ? V2.gold : V2.line}`, borderRadius: 14, padding: 10, minHeight: 76, textDecoration: "none", color: V2.navy }}>
-            <ModuleIcon i={i} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, flexGrow: 1 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.25 }}>{m.index}. {m.title}</div>
-              <div style={{ fontSize: 13, color: V2.dim }}>{m.timeRange}{i === 0 ? " · start here" : ""}</div>
-            </div>
-          </Link>
-        ))}
+        {modules.map((m, i) => {
+          const read = readModules.has(m.index);
+          const startHere = i === firstUnreadIdx; // first unread module
+          return (
+            <Link key={m.index} href={`/lms-v2/week/${week}/module/${m.index}`} style={{ display: "flex", gap: 12, alignItems: "center", background: V2.white, border: `${startHere ? 1.5 : 1}px solid ${startHere ? V2.gold : V2.line}`, borderRadius: 14, padding: 10, minHeight: 76, textDecoration: "none", color: V2.navy }}>
+              <ModuleIcon i={i} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, flexGrow: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.25 }}>{m.index}. {m.title}</div>
+                <div style={{ fontSize: 13, color: read ? V2.green : V2.dim }}>{read ? "✓ Read" : m.timeRange}{startHere ? " · start here" : ""}</div>
+              </div>
+            </Link>
+          );
+        })}
 
         <h2 style={{ margin: "10px 0 0", fontSize: 17, fontWeight: 700 }}>Do, one day at a time</h2>
         {dayRows.map((d) => {
@@ -105,7 +114,13 @@ export default async function WeekOverview({ params }: { params: Promise<{ week:
           );
         })}
 
-        {weekendUnlocked ? (
+        {weekendDone ? (
+          <Link href={`/lms-v2/week/${week}/weekend`} style={{ display: "flex", flexDirection: "column", gap: 3, background: V2.white, border: `1px solid ${V2.line}`, borderRadius: 14, padding: 12, textDecoration: "none", color: V2.navy }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: V2.green }}>RECORD · WEEKEND · DONE</div>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>Look back at your week</div>
+            <div style={{ fontSize: 13, color: V2.green }}>✓ Recorded — tap to review</div>
+          </Link>
+        ) : weekendUnlocked ? (
           <Link href={`/lms-v2/week/${week}/weekend`} style={{ display: "flex", flexDirection: "column", gap: 3, background: V2.white, border: `1px solid ${V2.line}`, borderRadius: 14, padding: 12, textDecoration: "none", color: V2.navy }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: V2.darkGold }}>RECORD · WEEKEND</div>
             <div style={{ fontSize: 15, fontWeight: 600 }}>Look back at your week</div>
