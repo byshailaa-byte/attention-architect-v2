@@ -3,17 +3,9 @@ import { getLmsUserContext } from "@/lib/lms/user-context";
 import { getSql } from "@/lib/db/client";
 import { getLmsWeekContent } from "@/lib/lms/content";
 import { SAY_BY_ARCHETYPE, NOT_THIS_BY_INSTINCT, WEEK6_SCRIPT } from "@/content/lms/what-to-say";
+import { WEEK_TITLES } from "@/lib/report/skills";
 
 const BG = `var(--font-bricolage),'Bricolage Grotesque',sans-serif`;
-
-const WEEK_TITLES: Record<number, string> = {
-  1: "Getting started without the push",
-  2: "Handling what pulls them away",
-  3: "Staying with it on an ordinary day",
-  4: "Coming back after a slip",
-  5: "Using it beyond homework",
-  6: "Running it themselves",
-};
 
 type WeekEntry = {
   week: number;

@@ -2,19 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { WEEK_TITLES } from "@/lib/report/skills";
 
 const BG = `'Bricolage Grotesque', system-ui, sans-serif`;
 const PP = `'Public Sans', 'Inter', system-ui, sans-serif`;
-
-// Week display names from mockup
-export const WEEK_NAMES: Record<number, string> = {
-  1: "One Real Instance",
-  2: "Screens, The Hard Case",
-  3: "Sustained Duration",
-  4: "When It Doesn't Go Well",
-  5: "With Other People Around",
-  6: "Making It Theirs",
-};
 
 export type WeekState = {
   week: number;
@@ -109,7 +100,7 @@ function WeekBlock({
       : { background: "var(--jm-paper2)", color: "var(--jm-ink-faint)" }),
   };
 
-  const weekName = WEEK_NAMES[ws.week] ?? `Week ${ws.week}`;
+  const weekName = WEEK_TITLES[ws.week] ?? `Week ${ws.week}`;
 
   let subtext = "";
   if (status === "done") subtext = "Complete · tap a day to review";
