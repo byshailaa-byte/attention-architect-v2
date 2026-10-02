@@ -24,12 +24,15 @@ export default function LoginForm({ redirectTo }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password }),
       });
+      const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        const data = await r.json().catch(() => ({}));
         setError((data as { error?: string }).error ?? "Login failed. Try again.");
         return;
       }
-      router.push(redirectTo);
+      // Default landing follows the user's LMS version; an explicit ?redirect= deep link wins.
+      const version = (data as { lms_version?: string }).lms_version;
+      const target = redirectTo && redirectTo !== "/lms" ? redirectTo : version === "v2" ? "/lms-v2" : "/lms";
+      router.push(target);
       router.refresh();
     } finally {
       setLoading(false);

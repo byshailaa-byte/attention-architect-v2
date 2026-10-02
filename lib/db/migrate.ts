@@ -826,6 +826,34 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_41_wa_leads') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 42 — users.lms_version routes customers between the v1 (/lms) and v2
+  // (/lms-v2) experiences. New column defaults to 'v2'; existing paying customers
+  // at migration time are pinned to 'v1' so their live experience never changes.
+  if (!applied.has("phase_42_lms_version")) {
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS lms_version TEXT CHECK (lms_version IN ('v1','v2')) DEFAULT 'v2'`;
+    await sql`
+      UPDATE users SET lms_version = 'v1'
+      WHERE EXISTS (SELECT 1 FROM purchases p WHERE p.user_id = users.id AND p.status = 'paid')
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_42_lms_version') ON CONFLICT DO NOTHING`;
+  }
+
+  // Phase 43 — lms_module_reads: one row per (user, week, module) when a v2
+  // reading module is opened. Unique so a re-open never double-counts.
+  if (!applied.has("phase_43_lms_module_reads")) {
+    await sql`
+      CREATE TABLE IF NOT EXISTS lms_module_reads (
+        id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id  UUID NOT NULL REFERENCES users(id),
+        week     INTEGER NOT NULL,
+        module   INTEGER NOT NULL CHECK (module BETWEEN 1 AND 4),
+        read_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE(user_id, week, module)
+      )
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_43_lms_module_reads') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 

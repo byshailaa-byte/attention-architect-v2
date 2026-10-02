@@ -36,7 +36,7 @@ export default function SetPasswordForm({ sessionId, email }: Props) {
         setError((data as { error?: string }).error ?? "Something went wrong. Try again.");
         return;
       }
-      router.push("/lms");
+      router.push((data as { lms_version?: string }).lms_version === "v2" ? "/lms-v2" : "/lms");
       router.refresh();
     } finally {
       setLoading(false);

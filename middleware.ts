@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionTokenEdge, COOKIE_NAME } from "@/lib/auth/session-edge";
+import { LMS_VER_COOKIE } from "@/lib/auth/lms-version-cookie";
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -58,6 +59,15 @@ export async function middleware(req: NextRequest) {
       loginUrl.pathname = "/lms/login";
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
+    }
+    // A v2 user who lands on the v1 app is sent to /lms-v2. Driven by the hint
+    // cookie, which is ONLY ever "v2" — v1 customers and legacy sessions have no
+    // cookie (or "v1"), so this never fires for them and /lms stays untouched.
+    if (req.cookies.get(LMS_VER_COOKIE)?.value === "v2") {
+      const v2 = req.nextUrl.clone();
+      v2.pathname = "/lms-v2";
+      v2.search = "";
+      return NextResponse.redirect(v2);
     }
     return NextResponse.next();
   }

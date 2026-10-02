@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserByEmail, verifyPassword } from "@/lib/auth/password";
 import { createSessionToken, COOKIE_NAME, COOKIE_OPTIONS } from "@/lib/auth/session";
+import { LMS_VER_COOKIE, LMS_VER_COOKIE_OPTIONS } from "@/lib/auth/lms-version-cookie";
+import { getSql } from "@/lib/db/client";
+import { getLmsVersion } from "@/lib/lms/lms-version";
 import { assertBootGuards } from "@/lib/boot-guard";
 
 assertBootGuards();
@@ -39,8 +42,10 @@ export async function POST(req: NextRequest) {
     }
 
     const token = createSessionToken(user.id);
-    const res = NextResponse.json({ ok: true });
+    const lmsVersion = await getLmsVersion(getSql(), user.id);
+    const res = NextResponse.json({ ok: true, lms_version: lmsVersion });
     res.cookies.set(COOKIE_NAME, token, COOKIE_OPTIONS);
+    res.cookies.set(LMS_VER_COOKIE, lmsVersion, LMS_VER_COOKIE_OPTIONS);
     return res;
   } catch (e) {
     console.error("[api/auth/login]", e);

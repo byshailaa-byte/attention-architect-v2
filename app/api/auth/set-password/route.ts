@@ -6,7 +6,20 @@ import {
   setUserPassword,
 } from "@/lib/auth/password";
 import { createSessionToken, COOKIE_NAME, COOKIE_OPTIONS } from "@/lib/auth/session";
+import { LMS_VER_COOKIE, LMS_VER_COOKIE_OPTIONS } from "@/lib/auth/lms-version-cookie";
+import { getLmsVersion } from "@/lib/lms/lms-version";
 import { assertBootGuards } from "@/lib/boot-guard";
+
+// Issues the session + lms_ver hint cookie and returns lms_version so the client
+// lands on the right experience. A freshly-set-password user has no paid-purchase
+// backfill applied to them unless they're an existing customer, so they default v2.
+function sessionResponse(userId: string, lmsVersion: "v1" | "v2") {
+  const token = createSessionToken(userId);
+  const res = NextResponse.json({ ok: true, lms_version: lmsVersion });
+  res.cookies.set(COOKIE_NAME, token, COOKIE_OPTIONS);
+  res.cookies.set(LMS_VER_COOKIE, lmsVersion, LMS_VER_COOKIE_OPTIONS);
+  return res;
+}
 
 assertBootGuards();
 
@@ -51,10 +64,7 @@ export async function POST(req: NextRequest) {
       }
       const userId = await upsertUserByEmail(email);
       await setUserPassword(userId, password);
-      const token = createSessionToken(userId);
-      const res = NextResponse.json({ ok: true });
-      res.cookies.set(COOKIE_NAME, token, COOKIE_OPTIONS);
-      return res;
+      return sessionResponse(userId, await getLmsVersion(sql, userId));
     }
 
     // Phone-only path: gated arm users captured without email.
@@ -86,10 +96,7 @@ export async function POST(req: NextRequest) {
     }
 
     await setUserPassword(userId, password);
-    const token = createSessionToken(userId);
-    const res = NextResponse.json({ ok: true });
-    res.cookies.set(COOKIE_NAME, token, COOKIE_OPTIONS);
-    return res;
+    return sessionResponse(userId, await getLmsVersion(sql, userId));
   } catch (e) {
     console.error("[api/auth/set-password]", e);
     return NextResponse.json({ error: "Failed to set password" }, { status: 500 });
