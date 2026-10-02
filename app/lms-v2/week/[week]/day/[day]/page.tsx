@@ -81,7 +81,7 @@ export default async function DayPage({ params }: { params: Promise<{ week: stri
       {Header}
       <div style={{ padding: "20px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
         {fork && (
-          <div style={{ background: V2.tintPurple, border: "1px solid #DDD3EE", borderRadius: 12, padding: "14px 18px", fontSize: 14, color: "#4A3470" }}>{fork}</div>
+          <div className="v2-prose" style={{ background: V2.tintPurple, border: "1px solid #DDD3EE", borderRadius: 12, padding: "14px 18px", fontSize: 14, color: "#4A3470" }} dangerouslySetInnerHTML={{ __html: renderMarkdown(fork) }} />
         )}
         <section style={{ background: V2.white, border: `1px solid ${V2.line}`, borderRadius: 18, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: V2.darkGold }}>{eyebrow}</div>

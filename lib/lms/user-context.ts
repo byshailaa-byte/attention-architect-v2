@@ -4,6 +4,7 @@ import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
 import { getSql } from "@/lib/db/client";
 import type { AgeBand } from "@/content/types";
 import type { Gender } from "@/lib/report/pronouns";
+import { displayChildName } from "@/lib/report/pronouns";
 
 export type LmsUserContext = {
   userId: string;
@@ -74,7 +75,7 @@ export async function getLmsUserContext(): Promise<LmsUserContext> {
     // Group D fallback: LMS lessons substitute {{child_name}} in many positions,
     // both sentence-initial and mid-sentence — per-slot capitalisation needed, not a
     // source change. (?? also won't catch an empty-string name; matches the family's gap.)
-    childName: a.child_name ?? "your child",
+    childName: displayChildName(a.child_name), // display-only title-casing (SHAILAA → Shailaa)
     childGender: normalizeGender(a.child_gender),
     ageBand: a.age_band,
     archetype: a.archetype,

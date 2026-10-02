@@ -106,8 +106,16 @@ export function renderMarkdown(text: string): string {
     .join("");
 }
 
+// Escape HTML-significant characters so authored content can never inject raw
+// HTML. Runs BEFORE the bold/italic substitutions, so the tags we add are the
+// only markup in the output. (Apostrophes/quotes are safe in text nodes and
+// left as-is for clean copy.)
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function inlineMarkdown(text: string): string {
-  return text
+  return escapeHtml(text)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>");
 }

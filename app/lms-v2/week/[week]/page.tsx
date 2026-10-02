@@ -11,6 +11,22 @@ import { V2, HEAD, BODY } from "../../v2ui";
 export const dynamic = "force-dynamic";
 
 const MODULE_TINT = [V2.tintBlue, V2.tintGold, V2.tintGreen, V2.tintPurple];
+const MODULE_STROKE = ["#1E3A5F", "#8A6322", "#2F5D3A", "#4A3470"];
+
+// Inline module icons from the approved mockup: circle-burst, arrows, bar chart, heart.
+function ModuleIcon({ i }: { i: number }) {
+  const common = { width: 28, height: 28, viewBox: "0 0 24 24", fill: "none", stroke: MODULE_STROKE[i], strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const path =
+    i === 0 ? <><path d="M12 3v6" /><path d="M5.6 5.6l4.2 4.2" /><path d="M3 12h6" /><circle cx="15" cy="15" r="5" /></>
+    : i === 1 ? <><path d="M7 12h4" /><path d="M13 12h4" /><path d="M9 8l-2 4 2 4" /><path d="M15 8l2 4-2 4" /></>
+    : i === 2 ? <><path d="M4 18h16" /><path d="M7 18v-4" /><path d="M12 18v-7" /><path d="M17 18v-10" /></>
+    : <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z" />;
+  return (
+    <div style={{ width: 60, height: 60, flexShrink: 0, borderRadius: 10, background: MODULE_TINT[i], display: "grid", placeItems: "center" }}>
+      <svg {...common}>{path}</svg>
+    </div>
+  );
+}
 
 export default async function WeekOverview({ params }: { params: Promise<{ week: string }> }) {
   const { week: weekStr } = await params;
@@ -64,7 +80,7 @@ export default async function WeekOverview({ params }: { params: Promise<{ week:
         <h2 style={{ margin: "6px 0 0", fontSize: 17, fontWeight: 700 }}>Read</h2>
         {modules.map((m, i) => (
           <Link key={m.index} href={`/lms-v2/week/${week}/module/${m.index}`} style={{ display: "flex", gap: 12, alignItems: "center", background: V2.white, border: `${i === 0 ? 1.5 : 1}px solid ${i === 0 ? V2.gold : V2.line}`, borderRadius: 14, padding: 10, minHeight: 76, textDecoration: "none", color: V2.navy }}>
-            <div style={{ width: 60, height: 60, flexShrink: 0, borderRadius: 10, background: MODULE_TINT[i] }} />
+            <ModuleIcon i={i} />
             <div style={{ display: "flex", flexDirection: "column", gap: 4, flexGrow: 1 }}>
               <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.25 }}>{m.index}. {m.title}</div>
               <div style={{ fontSize: 13, color: V2.dim }}>{m.timeRange}{i === 0 ? " · start here" : ""}</div>

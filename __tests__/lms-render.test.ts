@@ -1,7 +1,37 @@
 import { describe, it, expect } from "vitest";
-import { renderWeekendContent } from "../lib/lms/render";
+import { renderWeekendContent, renderMarkdown } from "../lib/lms/render";
 import type { TemplateContext } from "../lib/lms/render";
+import { displayChildName } from "../lib/report/pronouns";
 import { weekContent as stormWeek1 } from "../content/lms/week-1/storm";
+
+describe("renderMarkdown — single safe renderer (C1)", () => {
+  it("renders *italic* and **bold**", () => {
+    expect(renderMarkdown("say *come back* now")).toBe("<p>say <em>come back</em> now</p>");
+    expect(renderMarkdown("**hold** on")).toBe("<p><strong>hold</strong> on</p>");
+  });
+  it("escapes raw HTML (no injection)", () => {
+    expect(renderMarkdown("a <script>x</script> & <b>y</b>")).toBe("<p>a &lt;script&gt;x&lt;/script&gt; &amp; &lt;b&gt;y&lt;/b&gt;</p>");
+  });
+  it("splits paragraphs on blank lines", () => {
+    expect(renderMarkdown("one\n\ntwo")).toBe("<p>one</p><p>two</p>");
+  });
+});
+
+describe("displayChildName — title-case all-caps/all-lower only (C2)", () => {
+  it("ALL CAPS / all lower → Title Case", () => {
+    expect(displayChildName("SHAILAA")).toBe("Shailaa");
+    expect(displayChildName("shailaa")).toBe("Shailaa");
+    expect(displayChildName("RIYA SHARMA")).toBe("Riya Sharma");
+  });
+  it("mixed case left alone", () => {
+    expect(displayChildName("McKay")).toBe("McKay");
+    expect(displayChildName("de Souza")).toBe("de Souza");
+  });
+  it("empty/null → fallback", () => {
+    expect(displayChildName("")).toBe("Your child");
+    expect(displayChildName(null)).toBe("Your child");
+  });
+});
 
 // Convenience shorthands
 const ctx = (week_trend: TemplateContext["week_trend"], age_band: TemplateContext["age_band"]): TemplateContext =>

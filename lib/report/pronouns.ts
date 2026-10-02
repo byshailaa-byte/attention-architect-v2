@@ -13,6 +13,19 @@ export const CHILD_NAME_FALLBACK = "Your child";
 // that needs per-slot capitalisation at the render site, not a source fallback.
 export const CHILD_NAME_FALLBACK_MID = "your child";
 
+// Display-only name casing. If the stored name is ALL-CAPS or all-lowercase,
+// render it Title Case ("SHAILAA" / "shailaa" → "Shailaa"); leave mixed case
+// ("McKay", "de Souza") untouched. Never mutates stored data.
+export function displayChildName(raw: string | null | undefined): string {
+  const name = (raw ?? "").trim();
+  if (!name) return CHILD_NAME_FALLBACK;
+  const letters = name.replace(/[^A-Za-z]/g, "");
+  const allUpper = letters.length > 0 && letters === letters.toUpperCase();
+  const allLower = letters.length > 0 && letters === letters.toLowerCase();
+  if (!allUpper && !allLower) return name; // mixed case — respect it
+  return name.replace(/\b([A-Za-z])([A-Za-z]*)/g, (_m, a: string, b: string) => a.toUpperCase() + b.toLowerCase());
+}
+
 export function resolveChildPronoun(gender: Gender, form: PronounForm): string {
   const isGirl = gender === "girl";
   const isBoy  = gender === "boy";
