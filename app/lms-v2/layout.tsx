@@ -28,7 +28,11 @@ export default async function LmsV2Layout({ children }: { children: ReactNode })
         .v2-prose p { margin: 0 0 14px; font-size: 16px; line-height: 1.6; }
         .v2-prose p:last-child { margin-bottom: 0; }
         .v2-prose ul { margin: 0 0 14px 18px; display: flex; flex-direction: column; gap: 8px; }
-        .v2-prose li { font-size: 15px; line-height: 1.6; }
+        .v2-prose li { font-size: 16px; line-height: 1.6; }
+
+        /* A1: the ONE shared column every /lms-v2 page renders into — fixed
+           max-width, centered, full-width (never shrink-wraps to content). */
+        .v2-shell { width: 100%; max-width: 560px; margin: 0 auto; min-height: 100dvh; box-sizing: border-box; background: #FDF8F0; color: #1E3A5F; }
         .v2-prose strong { font-weight: 700; color: ${V2.navy}; }
         .v2-prose em { font-style: italic; }
 
@@ -62,8 +66,8 @@ export default async function LmsV2Layout({ children }: { children: ReactNode })
         .v2-legacy .v2-warn b { font-family: 'Newsreader', Georgia, serif; color: #8A6322; display: block; margin-bottom: 4px; font-size: 14px; }
         .v2-legacy .v2-warn p { font-size: 13.8px; margin: 0; color: #5E4712; }
       ` }} />
-      <div style={{ minHeight: "100dvh", background: V2.navy }}>
-        <div style={{ maxWidth: 480, margin: "0 auto", minHeight: "100dvh", background: V2.cream, color: V2.navy, fontFamily: BODY }}>
+      <div style={{ minHeight: "100dvh", background: V2.navy, fontFamily: BODY }}>
+        <div className="v2-shell">
           {children}
         </div>
       </div>
