@@ -87,7 +87,7 @@ export default async function WeekOverview({ params }: { params: Promise<{ week:
           const read = readModules.has(m.index);
           const startHere = i === firstUnreadIdx; // first unread module
           return (
-            <Link key={m.index} href={`/lms-v2/week/${week}/module/${m.index}`} style={{ display: "flex", gap: 12, alignItems: "center", background: V2.white, border: `${startHere ? 1.5 : 1}px solid ${startHere ? V2.gold : V2.line}`, borderRadius: 14, padding: 10, minHeight: 76, textDecoration: "none", color: V2.navy }}>
+            <Link key={m.index} prefetch={false} href={`/lms-v2/week/${week}/module/${m.index}`} style={{ display: "flex", gap: 12, alignItems: "center", background: V2.white, border: `${startHere ? 1.5 : 1}px solid ${startHere ? V2.gold : V2.line}`, borderRadius: 14, padding: 10, minHeight: 76, textDecoration: "none", color: V2.navy }}>
               <ModuleIcon i={i} />
               <div style={{ display: "flex", flexDirection: "column", gap: 4, flexGrow: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.25 }}>{m.index}. {m.title}</div>

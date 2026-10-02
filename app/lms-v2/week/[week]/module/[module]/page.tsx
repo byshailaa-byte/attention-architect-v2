@@ -57,7 +57,7 @@ export default async function ModuleReader({ params }: { params: Promise<{ week:
 
       <div style={{ marginTop: "auto", padding: "0 22px 26px", display: "flex", flexDirection: "column", gap: 10 }}>
         {next ? (
-          <Link href={`/lms-v2/week/${week}/module/${moduleNum + 1}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 52, borderRadius: 12, background: V2.navy, color: V2.white, fontSize: 16, fontWeight: 600, textDecoration: "none" }}>Next: {next.title} →</Link>
+          <Link prefetch={false} href={`/lms-v2/week/${week}/module/${moduleNum + 1}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 52, borderRadius: 12, background: V2.navy, color: V2.white, fontSize: 16, fontWeight: 600, textDecoration: "none" }}>Next: {next.title} →</Link>
         ) : (
           <Link href={`/lms-v2/week/${week}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 52, borderRadius: 12, background: V2.navy, color: V2.white, fontSize: 16, fontWeight: 600, textDecoration: "none" }}>Back to the week</Link>
         )}
