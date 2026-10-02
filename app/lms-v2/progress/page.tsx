@@ -91,7 +91,7 @@ export default async function LmsV2ProgressPage() {
   const didntLand = reflMap["didnt_land"] ?? 0;
 
   return (
-    <div style={{ background:"var(--v2-bg)", minHeight:"100dvh", fontFamily:"var(--v2-IS)", color:"var(--v2-dim)" }}>
+    <div className="v2-legacy" style={{ background:"var(--v2-bg)", minHeight:"100dvh", fontFamily:"var(--v2-IS)", color:"var(--v2-dim)" }}>
 
       {/* Top bar */}
       <div style={{

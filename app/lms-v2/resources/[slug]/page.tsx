@@ -30,13 +30,14 @@ export default async function ResourceArticlePage({ params }: Props) {
   const catLabel = CATEGORY_LABELS[article.category] ?? article.category;
 
   return (
-    <div style={{ background:"var(--v2-bg)", minHeight:"100dvh", fontFamily:"var(--v2-IS)", color:"var(--v2-dim)" }}>
+    <div className="v2-legacy" style={{ background:"var(--v2-bg)", minHeight:"100dvh", fontFamily:"var(--v2-IS)", color:"var(--v2-dim)" }}>
 
       {/* Top bar */}
       <div style={{
         background:"#fff", borderBottom:"1px solid var(--v2-line)", padding:"12px 28px",
         display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:9,
       }}>
+        <Link href="/lms-v2" style={{ fontSize:12.5, fontWeight:600, color:"var(--v2-dim2)", textDecoration:"none", whiteSpace:"nowrap" }}>← Home</Link>
         <Link href="/lms-v2/resources" style={{ fontSize:12.5, fontWeight:600, color:"var(--v2-dim2)", textDecoration:"none", whiteSpace:"nowrap" }}>
           ← The attention library
         </Link>
