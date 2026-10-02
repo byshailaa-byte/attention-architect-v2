@@ -300,7 +300,7 @@ export default function SimplifiedStart() {
 
   // ── Stage: start (combined) ───────────────────────────────────────────────────
   if (stage === "start") {
-    const canContinue = !!age && !!concern && age !== "younger" && age !== "older";
+    const canContinue = !!gender && !!age && !!concern && age !== "younger" && age !== "older";
     return (
       <>
       <div className="funnel-screen">
@@ -329,16 +329,15 @@ export default function SimplifiedStart() {
             }}
           />
 
-          {/* Gender */}
+          {/* Gender (required) */}
           <div style={{ marginBottom: "20px" }}>
             <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-dim)", marginBottom: "9px" }}>
-              Pronouns <span style={{ fontWeight: 400 }}>(optional)</span>
+              Child&rsquo;s gender
             </div>
             <div style={{ display: "flex", gap: "8px" }}>
-              {/* value = child_gender enum (boy/girl/non-binary); resolveChildPronoun keys off these.
-                  Label is the pronoun the parent sees. Previously stored he/she/they, which fell
-                  through to neutral pronouns for every session from this funnel. */}
-              {([["boy", "He/him"], ["girl", "She/her"], ["non-binary", "They/them"]] as const).map(([val, label]) => (
+              {/* value = child_gender enum (boy/girl/prefer-not-to-say); resolveChildPronoun /
+                  buildPronounTokens key off these. */}
+              {([["boy", "Boy"], ["girl", "Girl"], ["prefer-not-to-say", "Prefer not to say"]] as const).map(([val, label]) => (
                 <button
                   key={val}
                   className={`chip-btn${gender === val ? " sel" : ""}`}
@@ -352,6 +351,9 @@ export default function SimplifiedStart() {
                 </button>
               ))}
             </div>
+            {!gender && (
+              <div style={{ fontSize: "12px", color: "var(--ink-dim)", marginTop: "7px" }}>Choose one to continue</div>
+            )}
           </div>
 
           {/* Age */}
@@ -430,11 +432,13 @@ export default function SimplifiedStart() {
               cursor: canContinue ? "pointer" : "not-allowed",
             }}
           >
-            {!age
-              ? "Select your child's age to continue"
-              : !concern
-                ? "Select what's worrying you most"
-                : "Continue →"}
+            {!gender
+              ? "Choose one to continue"
+              : !age
+                ? "Select your child's age to continue"
+                : !concern
+                  ? "Select what's worrying you most"
+                  : "Continue →"}
           </button>
 
           <div style={{ display: "flex", gap: "16px", marginTop: "14px", fontSize: "12px", color: "var(--ink-dim)" }}>

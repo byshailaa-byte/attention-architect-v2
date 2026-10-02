@@ -12,7 +12,6 @@ const VALID_AGE_BANDS = ["8-9", "10-11", "12-14"];
 const GENDER_CHIPS = [
   { label: "Boy",               value: "boy" },
   { label: "Girl",              value: "girl" },
-  { label: "Non-binary",        value: "non-binary" },
   { label: "Prefer not to say", value: "prefer-not-to-say" },
 ] as const;
 
@@ -44,6 +43,7 @@ function PreAssessmentForm() {
   const trimmed = childName.trim();
 
   function handleBegin() {
+    if (!childGender) return; // gender is required
     const p = new URLSearchParams();
     p.set("name", trimmed); // empty string is valid — assessment skips meta phase on any name param
     if (ageParam) p.set("age", ageParam);
@@ -91,8 +91,7 @@ function PreAssessmentForm() {
 
         <div style={{ marginBottom: "20px" }}>
           <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--ink)", marginBottom: "9px" }}>
-            {trimmed ? `${trimmed}'s` : `${CHILD_NAME_FALLBACK}'s`} gender{" "}
-            <span style={{ fontWeight: 400, color: "var(--ink-dim)" }}>(optional)</span>
+            {trimmed ? `${trimmed}'s` : `${CHILD_NAME_FALLBACK}'s`} gender
           </div>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             {GENDER_CHIPS.map((chip) => {
@@ -109,6 +108,9 @@ function PreAssessmentForm() {
               );
             })}
           </div>
+          {!childGender && (
+            <div style={{ fontSize: "12px", color: "var(--ink-dim)", marginTop: "7px" }}>Choose one to continue</div>
+          )}
         </div>
 
         <h1 style={{ fontFamily: BG, fontWeight: 800, fontSize: "25px", lineHeight: 1.3, color: "var(--ink)", marginBottom: "20px" }}>
@@ -136,14 +138,15 @@ function PreAssessmentForm() {
 
         <button
           className="cta-btn"
+          disabled={!childGender}
           onClick={handleBegin}
           style={{
-            background: "var(--marker)",
-            color: "var(--marker-ink)",
-            cursor: "pointer",
+            background: childGender ? "var(--marker)" : "var(--line)",
+            color: childGender ? "var(--marker-ink)" : "var(--ink-dim)",
+            cursor: childGender ? "pointer" : "not-allowed",
           }}
         >
-          Begin →
+          {childGender ? "Begin →" : "Choose one to continue"}
         </button>
       </div>
     </div>

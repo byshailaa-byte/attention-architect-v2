@@ -79,6 +79,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    // Gender is required for new submissions. This endpoint only INSERTs new rows
+    // (no ON CONFLICT), so this never backfills or alters existing assessments.
+    if (!gender || !gender.trim()) {
+      return NextResponse.json({ error: "Child's gender is required" }, { status: 400 });
+    }
+
     // Validate every answer value against the known option sets in questions.ts.
     // Unknown question IDs and out-of-set values both reject with 400.
     for (const [qId, val] of Object.entries(answers)) {
