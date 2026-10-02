@@ -11,7 +11,7 @@ function buildTokens(gender: "girl" | "boy" | null) {
   return {
     child_name: CHILD,
     name: PARENT,
-    ...buildPronounTokens(gender),
+    ...buildPronounTokens(gender, CHILD),
   };
 }
 
@@ -60,21 +60,22 @@ describe("Pronoun render — Glue + Negotiator", () => {
     }
   });
 
-  it("gender=null uses they/them/their/themself in pronoun positions", () => {
+  it("gender=null falls back to the child's NAME (not they/them) in pronoun positions", () => {
     const r = renderAll(null);
-    // Spot-check specific pronoun positions — no gendered pronouns in child slots.
-    // s1Flavor uses obj twice: "around them … connected to them"
-    expect(r.s1Flavor).toContain("around them");
+    // New contract: unknown gender → child name for subj/obj, "Name's" for poss.
+    // No gendered OR plural pronouns leak into child slots.
+    expect(r.s1Flavor).toContain(`around ${CHILD}`);
     expect(r.s1Flavor).not.toContain("around him");
     expect(r.s1Flavor).not.toContain("around her");
-    // s1Evidence uses subj: "they'll ask"
-    expect(r.s1Evidence).toContain("they'll ask");
-    // s4ReframeClose in mechanism: "around them feel"
-    expect(r.mechanism).toContain("around them feel");
-    // s6FutureScene uses poss: "their whole list"
-    expect(r.s6Future).toContain("their whole list");
-    // s7Stay uses subj: "they can't concentrate"
-    expect(r.s7Stay).toContain("they can't concentrate");
+    expect(r.s1Flavor).not.toContain("around them");
+    // s1Evidence uses subj: "Priya'll ask"
+    expect(r.s1Evidence).toContain(`${CHILD}'ll ask`);
+    // mechanism: "around Priya feel"
+    expect(r.mechanism).toContain(`around ${CHILD} feel`);
+    // s6FutureScene uses poss: "Priya's whole list"
+    expect(r.s6Future).toContain(`${CHILD}'s whole list`);
+    // s7Stay uses subj: "Priya can't concentrate"
+    expect(r.s7Stay).toContain(`${CHILD} can't concentrate`);
   });
 
   it("gender=girl uses she/her/her/herself in pronoun positions", () => {
@@ -105,18 +106,18 @@ describe("Pronoun render — Glue + Negotiator", () => {
     expect(r.s6Future).not.toContain("their whole list");
   });
 
-  it("renders natural sentences for null gender — spot checks", () => {
+  it("renders natural sentences for null gender — name fallback spot checks", () => {
     const r = renderAll(null);
     // s1FlavorPhrase
-    expect(r.s1Flavor).toBe("whether the people around them feel connected to them");
+    expect(r.s1Flavor).toBe(`whether the people around ${CHILD} feel connected to ${CHILD}`);
     // s4ReframeClose in mechanism
-    expect(r.mechanism).toContain("disconnected from how the people around them feel");
-    // s1Evidence — "they'll ask"
-    expect(r.s1Evidence).toContain("they'll ask");
+    expect(r.mechanism).toContain(`disconnected from how the people around ${CHILD} feel`);
+    // s1Evidence
+    expect(r.s1Evidence).toContain(`${CHILD}'ll ask`);
     // s6 future
-    expect(r.s6Future).toContain("their whole list");
-    // s7StayPath — "they can't concentrate"
-    expect(r.s7Stay).toContain("they can't concentrate");
+    expect(r.s6Future).toContain(`${CHILD}'s whole list`);
+    // s7StayPath
+    expect(r.s7Stay).toContain(`${CHILD} can't concentrate`);
   });
 
   it("renders natural sentences for girl — spot checks", () => {
