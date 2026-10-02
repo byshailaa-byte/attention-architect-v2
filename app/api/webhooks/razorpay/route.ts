@@ -147,6 +147,7 @@ export async function POST(req: NextRequest) {
       sql`
         SELECT
           u.email,
+          (u.password_hash IS NOT NULL) AS has_password,
           a.child_name,
           a.session_id::text  AS session_id,
           p.amount_paise,
@@ -159,6 +160,7 @@ export async function POST(req: NextRequest) {
       `.then((rows) => {
         const row = (rows as {
           email: string | null;
+          has_password: boolean;
           child_name: string | null;
           session_id: string | null;
           amount_paise: number;
@@ -179,6 +181,8 @@ export async function POST(req: NextRequest) {
           paidAt: new Date().toISOString(),
           childName: row.child_name,
           setPasswordUrl,
+          hasPassword: !!row.has_password,
+          loginUrl: `${baseUrl}/lms/login`,
         });
       }).catch((err) =>
         console.error(`[webhook/razorpay] receipt lookup failed: order=${razorpayOrderId}`, err)

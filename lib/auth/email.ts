@@ -3,8 +3,25 @@ import { ENTITY } from "@/lib/entity";
 // RESEND_FROM must be a verified sender on the Resend account.
 // Verified domain: attentionarchitect.thehumandecision.in (unchanged — domain migration is separate).
 // All links inside emails must point to attentionparents.thehumandecision.in (v2 domain).
-const FROM =
+const FROM_ADDRESS =
   process.env.RESEND_FROM ?? "no-reply@attentionarchitect.thehumandecision.in";
+// Display name improves deliverability + trust (F2). Same address, named sender.
+const FROM = `Attention Architect <${FROM_ADDRESS}>`;
+
+// Shared footer (F3): legal name, support email, phone, physical address — the
+// CAN-SPAM identity block, on both the receipt and the password-reset email.
+function footerHtml(note: string): string {
+  return `
+        <tr>
+          <td style="padding:20px 40px;border-top:1px solid #eeeeee">
+            <p style="margin:0 0 6px;font-size:12px;color:#aaa">Attention Architect &mdash; ${note}</p>
+            <p style="margin:0;font-size:12px;color:#aaa">${ENTITY.legalName} &middot; ${ENTITY.address} &middot; <a href="mailto:${ENTITY.supportEmail}" style="color:#aaa">${ENTITY.supportEmail}</a> &middot; ${ENTITY.phoneDisplay}</p>
+          </td>
+        </tr>`;
+}
+function footerText(note: string): string {
+  return ["", "—", `Attention Architect — ${note}`, `${ENTITY.legalName} · ${ENTITY.address} · ${ENTITY.supportEmail} · ${ENTITY.phoneDisplay}`].join("\n");
+}
 
 async function resendSend(payload: {
   from: string;
@@ -25,7 +42,8 @@ async function resendSend(payload: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ ...payload, from: FROM }),
+    // from carries the display name; reply_to routes replies to a monitored inbox (F2).
+    body: JSON.stringify({ ...payload, from: FROM, reply_to: ENTITY.supportEmail }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -72,11 +90,7 @@ function buildPasswordResetHtml(resetUrl: string): string {
           </td>
         </tr>
 
-        <tr>
-          <td style="padding:20px 40px;border-top:1px solid #eeeeee">
-            <p style="margin:0;font-size:12px;color:#aaa">Attention Architect &mdash; this is a security email sent in response to a password reset request.</p>
-          </td>
-        </tr>
+        ${footerHtml("this is a security email sent in response to a password reset request.")}
 
       </table>
     </td></tr>
@@ -101,6 +115,7 @@ export async function sendPasswordResetEmail(
       resetUrl,
       "",
       "If you didn't request this, you can ignore this email.",
+      footerText("this is a security email sent in response to a password reset request."),
     ].join("\n"),
   });
 }
@@ -126,17 +141,30 @@ function formatDate(iso: string): string {
   });
 }
 
-function buildReceiptHtml(params: {
+export type ReceiptParams = {
+  to: string;
   paymentId: string;
   amount: number;
   tier: string;
   paidAt: string;
   childName: string | null;
   setPasswordUrl: string;
-}): string {
+  hasPassword?: boolean; // F4: returning buyer who already has a password
+  loginUrl?: string;     // where "Log in" points
+};
+
+// F4: a returning buyer logs in; a new buyer sets a password.
+export function receiptCta(params: ReceiptParams): { url: string; label: string } {
+  return params.hasPassword
+    ? { url: params.loginUrl ?? params.setPasswordUrl, label: "Log in to the programme" }
+    : { url: params.setPasswordUrl, label: "Set your password and open the programme" };
+}
+
+function buildReceiptHtml(params: ReceiptParams): string {
   const amountStr = formatAmount(params.amount);
   const dateStr = formatDate(params.paidAt);
   const tierLabel = TIER_LABEL[params.tier] ?? params.tier;
+  const cta = receiptCta(params);
   const childLine = params.childName
     ? `<p style="margin:0 0 8px"><strong>Child:</strong> ${params.childName}</p>`
     : "";
@@ -183,9 +211,9 @@ function buildReceiptHtml(params: {
             <table cellpadding="0" cellspacing="0" style="margin:0 0 28px">
               <tr>
                 <td style="background:#F6C63D;border-radius:6px;padding:14px 28px">
-                  <a href="${params.setPasswordUrl}"
+                  <a href="${cta.url}"
                     style="color:#23242c;font-size:15px;font-family:Georgia,serif;text-decoration:none;font-weight:bold">
-                    Set your password and open the programme &rarr;
+                    ${cta.label} &rarr;
                   </a>
                 </td>
               </tr>
@@ -195,12 +223,7 @@ function buildReceiptHtml(params: {
           </td>
         </tr>
 
-        <tr>
-          <td style="padding:20px 40px;border-top:1px solid #eeeeee">
-            <p style="margin:0 0 6px;font-size:12px;color:#aaa">Attention Architect &mdash; this is a transaction confirmation, not a request for payment.</p>
-            <p style="margin:0;font-size:12px;color:#aaa">${ENTITY.legalName} &middot; ${ENTITY.supportEmail} &middot; ${ENTITY.phone}</p>
-          </td>
-        </tr>
+        ${footerHtml("this is a transaction confirmation, not a request for payment.")}
 
       </table>
     </td></tr>
@@ -209,21 +232,41 @@ function buildReceiptHtml(params: {
 </html>`;
 }
 
-export async function sendPurchaseReceipt(params: {
-  to: string;
-  paymentId: string;
-  amount: number;
-  tier: string;
-  paidAt: string;
-  childName: string | null;
-  setPasswordUrl: string;
-}): Promise<void> {
+// F1: plain-text part mirroring the receipt HTML.
+export function buildReceiptText(params: ReceiptParams): string {
+  const cta = receiptCta(params);
+  const tierLabel = TIER_LABEL[params.tier] ?? params.tier;
+  const lines = [
+    "Payment received — Attention Architect",
+    "",
+    "Thank you — your payment has been confirmed and your access is now active.",
+    "",
+    `Programme: ${tierLabel}`,
+    `Amount paid: ${formatAmount(params.amount)}`,
+    `Date: ${formatDate(params.paidAt)}`,
+    `Payment ID: ${params.paymentId}`,
+  ];
+  if (params.childName) lines.push(`Child: ${params.childName}`);
+  lines.push(
+    "",
+    params.childName ? `${params.childName}'s programme is ready whenever you are.` : "Your programme is ready whenever you are.",
+    "",
+    `${cta.label}: ${cta.url}`,
+    "",
+    `Questions? Email ${ENTITY.supportEmail} or call ${ENTITY.phoneDisplay}.`,
+    footerText("this is a transaction confirmation, not a request for payment."),
+  );
+  return lines.join("\n");
+}
+
+export async function sendPurchaseReceipt(params: ReceiptParams): Promise<void> {
   try {
     await resendSend({
       from: FROM,
       to: [params.to],
       subject: "Payment received — Attention Architect",
       html: buildReceiptHtml(params),
+      text: buildReceiptText(params),
     });
     console.log(`[email] receipt sent`, { paymentId: params.paymentId, to: params.to });
   } catch (err) {
