@@ -18,7 +18,14 @@ export function childStepReady(name: string, gender: string | null): boolean {
   return name.trim().length > 0 && !!gender;
 }
 
-// Step 7 (details): parent name + a valid email, both required. NO phone (captured at step 4).
-export function detailsReady(parentName: string, email: string): boolean {
-  return parentName.trim().length > 0 && isValidEmail(email);
+// Step 6 (contact): WhatsApp + parent name + email, ALL required.
+export function contactReady(phone: string, name: string, email: string): boolean {
+  return isValidIndianMobile(phone) && name.trim().length > 0 && isValidEmail(email);
+}
+
+// Step 2 (age): the in-range tiles advance the flow; "younger"/"older" open the OOB
+// handbook popup and STOP the flow (never advance to step 3).
+export const IN_RANGE_AGE_BANDS = ["8-9", "10-11", "12-14"] as const;
+export function isOobAgeChoice(choice: string): boolean {
+  return choice === "younger" || choice === "older";
 }

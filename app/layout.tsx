@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Instrument_Sans, Caveat } from "next/font/google";
+import { Bricolage_Grotesque, Instrument_Sans, Caveat, Newsreader, Figtree } from "next/font/google";
 import { AnalyticsLoader } from "./analytics";
 import { WhatsAppWidget } from "./components/WhatsAppWidget";
 import "./globals.css";
@@ -25,6 +25,22 @@ const caveat = Caveat({
   display: "swap",
 });
 
+// Used only by the v2 start flow (?flow=v2): Newsreader headlines, Figtree body.
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-newsreader",
+  display: "swap",
+});
+
+const figtree = Figtree({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-figtree",
+  display: "swap",
+});
+
 const GA_ID     = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const PIXEL_ID  = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
@@ -42,7 +58,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${bricolage.variable} ${instrumentSans.variable} ${caveat.variable} h-full antialiased`}
+      className={`${bricolage.variable} ${instrumentSans.variable} ${caveat.variable} ${newsreader.variable} ${figtree.variable} h-full antialiased`}
     >
       <head />
       <body className="min-h-full flex flex-col">

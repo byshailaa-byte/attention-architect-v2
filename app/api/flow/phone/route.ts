@@ -55,11 +55,16 @@ export async function POST(req: NextRequest) {
       VALUES (${phone}, 'assessment')
       ON CONFLICT (phone) DO UPDATE SET last_seen_at = now()
     `;
-    // Server-side confirmation event (the client fires start_phone on submit).
+    // phone_captured fires when the contact step (step 6) is submitted.
     await sql`
       INSERT INTO funnel_events (event_type, session_id, metadata)
       VALUES ('phone_captured', ${sessionId}::uuid, '{}'::jsonb)
     `;
+    // The assessment row already exists by step 6 — propagate the internal flag so an
+    // operator's test completion is excluded from the main funnels too.
+    if (isInternal) {
+      await sql`UPDATE assessments SET is_internal = true WHERE session_id = ${sessionId}::uuid`;
+    }
   } catch (e) {
     console.error("[flow/phone] save failed:", (e as Error).message);
     return NextResponse.json({ error: "Could not save your number, please try again." }, { status: 500 });

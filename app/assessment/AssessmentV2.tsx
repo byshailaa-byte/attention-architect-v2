@@ -6,19 +6,17 @@ import { GATEWAY_QUESTIONS, Question } from "@/lib/engine/questions";
 import { buildQuestionSequence, GatewayAnswers } from "@/lib/engine/router";
 import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import { getFlowSid } from "@/lib/flow/session";
-import { isValidEmail, detailsReady } from "@/lib/flow/validate";
+import { isValidIndianMobile, contactReady } from "@/lib/flow/validate";
 import { displayChildName, CHILD_NAME_FALLBACK_MID, type Gender } from "@/lib/report/pronouns";
 import { HALFWAY_FIRST_READ, HALFWAY_FIRST_READ_FALLBACK, fillHalfwayLine } from "@/content/assessment/halfway-first-read";
-import FlowShell from "@/app/components/FlowShell";
+import { FLOW, HEAD, BODY, Wordmark, BackLink, Screen, QuestionProgress, minsLeft } from "@/app/components/FlowShell";
+import ThankYouV2 from "./ThankYouV2";
 
-const BG   = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
-const NAVY  = "#14284D";
-const GOLD  = "#F5A623";
+const LETTERS = "ABCDEF";
 
 function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
   fetch("/api/funnel/event", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
   }).catch(() => {});
 }
@@ -31,7 +29,8 @@ function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<s
     else window.fbq(type, event, params ?? {});
   }
 }
-type Phase = "questions" | "halfway" | "details";
+
+type Phase = "questions" | "halfway" | "contact" | "thankyou";
 
 export default function AssessmentV2() {
   const router = useRouter();
@@ -50,23 +49,27 @@ export default function AssessmentV2() {
   const [questions, setQuestions]   = useState<Question[]>(GATEWAY_QUESTIONS);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers]       = useState<Record<string, string>>({});
+  const [picked, setPicked]         = useState<string | null>(null);
   const [childName] = useState(nameParam);
   const ageBand: "8-9" | "10-11" | "12-14" = ageParam && VALID_AGE_BANDS.includes(ageParam) ? ageParam : "10-11";
 
   const [sessionId] = useState(() => getFlowSid());
   const [halfwayLine, setHalfwayLine] = useState<string>("");
+  const [archetype, setArchetype]     = useState<string>("");
+  const [totalDone, setTotalDone]     = useState(0);
   const pendingIdxRef = useRef<number | null>(null);
   const halfwayShown = useRef(false);
 
+  const [phone, setPhone]           = useState("");
   const [parentName, setParentName] = useState("");
   const [email, setEmail]           = useState("");
+  const [phoneErr, setPhoneErr]     = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
   const kidName     = childName.trim() ? displayChildName(childName) : CHILD_NAME_FALLBACK_MID;
   const kidNameDisp = childName.trim() ? displayChildName(childName) : "your child";
 
-  // Max possible question count across all gateway combinations (the sequence is adaptive).
   const totalMax = useMemo(() => {
     const [g1, g2, g3] = GATEWAY_QUESTIONS;
     let max = GATEWAY_QUESTIONS.length;
@@ -76,6 +79,7 @@ export default function AssessmentV2() {
     }
     return max;
   }, []);
+  const total = questions.length > 3 ? questions.length : totalMax;
 
   const firedStart = useRef(false);
   useEffect(() => {
@@ -92,33 +96,27 @@ export default function AssessmentV2() {
 
   async function submitAssessment(finalAnswers: Record<string, string>, fullSeq: Question[]) {
     setSubmitting(true);
+    setTotalDone(fullSeq.length);
     try {
       const res = await fetch("/api/assessment/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionId,
-          childName,
-          ageBand,
-          gender: genderParam,
+          sessionId, childName, ageBand, gender: genderParam,
           answers: finalAnswers,
           questionSequence: fullSeq.map((q) => ({ id: q.id, dimension: q.dimension })),
           concerns: concernsParam.split(",").filter(Boolean),
-          variant: variantParam,
-          utm: getStoredUtm(),
+          variant: variantParam, utm: getStoredUtm(),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Submit failed");
+      setArchetype(data.archetype ?? "");
       fireGtag("assessment_complete", { archetype: data.archetype });
       fireFbq("trackCustom", "AssessmentComplete", { archetype: data.archetype });
       setSubmitting(false);
       fireEvent("details_view", sessionId, { flow: "v2" });
-      setPhase("details");
-    } catch (e) {
-      setSubmitting(false);
-      setError((e as Error).message);
-    }
+      setPhase("contact");
+    } catch (e) { setSubmitting(false); setError((e as Error).message); }
   }
 
   async function showHalfway(partialAnswers: Record<string, string>, seq: Question[], nextIdx: number) {
@@ -129,14 +127,13 @@ export default function AssessmentV2() {
     fireEvent("halfway_view", sessionId, { flow: "v2" });
     try {
       const res = await fetch("/api/flow/partial-archetype", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answers: partialAnswers, questionSequence: seq.map((q) => ({ id: q.id, dimension: q.dimension })) }),
       });
       const data = await res.json().catch(() => ({})) as { archetype?: string | null };
       const line = (data.archetype && HALFWAY_FIRST_READ[data.archetype]) || HALFWAY_FIRST_READ_FALLBACK;
       setHalfwayLine(fillHalfwayLine(line, genderParam, kidName));
-    } catch { /* keep the fallback line already set */ }
+    } catch { /* keep the fallback */ }
   }
 
   function handleAnswer(questionId: string, value: string) {
@@ -145,149 +142,172 @@ export default function AssessmentV2() {
     fireEvent("q_answered", sessionId, { question_id: questionId, index: currentIdx });
 
     let seq = questions;
-    // After the 3 gateway questions, build the full adaptive sequence.
     if (currentIdx === 2) {
       const g: GatewayAnswers = { G1: nextAnswers["G1"], G2: nextAnswers["G2"], G3: nextAnswers["G3"] };
       seq = buildQuestionSequence(g);
       setQuestions(seq);
     }
-
     const next = currentIdx + 1;
-
-    if (next >= seq.length && currentIdx >= 2) {
-      submitAssessment(nextAnswers, seq);
-      return;
-    }
-
-    // Halfway interstitial after answering ceil(total/2) questions (once the full
-    // sequence is known, i.e. post-gateway). Uses the parent's actual sequence length.
+    if (next >= seq.length && currentIdx >= 2) { submitAssessment(nextAnswers, seq); return; }
     if (seq.length > 3) {
       const halfwayAt = Math.ceil(seq.length / 2);
-      if (!halfwayShown.current && next === halfwayAt) {
-        showHalfway(nextAnswers, seq, next);
-        return;
-      }
+      if (!halfwayShown.current && next === halfwayAt) { showHalfway(nextAnswers, seq, next); return; }
     }
     setCurrentIdx(next);
   }
 
-  if (submitting) {
-    return (
-      <div className="funnel-screen">
-        <p style={{ color: "var(--ink-dim)", fontSize: 16 }}>Building {kidNameDisp}&rsquo;s report…</p>
-      </div>
-    );
+  function pick(qid: string, val: string) {
+    if (picked) return;
+    setPicked(val);
+    setTimeout(() => { setPicked(null); handleAnswer(qid, val); }, 150);
   }
-  if (error) {
-    return <div className="funnel-screen"><div style={{ color: "var(--redpen)", fontSize: 15 }}>Error: {error}</div></div>;
+
+  async function submitContact() {
+    if (submitting) return;
+    if (!isValidIndianMobile(phone)) { setPhoneErr("Enter a valid 10-digit mobile number"); return; }
+    if (!contactReady(phone, parentName, email)) return;
+    setPhoneErr(null); setError(null); setSubmitting(true);
+    fireEvent("details_submitted", sessionId, { flow: "v2" });
+    try {
+      // Save phone on the session + wa_contacts(first_source='assessment') + phone_captured.
+      const pr = await fetch("/api/flow/phone", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, phone }),
+      });
+      if (!pr.ok) { const d = await pr.json().catch(() => ({})); throw new Error((d as { error?: string }).error ?? "Could not save your number."); }
+      // Save details to the assessment + send the WhatsApp report (send_assessment_new,
+      // deduped by whatsapp_report_sent_at). v2 never navigates to /report.
+      const cr = await fetch("/api/report/claim", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, parentName: parentName.trim(), email: email.trim(), phone, variant: variantParam }),
+      });
+      if (!cr.ok) { const d = await cr.json().catch(() => ({})); throw new Error((d as { error?: string }).error ?? "Something went wrong"); }
+      fireGtag("generate_lead");
+      fireFbq("track", "Lead", {}, `lead:${sessionId}`);
+      setSubmitting(false);
+      setPhase("thankyou");
+    } catch (e) { setError((e as Error).message); setSubmitting(false); }
+  }
+
+  if (submitting && phase !== "contact") {
+    return <Screen><p style={{ color: FLOW.dim, fontSize: 16 }}>Building {kidNameDisp}&rsquo;s report…</p></Screen>;
+  }
+  if (error && phase !== "contact") {
+    return <Screen><div style={{ color: "#c0392b", fontSize: 15 }}>Error: {error}</div></Screen>;
   }
   if (!gatePass) return null;
 
-  // ── STEP 6 — HALFWAY interstitial (full-screen navy) ──────────────────────────
+  // ── THANK-YOU ────────────────────────────────────────────────────────────────
+  if (phase === "thankyou") {
+    return <ThankYouV2 childName={childName} parentName={parentName} phone={phone} archetype={archetype} ageBand={ageBand} gender={genderParam ?? ""} />;
+  }
+
+  // ── HALFWAY (navy, dot grid) ─────────────────────────────────────────────────
   if (phase === "halfway") {
+    const goldDot = 4; // index of the one gold dot in the 8-dot grid
     return (
-      <div style={{ minHeight: "100dvh", background: NAVY, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 22px" }}>
+      <div style={{ minHeight: "100dvh", background: FLOW.navy, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 22px", fontFamily: BODY }}>
         <div style={{ maxWidth: 440, width: "100%" }}>
-          <div style={{ fontSize: 11, letterSpacing: ".16em", textTransform: "uppercase", color: GOLD, fontWeight: 800, marginBottom: 14 }}>
-            Halfway · A pattern is already showing in {kidNameDisp}&rsquo;s answers.
+          <div aria-hidden="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 10px)", gap: 10, marginBottom: 26 }}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <span key={i} style={{ width: 10, height: 10, borderRadius: "50%", background: i === goldDot ? FLOW.gold : "rgba(255,255,255,.18)", boxShadow: i === goldDot ? `0 0 0 6px rgba(232,163,61,.22)` : "none" }} />
+            ))}
           </div>
-          <div style={{ background: "#fff", borderRadius: 16, padding: "26px 24px", boxShadow: "0 20px 50px rgba(0,0,0,.3)" }}>
-            <div style={{ fontSize: 10.5, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--ink-dim)", fontWeight: 800, marginBottom: 12 }}>First read</div>
-            <p style={{ fontFamily: BG, fontWeight: 700, fontSize: 20, lineHeight: 1.4, color: "var(--ink)", margin: 0 }}>{halfwayLine}</p>
+          <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 27, lineHeight: 1.25, color: "#fff", margin: "0 0 20px" }}>
+            A pattern is already showing in <span style={{ fontStyle: "italic", color: FLOW.goldSoft }}>{kidNameDisp}</span>&rsquo;s answers.
+          </h1>
+          <div style={{ background: FLOW.cream, borderRadius: 16, padding: "22px 20px" }}>
+            <div style={{ fontSize: 10.5, letterSpacing: ".16em", textTransform: "uppercase", color: FLOW.dim, fontWeight: 700, marginBottom: 10 }}>First read</div>
+            <p style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 19, lineHeight: 1.4, color: FLOW.ink, margin: 0 }}>{halfwayLine}</p>
           </div>
-          <p style={{ fontSize: 14.5, color: "rgba(255,255,255,.82)", lineHeight: 1.6, margin: "22px 2px 24px" }}>
-            The next questions confirm it, and your report shows what to do about it.
-          </p>
-          <button
-            onClick={() => { const n = pendingIdxRef.current; setPhase("questions"); if (n != null) setCurrentIdx(n); }}
-            style={{ width: "100%", background: GOLD, color: NAVY, border: "none", borderRadius: 12, padding: "16px 20px", fontFamily: BG, fontWeight: 800, fontSize: 16, cursor: "pointer" }}
-          >
-            Keep going →
-          </button>
+          <p style={{ fontSize: 14.5, color: "#D6E0EC", lineHeight: 1.6, margin: "20px 2px 24px" }}>The next questions confirm it, and your report shows what to do about it.</p>
+          <button onClick={() => { const n = pendingIdxRef.current; setPhase("questions"); if (n != null) setCurrentIdx(n); }}
+            style={{ width: "100%", height: 56, background: FLOW.gold, color: "#3A2A08", border: "none", borderRadius: 16, fontFamily: HEAD, fontWeight: 600, fontSize: 17, cursor: "pointer" }}>Keep going →</button>
         </div>
       </div>
     );
   }
 
-  // ── STEP 7 — DETAILS ──────────────────────────────────────────────────────────
-  if (phase === "details") {
+  // ── CONTACT (step 6) ─────────────────────────────────────────────────────────
+  if (phase === "contact") {
+    const ready = contactReady(phone, parentName, email) && !submitting;
     const emailTouched = email.length > 0;
-    const emailValid   = isValidEmail(email);
-    const ready        = detailsReady(parentName, email);
-    async function submitDetails() {
-      if (!ready || submitting) return;
-      setSubmitting(true); setError(null);
-      fireEvent("details_submitted", sessionId, { flow: "v2" });
-      try {
-        const res = await fetch("/api/report/claim", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId, parentName: parentName.trim(), email: email.trim(), variant: variantParam }),
-        });
-        if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error((d as { error?: string }).error ?? "Something went wrong"); }
-        fireGtag("generate_lead");
-        fireFbq("track", "Lead", {}, `lead:${sessionId}`);
-        router.push(`/report/${sessionId}`);
-      } catch (e) {
-        setError((e as Error).message);
-        setSubmitting(false);
-      }
-    }
     return (
-      <FlowShell pct={92} minutesLeft={1} label="Last step">
-        <div style={{ fontSize: 11, letterSpacing: ".14em", textTransform: "uppercase", color: "#22A38A", fontWeight: 800, marginBottom: 12 }}>
-          All questions done · {kidName}&rsquo;s report is ready.
+      <Screen>
+        <div style={{ marginBottom: 20 }}><Wordmark /></div>
+        <div style={{ background: "#fff", border: `1px solid ${FLOW.line}`, borderRadius: 20, padding: "24px 20px", boxShadow: "0 8px 22px rgba(30,58,95,.06)" }}>
+          <span style={{ display: "inline-block", background: "#EAF0EA", color: "#2F5D3A", borderRadius: 999, padding: "5px 12px", fontSize: 11.5, fontWeight: 700, letterSpacing: ".04em", marginBottom: 14 }}>ALL {total} QUESTIONS DONE</span>
+          <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 27, lineHeight: 1.2, color: FLOW.ink, margin: "0 0 6px" }}>{kidName}&rsquo;s report is being written.</h1>
+          <p style={{ fontSize: 15, color: FLOW.dim, lineHeight: 1.5, margin: "0 0 22px" }}>Where should we send it?</p>
+
+          {/* WhatsApp */}
+          <label style={{ fontSize: 13, fontWeight: 600, color: FLOW.ink, display: "block", marginBottom: 8 }}>WhatsApp number</label>
+          <div style={{ display: "flex", gap: 8, marginBottom: phoneErr ? 6 : 6 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", padding: "0 14px", fontSize: 17, fontWeight: 700, color: FLOW.ink, background: FLOW.cream, border: `2px solid ${FLOW.line}`, borderRadius: 14 }}>+91</span>
+            <input type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="98765 43210" value={phone}
+              onChange={(e) => { setPhone(e.target.value); if (phoneErr) setPhoneErr(null); }}
+              style={{ flex: 1, height: 54, padding: "0 16px", fontSize: 18, border: `2px solid ${phoneErr ? "#c0392b" : FLOW.line}`, borderRadius: 14, fontFamily: "inherit", background: FLOW.cream, color: FLOW.ink, outline: "none", boxSizing: "border-box", minWidth: 0 }} />
+          </div>
+          {phoneErr ? <div role="alert" style={{ fontSize: 12.5, color: "#c0392b", marginBottom: 14 }}>{phoneErr}</div>
+            : <div style={{ fontSize: 12.5, color: FLOW.dim, marginBottom: 14 }}>The report arrives here, usually within a minute.</div>}
+
+          {/* Name */}
+          <label style={{ fontSize: 13, fontWeight: 600, color: FLOW.ink, display: "block", marginBottom: 8 }}>Your name</label>
+          <input type="text" placeholder="e.g. Priya" value={parentName} onChange={(e) => setParentName(e.target.value)}
+            style={{ width: "100%", height: 54, padding: "0 16px", fontSize: 18, border: `2px solid ${FLOW.line}`, borderRadius: 14, fontFamily: "inherit", background: FLOW.cream, color: FLOW.ink, outline: "none", boxSizing: "border-box", marginBottom: 14 }} />
+
+          {/* Email */}
+          <label style={{ fontSize: 13, fontWeight: 600, color: FLOW.ink, display: "block", marginBottom: 8 }}>Email</label>
+          <input type="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)}
+            style={{ width: "100%", height: 54, padding: "0 16px", fontSize: 18, border: `2px solid ${emailTouched && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? "#c0392b" : FLOW.line}`, borderRadius: 14, fontFamily: "inherit", background: FLOW.cream, color: FLOW.ink, outline: "none", boxSizing: "border-box" }} />
+          {emailTouched && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) && <div style={{ fontSize: 12, color: "#c0392b", marginTop: 6 }}>Enter a valid email address.</div>}
+
+          <p style={{ fontSize: 12, color: FLOW.dim, lineHeight: 1.55, margin: "16px 0 0" }}>
+            Only the report and a few follow-ups about it. Reply STOP any time.{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: FLOW.navy, fontWeight: 600 }}>Privacy</a>
+          </p>
+
+          {error && <div style={{ background: "#fdf0ee", color: "#c0392b", border: "1px solid #e8c4be", borderRadius: 8, padding: "12px 16px", fontSize: 13, marginTop: 14 }}>{error}</div>}
+
+          <button onClick={submitContact} disabled={!ready}
+            style={{ width: "100%", height: 56, marginTop: 18, background: ready ? FLOW.navy : FLOW.line, color: ready ? "#fff" : FLOW.dim, border: "none", borderRadius: 16, fontFamily: HEAD, fontWeight: 600, fontSize: 17, cursor: ready ? "pointer" : "not-allowed" }}>
+            {submitting ? "Sending…" : `Send me ${kidName}'s report →`}
+          </button>
         </div>
-        <h1 style={{ fontFamily: BG, fontWeight: 800, fontSize: 24, lineHeight: 1.25, color: "var(--ink)", margin: "0 0 8px" }}>Tell us who you are, and we&rsquo;ll open it.</h1>
-        <p style={{ fontSize: 14, color: "var(--ink-dim)", lineHeight: 1.55, margin: "0 0 22px" }}>We send a copy to your email too, so you always have it.</p>
-
-        <label style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: 8 }}>Your name <span style={{ color: "var(--redpen)", fontWeight: 600, fontSize: 11 }}>Required</span></label>
-        <input type="text" placeholder="e.g. Priya" value={parentName} onChange={(e) => setParentName(e.target.value)}
-          style={{ width: "100%", padding: "14px 16px", fontSize: 15, border: "2px solid var(--marker)", borderRadius: 12, fontFamily: "inherit", background: "var(--paper)", color: "var(--ink)", outline: "none", boxSizing: "border-box", marginBottom: 16 }} />
-
-        <label style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: 8 }}>Email <span style={{ color: "var(--redpen)", fontWeight: 600, fontSize: 11 }}>Required</span></label>
-        <input type="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)}
-          style={{ width: "100%", padding: "14px 16px", fontSize: 15, border: `2px solid ${emailTouched && !emailValid ? "var(--redpen)" : "var(--marker)"}`, borderRadius: 12, fontFamily: "inherit", background: "var(--paper)", color: "var(--ink)", outline: "none", boxSizing: "border-box" }} />
-        {emailTouched && !emailValid && <div style={{ fontSize: 12, color: "var(--redpen)", marginTop: 6 }}>Enter a valid email address (e.g. you@gmail.com)</div>}
-
-        {error && <div style={{ background: "#fdf0ee", color: "var(--redpen)", border: "1px solid #e8c4be", borderRadius: 8, padding: "12px 16px", fontSize: 13, marginTop: 14 }}>{error}</div>}
-
-        <button className="cta-btn" disabled={!ready || submitting} onClick={submitDetails}
-          style={{ marginTop: 20, background: ready ? NAVY : "var(--line)", color: ready ? "#fff" : "var(--ink-dim)", cursor: ready && !submitting ? "pointer" : "not-allowed" }}>
-          {submitting ? "Opening…" : `Show ${kidName}'s report →`}
-        </button>
-      </FlowShell>
+      </Screen>
     );
   }
 
-  // ── STEP 5 — QUESTIONS ──────────────────────────────────────────────────────
+  // ── QUESTIONS (step 4/5) ──────────────────────────────────────────────────────
   const q = questions[currentIdx];
   if (!q) return null;
-  const pct = 34 + Math.round(((currentIdx) / Math.max(1, totalMax)) * 52);
+  const pct = 10 + Math.round((currentIdx / Math.max(1, total)) * 78);
   return (
-    <FlowShell
-      pct={pct}
-      minutesLeft={Math.max(1, Math.round((100 - pct) / 20))}
-      label={`Question ${currentIdx + 1} of up to ${totalMax}`}
-      onBack={currentIdx > 0 ? () => setCurrentIdx(currentIdx - 1) : undefined}
-      footer={<>No right answers. Pick what happens most days.</>}
-    >
-      <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 24, lineHeight: 1.3, marginBottom: 28, color: "var(--ink)" }}>
+    <Screen>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+        <Wordmark />{currentIdx > 0 ? <BackLink onClick={() => setCurrentIdx(currentIdx - 1)} /> : <span />}
+      </div>
+      <div style={{ marginBottom: 20 }}><QuestionProgress pct={pct} minutesLeft={minsLeft(pct)} /></div>
+
+      <span style={{ display: "inline-block", background: "rgba(232,163,61,.14)", color: "#8A6322", border: "1px solid rgba(232,163,61,.4)", borderRadius: 999, padding: "5px 12px", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", marginBottom: 16 }}>
+        QUESTION {currentIdx + 1} OF {total}
+      </span>
+      <h2 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 27, lineHeight: 1.3, marginBottom: 24, color: FLOW.ink }}>
         {q.text.replace(/\{name\}/g, kidName)}
       </h2>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {q.options.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => handleAnswer(q.id, opt.value)}
-            style={{ background: "var(--card)", border: "1.5px solid var(--line)", borderRadius: 12, padding: "18px 20px", fontSize: 15.5, fontWeight: 500, color: "var(--ink)", cursor: "pointer", textAlign: "left", fontFamily: "inherit", transition: "border-color .1s", minHeight: 44 }}
-            onMouseOver={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = NAVY; }}
-            onMouseOut={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--line)"; }}
-          >
-            {opt.label}
-          </button>
-        ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {q.options.map((opt, i) => {
+          const sel = picked === opt.value;
+          return (
+            <button key={opt.value} onClick={() => pick(q.id, opt.value)}
+              style={{ display: "flex", alignItems: "center", gap: 14, background: sel ? FLOW.sel : "#fff", border: sel ? `2px solid ${FLOW.gold}` : `1px solid ${FLOW.line}`, borderRadius: 14, padding: "16px 16px", minHeight: 56, fontSize: 15.5, fontWeight: 500, color: FLOW.ink, cursor: "pointer", textAlign: "left", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }}>
+              <span aria-hidden="true" style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 8, display: "grid", placeItems: "center", fontWeight: 700, fontSize: 13, background: sel ? FLOW.gold : FLOW.cream, color: sel ? "#fff" : FLOW.dim, border: sel ? "none" : `1px solid ${FLOW.line}` }}>{LETTERS[i]}</span>
+              {opt.label}
+            </button>
+          );
+        })}
       </div>
-    </FlowShell>
+      <p style={{ textAlign: "center", marginTop: 20, fontSize: 12.5, color: FLOW.dim }}>No right answers. Pick what happens most days.</p>
+    </Screen>
   );
 }

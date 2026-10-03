@@ -11,18 +11,18 @@ export const dynamic = "force-dynamic";
 
 type SP = { [k: string]: string | string[] | undefined };
 
+// New v2 order: phone is captured at the CONTACT step (step 6), after details_view.
 const STEPS: Array<{ key: string; label: string }> = [
   { key: "landing_view",      label: "Landing" },
   { key: "start_worry",       label: "1 · Worry" },
   { key: "start_age",         label: "2 · Age" },
   { key: "start_child",       label: "3 · Child" },
-  { key: "phone_captured",    label: "4 · WhatsApp saved" },
-  { key: "assessment_started",label: "5 · Questions start" },
+  { key: "assessment_started",label: "Questions start" },
   { key: "q_answered",        label: "    first question" },
-  { key: "halfway_view",      label: "6 · Halfway" },
-  { key: "details_view",      label: "7 · Details shown" },
-  { key: "details_submitted", label: "    details submitted" },
-  { key: "report_view",       label: "    report view" },
+  { key: "halfway_view",      label: "Halfway" },
+  { key: "details_view",      label: "6 · Contact shown" },
+  { key: "details_submitted", label: "    contact submitted" },
+  { key: "phone_captured",    label: "    WhatsApp saved + sent" },
 ];
 
 function pick(sp: SP, k: string, fallback: string): string {
