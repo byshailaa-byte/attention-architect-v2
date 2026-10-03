@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import { getFlowSid } from "@/lib/flow/session";
+import { isValidIndianMobile, childStepReady } from "@/lib/flow/validate";
 import { displayChildName } from "@/lib/report/pronouns";
 import ReportFooterLinks from "@/app/components/ReportFooterLinks";
 import FlowShell from "@/app/components/FlowShell";
@@ -94,11 +95,7 @@ export default function StartFlowV2() {
   const kidName  = childName.trim() ? displayChildName(childName) : "your child";
   const kidNameCap = childName.trim() ? displayChildName(childName) : "Your child";
 
-  function isValidMobile(raw: string): boolean {
-    let d = raw.replace(/\D/g, "");
-    if (d.length === 12 && d.startsWith("91")) d = d.slice(2);
-    return /^[6-9]\d{9}$/.test(d);
-  }
+  const isValidMobile = isValidIndianMobile;
 
   function pickWorry(key: string) {
     setWorry(key);
@@ -284,7 +281,7 @@ export default function StartFlowV2() {
 
   // ── STEP 3 — CHILD ────────────────────────────────────────────────────────────
   if (step === 3) {
-    const canContinue = !!childName.trim() && !!gender;
+    const canContinue = childStepReady(childName, gender);
     return (
       <>
         <FlowShell {...shellProps} onBack={() => setStep(2)}>

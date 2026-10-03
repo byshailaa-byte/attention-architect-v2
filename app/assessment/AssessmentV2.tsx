@@ -6,8 +6,9 @@ import { GATEWAY_QUESTIONS, Question } from "@/lib/engine/questions";
 import { buildQuestionSequence, GatewayAnswers } from "@/lib/engine/router";
 import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import { getFlowSid } from "@/lib/flow/session";
-import { displayChildName, buildPronounTokens, CHILD_NAME_FALLBACK_MID, type Gender } from "@/lib/report/pronouns";
-import { HALFWAY_FIRST_READ, HALFWAY_FIRST_READ_FALLBACK } from "@/content/assessment/halfway-first-read";
+import { isValidEmail, detailsReady } from "@/lib/flow/validate";
+import { displayChildName, CHILD_NAME_FALLBACK_MID, type Gender } from "@/lib/report/pronouns";
+import { HALFWAY_FIRST_READ, HALFWAY_FIRST_READ_FALLBACK, fillHalfwayLine } from "@/content/assessment/halfway-first-read";
 import FlowShell from "@/app/components/FlowShell";
 
 const BG   = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
@@ -30,19 +31,7 @@ function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<s
     else window.fbq(type, event, params ?? {});
   }
 }
-function isValidEmail(v: string): boolean { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()); }
-
 type Phase = "questions" | "halfway" | "details";
-
-// Fill {name}/{they}/{them}/{their} in a halfway line using the existing pronoun tokens.
-function fillHalfway(line: string, gender: Gender, name: string): string {
-  const t = buildPronounTokens(gender, name);
-  return line
-    .replace(/\{name\}/g, name)
-    .replace(/\{they\}/g, t.child_pronoun_subj)
-    .replace(/\{them\}/g, t.child_pronoun_obj)
-    .replace(/\{their\}/g, t.child_pronoun_poss);
-}
 
 export default function AssessmentV2() {
   const router = useRouter();
@@ -135,7 +124,7 @@ export default function AssessmentV2() {
   async function showHalfway(partialAnswers: Record<string, string>, seq: Question[], nextIdx: number) {
     halfwayShown.current = true;
     pendingIdxRef.current = nextIdx;
-    setHalfwayLine(fillHalfway(HALFWAY_FIRST_READ_FALLBACK, genderParam, kidName));
+    setHalfwayLine(fillHalfwayLine(HALFWAY_FIRST_READ_FALLBACK, genderParam, kidName));
     setPhase("halfway");
     fireEvent("halfway_view", sessionId, { flow: "v2" });
     try {
@@ -146,7 +135,7 @@ export default function AssessmentV2() {
       });
       const data = await res.json().catch(() => ({})) as { archetype?: string | null };
       const line = (data.archetype && HALFWAY_FIRST_READ[data.archetype]) || HALFWAY_FIRST_READ_FALLBACK;
-      setHalfwayLine(fillHalfway(line, genderParam, kidName));
+      setHalfwayLine(fillHalfwayLine(line, genderParam, kidName));
     } catch { /* keep the fallback line already set */ }
   }
 
@@ -224,7 +213,7 @@ export default function AssessmentV2() {
   if (phase === "details") {
     const emailTouched = email.length > 0;
     const emailValid   = isValidEmail(email);
-    const ready        = parentName.trim().length > 0 && emailValid;
+    const ready        = detailsReady(parentName, email);
     async function submitDetails() {
       if (!ready || submitting) return;
       setSubmitting(true); setError(null);

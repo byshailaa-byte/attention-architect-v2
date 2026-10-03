@@ -37,3 +37,16 @@ export const HALFWAY_FIRST_READ: Record<string, string> = {
 // Shown if the two grid dimensions haven't separated yet by the midpoint (rare).
 export const HALFWAY_FIRST_READ_FALLBACK =
   "A clear shape is forming in {name}'s answers — the next questions lock down which one.";
+
+// Fill {name}/{they}/{them}/{their} using the existing pronoun tokens. boy→he/him/his,
+// girl→she/her/her, otherwise the child's NAME (so singular verb agreement reads right).
+import { buildPronounTokens, type Gender } from "@/lib/report/pronouns";
+
+export function fillHalfwayLine(line: string, gender: Gender, name: string): string {
+  const t = buildPronounTokens(gender, name);
+  return line
+    .replace(/\{name\}/g, name)
+    .replace(/\{they\}/g, t.child_pronoun_subj)
+    .replace(/\{them\}/g, t.child_pronoun_obj)
+    .replace(/\{their\}/g, t.child_pronoun_poss);
+}
