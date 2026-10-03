@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { captureUtmOnce } from "@/lib/utm";
 import { fireGtag } from "@/lib/gtag";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 import ReportFooterLinks from "@/app/components/ReportFooterLinks";
+import { resolveFlowVariant } from "@/lib/flow/session";
+import StartFlowV2 from "./StartFlowV2";
 
 function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
   fetch("/api/funnel/event", {
@@ -105,7 +107,7 @@ const FOLLOW_UP: Record<string, { question: string; options: { label: string; ec
 
 type Stage = "start" | "followup";
 
-export default function SimplifiedStart() {
+function StartV1() {
   const router = useRouter();
   const [stage, setStage]         = useState<Stage>("start");
   const [childName, setChildName] = useState("");
@@ -546,5 +548,21 @@ export default function SimplifiedStart() {
     </div>
       <ReportFooterLinks />
       </>
+  );
+}
+
+// Flow router: ?flow=v2 opts into the new start flow (steps 1–4). Default and ?flow=v1
+// render the current flow, unchanged, until the "flip".
+function StartRouter() {
+  const params = useSearchParams();
+  const flow = resolveFlowVariant(params.get("flow"));
+  return flow === "v2" ? <StartFlowV2 /> : <StartV1 />;
+}
+
+export default function SimplifiedStartPage() {
+  return (
+    <Suspense>
+      <StartRouter />
+    </Suspense>
   );
 }

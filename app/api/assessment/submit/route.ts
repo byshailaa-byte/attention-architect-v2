@@ -186,6 +186,15 @@ export async function POST(req: NextRequest) {
       VALUES ('assessment_complete', ${sessionId}::uuid, ${JSON.stringify({ archetype: scoring.archetype })}::jsonb)
     `.catch((e: unknown) => console.warn("[funnel] assessment_complete:", (e as Error).message));
 
+    // v2 flow: inherit the unified session's internal flag so internal/operator testers are
+    // excluded from the main revenue/completion funnels too, not just the Start-flow table.
+    // No-op for v1 (no flow_sessions row) and for non-internal sessions.
+    await sql`
+      UPDATE assessments a SET is_internal = true
+      FROM flow_sessions f
+      WHERE a.session_id = ${sessionId}::uuid AND f.session_id = a.session_id AND f.is_internal = true
+    `.catch((e: unknown) => console.warn("[assessment] is_internal inherit:", (e as Error).message));
+
     // Eager auto-generation: trigger the narrative report pipeline so the report is
     // often ready by the time the parent finishes the details form.
     // The auto-generate route checks the master switch, phase gate, and generation cap —

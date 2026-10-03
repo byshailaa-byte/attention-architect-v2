@@ -24,17 +24,31 @@ export async function POST(req: NextRequest) {
       variant?: string;
     };
 
-    if (!sessionId || !parentName?.trim() || !email?.trim() || !phone?.trim()) {
+    if (!sessionId || !parentName?.trim() || !email?.trim()) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const sql = getSql();
+
+    // v2 flow captures the WhatsApp number at step 4 (stored on flow_sessions), so step 7
+    // omits it. Fall back to that number here. v1 always sends phone, so effPhone === phone.
+    let effPhone = (phone ?? "").trim();
+    if (!effPhone) {
+      const fs = (await sql`
+        SELECT phone FROM flow_sessions WHERE session_id = ${sessionId}::uuid
+      `) as unknown as { phone: string | null }[];
+      effPhone = (fs[0]?.phone ?? "").trim();
+    }
+    if (!effPhone) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
     const result = (await sql`
       UPDATE assessments
       SET
         parent_name  = ${parentName.trim()},
         email        = ${email.trim()},
-        phone        = ${phone.trim()},
+        phone        = ${effPhone},
         child_gender = COALESCE(${gender ?? null}, child_gender),
         tried        = ${tried ?? []},
         better       = ${better ?? []}
@@ -142,13 +156,13 @@ export async function POST(req: NextRequest) {
               parentName: row.parent_name ?? parentName.trim(),
               childName:  row.child_name  ?? CHILD_NAME_FALLBACK_MID,
               sessionId,
-              rawPhone:   row.phone       ?? phone.trim(),
+              rawPhone:   row.phone ?? effPhone,
             });
             await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${sessionId}::uuid`;
             sent = true;
             // Send succeeded → upsert the WATI contact with purchased=no + attributes.
             // Never throws; a failed upsert is logged loudly and does not undo the send.
-            await upsertWatiContactAfterSend(sql, sessionId, row.phone ?? phone.trim(), row.parent_name ?? parentName.trim());
+            await upsertWatiContactAfterSend(sql, sessionId, row.phone ?? effPhone, row.parent_name ?? parentName.trim());
           } catch (e: unknown) {
             console.error(`[whatsapp] attempt ${attempt + 1} failed:`, (e as Error).message);
           }
@@ -176,7 +190,7 @@ export async function POST(req: NextRequest) {
           action_source: "website",
           userData: {
             email: email.trim(),
-            phone: phone.trim(),
+            phone: effPhone,
           },
         }]);
       } catch (e: unknown) {

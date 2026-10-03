@@ -8,6 +8,8 @@ import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import SiteFooter from "@/app/components/SiteFooter";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 import ThankYouScreen from "@/app/preview/simplified-v1/ThankYouScreen";
+import AssessmentV2 from "./AssessmentV2";
+import { resolveFlowVariant } from "@/lib/flow/session";
 
 declare global {
   interface Window {
@@ -751,11 +753,19 @@ function AssessmentForm() {
   );
 }
 
+// Flow router: ?flow=v2 opts into the new assessment (questions → halfway → details).
+// Default and ?flow=v1 render the current assessment, unchanged, until the "flip".
+function AssessmentRouter() {
+  const params = useSearchParams();
+  const flow = resolveFlowVariant(params.get("flow"));
+  return flow === "v2" ? <AssessmentV2 /> : <AssessmentForm />;
+}
+
 export default function AssessmentPage() {
   return (
     <>
       <Suspense>
-        <AssessmentForm />
+        <AssessmentRouter />
       </Suspense>
       <SiteFooter />
     </>

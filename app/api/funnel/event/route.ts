@@ -26,6 +26,17 @@ const ALLOWED = new Set([
   "founder_call_requested",
   "roadmap_cta_click",
   "whatsapp_click",
+  // v2 start-flow (?flow=v2) step events — kept in sync with the phase_44 DB CHECK.
+  "landing_view",
+  "start_worry",
+  "start_age",
+  "start_child",
+  "start_phone",
+  "phone_captured",
+  "q_answered",
+  "halfway_view",
+  "details_view",
+  "details_submitted",
 ]);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

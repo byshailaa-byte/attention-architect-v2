@@ -40,7 +40,13 @@ export async function middleware(req: NextRequest) {
         headers: { "WWW-Authenticate": 'Basic realm="Admin"' },
       });
     }
-    return NextResponse.next();
+    const res = NextResponse.next();
+    // Mark this browser as internal/operator for 30 days so any v2 start-flow session it
+    // begins is excluded from the funnel stats. This is the PRODUCTION is_internal signal:
+    // /admin uses Basic Auth (no session cookie of its own), so we set a dedicated marker
+    // cookie here that /api/flow/* reads.
+    res.cookies.set("aa_internal", "1", { path: "/", maxAge: 60 * 60 * 24 * 30, sameSite: "lax" });
+    return res;
   }
 
   // ── LMS: cookie session ───────────────────────────────────────────────────

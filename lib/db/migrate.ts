@@ -854,6 +854,76 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_43_lms_module_reads') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 44 — v2 start-flow (`?flow=v2`) measurement.
+  //   • flow_sessions: ONE row per unified session id (minted on the first v2 page and
+  //     carried through /simplified/start → /assessment). Stores the flow arm (v1|v2),
+  //     is_internal, device class (mobile|tablet|desktop — derived from UA, raw UA NEVER
+  //     stored), first-touch UTM, and the WhatsApp phone captured at step 4.
+  //   • Widen the funnel_events CHECK to allow the v2 step events. The full prior list is
+  //     repeated verbatim (ADD CONSTRAINT re-validates every row), plus the new names.
+  // Run manually on prod with DATABASE_URL override — endpoint ep-green-truth-aqxygaj2.
+  if (!applied.has("phase_44_flow_v2")) {
+    await sql`
+      CREATE TABLE IF NOT EXISTS flow_sessions (
+        session_id   UUID PRIMARY KEY,
+        flow         TEXT NOT NULL CHECK (flow IN ('v1','v2')),
+        is_internal  BOOLEAN NOT NULL DEFAULT false,
+        device       TEXT CHECK (device IN ('mobile','tablet','desktop')),
+        utm          JSONB NOT NULL DEFAULT '{}',
+        phone        TEXT,
+        phone_at     TIMESTAMPTZ,
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_flow_sessions_flow ON flow_sessions (flow, created_at)`;
+    await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
+    await sql`
+      ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+        'assessment_started',
+        'assessment_question_complete',
+        'assessment_dimension_complete',
+        'assessment_complete',
+        'report_gate_view',
+        'generating_page_view',
+        'generate_lead',
+        'report_view',
+        'view_item',
+        'pricing_section_viewed',
+        'begin_checkout',
+        'checkout_modal_opened',
+        'checkout_modal_dismissed',
+        'purchase',
+        'lms_day_complete',
+        'lms_reflection_submitted',
+        'scroll_milestone',
+        'exit_intent_shown',
+        'landing_step_age',
+        'landing_step_concern',
+        'landing_step_followup',
+        'pricing_variant_assigned',
+        'phone_capture_shown',
+        'teaser_shown',
+        'paywall_shown',
+        'simplified_report_view',
+        'thankyou_screen_view',
+        'founder_call_requested',
+        'roadmap_cta_click',
+        'whatsapp_click',
+        'landing_view',
+        'start_worry',
+        'start_age',
+        'start_child',
+        'start_phone',
+        'phone_captured',
+        'q_answered',
+        'halfway_view',
+        'details_view',
+        'details_submitted'
+      ))
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_44_flow_v2') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 
