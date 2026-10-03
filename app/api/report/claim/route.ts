@@ -2,6 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { sendWhatsAppReport, upsertWatiContactAfterSend } from "@/lib/whatsapp";
+import { sendReportReadyEmail } from "@/lib/auth/email";
 import { sendCapiEvents } from "@/lib/meta/capi";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
@@ -77,6 +78,42 @@ export async function POST(req: NextRequest) {
     const autoGenUrl = new URL("/api/internal/report/auto-generate", req.nextUrl.origin).toString();
     const internalSecret = process.env.INTERNAL_API_SECRET ?? "";
     after(async () => {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
+
+      // v2 flow (?flow=v2): email the report link via Resend, exactly once per assessment.
+      // Gated to v2 (a flow_sessions row with flow='v2') so v1 behaviour is unchanged.
+      // The /report/{uuid} link is valid immediately (the report page handles the generating
+      // state), so this is independent of the WhatsApp send below. Stamp-first prevents a
+      // double-send; a real send failure resets the stamp so it can be re-attempted.
+      try {
+        const v2 = (await sql`
+          SELECT 1 FROM flow_sessions WHERE session_id = ${sessionId}::uuid AND flow = 'v2'
+        `) as unknown as unknown[];
+        if (v2.length > 0) {
+          const claimed = (await sql`
+            UPDATE assessments SET report_email_sent_at = now()
+            WHERE session_id = ${sessionId}::uuid AND report_email_sent_at IS NULL
+            RETURNING child_name
+          `) as unknown as { child_name: string | null }[];
+          if (claimed.length > 0) {
+            try {
+              await sendReportReadyEmail({
+                to: email.trim(),
+                parentName: parentName.trim(),
+                childName: claimed[0].child_name,
+                reportUrl: `${baseUrl}/report/${sessionId}`,
+              });
+            } catch (e: unknown) {
+              console.error("[email] report-ready failed — resetting stamp for retry:", (e as Error).message);
+              await sql`UPDATE assessments SET report_email_sent_at = NULL WHERE session_id = ${sessionId}::uuid`
+                .catch(() => {});
+            }
+          }
+        }
+      } catch (e: unknown) {
+        console.warn("[email] report-ready gate:", (e as Error).message);
+      }
+
       // Step 1: wait for narrative generation to complete (~48s avg).
       // Race against a 240s hard cap so WhatsApp always sends even on a slow generation —
       // parent gets the link and sees the static fallback at worst, not silence.
@@ -180,7 +217,6 @@ export async function POST(req: NextRequest) {
       } // end else (report published)
 
       // CAPI Lead — event_id matches client-side fbq call: `lead:${sessionId}`
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
       try {
         await sendCapiEvents([{
           event_name: "Lead",

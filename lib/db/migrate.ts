@@ -924,6 +924,14 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_44_flow_v2') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 45 — report_email_sent_at: dedup stamp for the v2 report-ready email, so the
+  // Resend send fires at most once per assessment. Nullable, no backfill.
+  // Run manually on prod with DATABASE_URL override — endpoint ep-green-truth-aqxygaj2.
+  if (!applied.has("phase_45_report_email")) {
+    await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS report_email_sent_at TIMESTAMPTZ`;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_45_report_email') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 
