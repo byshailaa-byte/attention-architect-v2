@@ -60,12 +60,13 @@ export default function FlowShell({
         </div>
 
         {children}
+
+        {footer != null && (
+          <div style={{ textAlign: "center", marginTop: 18, fontSize: 12, color: "var(--ink-dim)", fontFamily: BG }}>
+            {footer}
+          </div>
+        )}
       </div>
-      {footer != null && (
-        <div style={{ textAlign: "center", padding: "14px 20px 4px", fontSize: 12, color: "var(--ink-dim)", fontFamily: BG }}>
-          {footer}
-        </div>
-      )}
     </div>
   );
 }
