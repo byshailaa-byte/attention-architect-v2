@@ -12,7 +12,7 @@ import { WRITING_ENGINE_SYSTEM_PROMPT } from "@/lib/narrative/system-prompt";
 import { QUESTIONS_BY_ID, ALL_QUESTIONS } from "@/lib/engine/questions";
 import { displayChildName, type Gender } from "@/lib/report/pronouns";
 import {
-  canonicalConcern, goalForConcern, headlineForConcern, worryLabelFor, worryMomentFor, GOLD_LINE,
+  canonicalConcern, goalForConcern, headlineForConcern, worryLabelFor, worryMomentFor, noticeFor, GOLD_LINE,
 } from "./goal-mapping";
 import {
   selectEvidence, rankDimensions, type AnsweredQuestion, type DimScore,
@@ -64,7 +64,7 @@ function dimScores(a: AssessmentInput): DimScore[] {
 }
 
 type Context = {
-  gender: Gender; name: string; concern: string; worryLabel: string; moment: string;
+  gender: Gender; name: string; concern: string; worryLabel: string; moment: string; notice: string;
   archetype: string; archDesc: string; headline: string; goal: string;
   program: ProgramAnchor | null; evidence: EvidenceItem[]; evidenceQuotes: string[];
   evidenceTie: string; disclaimer: string;
@@ -76,6 +76,7 @@ function buildContext(a: AssessmentInput): Context {
   const concern = canonicalConcern(a.concerns?.[0]);
   const worryLabel = worryLabelFor(concern);
   const moment = worryMomentFor(concern);
+  const notice = noticeFor(concern, a.childName ?? "", gender);
   const archetype = a.archetype ?? "The All-In Kid";
   const archDesc = archetypeDesc(archetype, a.childName ?? "", gender);
   const headline = headlineForConcern(concern, a.childName ?? "", gender);
@@ -83,7 +84,7 @@ function buildContext(a: AssessmentInput): Context {
   const program = programFor(archetype, a.ageBand, a.childName ?? "", gender);
   const evidence = selectEvidence(answeredFromAssessment(a), rankDimensions(dimScores(a)), a.childName ?? "", gender);
   return {
-    gender, name, concern, worryLabel, moment, archetype, archDesc, headline, goal, program,
+    gender, name, concern, worryLabel, moment, notice, archetype, archDesc, headline, goal, program,
     evidence, evidenceQuotes: evidence.map((e) => e.quote),
     evidenceTie: `Put together, these three answers are what pointed us to ${name}’s pattern.`,
     disclaimer:
@@ -169,8 +170,9 @@ Write JSON ONLY, exactly these keys:
   "shortFix": "one short instruction a parent can picture, then '5 minutes a day.'",
   "whyParas": ["two short sentences, concrete, using at least one of the 3 answers (\\"you told us…\\")", "one or two short sentences"],
   "switch": { "instead": "what a tired parent really says today, IN QUOTES", "try": "the exact new words, said to ${ctx.name}, AT ${ctx.moment}, IN QUOTES", "after": "ONE short sentence on what the parent does next" },
-  "tonight": ["step 1 — ONE short sentence (two at most), the Day 2 principle done AT ${ctx.moment}", "step 2", "step 3"]
+  "tonight": ["step 1 — ONE short sentence (two at most), the Day 2 principle done AT ${ctx.moment}", "step 2 — another concrete step", "${ctx.notice}"]
 }
+The THIRD tonight step must be exactly this Notice check of the outcome: "${ctx.notice}"
 
 HARD RULES (rejected otherwise):
 - Match the GOLD voice: concrete, warm, short. EVERY sentence 14 words or fewer. Count them.
@@ -295,21 +297,24 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
 
   try {
     let current = await callLLM(buildPrompt(ctx)); attempts = 1;
-    // Budget: 1 repair + 1 full retry.
+    current.tonight[2] = ctx.notice; // tonight's 3rd step is always the deterministic Notice check
+    // Budget: 2 repairs + 1 full retry.
     for (;;) {
       const v = validateGenerated(current, vopts);
       if (!v.ok) {
         rejections.push(...v.errors);
-        if (isLengthOnly(v.errors) && repairs < 1) {
+        if (isLengthOnly(v.errors) && repairs < 2) {
           repairs++;
           console.log(`[report-v2] repair (length-only): ${fieldsFromErrors(v.errors).join(", ")}`);
           current = await repairFields(current, v.errors, ctx);
+          current.tonight[2] = ctx.notice;
           continue;
         }
         if (retries < 1) {
           retries++; attempts++;
           console.log(`[report-v2] full retry: ${v.errors.join("; ")}`);
           current = await callLLM(buildPrompt(ctx, v.errors));
+          current.tonight[2] = ctx.notice;
           continue;
         }
         break; // → fallback
@@ -325,6 +330,7 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
       if (retries < 1) {
         retries++; attempts++;
         current = await callLLM(buildPrompt(ctx, [`Coherence/usability judge FAILED: ${j.reason}`]));
+        current.tonight[2] = ctx.notice;
         continue;
       }
       break; // → fallback

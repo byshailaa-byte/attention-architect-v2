@@ -31,7 +31,7 @@
 // with {they} (it fills lowercase). Tokens: {Name} {they} {their} {them}.
 // ============================================================================
 import { displayChildName, buildPronounTokens, type Gender } from "@/lib/report/pronouns";
-import { canonicalConcern } from "@/lib/report-v2/goal-mapping";
+import { canonicalConcern, noticeFor } from "@/lib/report-v2/goal-mapping";
 import type { ReportV2Generated } from "@/lib/report-v2/types";
 
 // Short strengths-first blurb per archetype (not validated; shown on the report).
@@ -239,6 +239,7 @@ export function composeFallback(
     shortFix: f(meta.shortFix),
     whyParas: [f(meta.mechanismPara), f(w.worryPara)],
     switch: { instead: f(cell.instead), try: f(cell.try), after: f(cell.after) },
-    tonight: [f(cell.tonight[0]), f(cell.tonight[1]), f(cell.tonight[2])],
+    // tonight's 3rd step is always the deterministic "Notice:" check of the worry's outcome.
+    tonight: [f(cell.tonight[0]), f(cell.tonight[1]), noticeFor(worry, name, gender)],
   };
 }

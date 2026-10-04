@@ -264,4 +264,16 @@ describe("static fallbacks (archetype × worry)", () => {
     const g = composeFallback("The Unknown", "other", "Aarav", boy);
     expect(validateGenerated(g).ok).toBe(true);
   });
-});
+
+  it("tonight's 3rd step is a 'Notice:' check of the worry outcome", () => {
+    expect(composeFallback("The Inventor", "reminders", "Aarav", boy).tonight[2])
+      .toBe("Notice: did he start without a second reminder?");
+    expect(composeFallback("The Storm", "screens", "Mia", "girl").tonight[2])
+      .toBe("Notice: did it end without a fight?");
+    expect(composeFallback("The Magnet", "confidence", "Mia", "girl").tonight[2])
+      .toBe("Notice: did she try the hard part before asking?");
+    // every archetype × worry ends on a Notice step
+    for (const a of ARCHETYPES) for (const w of WORRIES) {
+      expect(composeFallback(a, w, "Aarav", boy).tonight[2].startsWith("Notice:")).toBe(true);
+    }
+  });

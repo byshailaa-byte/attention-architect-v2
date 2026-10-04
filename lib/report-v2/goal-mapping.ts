@@ -42,6 +42,21 @@ export function worryMomentFor(concernKey: string | null | undefined): string {
   return WORRY_MOMENT[canonicalConcern(concernKey)];
 }
 
+// tonight's 3rd step is always a "Notice:" check of the WORRY'S outcome (pronoun-filled).
+export const WORRY_NOTICE: Record<string, string> = {
+  reminders:  "Notice: did {they} start without a second reminder?",
+  homework:   "Notice: did {they} start without a battle?",
+  screens:    "Notice: did it end without a fight?",
+  confidence: "Notice: did {they} try the hard part before asking?",
+  giveup:     "Notice: did {they} try again after it went wrong?",
+  finish:     "Notice: did {they} get to the end?",
+  other:      "Notice: did {they} start and stick with it?",
+};
+
+export function noticeFor(concernKey: string | null | undefined, name: string, gender: Gender): string {
+  return fill(WORRY_NOTICE[canonicalConcern(concernKey)], name, gender);
+}
+
 // §1 headline per concern.
 export const CONCERN_HEADLINE: Record<string, string> = {
   homework:   "{Name} turns homework into a daily fight.",
