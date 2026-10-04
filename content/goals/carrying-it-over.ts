@@ -6,20 +6,20 @@ import type { GoalSkillContent } from "@/content/types";
 // (they/their fallback), filled by fillLmsContent at render.
 export const carryingItOver: GoalSkillContent = {
   problem:
-    "{{child_name}} manages this well where you've set it up, and not at all where you haven't. The report found the skill is real but hasn't travelled — it currently lives in the conditions you create rather than in {{child_pronoun_obj}}.",
+    "{{child_name}} does well when you've set things up, and struggles when you haven't. The skill is real. It just hasn't moved from your setup into {{child_pronoun_poss}} own habits yet.",
   goals: [
-    { key: "carrying-it-over-1", text: "{{child_name}} uses it somewhere I'm not watching", why: "outside homework, without a prompt", recommended: true },
-    { key: "carrying-it-over-2", text: "The same approach shows up outside homework", why: "not just at the desk, not just in the evening", recommended: false },
+    { key: "carrying-it-over-1", text: "{{child_name}} does it even when I'm not watching", why: "outside homework, without a prompt", recommended: true },
+    { key: "carrying-it-over-2", text: "The same habit shows up outside homework", why: "not just at the desk, not just in the evening", recommended: false },
     { key: "carrying-it-over-3", text: "{{child_name}} manages a task I didn't set up", why: "something that wasn't arranged for {{child_pronoun_obj}}", recommended: false },
-    { key: "carrying-it-over-4", text: "I stop being the trigger for it happening", why: "the change is mine", recommended: false },
+    { key: "carrying-it-over-4", text: "I'm no longer the one who has to start it", why: "the change is mine", recommended: false },
   ],
   objectives: [
-    { week: 1, objective: "Find out where it currently works and where it doesn't.", parentOutcome: "You note which settings it holds in. That list is your baseline.", childOutcome: "Nothing is asked of {{child_pronoun_obj}}." },
-    { week: 2, objective: "Name the thing that works, once, so it becomes portable.", parentOutcome: "You give it a name {{child_pronoun_subj}}'d actually use. Then you stop explaining it.", childOutcome: "The approach becomes something {{child_pronoun_subj}} can carry rather than something you run." },
-    { week: 3, objective: "Run it on an ordinary task that isn't homework.", parentOutcome: "You apply the same setup to something small and unrelated.", childOutcome: "{{child_pronoun_subj|cap}} may recognise the shape of it somewhere new." },
-    { week: 4, objective: "Keep it available after it fails in a new setting.", parentOutcome: "You don't retreat to homework-only when it doesn't transfer.", childOutcome: "A failed transfer stops meaning it only works at the desk." },
-    { week: 5, objective: "Remove yourself as the trigger.", parentOutcome: "You stop initiating it, and wait to see whether it appears.", childOutcome: "It may happen without a prompt." },
-    { week: 6, objective: "Hand it over entirely.", parentOutcome: "Nothing new. Stepping back is the whole week.", childOutcome: "{{child_pronoun_subj|cap}} may use it somewhere you never suggested." },
+    { week: 1, objective: "Notice where it works and where it doesn't.", parentOutcome: "Note the times and places it works. That list is your starting point.", childOutcome: "Nothing is asked of {{child_pronoun_obj}}." },
+    { week: 2, objective: "Give what works a name, so {{child_pronoun_subj}} can use it anywhere.", parentOutcome: "Pick a name {{child_pronoun_subj}}'d actually use, say it once, then stop explaining.", childOutcome: "It becomes {{child_pronoun_poss}} habit, not your setup." },
+    { week: 3, objective: "Try it on a small task that isn't homework.", parentOutcome: "Use the same setup for something small, like packing the school bag.", childOutcome: "{{child_pronoun_subj|cap}} may spot that it works there too." },
+    { week: 4, objective: "Keep going even when it doesn't work somewhere new.", parentOutcome: "If it fails outside homework, don't go back to using it only for homework.", childOutcome: "One miss doesn't mean it only works at the desk." },
+    { week: 5, objective: "Stop being the one who starts it.", parentOutcome: "Don't start it yourself. Wait and see if {{child_pronoun_subj}} does.", childOutcome: "It may happen without you saying anything." },
+    { week: 6, objective: "Let {{child_pronoun_obj}} own it fully.", parentOutcome: "Nothing new. Stepping back is the whole week.", childOutcome: "{{child_pronoun_subj|cap}} may use it somewhere you never suggested." },
   ],
   bridges: {
     homework:   "You came in about homework. What the assessment found is that homework goes well when you've set it up — and that nothing like it happens anywhere you haven't.",

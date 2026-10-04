@@ -6,20 +6,20 @@ import type { GoalSkillContent } from "@/content/types";
 // (they/their fallback), filled by fillLmsContent at render.
 export const runningItThemselves: GoalSkillContent = {
   problem:
-    "Most of what holds {{child_name}}'s attention together is currently you. The report found that works — right up until nobody is there to do it. The break is that the system is yours, not {{child_pronoun_poss}} own.",
+    "Right now, much of what keeps {{child_name}} focused is you: the reminders, the checking, the sitting nearby. That works while you're there. When you're not, it falls apart, because the habit is yours, not {{child_pronoun_poss}}.",
   goals: [
-    { key: "running-it-themselves-1", text: "{{child_name}} notices {{child_pronoun_poss}} own attention and adjusts it", why: "without being told to", recommended: true },
+    { key: "running-it-themselves-1", text: "{{child_name}} notices when {{child_pronoun_poss}} attention slips and brings it back", why: "without being told to", recommended: true },
     { key: "running-it-themselves-2", text: "{{child_name}} asks for what {{child_pronoun_subj}} needs instead of me guessing", why: "{{child_pronoun_subj}} names it; you stop interpreting", recommended: false },
     { key: "running-it-themselves-3", text: "The evening runs without me managing it", why: "available, not in charge", recommended: false },
-    { key: "running-it-themselves-4", text: "I stop managing {{child_pronoun_poss}} attention day to day", why: "the change is mine", recommended: false },
+    { key: "running-it-themselves-4", text: "I stop managing {{child_pronoun_poss}} focus every day", why: "the change is mine", recommended: false },
   ],
   objectives: [
-    { week: 1, objective: "Find out how much of it is currently you.", parentOutcome: "You count your interventions in a normal evening. That number is your baseline.", childOutcome: "Nothing changes yet." },
-    { week: 2, objective: "Say what you're noticing, once, so it becomes visible to {{child_pronoun_obj}}.", parentOutcome: "You describe what you see rather than what to do.", childOutcome: "The thing you've been managing becomes something {{child_pronoun_subj}} can see." },
-    { week: 3, objective: "Ask instead of instruct, on an ordinary day.", parentOutcome: "\"What would make this easier to start?\" Then wait, even if the pause is long.", childOutcome: "{{child_pronoun_subj|cap}} may answer with something you wouldn't have chosen." },
-    { week: 4, objective: "Let a bad night stay {{child_pronoun_poss}}.", parentOutcome: "You don't take the evening back when it goes wrong.", childOutcome: "The recovery stays {{child_pronoun_poss}} problem to solve." },
-    { week: 5, objective: "Step out of the room and stay out.", parentOutcome: "Available, not present.", childOutcome: "The evening may run without you in it." },
-    { week: 6, objective: "Say nothing.", parentOutcome: "Nothing. That is the week — and it's the hardest one.", childOutcome: "Whatever {{child_pronoun_subj}} does this week is {{child_pronoun_poss}}." },
+    { week: 1, objective: "Notice how much of it is you right now.", parentOutcome: "Count how many times you step in on a normal evening. That number is your starting point.", childOutcome: "Nothing changes yet." },
+    { week: 2, objective: "Tell {{child_pronoun_obj}} what you notice, once, so {{child_pronoun_subj}} can see it too.", parentOutcome: "Describe what you see, instead of telling {{child_pronoun_obj}} what to do.", childOutcome: "{{child_pronoun_subj|cap}} starts to see what you've been handling." },
+    { week: 3, objective: "Ask instead of telling, on a normal day.", parentOutcome: "Ask: \"What would make this easier to start?\" Then wait, even if the pause is long.", childOutcome: "{{child_pronoun_subj|cap}} may suggest something you wouldn't have chosen." },
+    { week: 4, objective: "When the evening goes badly, let {{child_pronoun_obj}} handle it.", parentOutcome: "Don't take over when it goes wrong.", childOutcome: "Fixing it stays {{child_pronoun_poss}} job." },
+    { week: 5, objective: "Leave the room, and stay out.", parentOutcome: "Stay close enough to help if asked, but out of the room.", childOutcome: "The evening may run without you in it." },
+    { week: 6, objective: "Step back completely.", parentOutcome: "Nothing new. Stepping back is the whole week, and it's the hardest one.", childOutcome: "Whatever happens this week, {{child_pronoun_subj}} did it {{child_pronoun_reflexive}}." },
   ],
   bridges: {
     homework:   "You came in about homework. What the assessment found is that homework works — but it works because you're running it, and that's a job with no end date.",

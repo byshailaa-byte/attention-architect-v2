@@ -71,7 +71,7 @@ export const GOAL_FRAMING_LINE =
 // Special case for Starting (break = week 1), where "already has the first {{n}}"
 // would be empty. Skills: "starting" (or archetypes The Storm / The Inventor).
 export const GOAL_FRAMING_LINE_STARTING =
-  "The six weeks run in order, because the skills build on each other. For {{child_name}}, the work starts at week one and the rest builds from there.";
+  "The weeks go in order, because each one builds on the last. For {{child_name}}, the work starts in week one.";
 
 // ── Safeguarding response (Part 5) ────────────────────────────────────────────
 // Fixed copy. Never generated. Shown instead of any goal mapping when the screen

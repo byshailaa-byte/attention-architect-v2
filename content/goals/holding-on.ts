@@ -11,7 +11,7 @@ export const holdingOn: GoalSkillContent = {
     { key: "holding-on-1", text: "{{child_name}} keeps going with homework, even when a new idea pops up", why: "four nights out of five, instead of drifting within minutes", recommended: true },
     { key: "holding-on-2", text: "{{child_name}} comes back on {{child_pronoun_poss}} own after drifting", why: "without me noticing and calling {{child_pronoun_obj}} back", recommended: false },
     { key: "holding-on-3", text: "Homework takes one sitting instead of three", why: "the same work, without the restarts", recommended: false },
-    { key: "holding-on-4", text: "I stop pushing at the moment the work is already finished in {{child_pronoun_poss}} head", why: "the change is mine", recommended: false },
+    { key: "holding-on-4", text: "I stop pushing once {{child_pronoun_poss}} mind has already moved on", why: "the change is mine", recommended: false },
   ],
   objectives: [
     { week: 1, objective: "Notice when {{child_pronoun_subj}} starts to drift. Don't change anything yet.", parentOutcome: "For the first two minutes, don't step in. Just watch. Count the nights {{child_pronoun_subj}} stays with it. That's your starting point.", childOutcome: "Nothing is asked of {{child_pronoun_obj}} this week." },

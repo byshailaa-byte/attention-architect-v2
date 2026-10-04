@@ -13,7 +13,7 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Gets going even when something easier is calling.",
     "Begins on a normal day, not just a good one.",
     "Starts again after a day it didn't happen.",
-    "Starts other things too — chores, getting ready.",
+    "Starts without a reminder, even when you're not in the room.",
     "Gets going on their own, most days.",
   ],
   homework: [
@@ -21,7 +21,7 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Stays with it when something pulls them away.",
     "Gets through homework on a normal evening.",
     "Picks it back up after a rough night.",
-    "The same calm start works beyond homework.",
+    "Starts homework calmly, even when you're not in the room.",
     "Runs their homework routine themselves.",
   ],
   screens: [
@@ -37,7 +37,7 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Keeps trying when it would be easier to stop.",
     "Has a go on an ordinary day, not just an easy one.",
     "Tries again after one that didn't work.",
-    "Takes on hard things outside school too.",
+    "Tries the hard part before calling you in.",
     "Backs themselves to try first, most times.",
   ],
   giveup: [
@@ -45,7 +45,7 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Pushes past the first wobble, not just the easy start.",
     "Keeps going on a normal day.",
     "Comes back the day after a big flop.",
-    "Sticks with hard things in other areas too.",
+    "Keeps going after a mistake, even with you out of the room.",
     "Keeps going on their own, most of the time.",
   ],
   finish: [
@@ -53,7 +53,7 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Stays with it through the dull middle.",
     "Finishes on an ordinary day, not just a fun one.",
     "Comes back to finish after stopping early.",
-    "Finishes things beyond school too.",
+    "Finishes the task with you out of the room.",
     "Sees things through on their own, mostly.",
   ],
   other: [
@@ -61,7 +61,7 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Stays with it when something pulls them away.",
     "Starts and keeps going on a normal day.",
     "Gets back on track after an off day.",
-    "Uses the same habit across daily tasks.",
+    "Keeps the habit going when you're not watching.",
     "Starts and finishes on their own, most days.",
   ],
 };
