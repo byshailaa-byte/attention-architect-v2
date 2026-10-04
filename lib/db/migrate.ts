@@ -954,6 +954,22 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_46_report_v2_events') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 47 — Report v2 generated content store. Keyed by session_id so it is decoupled
+  // from the v1 narrative `reports` pipeline (v2-only sessions have no reports row). One row
+  // per session; holds the assembled + generated ReportV2Content and whether it came from
+  // the LLM or the static fallback.
+  if (!applied.has("phase_47_report_v2_content")) {
+    await sql`
+      CREATE TABLE IF NOT EXISTS report_v2_content (
+        session_id UUID PRIMARY KEY,
+        content    JSONB NOT NULL,
+        source     TEXT  NOT NULL CHECK (source IN ('llm','fallback')),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_47_report_v2_content') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 

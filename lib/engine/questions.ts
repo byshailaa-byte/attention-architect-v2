@@ -315,18 +315,27 @@ export const D6_CONFIRM: Question = {
   ],
 };
 
+// Every question in the bank, in canonical (definition) order. Used both for answer
+// validation and for Report v2 evidence selection (verbatim option labels + dimensions).
+export const ALL_QUESTIONS: readonly Question[] = [
+  ...GATEWAY_QUESTIONS,
+  D1_1, D1_2,
+  D2_1, D2_2, D2_3, D2_CONFIRM,
+  D3_1, D3_2, D3_3, D3_CONFIRM,
+  P1, P2,
+  D5_1, D5_2,
+  R1, R2, R3,
+  D6_1, D6_2, D6_3, D6_CONFIRM,
+];
+
+// qid → Question, for O(1) lookup of a question's dimension and option labels.
+export const QUESTIONS_BY_ID: ReadonlyMap<string, Question> = new Map(
+  ALL_QUESTIONS.map((q) => [q.id, q]),
+);
+
 // Derived lookup for server-side answer validation in /api/assessment/submit.
 // Single source of truth: editing any question's options here automatically tightens validation.
 export const VALID_ANSWER_VALUES: ReadonlyMap<string, ReadonlySet<string>> = new Map(
-  [
-    ...GATEWAY_QUESTIONS,
-    D1_1, D1_2,
-    D2_1, D2_2, D2_3, D2_CONFIRM,
-    D3_1, D3_2, D3_3, D3_CONFIRM,
-    P1, P2,
-    D5_1, D5_2,
-    R1, R2, R3,
-    D6_1, D6_2, D6_3, D6_CONFIRM,
-  ].map((q) => [q.id, new Set(q.options.map((o) => o.value))])
+  ALL_QUESTIONS.map((q) => [q.id, new Set(q.options.map((o) => o.value))]),
 );
 
