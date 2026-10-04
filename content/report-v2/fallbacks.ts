@@ -86,8 +86,8 @@ const ARCH_META: Record<string, ArchMeta> = {
   },
   "The Live Wire": {
     shortGood: "Nothing is wrong with {Name}. Big energy when something matters to {them}.",
-    shortFix: "Add one real stake. 5 minutes a day.",
-    mechanismPara: "{Name} goes all out when it counts. With nothing at stake, the task slides past.",
+    shortFix: "Turn it into one real challenge. 5 minutes a day.",
+    mechanismPara: "{Name} goes all out when it counts. With nothing on the line, the task slides past.",
   },
 };
 const ARCH_META_FALLBACK = ARCH_META["The All-In Kid"];
@@ -194,13 +194,13 @@ const CELL: Record<string, Record<string, Cell>> = {
     other: { instead: "“Do it how I told you.”", try: "“Your call on how to run this.”", after: "Then step back and let {Name} lead.", tonight: ["At the start, hand over the real call.", "Let {Name} decide how.", "Step back. Don't redo it."] },
   },
   "The Live Wire": {
-    reminders: { instead: "“Start now, because I said.”", try: "“What would make starting this worth it?”", after: "Then let {Name} set a real stake, like a timer.", tonight: ["At start time, ask what makes it worth it.", "Turn it into a timer to beat, or a bet.", "Let {Name} pick the stake, not you."] },
-    homework: { instead: "“Just do your homework because I said.”", try: "“What would make this worth doing right now?”", after: "Then let {Name} set a real stake, like a timer.", tonight: ["Ask {Name} what makes it worth doing now.", "Turn it into a timer to beat, or a bet.", "Let {Name} pick the stake, not you."] },
-    screens: { instead: "“Off now. I mean it.”", try: "“Beat the timer to the off switch. Ready?”", after: "Then make stopping a quick race {Name} owns.", tonight: ["At screen-off, set a short timer race.", "Let {Name} race to switch off in time.", "Let {them} set the target, not you."] },
-    confidence: { instead: "“Just try. It's no big deal.”", try: "“Bet you can crack the first bit?”", after: "Then let {Name} set the challenge and go.", tonight: ["When it feels hard, make it a quick game.", "Let {Name} set a target to beat.", "Start the moment the stake feels real."] },
-    giveup: { instead: "“Don't quit. Keep trying.”", try: "“Best of three. Want to go again?”", after: "Then let {Name} set the terms of round two.", tonight: ["After a miss, make the retry a quick game.", "Let {Name} set a target for round two.", "Go the moment the stake feels real."] },
-    finish: { instead: "“Just finish it. Come on.”", try: "“Can you finish before the timer? Your call.”", after: "Then let {Name} set the clock and race it.", tonight: ["Near the end, set a short timer to beat.", "Let {Name} pick the target time.", "Finish the moment the race is on."] },
-    other: { instead: "“Just get on with it.”", try: "“What would make this worth doing now?”", after: "Then let {Name} name a real stake.", tonight: ["At the start, ask what makes it worth it.", "Turn it into a timer, or a small bet.", "Let {Name} pick the stake, not you."] },
+    reminders: { instead: "“Start now, because I said.”", try: "“Beat the timer to get started?”", after: "Then let {Name} set the challenge and go.", tonight: ["Turn starting into a quick challenge.", "Let {Name} pick a target to beat.", "Start the moment the challenge is set."] },
+    homework: { instead: "“Just do your homework because I said.”", try: "“Race the clock — can you start in two minutes?”", after: "Then let {Name} set the challenge and go.", tonight: ["Make the first step a quick challenge.", "Let {Name} pick the target.", "Go the moment the challenge is set."] },
+    screens: { instead: "“Off now. I mean it.”", try: "“Off at 6:30. Then football or cycling, you pick.”", after: "Then hold 6:30 — the choice is what comes next.", tonight: ["Say it once: screens off at 6:30.", "Offer two things to do next — football or cycling.", "Notice: did screens go off without a second ask?"] },
+    confidence: { instead: "“Just try. It's not a big thing.”", try: "“Think you can crack the first bit?”", after: "Then let {Name} set the challenge and go.", tonight: ["When it feels hard, make it a quick challenge.", "Let {Name} pick a target to beat.", "Start the moment the challenge is set."] },
+    giveup: { instead: "“Don't quit. Keep trying.”", try: "“Best of three. Want to go again?”", after: "Then let {Name} set the next round.", tonight: ["After a miss, make the retry a quick game.", "Let {Name} set a target for round two.", "Go when {they} is ready."] },
+    finish: { instead: "“Just finish it. Come on.”", try: "“Can you finish before the timer?”", after: "Then let {Name} set the clock and go.", tonight: ["Near the end, set a short timer to beat.", "Let {Name} pick the target time.", "Go when the timer starts."] },
+    other: { instead: "“Just get on with it.”", try: "“Race the timer to get it done?”", after: "Then let {Name} set the challenge and go.", tonight: ["Turn it into a quick challenge.", "Let {Name} pick a target to beat.", "Start the moment the challenge is set."] },
   },
 };
 
@@ -239,7 +239,12 @@ export function composeFallback(
     shortFix: f(meta.shortFix),
     whyParas: [f(meta.mechanismPara), f(w.worryPara)],
     switch: { instead: f(cell.instead), try: f(cell.try), after: f(cell.after) },
-    // tonight's 3rd step is always the deterministic "Notice:" check of the worry's outcome.
-    tonight: [f(cell.tonight[0]), f(cell.tonight[1]), noticeFor(worry, name, gender)],
+    // tonight's 3rd step is a "Notice:" check of the worry's outcome — the generic one per
+    // worry, unless the cell authored its own Notice line (e.g. Live Wire × screens).
+    tonight: [
+      f(cell.tonight[0]),
+      f(cell.tonight[1]),
+      cell.tonight[2].startsWith("Notice:") ? f(cell.tonight[2]) : noticeFor(worry, name, gender),
+    ],
   };
 }

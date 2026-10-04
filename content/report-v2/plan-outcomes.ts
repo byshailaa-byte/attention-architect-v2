@@ -4,7 +4,7 @@
 //
 // Week order (titles): 1 Getting started · 2 Handling what pulls them away ·
 // 3 Staying with it on an ordinary day · 4 Coming back after a slip ·
-// 5 Using it beyond homework · 6 Running it themselves.
+// 5 Carrying it into the rest of the day · 6 Running it themselves.
 import { canonicalConcern } from "@/lib/report-v2/goal-mapping";
 
 export const WEEK_OUTCOMES: Record<string, [string, string, string, string, string, string]> = {
@@ -29,7 +29,7 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Stops even when the next thing is tempting.",
     "The handover works on an ordinary evening.",
     "Back to calm stops after one that went wrong.",
-    "Same calm stop with other treats, not just screens.",
+    "The same calm stop works for TV and games too.",
     "Manages their own screen time, mostly.",
   ],
   confidence: [

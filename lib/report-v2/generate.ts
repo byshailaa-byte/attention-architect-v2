@@ -17,7 +17,7 @@ import {
 import {
   selectEvidence, rankDimensions, type AnsweredQuestion, type DimScore,
 } from "./evidence";
-import { validateGenerated, isLengthOnly, fieldsFromErrors } from "./validator";
+import { validateGenerated, isRepairable, fieldsFromErrors } from "./validator";
 import { programFor, type ProgramAnchor } from "./program";
 import { judgeCoherence, type JudgeVerdict } from "./judge";
 import { composeFallback, archetypeDesc } from "@/content/report-v2/fallbacks";
@@ -182,6 +182,7 @@ HARD RULES (rejected otherwise):
 - switch.instead and switch.try are WORDS A PARENT SAYS, each wrapped in double quotes.
 - NO abstract nouns: method, ownership, process, transition, thread, approach, autonomy, structure, engagement, belongs.
 - BANNED words: system, re-entry, brain, neuro, exile, dopamine, regulate, off-ramp, upstairs, diagnose, ADHD, disorder, may, might, could.
+- NEVER BARGAIN with the child. The stop time is fixed and stated plainly. Offer a choice about what comes NEXT, never about whether it happens. BANNED bargaining words: worth it, stake, stakes, reward, treat, treats, deal, earn, earned.
 - No comparisons to other children (rare, most kids, etc). No invented numbers, stats, testimonials. Never blame the parent.
 - Length: shortWhy/shortFix ≤ 90 chars; switch.instead/try ≤ 72 chars.
 Before you answer, re-read every line: each sentence ≤14 words, each tonight step ≤2 sentences, switch.instead/try in quotes.${retry}`;
@@ -250,6 +251,7 @@ one obeys the rule in its comment. Keep the exact meaning and this warm, concret
 a busy parent on their phone, about ${ctx.name}).
 
 Rules when you rewrite:
+- If a line is flagged "bargaining", remove that word. State the stop time plainly; offer a choice about what comes next, never about whether it happens.
 - Split or CUT. Never merge sentences to hit a word count.
 - Every sentence 14 words or fewer. One idea per sentence.
 - Use short, everyday words (one or two syllables) so it reads very easily.
@@ -303,7 +305,7 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
       const v = validateGenerated(current, vopts);
       if (!v.ok) {
         rejections.push(...v.errors);
-        if (isLengthOnly(v.errors) && repairs < 2) {
+        if (isRepairable(v.errors) && repairs < 2) {
           repairs++;
           console.log(`[report-v2] repair (length-only): ${fieldsFromErrors(v.errors).join(", ")}`);
           current = await repairFields(current, v.errors, ctx);

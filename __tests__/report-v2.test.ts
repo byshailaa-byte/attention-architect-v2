@@ -5,7 +5,7 @@ import {
 import {
   selectEvidence, rankDimensions, type AnsweredQuestion, type DimScore,
 } from "@/lib/report-v2/evidence";
-import { validateGenerated, isLengthOnly, fieldsFromErrors } from "@/lib/report-v2/validator";
+import { validateGenerated, isLengthOnly, isRepairable, fieldsFromErrors } from "@/lib/report-v2/validator";
 import { composeFallback } from "@/content/report-v2/fallbacks";
 import type { ReportV2Generated } from "@/lib/report-v2/types";
 
@@ -225,6 +225,24 @@ describe("validator", () => {
     expect(v.errors.filter((e) => e.includes("quoted"))).toEqual([]);
   });
 
+  it("rejects bargaining words (worth it/stake/reward/treat/deal/earn) but not 'learn'", () => {
+    for (const w of ["Make it worth it.", "Raise the stake.", "Up the stakes.", "A reward for finishing.", "No treats first.", "A treat if he starts.", "Offer a deal.", "He can earn screen time.", "She earned it."]) {
+      const v = validateGenerated({ ...ok, whyParas: [w, ok.whyParas[1]] as [string, string] });
+      expect(v.ok, w).toBe(false);
+      expect(v.errors.some((e) => e.includes("bargaining")), w).toBe(true);
+    }
+    // "learn"/"learned" must NOT trip the "earn" ban
+    const fine = validateGenerated({ ...ok, whyParas: ["He will learn to start alone.", "She learned it fast."] as [string, string] });
+    expect(fine.errors.some((e) => e.includes("bargaining"))).toBe(false);
+  });
+
+  it("routes bargaining + length failures through the repair path, not full retry", () => {
+    expect(isRepairable(["switch.try: bargaining (stake)"])).toBe(true);
+    expect(isRepairable(["tonight[0]: sentence over 16 words", "shortFix: bargaining (reward)"])).toBe(true);
+    expect(isRepairable(["shortWhy: abstract (method)"])).toBe(false); // needs a full rewrite
+    expect(isRepairable(["switch.try: must be a quoted line a parent says"])).toBe(false);
+  });
+
   it("classifies length-only errors (for the cheap repair path) vs content errors", () => {
     expect(isLengthOnly(["whyParas[0]: sentence over 16 words", "tonight[1]: over 120 chars (140)"])).toBe(true);
     expect(isLengthOnly(["whyParas[0]: Flesch 55 < 70"])).toBe(true);
@@ -277,3 +295,4 @@ describe("static fallbacks (archetype × worry)", () => {
       expect(composeFallback(a, w, "Aarav", boy).tonight[2].startsWith("Notice:")).toBe(true);
     }
   });
+});

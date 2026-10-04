@@ -45,6 +45,14 @@ const BANNED: { re: RegExp; label: string }[] = [
   { re: /\bfew\s+children\b/i,         label: "comparative (few children)" },
   // The PARENT answered the questions, never the child.
   { re: /\b(he|she|they)\s+told\b/i,   label: "child-attribution (he/she/they told)" },
+  // No bargaining: the stop time is fixed; never trade the task for a reward.
+  // (whole-word, case-insensitive; "earn" must not match "learn")
+  { re: /\bworth\s+it\b/i,             label: "bargaining (worth it)" },
+  { re: /\bstakes?\b/i,                label: "bargaining (stake)" },
+  { re: /\brewards?\b/i,               label: "bargaining (reward)" },
+  { re: /\btreats?\b/i,                label: "bargaining (treat)" },
+  { re: /\bdeal\b/i,                   label: "bargaining (deal)" },
+  { re: /\bearn(ed)?\b/i,              label: "bargaining (earn)" },
 ];
 
 const CAP = {
@@ -126,6 +134,13 @@ export function validateGenerated(g: ReportV2Generated, opts?: { childName?: str
 const LENGTHY_RE = /over \d+ chars|sentence over \d+ words|Flesch \d+ < \d+|more than \d+ sentences/i;
 export function isLengthOnly(errors: string[]): boolean {
   return errors.length > 0 && errors.every((x) => LENGTHY_RE.test(x));
+}
+// Failures the targeted repair call can fix in place: length/readability AND bargaining words
+// (a repair can restate the stop plainly and drop the traded reward). Harder content issues
+// (clinical, parent-blame, missing quotes, child-attribution, comparatives) still need a full
+// retry, not a line-level rewrite.
+export function isRepairable(errors: string[]): boolean {
+  return errors.length > 0 && errors.every((x) => LENGTHY_RE.test(x) || /bargaining \(/.test(x));
 }
 // The set of field names referenced by a list of errors (prefix before the first colon).
 export function fieldsFromErrors(errors: string[]): string[] {

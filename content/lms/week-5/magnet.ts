@@ -5,7 +5,7 @@ const D3 = `**Worked** — {{child_name}} held presence across more than one per
 export const weekContent: LmsWeekContent = {
   archetype: "magnet",
   week: 5,
-  weekTitle: "Using it beyond homework",
+  weekTitle: "Carrying it into the rest of the day",
 
   weeklyReading: {
     introShared: `Presence has held through a real, visible struggle, one-on-one. This week: what happens when presence has to extend to more than one person — a peer or sibling in the mix, not just {{child_name}} and you?`,

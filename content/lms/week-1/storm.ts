@@ -33,7 +33,7 @@ Here's what's actually happening in that moment, underneath:
 
 Your Storm doesn't resist the work itself. They resist being *placed into it* — on someone else's timing, someone else's terms. The instant homework feels like something happening *to* them, their attention switches off. Not to be difficult. That's just how a Storm is wired: ownership is the on-switch. Without it, the engine doesn't run.
 
-**This week's one move: The Opening Choice**
+**This week's one move: Let them choose how to start**
 
 Here's the whole thing. Before homework starts each day, you hand your child real ownership over *how* it begins — so the work feels like theirs before any resistance can build.
 
