@@ -230,6 +230,23 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    // Report v2 content: generate at COMPLETION (background) so a ?flow=v2 parent never
+    // waits on a spinner for it — the cache is warm by the time they open the report. Scoped
+    // to v2-funnel sessions to avoid LLM spend on v1 reports (which never show v2). If it
+    // isn't ready on view, ReportV2 shows the instant static fallback and regenerates.
+    after(async () => {
+      try {
+        const fv = (await sql`
+          SELECT flow FROM flow_sessions WHERE session_id = ${sessionId}::uuid LIMIT 1
+        `) as unknown as { flow: string }[];
+        if (fv[0]?.flow !== "v2") return;
+        const { generateAndStoreReportV2 } = await import("@/lib/report-v2/service");
+        await generateAndStoreReportV2(sessionId);
+      } catch (e: unknown) {
+        console.warn("[report-v2] completion generate failed:", (e as Error).message);
+      }
+    });
+
     // Return scoring (but NEVER honest_flag or honest_trigger — Gate 3)
     return NextResponse.json({
       archetype: scoring.archetype,

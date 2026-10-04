@@ -22,16 +22,18 @@ export type JudgeVerdict = { verdict: "PASS" | "FAIL"; reason: string };
 export async function judgeCoherence(args: {
   childName: string;
   worryLabel: string;
+  moment: string;
   archetype: string;
   program: ProgramAnchor | null;
   evidenceQuotes: string[];
   generated: ReportV2Generated;
 }): Promise<JudgeVerdict> {
-  const { childName, worryLabel, archetype, program, evidenceQuotes, generated } = args;
+  const { childName, worryLabel, moment, archetype, program, evidenceQuotes, generated } = args;
   const prompt = `You are checking one short parenting report for coherence. Be strict.
 
 CHILD: ${childName}
 WORRY THE PARENT RAISED: ${worryLabel}
+THE WORRY'S MOMENT (the switch + tonight must happen here): ${moment}
 ARCHETYPE: ${archetype}
 ARCHETYPE MECHANISM: ${program?.mechanismLine ?? ""} ${program?.patternLine ?? ""}
 WEEK 1 CORE MOVE (the paid programme): ${program?.coreMove || "(unavailable)"}
@@ -45,9 +47,12 @@ THE REPORT:
 - switch — instead: ${generated.switch.instead}
 - switch — try: ${generated.switch.try}
 - switch — after: ${generated.switch.after}
+- tonight 1: ${generated.tonight[0]}
+- tonight 2: ${generated.tonight[1]}
+- tonight 3: ${generated.tonight[2]}
 
 Answer this on ONE line, starting with PASS or FAIL, then one short reason:
-Does the explanation follow from these 3 answers and this archetype mechanism, AND does the switch match the Week 1 core move? If the explanation drifts to generic advice, contradicts the answers, or the switch is not the Week 1 move, answer FAIL.`;
+Does the explanation follow from these 3 answers and this archetype mechanism, AND does the switch match the Week 1 core move, AND do the switch and tonight's steps take place at ${moment}? If the explanation drifts to generic advice, contradicts the answers, the switch is not the Week 1 move, or the switch/tonight do not happen at ${moment}, answer FAIL.`;
 
   const res = await getClient().messages.create({
     model: MODEL,

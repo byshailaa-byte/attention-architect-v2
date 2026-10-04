@@ -26,6 +26,22 @@ export const CONCERN_LABEL: Record<string, string> = {
   confidence: "confidence", giveup: "giving up", finish: "finishing", other: "focus",
 };
 
+// The EXACT moment the switch + tonight steps must happen at — so the Week 1 principle is
+// applied to the worry's real moment, not re-skinned homework advice.
+export const WORRY_MOMENT: Record<string, string> = {
+  reminders:  "the moment of starting",
+  homework:   "the start of homework",
+  screens:    "the screen-off moment",
+  confidence: "the moment something feels hard",
+  giveup:     "the moment after the first failure",
+  finish:     "the moment the child is about to stop early",
+  other:      "the start of any daily task",
+};
+
+export function worryMomentFor(concernKey: string | null | undefined): string {
+  return WORRY_MOMENT[canonicalConcern(concernKey)];
+}
+
 // §1 headline per concern.
 export const CONCERN_HEADLINE: Record<string, string> = {
   homework:   "{Name} turns homework into a daily fight.",

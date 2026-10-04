@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  canonicalConcern, goalForConcern, headlineForConcern, worryLabelFor, CONCERN_GOAL,
+  canonicalConcern, goalForConcern, headlineForConcern, worryLabelFor, worryMomentFor, CONCERN_GOAL,
 } from "@/lib/report-v2/goal-mapping";
 import {
   selectEvidence, rankDimensions, type AnsweredQuestion, type DimScore,
@@ -47,6 +47,16 @@ describe("concern → goal mapping", () => {
     for (const key of ["homework","reminders","screens","confidence","giveup","finish","other"]) {
       expect(CONCERN_GOAL[key]).toBeTruthy();
     }
+  });
+
+  it("maps each worry to its moment (incl. legacy aliases)", () => {
+    expect(worryMomentFor("reminders")).toBe("the moment of starting");
+    expect(worryMomentFor("screens")).toBe("the screen-off moment");
+    expect(worryMomentFor("confidence")).toBe("the moment something feels hard");
+    expect(worryMomentFor("giveup")).toBe("the moment after the first failure");
+    expect(worryMomentFor("finish")).toBe("the moment the child is about to stop early");
+    expect(worryMomentFor("focus")).toBe("the moment of starting"); // alias → reminders
+    expect(worryMomentFor(undefined)).toBe("the start of any daily task"); // → other
   });
 });
 
@@ -149,12 +159,18 @@ describe("validator", () => {
     expect(v.errors.some((e) => e.includes("over 90 chars"))).toBe(true);
   });
 
-  it("rejects jargon words (system/brain/dopamine/re-entry/regulate)", () => {
-    for (const w of ["This is how the system works.", "It is a brain thing.", "A dopamine hit.", "The re-entry is hard.", "Helps them regulate."]) {
+  it("rejects jargon words (system/brain/dopamine/re-entry/regulate/ownership/off-ramp/process/thread)", () => {
+    for (const w of ["This is how the system works.", "It is a brain thing.", "A dopamine hit.", "The re-entry is hard.", "Helps them regulate.", "It builds ownership.", "Give a clear off-ramp.", "Trust the process here.", "He lost the thread."]) {
       const v = validateGenerated({ ...ok, whyParas: [w, ok.whyParas[1]] as [string, string] });
       expect(v.ok, w).toBe(false);
       expect(v.errors.some((e) => e.includes("jargon"))).toBe(true);
     }
+  });
+
+  it("rejects 'upstairs' (assumes a house)", () => {
+    const v = validateGenerated({ ...ok, whyParas: ["Send him upstairs to work.", ok.whyParas[1]] as [string, string] });
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => e.includes("upstairs"))).toBe(true);
   });
 
   it("rejects comparative claims about other children", () => {

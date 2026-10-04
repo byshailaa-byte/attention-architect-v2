@@ -20,6 +20,11 @@ const BANNED: { re: RegExp; label: string }[] = [
   { re: /\bexile\b/i,                  label: "jargon (exile)" },
   { re: /\bdopamine\b/i,               label: "jargon (dopamine)" },
   { re: /\bregulat\w*/i,               label: "jargon (regulate)" },
+  { re: /\bownership\b/i,              label: "jargon (ownership)" },
+  { re: /\boff-?ramp\b/i,              label: "jargon (off-ramp)" },
+  { re: /\bprocess\b/i,                label: "jargon (process)" },
+  { re: /\bthread\b/i,                 label: "jargon (thread)" },
+  { re: /\bupstairs\b/i,               label: "assumes-a-house (upstairs)" },
   // Comparative claims about other children (no invented comparisons).
   { re: /\brare\b/i,                   label: "comparative (rare)" },
   { re: /\bmost\s+kids\b/i,            label: "comparative (most kids)" },
