@@ -26,7 +26,7 @@ const TEAL  = "#22A38A";
 
 const CONCERN_CARDS = [
   { key: "homework",   emoji: "📖", label: "Homework" },
-  { key: "reminders",  emoji: "🎯", label: "Focus" },
+  { key: "reminders",  emoji: "🎯", label: "Needs reminders" },
   { key: "screens",    emoji: "📱", label: "Screens" },
   { key: "confidence", emoji: "👤", label: "Confidence" },
   { key: "giveup",     emoji: "🌱", label: "Giving up" },

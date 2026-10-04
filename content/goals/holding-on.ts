@@ -6,20 +6,20 @@ import type { GoalSkillContent } from "@/content/types";
 // (they/their fallback), filled by fillLmsContent at render.
 export const holdingOn: GoalSkillContent = {
   problem:
-    "{{child_name}} starts perfectly well. The report found the break is what happens next — a new idea, a notification, a sibling, and the page is gone. {{child_pronoun_poss|cap}} attention isn't absent; it keeps getting taken. Which is why \"concentrate\" is advice about the wrong moment.",
+    "{{child_name}} starts well. The trouble is what comes next: a new idea, a notification, a sibling, and {{child_pronoun_subj}} has lost {{child_pronoun_poss}} place. {{child_pronoun_poss|cap}} attention isn't missing. Something keeps pulling it away. That's why saying \"concentrate\" doesn't help. It comes at the wrong moment.",
   goals: [
-    { key: "holding-on-1", text: "{{child_name}} stays with homework when a new idea arrives", why: "four nights out of five, instead of drifting within minutes", recommended: true },
+    { key: "holding-on-1", text: "{{child_name}} keeps going with homework, even when a new idea pops up", why: "four nights out of five, instead of drifting within minutes", recommended: true },
     { key: "holding-on-2", text: "{{child_name}} comes back on {{child_pronoun_poss}} own after drifting", why: "without me noticing and calling {{child_pronoun_obj}} back", recommended: false },
     { key: "holding-on-3", text: "Homework takes one sitting instead of three", why: "the same work, without the restarts", recommended: false },
     { key: "holding-on-4", text: "I stop pushing at the moment the work is already finished in {{child_pronoun_poss}} head", why: "the change is mine", recommended: false },
   ],
   objectives: [
-    { week: 1, objective: "Find out where the drift actually begins, without changing anything yet.", parentOutcome: "You stop stepping in during the first two minutes and watch instead. Count the nights {{child_pronoun_subj}} stays — that's your baseline.", childOutcome: "Nothing is asked of {{child_pronoun_obj}} this week." },
-    { week: 2, objective: "Give the arriving idea somewhere to go, so it stops costing {{child_pronoun_obj}} the page.", parentOutcome: "One sentence replaces the reminder: \"write it down, then come back to it.\" Said once, then nothing.", childOutcome: "The new idea stops being a choice between two things." },
-    { week: 3, objective: "Extend the stretch {{child_pronoun_subj}} already has, rather than asking for a longer one.", parentOutcome: "You stop naming a finish time. The stretch ends where it ends.", childOutcome: "Work that took three sittings may start taking two." },
-    { week: 4, objective: "Make the return cheap, so a bad night stops ending the evening.", parentOutcome: "You ask where it got hard, not whether it did. One question, then quiet.", childOutcome: "A hard question stops being the end of homework." },
-    { week: 5, objective: "Move your prompting from during, to before, to not at all.", parentOutcome: "You leave the room. Setup happens before {{child_pronoun_subj}} sits, not while {{child_pronoun_subj}} works.", childOutcome: "It may start happening when you're not there to see it." },
-    { week: 6, objective: "Hand it over.", parentOutcome: "Nothing. That is the week.", childOutcome: "{{child_pronoun_subj|cap}} may name it {{child_pronoun_reflexive}}: \"I need ten minutes.\"" },
+    { week: 1, objective: "Notice when {{child_pronoun_subj}} starts to drift. Don't change anything yet.", parentOutcome: "For the first two minutes, don't step in. Just watch. Count the nights {{child_pronoun_subj}} stays with it. That's your starting point.", childOutcome: "Nothing is asked of {{child_pronoun_obj}} this week." },
+    { week: 2, objective: "When a new idea pops up, give it somewhere to go, so {{child_pronoun_subj}} doesn't lose {{child_pronoun_poss}} place.", parentOutcome: "Instead of reminding {{child_pronoun_obj}}, say one line: \"Write it down, then come back to it.\" Say it once, then leave it.", childOutcome: "{{child_pronoun_subj|cap}} no longer has to choose between the idea and the homework." },
+    { week: 3, objective: "Build on the time {{child_pronoun_subj}} already manages, instead of asking for more.", parentOutcome: "Don't set a finish time. Let {{child_pronoun_obj}} stop when {{child_pronoun_subj}} stops.", childOutcome: "Work that took three sittings may start taking two." },
+    { week: 4, objective: "Make it easy to get back to work, so one hard moment doesn't end the evening.", parentOutcome: "Ask where it got hard, not whether it did. One question, then stay quiet.", childOutcome: "A hard question stops being the end of homework." },
+    { week: 5, objective: "Remind {{child_pronoun_obj}} before {{child_pronoun_subj}} starts. Then stop reminding.", parentOutcome: "Help {{child_pronoun_obj}} set up before {{child_pronoun_subj}} sits down. Then leave the room.", childOutcome: "It may start happening when you're not there to see it." },
+    { week: 6, objective: "Let {{child_pronoun_obj}} run it {{child_pronoun_reflexive}}.", parentOutcome: "Nothing new. Stepping back is the whole week.", childOutcome: "{{child_pronoun_subj|cap}} may name it {{child_pronoun_reflexive}}: \"I need ten minutes.\"" },
   ],
   bridges: {
     homework:   "You came in about homework. What the assessment found is that {{child_name}} starts it perfectly well — and then something arrives, and the page is gone.",

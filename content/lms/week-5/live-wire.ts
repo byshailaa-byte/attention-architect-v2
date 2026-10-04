@@ -5,7 +5,7 @@ const D3 = `**Worked** — the shared stake ran its course honestly for both. Ke
 export const weekContent: LmsWeekContent = {
   archetype: "live-wire",
   week: 5,
-  weekTitle: "Carrying it into the rest of the day",
+  weekTitle: "Doing it without you in the room",
 
   weeklyReading: {
     introShared: `Stakes have survived a real loss that mattered. This week: what happens when the stake isn't just {{child_name}}'s to bear — a sibling or peer shares in the consequence too?`,

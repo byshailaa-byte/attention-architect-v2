@@ -72,6 +72,6 @@ export const WEEK_TITLES: Record<number, string> = {
   2: "Handling what pulls them away",
   3: "Staying with it on an ordinary day",
   4: "Coming back after a slip",
-  5: "Carrying it into the rest of the day",
+  5: "Doing it without you in the room",
   6: "Running it themselves",
 };

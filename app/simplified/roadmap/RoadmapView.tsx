@@ -230,7 +230,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
         {/* ── 1. Problem ───────────────────────────────────────────────────── */}
         <div style={{ marginBottom: "40px" }}>
           <div style={kick}>What the report found</div>
-          <h2 style={h2s}>The problem, in one paragraph</h2>
+          <h2 style={h2s}>What&rsquo;s really going on</h2>
           <div style={{ background: CARD, border: `1px solid ${LINE}`, borderLeft: "3px solid #C9503A", borderRadius: "0 14px 14px 0", padding: "22px 24px", marginTop: 16 }}>
             <div style={{ font: "700 10.5px/1.4 'Instrument Sans',system-ui", letterSpacing: ".1em", textTransform: "uppercase", color: "#C9503A", marginBottom: 9 }}>Where it breaks</div>
             <p style={{ fontSize: "16.5px", lineHeight: 1.62, color: NAVY, margin: 0 }}>{problem}</p>
@@ -240,16 +240,16 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
         {/* ── 2. Method ────────────────────────────────────────────────────── */}
         <div style={{ marginBottom: "40px" }}>
           <div style={kick}>How this fixes it</div>
-          <h2 style={h2s}>You move first. Every week.</h2>
+          <h2 style={h2s}>Each week starts with one small change from you</h2>
           <p style={{ fontSize: "16px", color: DIM, lineHeight: 1.6, margin: "13px 0 0", maxWidth: "56ch" }}>
-            Not a programme {c} has to sit through. A change to what you do, made one week at a time, in the order the skills build.
+            {c} doesn&rsquo;t have to attend anything. Each week, you change one small thing at homework time, and each change builds on the last.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 24 }}>
             {([
-              ["It starts where the break is", methodPoint1],
-              ["One change a week", "Small enough to survive a normal Tuesday. Comprehensive overhauls don't last; single adjustments do."],
-              ["You change first, then they practise", `Every week asks something of you before it asks anything of ${c}. That's the part you control.`],
-              ["You measure it yourself", "Week one you count what's happening now. Week six you count the same thing, the same way. No score, no test."],
+              [`We start where ${c} gets stuck`, methodPoint1],
+              ["One change a week", "Small enough for a busy weekday. Big overhauls fizzle out; small changes stick."],
+              [`You go first, then ${c} follows`, `Every week asks something of you before it asks anything of ${c}. That's the part you control.`],
+              ["You'll see the difference yourself", "In week one, note what happens now. In week six, note the same thing again. No scores, no tests."],
             ] as const).map(([h, b], i) => (
               <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", background: CARD, border: `1px solid ${LINE}`, borderRadius: 13, padding: "16px 18px" }}>
                 <div style={{ width: 26, height: 26, borderRadius: 8, background: "#FDF1DC", color: "#8A5F0F", fontFamily: BF, fontWeight: 800, fontSize: 12.5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</div>
@@ -265,7 +265,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
         {/* ── 3. The six weeks — accordion, the parent's week open by default ─ */}
         <div style={{ marginBottom: "40px" }}>
           <div style={kick}>The six weeks</div>
-          <h2 style={h2s}>One change a week, in order</h2>
+          <h2 style={h2s}>Your six weeks</h2>
           <p style={{ fontSize: "16px", color: DIM, lineHeight: 1.6, margin: "13px 0 0", maxWidth: "60ch" }}>{framingLine}</p>
           <div style={{ marginTop: 20 }}>
             {weeks.slice(0, 6).map((wk, i) => {
@@ -289,11 +289,11 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
                     {open && (
                       <div className="rm-goal-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginTop: 10 }}>
                         <div style={{ background: "#FDF1DC", borderRadius: 10, padding: "11px 13px" }}>
-                          <div style={{ fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase" as const, fontWeight: 700, color: "#8A5F0F", marginBottom: 5 }}>What changes for you</div>
+                          <div style={{ fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase" as const, fontWeight: 700, color: "#8A5F0F", marginBottom: 5 }}>What you do</div>
                           <div style={{ fontSize: 13.3, lineHeight: 1.5, color: "#5E4712" }}>{wk.parentOutcome}</div>
                         </div>
                         <div style={{ background: "#DCECE7", borderRadius: 10, padding: "11px 13px" }}>
-                          <div style={{ fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase" as const, fontWeight: 700, color: TEAL, marginBottom: 5 }}>What may change for {c}</div>
+                          <div style={{ fontSize: 9.5, letterSpacing: ".1em", textTransform: "uppercase" as const, fontWeight: 700, color: TEAL, marginBottom: 5 }}>What you may notice in {c}</div>
                           <div style={{ fontSize: 13.3, lineHeight: 1.5, color: "#2C5C51" }}>{wk.childOutcome}</div>
                         </div>
                       </div>
@@ -344,7 +344,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
             This is separate from the three 30-minute sessions in the guided plan. Those are for during the six weeks; this one is for deciding whether to start.
           </p>
           <a href={CALENDLY_URL} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", background: "linear-gradient(135deg,#FBCB4A,#F5A623)", color: NAVY, borderRadius: 11, padding: "14px 26px", fontFamily: BF, fontWeight: 700, fontSize: 15, marginTop: 16, textDecoration: "none" }}>
-            Book a free 15 minutes →
+            Book a free 15-minute call →
           </a>
           <div style={{ fontSize: 12.5, color: "#8EA0BC", marginTop: 10 }}>{SHASHANK.name}, Chief Attention Architect</div>
         </div>
@@ -398,7 +398,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
         {/* ── 6. Testimonials (moved before pricing; content unchanged) ─────── */}
         <div style={{ marginBottom: "18px" }}>
           <div style={kick}>From parents who&rsquo;ve done it</div>
-          <h2 style={h2s}>What changed, in their words</h2>
+          <h2 style={h2s}>What other parents noticed</h2>
         </div>
         <div className="rm-testimonials-scroll" style={{ display: "flex", overflowX: "auto", gap: 14, marginBottom: "44px", scrollSnapType: "x mandatory", paddingBottom: 4 }}>
           {TESTIMONIAL_POOL.map((t, i) => (
@@ -463,7 +463,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
               <ul style={{ listStyle: "none", margin: "0 0 14px", padding: 0 }}>
                 {[
                   `The personalised six-week roadmap built around ${c}`,
-                  "Every week’s move, the words, what to watch for",
+                  "Each week: what to do, what to say, and what to look for",
                   "Full refund if it isn’t worth it",
                 ].map(item => (
                   <li key={item} style={tick(BLUE)}>

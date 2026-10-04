@@ -100,6 +100,7 @@ export default async function RoadmapPage({
       ? GOAL_FRAMING_LINE_STARTING
       : GOAL_FRAMING_LINE
           .replace(/\{\{n\}\}/g, String(skill.idx))
+          .replace(/\{\{steady_span\}\}/g, skill.idx === 1 ? "that week" : "those weeks")
           .replace(/\{\{N\}\}/g, String(N))
           .replace(/\{\{week_title\}\}/g, WEEK_TITLES[N] ?? "");
   const framingLine = fill(framingRaw);
@@ -118,8 +119,8 @@ export default async function RoadmapPage({
   const problem = fillName(content.problem);
   const methodPoint1 = fillName(
     skill.idx === 0
-      ? "For {{child_name}} the work starts at week one, and the rest builds from there."
-      : `{{child_name}} is already steady through week ${skill.idx}, so that ground moves quickly.`,
+      ? "For {{child_name}}, that's week one. Each week builds on the last."
+      : `For {{child_name}}, that's week ${skill.idx + 1}. Each week builds on the last.`,
   );
 
   return (

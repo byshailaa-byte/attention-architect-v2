@@ -102,7 +102,7 @@ const ChecklistIcon = (<svg {...ic}><path d="M9 6h10M9 12h10M9 18h10" /><path d=
 export type Worry = { key: string; label: string; icon: ReactNode; tintBg: string; tintIcon: string; echo: string };
 export const WORRIES: Worry[] = [
   { key: "homework",   label: "Homework",   icon: BookIcon,      tintBg: "#E8EEF5", tintIcon: "#1E3A5F", echo: "Homework fights. You’re in the right place. The fight is usually not about the homework, and the next questions find what it’s really about." },
-  { key: "reminders",  label: "Focus",      icon: TargetIcon,    tintBg: "#EAF0EA", tintIcon: "#2F5D3A", echo: "Can’t focus. You’re in the right place. “Won’t” and “can’t” look identical from the outside, and the next questions tell them apart." },
+  { key: "reminders",  label: "Needs reminders", icon: TargetIcon, tintBg: "#EAF0EA", tintIcon: "#2F5D3A", echo: "Needs reminders. You’re in the right place. “Won’t” and “can’t” look identical from the outside, and the next questions tell them apart." },
   { key: "screens",    label: "Screens",    icon: ScreenIcon,    tintBg: "#FBE6C4", tintIcon: "#8A6322", echo: "Screens. You’re in the right place. Screen battles usually sit on top of something else, and the next questions find what." },
   { key: "confidence", label: "Confidence", icon: PersonIcon,    tintBg: "#EFEAF5", tintIcon: "#4A3470", echo: "Low confidence. You’re in the right place. “I can’t” is often a decision made before trying, and the next questions show where it starts." },
   { key: "giveup",     label: "Gives up",   icon: SproutIcon,    tintBg: "#F8E9E2", tintIcon: "#8C3F22", echo: "Gives up quickly. You’re in the right place. Quitting fast is usually protecting something, and the next questions find what." },

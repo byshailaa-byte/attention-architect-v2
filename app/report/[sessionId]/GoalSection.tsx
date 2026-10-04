@@ -68,6 +68,7 @@ export function GoalSection({
       ? GOAL_FRAMING_LINE_STARTING
       : GOAL_FRAMING_LINE
           .replace(/\{\{n\}\}/g, String(skill.idx))
+          .replace(/\{\{steady_span\}\}/g, skill.idx === 1 ? "that week" : "those weeks")
           .replace(/\{\{N\}\}/g, String(N))
           .replace(/\{\{week_title\}\}/g, WEEK_TITLES[N] ?? "");
   const framing = fill(framingRaw);

@@ -19,7 +19,7 @@ export const carryingItOver: GoalSkillContent = {
     { week: 3, objective: "Run it on an ordinary task that isn't homework.", parentOutcome: "You apply the same setup to something small and unrelated.", childOutcome: "{{child_pronoun_subj|cap}} may recognise the shape of it somewhere new." },
     { week: 4, objective: "Keep it available after it fails in a new setting.", parentOutcome: "You don't retreat to homework-only when it doesn't transfer.", childOutcome: "A failed transfer stops meaning it only works at the desk." },
     { week: 5, objective: "Remove yourself as the trigger.", parentOutcome: "You stop initiating it, and wait to see whether it appears.", childOutcome: "It may happen without a prompt." },
-    { week: 6, objective: "Hand it over entirely.", parentOutcome: "Nothing. That is the week.", childOutcome: "{{child_pronoun_subj|cap}} may use it somewhere you never suggested." },
+    { week: 6, objective: "Hand it over entirely.", parentOutcome: "Nothing new. Stepping back is the whole week.", childOutcome: "{{child_pronoun_subj|cap}} may use it somewhere you never suggested." },
   ],
   bridges: {
     homework:   "You came in about homework. What the assessment found is that homework goes well when you've set it up — and that nothing like it happens anywhere you haven't.",

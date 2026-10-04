@@ -19,7 +19,7 @@ export const recovering: GoalSkillContent = {
     { week: 3, objective: "Keep the return available on an ordinary day.", parentOutcome: "You leave the work out rather than clearing it away.", childOutcome: "Coming back costs less than starting again." },
     { week: 4, objective: "Make the return the thing that counts, not the finishing.", parentOutcome: "You mark the return out loud, once — not the completion.", childOutcome: "{{child_pronoun_subj|cap}} may come back on {{child_pronoun_poss}} own within minutes." },
     { week: 5, objective: "Let the return happen without you in the room.", parentOutcome: "You're elsewhere when the stall happens.", childOutcome: "The restart may occur before you'd have noticed it." },
-    { week: 6, objective: "Hand the recovery over.", parentOutcome: "Nothing. That is the week.", childOutcome: "{{child_pronoun_subj|cap}} may say \"I need a minute\" and mean it." },
+    { week: 6, objective: "Hand the recovery over.", parentOutcome: "Nothing new. Stepping back is the whole week.", childOutcome: "{{child_pronoun_subj|cap}} may say \"I need a minute\" and mean it." },
   ],
   bridges: {
     homework:   "You came in about homework. What the assessment found is that one hard question ends the evening — the work stops not because it's too hard, but because {{child_name}} has no way back in after a stall.",

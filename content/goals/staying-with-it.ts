@@ -14,12 +14,12 @@ export const stayingWithIt: GoalSkillContent = {
     { key: "staying-with-it-4", text: "I stop counting down the minutes out loud", why: "the change is mine", recommended: false },
   ],
   objectives: [
-    { week: 1, objective: "Find out where the stretch actually ends, without extending it.", parentOutcome: "You watch and note the point {{child_pronoun_subj}} stops. No intervention. That point is your baseline.", childOutcome: "Nothing changes for {{child_pronoun_obj}} tonight." },
+    { week: 1, objective: "Notice how long {{child_pronoun_subj}} stays with it before stopping. Don't push for more yet.", parentOutcome: "You watch and note the point {{child_pronoun_subj}} stops. No intervention. That point is your baseline.", childOutcome: "Nothing changes for {{child_pronoun_obj}} tonight." },
     { week: 2, objective: "Remove what interrupts the stretch before it ends on its own.", parentOutcome: "You clear one recurring interruption — the one you already know about.", childOutcome: "The stretch gets a chance to run its natural length." },
     { week: 3, objective: "Extend by a few minutes, from what already works.", parentOutcome: "You stop naming a finish time, and stop checking in at the usual point.", childOutcome: "{{child_pronoun_subj|cap}} may go a few minutes past the usual stopping point, unprompted." },
     { week: 4, objective: "Protect the stretch on a night it collapses early.", parentOutcome: "You let a short night be short, and say nothing about it.", childOutcome: "A bad stretch stops becoming a bad evening." },
     { week: 5, objective: "Let the stretch happen where you can't see it.", parentOutcome: "You leave the room once the stretch has started.", childOutcome: "The stretch may hold without you watching." },
-    { week: 6, objective: "Hand the pacing over.", parentOutcome: "Nothing. That is the week.", childOutcome: "{{child_pronoun_subj|cap}} may name {{child_pronoun_poss}} own stopping point." },
+    { week: 6, objective: "Let {{child_pronoun_obj}} decide when to take a break.", parentOutcome: "Nothing new. Stepping back is the whole week.", childOutcome: "{{child_pronoun_subj|cap}} may name {{child_pronoun_poss}} own stopping point." },
   ],
   bridges: {
     homework:   "You came in about homework. What the assessment found is that {{child_name}} manages the interesting part and stops where it turns ordinary — which is most of homework.",

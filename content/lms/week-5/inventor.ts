@@ -5,7 +5,7 @@ const D3 = `**Worked** — the method genuinely incorporated someone else's idea
 export const weekContent: LmsWeekContent = {
   archetype: "inventor",
   week: 5,
-  weekTitle: "Carrying it into the rest of the day",
+  weekTitle: "Doing it without you in the room",
 
   weeklyReading: {
     introShared: `Method-ownership has survived a real failure. This week: what happens when the project isn't purely {{child_name}}'s call anymore — a shared build, a group task, something where someone else's input genuinely belongs in the decision?`,

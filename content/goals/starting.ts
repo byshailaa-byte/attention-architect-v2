@@ -19,7 +19,7 @@ export const starting: GoalSkillContent = {
     { week: 3, objective: "Hold the same start routine on the evening it feels pointless.", parentOutcome: "You run the identical setup on a bad night, without adding anything to it.", childOutcome: "Starting becomes ordinary rather than an event." },
     { week: 4, objective: "Keep the start intact after a night it didn't work.", parentOutcome: "You repeat the routine the next evening without mentioning yesterday.", childOutcome: "One failed night stops setting the tone for the next." },
     { week: 5, objective: "Move the setup earlier, then out of the room.", parentOutcome: "You prepare before {{child_pronoun_subj}} sits, not while {{child_pronoun_subj}} works.", childOutcome: "The start may happen without you present." },
-    { week: 6, objective: "Hand the start over.", parentOutcome: "Nothing. That is the week.", childOutcome: "{{child_pronoun_subj|cap}} may set up {{child_pronoun_poss}} own first step." },
+    { week: 6, objective: "Hand the start over.", parentOutcome: "Nothing new. Stepping back is the whole week.", childOutcome: "{{child_pronoun_subj|cap}} may set up {{child_pronoun_poss}} own first step." },
   ],
   bridges: {
     homework:   "You came in about homework. What the assessment found is that the homework isn't the problem — the ninety minutes go before it starts, because {{child_name}} has no way into the first line.",
