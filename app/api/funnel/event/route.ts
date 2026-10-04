@@ -37,6 +37,16 @@ const ALLOWED = new Set([
   "halfway_view",
   "details_view",
   "details_submitted",
+  // Report/Plan v2 (?report=v2) — kept in sync with the phase_46 DB CHECK.
+  "report_v2_view",
+  "report_section_view",
+  "report_card_view",
+  "report_skip_to_plan",
+  "goal_changed",
+  "plan_v2_view",
+  "plan_cta_click",
+  "call_click",
+  "day1_preview_view",
 ]);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

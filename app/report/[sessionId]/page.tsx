@@ -12,9 +12,10 @@ import type { AxisResult } from "@/lib/engine/scorer";
 import { fetchPublishedNarrativeReport } from "@/lib/report/fetch-narrative";
 import { resolveChildPronoun, CHILD_NAME_FALLBACK } from "@/lib/report/pronouns";
 import type { Gender } from "@/lib/report/pronouns";
+import ReportV2 from "./ReportV2";
 
 type Params = Promise<{ sessionId: string }>;
-type SearchParams = Promise<{ f?: string }>;
+type SearchParams = Promise<{ f?: string; report?: string }>;
 
 export default async function ReportPage({
   params,
@@ -24,7 +25,7 @@ export default async function ReportPage({
   searchParams: SearchParams;
 }) {
   const { sessionId } = await params;
-  const { f } = await searchParams;
+  const { f, report } = await searchParams;
   const fallbackMode = f === "1"; // set by generating page on hard-cap timeout — skip redirect
 
   // Validate UUID format before hitting the DB
@@ -97,6 +98,20 @@ export default async function ReportPage({
   }
 
   const row = rows[0];
+
+  // Report v2 (?report=v2) — also auto-opens for sessions that came through ?flow=v2.
+  // Default report stays v1; this is opt-in. flow_sessions may be absent on very old
+  // rows, so a lookup failure just means "not v2".
+  let isFlowV2 = false;
+  try {
+    const fsRows = (await sql`
+      SELECT flow FROM flow_sessions WHERE session_id = ${sessionId}::uuid LIMIT 1
+    `) as unknown as { flow: string }[];
+    isFlowV2 = fsRows[0]?.flow === "v2";
+  } catch { /* table missing / no row — treat as not v2 */ }
+  if (report === "v2" || isFlowV2) {
+    return <ReportV2 session={sessionId} />;
+  }
 
   // Simplified sessions render the Phase B report DIRECTLY here — no redirect hop —
   // so the canonical /report/<id> URL (every WhatsApp link) stays the served page.

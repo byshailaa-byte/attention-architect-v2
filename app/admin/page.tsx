@@ -11,6 +11,7 @@ import {
   type Question,
 } from "@/lib/engine/questions";
 import AdminDashboard from "./AdminDashboard";
+import ReportV2Funnel from "./ReportV2Funnel";
 import type { AdminDashboardProps, DropOffRow, HandbookLead, WaFailureRow, NeverGeneratedRow, ScrollMilestone, QuestionCompletion } from "./AdminDashboard";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
@@ -583,6 +584,7 @@ export default async function AdminPage({
   }
 
   return (
+    <>
     <AdminDashboard
       kpi={kpi}
       assessments={assessments}
@@ -606,5 +608,7 @@ export default async function AdminPage({
       waFailures={waFailures}
       neverGenerated={neverGenerated}
     />
+      <ReportV2Funnel />
+    </>
   );
 }

@@ -932,6 +932,28 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_45_report_email') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 46 — Report/Plan v2 measurement events, added to the funnel_events CHECK.
+  // Keep in sync with the ALLOWED set in /api/funnel/event/route.ts.
+  // Run manually on prod with DATABASE_URL override — endpoint ep-green-truth-aqxygaj2.
+  if (!applied.has("phase_46_report_v2_events")) {
+    await sql`ALTER TABLE funnel_events DROP CONSTRAINT IF EXISTS funnel_events_event_type_check`;
+    await sql`
+      ALTER TABLE funnel_events ADD CONSTRAINT funnel_events_event_type_check CHECK (event_type IN (
+        'assessment_started','assessment_question_complete','assessment_dimension_complete','assessment_complete',
+        'report_gate_view','generating_page_view','generate_lead','report_view','view_item','pricing_section_viewed',
+        'begin_checkout','checkout_modal_opened','checkout_modal_dismissed','purchase','lms_day_complete',
+        'lms_reflection_submitted','scroll_milestone','exit_intent_shown','landing_step_age','landing_step_concern',
+        'landing_step_followup','pricing_variant_assigned','phone_capture_shown','teaser_shown','paywall_shown',
+        'simplified_report_view','thankyou_screen_view','founder_call_requested','roadmap_cta_click','whatsapp_click',
+        'landing_view','start_worry','start_age','start_child','start_phone','phone_captured','q_answered',
+        'halfway_view','details_view','details_submitted',
+        'report_v2_view','report_section_view','report_card_view','report_skip_to_plan','goal_changed',
+        'plan_v2_view','plan_cta_click','call_click','day1_preview_view'
+      ))
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_46_report_v2_events') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 
