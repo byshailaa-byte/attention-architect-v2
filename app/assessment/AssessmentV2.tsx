@@ -205,14 +205,18 @@ export default function AssessmentV2() {
   // ── HALFWAY (navy, dot grid) ─────────────────────────────────────────────────
   if (phase === "halfway") {
     const goldDot = 4; // index of the one gold dot in the 8-dot grid
+    const hwIdx = pendingIdxRef.current ?? Math.ceil(total / 2);
+    const hwPct = 10 + Math.round((hwIdx / Math.max(1, total)) * 78);
     return (
       <div style={{ minHeight: "100dvh", background: FLOW.navy, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 22px", fontFamily: BODY }}>
         <div style={{ maxWidth: 440, width: "100%" }}>
-          <div aria-hidden="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 10px)", gap: 10, marginBottom: 26 }}>
+          <div style={{ marginBottom: 24 }}><QuestionProgress pct={hwPct} minutesLeft={minsLeft(hwPct)} onNavy /></div>
+          <div aria-hidden="true" style={{ display: "grid", gridTemplateColumns: "repeat(4, 10px)", gap: 10, marginBottom: 20 }}>
             {Array.from({ length: 8 }).map((_, i) => (
               <span key={i} style={{ width: 10, height: 10, borderRadius: "50%", background: i === goldDot ? FLOW.gold : "rgba(255,255,255,.18)", boxShadow: i === goldDot ? `0 0 0 6px rgba(232,163,61,.22)` : "none" }} />
             ))}
           </div>
+          <div style={{ fontSize: 12, letterSpacing: ".14em", textTransform: "uppercase", color: "#E8A33D", fontWeight: 700, marginBottom: 10 }}>Halfway</div>
           <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 27, lineHeight: 1.25, color: "#fff", margin: "0 0 20px" }}>
             A pattern is already showing in <span style={{ fontStyle: "italic", color: FLOW.goldSoft }}>{kidNameDisp}</span>&rsquo;s answers.
           </h1>
@@ -241,7 +245,10 @@ export default function AssessmentV2() {
           <p style={{ fontSize: 15, color: FLOW.dim, lineHeight: 1.5, margin: "0 0 22px" }}>Where should we send it?</p>
 
           {/* WhatsApp */}
-          <label style={{ fontSize: 13, fontWeight: 600, color: FLOW.ink, display: "block", marginBottom: 8 }}>WhatsApp number</label>
+          <label style={{ fontSize: 13, fontWeight: 600, color: FLOW.ink, display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.5 11.5a7.5 7.5 0 0 1-10.9 6.7L4 20l1.3-4.4A7.5 7.5 0 1 1 20.5 11.5z" stroke={FLOW.navy} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            WhatsApp number
+          </label>
           <div style={{ display: "flex", gap: 8, marginBottom: phoneErr ? 6 : 6 }}>
             <span style={{ display: "inline-flex", alignItems: "center", padding: "0 14px", fontSize: 17, fontWeight: 700, color: FLOW.ink, background: FLOW.cream, border: `2px solid ${FLOW.line}`, borderRadius: 14 }}>+91</span>
             <input type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="98765 43210" value={phone}
@@ -271,7 +278,7 @@ export default function AssessmentV2() {
 
           <button onClick={submitContact} disabled={!ready}
             style={{ width: "100%", height: 56, marginTop: 18, background: ready ? FLOW.navy : FLOW.line, color: ready ? "#fff" : FLOW.dim, border: "none", borderRadius: 16, fontFamily: HEAD, fontWeight: 600, fontSize: 17, cursor: ready ? "pointer" : "not-allowed" }}>
-            {submitting ? "Sending…" : `Send me ${kidName}'s report →`}
+            {submitting ? "Sending…" : `Send me ${kidName}’s report →`}
           </button>
         </div>
       </Screen>
@@ -285,7 +292,11 @@ export default function AssessmentV2() {
   return (
     <Screen>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-        <Wordmark />{currentIdx > 0 ? <BackLink onClick={() => setCurrentIdx(currentIdx - 1)} /> : <span />}
+        <Wordmark />
+        <BackLink onClick={() => {
+          if (currentIdx > 0) setCurrentIdx(currentIdx - 1);
+          else router.push(`/simplified/start?${params.toString()}`); // back from Q1 → step 3, choices restored
+        }} />
       </div>
       <div style={{ marginBottom: 20 }}><QuestionProgress pct={pct} minutesLeft={minsLeft(pct)} /></div>
 
@@ -297,7 +308,8 @@ export default function AssessmentV2() {
       </h2>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {q.options.map((opt, i) => {
-          const sel = picked === opt.value;
+          // After Back, the previously chosen answer stays selected (from the final answers map).
+          const sel = picked ? picked === opt.value : answers[q.id] === opt.value;
           return (
             <button key={opt.value} onClick={() => pick(q.id, opt.value)}
               style={{ display: "flex", alignItems: "center", gap: 14, background: sel ? FLOW.sel : "#fff", border: sel ? `2px solid ${FLOW.gold}` : `1px solid ${FLOW.line}`, borderRadius: 14, padding: "16px 16px", minHeight: 56, fontSize: 15.5, fontWeight: 500, color: FLOW.ink, cursor: "pointer", textAlign: "left", fontFamily: "inherit", width: "100%", boxSizing: "border-box" }}>

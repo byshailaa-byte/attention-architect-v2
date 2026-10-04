@@ -21,7 +21,10 @@ export const FLOW = {
 export const HEAD = "var(--font-newsreader), Georgia, serif";
 export const BODY = "var(--font-figtree), system-ui, sans-serif";
 
-export function minsLeft(pct: number) { return Math.max(1, Math.round((100 - pct) / 20)); }
+// Single source of truth for the time estimate: the start-screen pill ("Free · N min")
+// and the questions' "About N min left" both derive from this.
+export const FLOW_TOTAL_MIN = 5;
+export function minsLeft(pct: number) { return Math.max(1, Math.round(((100 - pct) / 100) * FLOW_TOTAL_MIN)); }
 
 // Wordmark — brand is ONLY "Attention Architect". Text so it reads on navy or cream.
 export function Wordmark({ onNavy = false }: { onNavy?: boolean }) {
@@ -53,14 +56,14 @@ export function SegmentBar({ step, total = 3, onNavy = false }: { step: number; 
 }
 
 // One continuous bar + "About N min left" for the questions.
-export function QuestionProgress({ pct, minutesLeft }: { pct: number; minutesLeft: number }) {
+export function QuestionProgress({ pct, minutesLeft, onNavy = false }: { pct: number; minutesLeft: number; onNavy?: boolean }) {
   const clamped = Math.max(0, Math.min(100, pct));
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 7 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: FLOW.dim }}>About {Math.max(1, minutesLeft)} min left</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: onNavy ? FLOW.onNavy : FLOW.dim }}>About {Math.max(1, minutesLeft)} min left</span>
       </div>
-      <div style={{ height: 6, width: "100%", background: FLOW.line, borderRadius: 999, overflow: "hidden" }}>
+      <div style={{ height: 6, width: "100%", background: onNavy ? "rgba(255,255,255,.18)" : FLOW.line, borderRadius: 999, overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${clamped}%`, background: FLOW.gold, borderRadius: 999, transition: "width .35s ease" }} />
       </div>
     </div>

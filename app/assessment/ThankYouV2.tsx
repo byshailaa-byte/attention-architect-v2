@@ -54,7 +54,7 @@ export default function ThankYouV2({
             {kid}&rsquo;s report is on its way to your WhatsApp. It usually arrives within a minute.
           </p>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.16)", borderRadius: 999, padding: "7px 14px", fontSize: 13, color: "#EAF1F8" }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9" stroke={FLOW.goldSoft} strokeWidth="1.8" strokeLinecap="round" /></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.5 11.5a7.5 7.5 0 0 1-10.9 6.7L4 20l1.3-4.4A7.5 7.5 0 1 1 20.5 11.5z" stroke={FLOW.goldSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
             Sent to {masked}
           </span>
         </div>

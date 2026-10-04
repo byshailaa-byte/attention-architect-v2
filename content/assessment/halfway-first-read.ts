@@ -17,26 +17,26 @@
 
 export const HALFWAY_FIRST_READ: Record<string, string> = {
   "The All-In Kid":
-    "{name} doesn't struggle to focus — {they} locks on hard, and the cost is every interruption that breaks the lock.",
+    "{name} doesn’t struggle to focus — {they} locks on hard, and the cost is every interruption that breaks the lock.",
   "The Inventor":
-    "{name} isn't being difficult — {they} has to find {their} own way into a task before committing to it.",
+    "{name} isn’t being difficult — {they} has to find {their} own way into a task before committing to it.",
   "The Explorer":
-    "{name}'s attention moves wide and fast — the tangents aren't {them} drifting, they're how {they} thinks.",
+    "{name}’s attention moves wide and fast — the tangents aren’t {them} drifting, they’re how {they} thinks.",
   "The Magnet":
-    "{name} runs on people — take the room away and you don't get focus, you remove the engine.",
+    "{name} runs on people — take the room away and you don’t get focus, you remove the engine.",
   "The Glue":
     "{name} was never stuck on the work — {they} was stuck on needing you right next to it.",
   "The Captain":
-    "{name} will do almost anything the moment it's actually {their} to run, and stalls the moment it isn't.",
+    "{name} will do almost anything the moment it’s actually {their} to run, and stalls the moment it isn’t.",
   "The Live Wire":
-    "{name} needs something to push against — take the friction away and there's nothing left to push with.",
+    "{name} needs something to push against — take the friction away and there’s nothing left to push with.",
   "The Storm":
     "{name} needs it to be {their} idea — give {them} that, and the same intensity that fights you starts working for you.",
 };
 
 // Shown if the two grid dimensions haven't separated yet by the midpoint (rare).
 export const HALFWAY_FIRST_READ_FALLBACK =
-  "A clear shape is forming in {name}'s answers — the next questions lock down which one.";
+  "A clear shape is forming in {name}’s answers — the next questions lock down which one.";
 
 // Fill {name}/{they}/{them}/{their} using the existing pronoun tokens. boy→he/him/his,
 // girl→she/her/her, otherwise the child's NAME (so singular verb agreement reads right).

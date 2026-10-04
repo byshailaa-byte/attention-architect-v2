@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import { getFlowSid } from "@/lib/flow/session";
 import { isValidIndianMobile, childStepReady } from "@/lib/flow/validate";
 import { displayChildName } from "@/lib/report/pronouns";
 import ReportFooterLinks from "@/app/components/ReportFooterLinks";
-import { FLOW, HEAD, BODY, Wordmark, SegmentBar, BackLink, Screen, WORRIES, IconChip } from "@/app/components/FlowShell";
+import { FLOW, HEAD, BODY, Wordmark, SegmentBar, BackLink, Screen, WORRIES, IconChip, FLOW_TOTAL_MIN } from "@/app/components/FlowShell";
 
 function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
   fetch("/api/funnel/event", {
@@ -32,11 +32,14 @@ type Step = 1 | 2 | 3;
 
 export default function StartFlowV2() {
   const router = useRouter();
-  const [step, setStep]           = useState<Step>(1);
-  const [worry, setWorry]         = useState<string | null>(null);
-  const [age, setAge]             = useState<string | null>(null);
-  const [childName, setChildName] = useState("");
-  const [gender, setGender]       = useState<string | null>(null);
+  const params = useSearchParams();
+  // Returning from the assessment (Back on Q1) lands on step 3 with the choices restored.
+  const restored = !!(params.get("name") && params.get("age") && params.get("concerns"));
+  const [step, setStep]           = useState<Step>(restored ? 3 : 1);
+  const [worry, setWorry]         = useState<string | null>(params.get("concerns") || null);
+  const [age, setAge]             = useState<string | null>(params.get("age") || null);
+  const [childName, setChildName] = useState(params.get("name") || "");
+  const [gender, setGender]       = useState<string | null>(params.get("gender") || null);
   const nameRef = useRef<HTMLInputElement>(null);
 
   // OOB handbook popup — backend (handbook-lead / handbook_send) UNCHANGED. Flow stops here.
@@ -52,12 +55,14 @@ export default function StartFlowV2() {
     captureUtmOnce();
     const sid = getFlowSid();
     sidRef.current = sid;
+    if (restored) return; // restored to step 3 from the assessment — skip re-create/re-fire of landing
     fetch("/api/flow/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: sid, flow: "v2", utm: getStoredUtm() }),
     }).catch(() => {});
     fireEvent("landing_view", sid, { flow: "v2" });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const worryObj = worry ? WORRIES.find((w) => w.key === worry) ?? null : null;
@@ -115,7 +120,7 @@ export default function StartFlowV2() {
           <>
             <div style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 20, color: FLOW.ink, lineHeight: 1.3, marginBottom: 12 }}>{OOB_COPY[oobPopup].heading}</div>
             <p style={{ fontSize: 14, color: FLOW.dim, lineHeight: 1.6, marginBottom: 16 }}>{OOB_COPY[oobPopup].body}</p>
-            <p style={{ fontSize: 13.5, color: FLOW.dim, lineHeight: 1.6, marginBottom: 16 }}>Where should we send it? Enter your WhatsApp number and we&apos;ll send the Attention Handbook within a few minutes.</p>
+            <p style={{ fontSize: 13.5, color: FLOW.dim, lineHeight: 1.6, marginBottom: 16 }}>Where should we send it? Enter your WhatsApp number and we&rsquo;ll send the Attention Handbook within a few minutes.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 14 }}>
               <input type="text" placeholder="Your name" value={oobName} onChange={(e) => setOobName(e.target.value)} style={{ border: `1.5px solid ${FLOW.line}`, borderRadius: 10, padding: "12px 14px", fontSize: 15, fontFamily: "inherit", color: FLOW.ink, background: "#fff", outline: "none", width: "100%", boxSizing: "border-box" }} />
               <input type="tel" inputMode="numeric" placeholder="WhatsApp number" value={oobPhone} onChange={(e) => { setOobPhone(e.target.value); if (oobError) setOobError(null); }} aria-invalid={oobError ? true : undefined} style={{ border: `1.5px solid ${oobError ? "#c0392b" : FLOW.line}`, borderRadius: 10, padding: "12px 14px", fontSize: 15, fontFamily: "inherit", color: FLOW.ink, background: "#fff", outline: "none", width: "100%", boxSizing: "border-box" }} />
@@ -129,7 +134,7 @@ export default function StartFlowV2() {
             <div style={{ width: 48, height: 48, margin: "0 auto 16px", borderRadius: "50%", background: FLOW.sel, display: "grid", placeItems: "center" }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke={FLOW.gold} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </div>
-            <div style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 20, color: FLOW.ink, marginBottom: 10 }}>{oobResult.wa_sent ? "Handbook sent to your WhatsApp." : "You're on the list."}</div>
+            <div style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 20, color: FLOW.ink, marginBottom: 10 }}>{oobResult.wa_sent ? "Handbook sent to your WhatsApp." : "You’re on the list."}</div>
             <p style={{ fontSize: 14, color: FLOW.dim, lineHeight: 1.6 }}>{oobResult.wa_sent ? "Check your WhatsApp — the link is on its way." : "Check WhatsApp — your Attention Handbook is on its way. It usually arrives within a minute."}</p>
             <button onClick={() => setOobPopup(null)} style={{ marginTop: 20, background: "none", border: `1.5px solid ${FLOW.line}`, borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 600, color: FLOW.dim, cursor: "pointer", fontFamily: "inherit" }}>Close</button>
           </div>
@@ -148,7 +153,7 @@ export default function StartFlowV2() {
               <div style={{ marginBottom: 16 }}><SegmentBar step={1} onNavy /></div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <Wordmark onNavy />
-                <span style={{ background: "rgba(232,163,61,.18)", color: FLOW.goldSoft, border: "1px solid rgba(232,163,61,.4)", borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 700 }}>Free · 4 min</span>
+                <span style={{ background: "rgba(232,163,61,.18)", color: FLOW.goldSoft, border: "1px solid rgba(232,163,61,.4)", borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 700 }}>Free · {FLOW_TOTAL_MIN} min</span>
               </div>
               <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 32, lineHeight: 1.2, color: "#fff", margin: 0 }}>
                 What&rsquo;s hardest with your child <span style={{ fontStyle: "italic", color: FLOW.goldSoft }}>right now</span>?
@@ -157,7 +162,7 @@ export default function StartFlowV2() {
           </div>
 
           <div style={{ maxWidth: 440, margin: "0 auto", padding: "0 20px 36px", marginTop: -36 }}>
-            <p style={{ fontSize: 14, color: FLOW.dim, lineHeight: 1.5, margin: "0 0 16px", textAlign: "center" }}>Tap one. The questions after this are shaped by it.</p>
+            <p style={{ fontSize: 14, color: "#C9D6E6", lineHeight: 1.5, margin: "0 0 16px", textAlign: "left" }}>Tap one. The questions after this are shaped by it.</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {WORRIES.map((w) => {
                 const sel = worry === w.key;
@@ -258,7 +263,7 @@ export default function StartFlowV2() {
 
         <button onClick={submitChild} disabled={!canContinue}
           style={{ width: "100%", height: 56, marginTop: 22, background: canContinue ? FLOW.navy : FLOW.line, color: canContinue ? "#fff" : FLOW.dim, border: "none", borderRadius: 16, fontFamily: HEAD, fontWeight: 600, fontSize: 17, cursor: canContinue ? "pointer" : "not-allowed" }}>
-          {canContinue ? `Start ${kidName}'s questions →` : "Add a name and pick one to continue"}
+          {canContinue ? `Start ${kidName}’s questions →` : "Add a name and pick one to continue"}
         </button>
       </Screen>
       <ReportFooterLinks />
