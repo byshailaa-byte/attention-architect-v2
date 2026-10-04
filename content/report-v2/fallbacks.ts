@@ -15,7 +15,7 @@ export const ARCHETYPE_DESC: Record<string, string> = {
   "The Inventor":   "Absorbed in the how — systems, builds, and {their} own way to solve things.",
   "The Magnet":     "Attention follows connection. People and recognition light {Name} up.",
   "The Storm":      "Bursts of intense focus, then a strong need to step back and reset.",
-  "The Captain":    "Takes charge. {Name} does best when {they} own the plan.",
+  "The Captain":    "Takes charge. {Name} does best when {they} owns the plan.",
   "The Live Wire":  "High energy that pours into whatever {Name} cares about.",
 };
 
@@ -29,18 +29,18 @@ const ARCH: Record<string, ArchPiece> = {
   "The Storm": {
     shortGood: "{Name} can lock in hard when something grabs {them}.",
     switch: {
-      instead: "One more push when {they} start to fade",
+      instead: "One more push when {they} starts to fade",
       try: "A short reset the moment energy drops",
       after: "{Name} comes back ready after a short break, not after being pushed on.",
     },
     tonight: [
       "Watch for the moment {Name} starts to fade.",
       "Call a short break before it tips over.",
-      "Start again once {they} look ready, not on the clock.",
+      "Start again once {they} looks ready, not on the clock.",
     ],
   },
   "The All-In Kid": {
-    shortGood: "{Name} goes all in on work {they} choose.",
+    shortGood: "{Name} goes all in on work {they} chooses.",
     switch: {
       instead: "A big open task with no clear end",
       try: "One small, clear first step",
@@ -57,10 +57,10 @@ const ARCH: Record<string, ArchPiece> = {
     switch: {
       instead: "Telling {them} the steps to follow",
       try: "Asking {them} to design the steps",
-      after: "When {Name} owns the plan, {they} stay with it far longer.",
+      after: "When {Name} owns the plan, {they} stays with it far longer.",
     },
     tonight: [
-      "Ask {Name} how {they} want to tackle it.",
+      "Ask {Name} how {they} wants to tackle it.",
       "Write {their} plan down in {their} own words.",
       "Let {them} run it, even if it is slower.",
     ],
@@ -86,7 +86,7 @@ const ARCH: Record<string, ArchPiece> = {
       after: "A bit of company turns a chore into something {Name} wants to do.",
     },
     tonight: [
-      "Sit with {Name} while {they} start.",
+      "Sit with {Name} while {they} starts.",
       "Ask {them} to talk you through the first step.",
       "Name one thing {they} did well, out loud.",
     ],
@@ -100,7 +100,7 @@ const ARCH: Record<string, ArchPiece> = {
     },
     tonight: [
       "Start the first minute together.",
-      "Step back once {they} have momentum.",
+      "Step back once {they} has momentum.",
       "Check in once, near the end.",
     ],
   },
@@ -114,11 +114,11 @@ const ARCH: Record<string, ArchPiece> = {
     tonight: [
       "Hand {Name} the goal, not the method.",
       "Let {them} pick the order of steps.",
-      "Step in only if {they} ask.",
+      "Step in only if {they} asks.",
     ],
   },
   "The Live Wire": {
-    shortGood: "{Name} brings big energy to things {they} care about.",
+    shortGood: "{Name} brings big energy to things {they} cares about.",
     switch: {
       instead: "Sitting still for one long stretch",
       try: "Short bursts with movement between",
@@ -166,7 +166,7 @@ const WORRY: Record<string, WorryPiece> = {
     shortFix: "Lower the risk of the very first try.",
     whyParas: [
       "Hanging back is often about risk, not ability. If a first try feels likely to fail, asking for help feels safer.",
-      "When the first step is small and safe, {Name} will try it. Each win {they} own makes the next try feel less risky.",
+      "When the first step is small and safe, {Name} will try it. Each win {they} owns makes the next try feel less risky.",
     ],
   },
   giveup: {
