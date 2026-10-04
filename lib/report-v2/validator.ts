@@ -1,9 +1,13 @@
-// Report v2 generated-content validator. Rejects: hedges (may/might/could/can't promise),
-// clinical claims (diagnose/ADHD/disorder), parent-blame, any sentence over 20 words,
-// Flesch reading ease < 60 (on prose fields), and any field over its 390×700-card length cap.
+// Report v2 generated-content validator. Enforces the gold voice: plain words only,
+// short sentences (≤16 words), high readability (Flesch ≥70 on prose), no abstract nouns,
+// no hedges/clinical/comparative/parent-blame, the parent (not the child) did the answering,
+// quoted switch lines a parent would say, tonight steps ≤2 sentences, and length caps.
 import type { ReportV2Generated } from "./types";
 
 export type ValidationResult = { ok: boolean; errors: string[] };
+
+const MAX_SENTENCE_WORDS = 16;
+const MIN_FLESCH = 70;
 
 const BANNED: { re: RegExp; label: string }[] = [
   { re: /\b(may|might|could)\b/i,      label: "hedge (may/might/could)" },
@@ -12,7 +16,18 @@ const BANNED: { re: RegExp; label: string }[] = [
   { re: /you['’]?ve\s+been\b/i,        label: "parent-blame (you've been)" },
   { re: /\byour\s+mistake\b/i,         label: "parent-blame (your mistake)" },
   { re: /\byou\s+always\b/i,           label: "parent-blame (you always)" },
-  // Jargon / not-plain-words (expanded 2026-10-04 after the generator drifted technical).
+  // Abstract nouns — say what actually happens instead.
+  { re: /\bmethods?\b/i,               label: "abstract (method)" },
+  { re: /\bownership\b/i,              label: "abstract (ownership)" },
+  { re: /\bprocess(es)?\b/i,           label: "abstract (process)" },
+  { re: /\btransitions?\b/i,           label: "abstract (transition)" },
+  { re: /\bthreads?\b/i,               label: "abstract (thread)" },
+  { re: /\bapproach(es)?\b/i,          label: "abstract (approach)" },
+  { re: /\bautonom\w*/i,               label: "abstract (autonomy)" },
+  { re: /\bstructure[sd]?\b/i,         label: "abstract (structure)" },
+  { re: /\bengag\w*/i,                 label: "abstract (engagement)" },
+  { re: /\bbelong\w*/i,                label: "abstract (belongs)" },
+  // Jargon / not-plain-words.
   { re: /\bsystems?\b/i,               label: "jargon (system)" },
   { re: /\bre-?entry\b/i,              label: "jargon (re-entry)" },
   { re: /\bbrain\b/i,                  label: "jargon (brain)" },
@@ -20,10 +35,7 @@ const BANNED: { re: RegExp; label: string }[] = [
   { re: /\bexile\b/i,                  label: "jargon (exile)" },
   { re: /\bdopamine\b/i,               label: "jargon (dopamine)" },
   { re: /\bregulat\w*/i,               label: "jargon (regulate)" },
-  { re: /\bownership\b/i,              label: "jargon (ownership)" },
   { re: /\boff-?ramp\b/i,              label: "jargon (off-ramp)" },
-  { re: /\bprocess\b/i,                label: "jargon (process)" },
-  { re: /\bthread\b/i,                 label: "jargon (thread)" },
   { re: /\bupstairs\b/i,               label: "assumes-a-house (upstairs)" },
   // Comparative claims about other children (no invented comparisons).
   { re: /\brare\b/i,                   label: "comparative (rare)" },
@@ -31,11 +43,13 @@ const BANNED: { re: RegExp; label: string }[] = [
   { re: /\bmost\s+children\b/i,        label: "comparative (most children)" },
   { re: /\bunlike\s+other\s+children\b/i, label: "comparative (unlike other children)" },
   { re: /\bfew\s+children\b/i,         label: "comparative (few children)" },
+  // The PARENT answered the questions, never the child.
+  { re: /\b(he|she|they)\s+told\b/i,   label: "child-attribution (he/she/they told)" },
 ];
 
 const CAP = {
-  shortGood: 90, shortWhy: 90, shortFix: 90,
-  whyPara: 320, instead: 72, try: 72, after: 160, tonight: 130,
+  shortGood: 110, shortWhy: 90, shortFix: 90,
+  whyPara: 320, instead: 72, try: 72, after: 150, tonight: 120,
 } as const;
 
 // switch.instead / switch.try must be WORDS A PARENT SAYS, wrapped in quotes.
@@ -71,28 +85,54 @@ function maxSentenceWords(text: string): number {
   return sentences(text).reduce((m, s) => Math.max(m, words(s).length), 0);
 }
 
-function check(text: string, cap: number, field: string, errors: string[], prose: boolean) {
-  if (text.length > cap) errors.push(`${field}: over ${cap} chars (${text.length})`);
-  for (const b of BANNED) if (b.re.test(text)) errors.push(`${field}: ${b.label}`);
-  if (maxSentenceWords(text) > 20) errors.push(`${field}: sentence over 20 words`);
-  // Flesch is unreliable on < 8-word phrases, so only gate prose fields.
-  if (prose && words(text).length >= 8) {
-    const f = fleschReadingEase(text);
-    if (f < 60) errors.push(`${field}: Flesch ${f.toFixed(0)} < 60`);
-  }
-}
-
-export function validateGenerated(g: ReportV2Generated): ValidationResult {
+export function validateGenerated(g: ReportV2Generated, opts?: { childName?: string }): ValidationResult {
   const e: string[] = [];
-  check(g.shortGood, CAP.shortGood, "shortGood", e, false);
-  check(g.shortWhy,  CAP.shortWhy,  "shortWhy",  e, false);
-  check(g.shortFix,  CAP.shortFix,  "shortFix",  e, false);
-  g.whyParas.forEach((p, i) => check(p, CAP.whyPara, `whyParas[${i}]`, e, true));
-  check(g.switch.instead, CAP.instead, "switch.instead", e, false);
-  check(g.switch.try,     CAP.try,     "switch.try",     e, false);
-  check(g.switch.after,   CAP.after,   "switch.after",   e, true);
+  const bans = [...BANNED];
+  if (opts?.childName) {
+    const nm = opts.childName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    bans.push({ re: new RegExp(`\\b${nm}\\s+told\\b`, "i"), label: "child-attribution ({Name} told)" });
+  }
+
+  const check = (text: string, cap: number, field: string, prose: boolean, maxSentences?: number) => {
+    if (text.length > cap) e.push(`${field}: over ${cap} chars (${text.length})`);
+    for (const b of bans) if (b.re.test(text)) e.push(`${field}: ${b.label}`);
+    if (maxSentenceWords(text) > MAX_SENTENCE_WORDS) e.push(`${field}: sentence over ${MAX_SENTENCE_WORDS} words`);
+    if (maxSentences && sentences(text).length > maxSentences) e.push(`${field}: more than ${maxSentences} sentences`);
+    if (prose && words(text).length >= 8) {
+      const f = fleschReadingEase(text);
+      if (f < MIN_FLESCH) e.push(`${field}: Flesch ${f.toFixed(0)} < ${MIN_FLESCH}`);
+    }
+  };
+
+  // Flesch is gated ONLY on the prose paragraphs (whyParas). On short, concrete
+  // instructions (tonight / switch.after) the formula misreads plain words like
+  // "reminder"/"offer" — the gold-voice examples themselves score 61–66 there — so those
+  // are governed by the 16-word cap, the no-abstract-noun bans, and the judge instead.
+  check(g.shortGood, CAP.shortGood, "shortGood", false);
+  check(g.shortWhy,  CAP.shortWhy,  "shortWhy",  false);
+  check(g.shortFix,  CAP.shortFix,  "shortFix",  false);
+  g.whyParas.forEach((p, i) => check(p, CAP.whyPara, `whyParas[${i}]`, true));
+  check(g.switch.instead, CAP.instead, "switch.instead", false);
+  check(g.switch.try,     CAP.try,     "switch.try",     false);
+  check(g.switch.after,   CAP.after,   "switch.after",   false);
   if (!isQuotedLine(g.switch.instead)) e.push("switch.instead: must be a quoted line a parent says");
   if (!isQuotedLine(g.switch.try))     e.push("switch.try: must be a quoted line a parent says");
-  g.tonight.forEach((t, i) => check(t, CAP.tonight, `tonight[${i}]`, e, true));
+  g.tonight.forEach((t, i) => check(t, CAP.tonight, `tonight[${i}]`, false, 2));
   return { ok: e.length === 0, errors: e };
+}
+
+// Does an error list contain ONLY mechanical length/readability problems (shortenable by a
+// cheap repair call) — i.e. no banned words, quote, child-attribution, or structural issue?
+const LENGTHY_RE = /over \d+ chars|sentence over \d+ words|Flesch \d+ < \d+|more than \d+ sentences/i;
+export function isLengthOnly(errors: string[]): boolean {
+  return errors.length > 0 && errors.every((x) => LENGTHY_RE.test(x));
+}
+// The set of field names referenced by a list of errors (prefix before the first colon).
+export function fieldsFromErrors(errors: string[]): string[] {
+  const set = new Set<string>();
+  for (const x of errors) {
+    const field = x.split(":")[0].trim();
+    if (field) set.add(field);
+  }
+  return [...set];
 }

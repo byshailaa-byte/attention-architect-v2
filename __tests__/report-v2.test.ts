@@ -5,7 +5,7 @@ import {
 import {
   selectEvidence, rankDimensions, type AnsweredQuestion, type DimScore,
 } from "@/lib/report-v2/evidence";
-import { validateGenerated } from "@/lib/report-v2/validator";
+import { validateGenerated, isLengthOnly, fieldsFromErrors } from "@/lib/report-v2/validator";
 import { composeFallback } from "@/content/report-v2/fallbacks";
 import type { ReportV2Generated } from "@/lib/report-v2/types";
 
@@ -144,33 +144,64 @@ describe("validator", () => {
     expect(v.errors.some((e) => e.includes("parent-blame"))).toBe(true);
   });
 
-  it("rejects a sentence over 20 words", () => {
-    const long = "This is a very long sentence that keeps going on and on and will clearly exceed the twenty word ceiling easily.";
+  it("rejects a sentence over 16 words", () => {
+    const long = "This is a long sentence that keeps going on and on and clearly goes well over sixteen words.";
     const bad = { ...ok, whyParas: [long, ok.whyParas[1]] as [string, string] };
     const v = validateGenerated(bad);
     expect(v.ok).toBe(false);
-    expect(v.errors.some((e) => e.includes("20 words"))).toBe(true);
+    expect(v.errors.some((e) => e.includes("16 words"))).toBe(true);
   });
 
   it("rejects a field over its length cap", () => {
-    const bad = { ...ok, shortGood: "x".repeat(200) };
+    const bad = { ...ok, shortWhy: "x".repeat(200) };
     const v = validateGenerated(bad);
     expect(v.ok).toBe(false);
     expect(v.errors.some((e) => e.includes("over 90 chars"))).toBe(true);
   });
 
-  it("rejects jargon words (system/brain/dopamine/re-entry/regulate/ownership/off-ramp/process/thread)", () => {
-    for (const w of ["This is how the system works.", "It is a brain thing.", "A dopamine hit.", "The re-entry is hard.", "Helps them regulate.", "It builds ownership.", "Give a clear off-ramp.", "Trust the process here.", "He lost the thread."]) {
+  it("rejects jargon words (system/brain/dopamine/re-entry/regulate/off-ramp)", () => {
+    for (const w of ["This is how the system works.", "It is a brain thing.", "A dopamine hit.", "The re-entry is hard.", "Helps them regulate.", "Give a clear off-ramp."]) {
       const v = validateGenerated({ ...ok, whyParas: [w, ok.whyParas[1]] as [string, string] });
       expect(v.ok, w).toBe(false);
       expect(v.errors.some((e) => e.includes("jargon"))).toBe(true);
     }
   });
 
+  it("rejects abstract nouns (method/ownership/process/transition/thread/approach/autonomy/structure/engagement/belongs)", () => {
+    for (const w of ["Protect his method here.", "It builds ownership.", "Trust the process.", "Ease the transition.", "He lost the thread.", "Change the approach.", "It grows autonomy.", "Add some structure.", "Boost his engagement.", "It belongs to him."]) {
+      const v = validateGenerated({ ...ok, whyParas: [w, ok.whyParas[1]] as [string, string] });
+      expect(v.ok, w).toBe(false);
+      expect(v.errors.some((e) => e.includes("abstract"))).toBe(true);
+    }
+  });
+
   it("rejects 'upstairs' (assumes a house)", () => {
-    const v = validateGenerated({ ...ok, whyParas: ["Send him upstairs to work.", ok.whyParas[1]] as [string, string] });
+    const v = validateGenerated({ ...ok, whyParas: ["Send him to work alone.", "Then leave him upstairs."] as [string, string] });
     expect(v.ok).toBe(false);
     expect(v.errors.some((e) => e.includes("upstairs"))).toBe(true);
+  });
+
+  it("rejects attributing the answers to the child, not the parent", () => {
+    const he = validateGenerated({ ...ok, whyParas: ["He told us he hates it.", ok.whyParas[1]] as [string, string] });
+    expect(he.ok).toBe(false);
+    expect(he.errors.some((e) => e.includes("child-attribution"))).toBe(true);
+    const named = validateGenerated({ ...ok, whyParas: ["Aarav told you he waits.", ok.whyParas[1]] as [string, string] }, { childName: "Aarav" });
+    expect(named.ok).toBe(false);
+    expect(named.errors.some((e) => e.includes("child-attribution"))).toBe(true);
+  });
+
+  it("rejects a whyParas paragraph below Flesch 70", () => {
+    const dense = "Subsequently the aforementioned complications necessitated considerable administrative reconsideration overnight.";
+    const v = validateGenerated({ ...ok, whyParas: [dense, ok.whyParas[1]] as [string, string] });
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => e.includes("Flesch"))).toBe(true);
+  });
+
+  it("rejects a tonight step with more than 2 sentences", () => {
+    const bad = { ...ok, tonight: ["Do this. Then that. And also this.", ok.tonight[1], ok.tonight[2]] as [string, string, string] };
+    const v = validateGenerated(bad);
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => e.includes("more than 2 sentences"))).toBe(true);
   });
 
   it("rejects comparative claims about other children", () => {
@@ -192,6 +223,16 @@ describe("validator", () => {
     const good = { ...ok, switch: { instead: "“Do it now.”", try: "“Your call — how do you start?”", after: ok.switch.after } };
     const v = validateGenerated(good);
     expect(v.errors.filter((e) => e.includes("quoted"))).toEqual([]);
+  });
+
+  it("classifies length-only errors (for the cheap repair path) vs content errors", () => {
+    expect(isLengthOnly(["whyParas[0]: sentence over 16 words", "tonight[1]: over 120 chars (140)"])).toBe(true);
+    expect(isLengthOnly(["whyParas[0]: Flesch 55 < 70"])).toBe(true);
+    expect(isLengthOnly(["shortWhy: abstract (method)"])).toBe(false); // needs a full rewrite
+    expect(isLengthOnly(["switch.try: must be a quoted line a parent says"])).toBe(false);
+    expect(isLengthOnly([])).toBe(false);
+    expect(fieldsFromErrors(["whyParas[0]: sentence over 16 words", "whyParas[0]: Flesch 55 < 70", "tonight[1]: over 120 chars (140)"]))
+      .toEqual(["whyParas[0]", "tonight[1]"]);
   });
 });
 

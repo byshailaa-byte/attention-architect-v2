@@ -51,16 +51,26 @@ THE REPORT:
 - tonight 2: ${generated.tonight[1]}
 - tonight 3: ${generated.tonight[2]}
 
-Answer this on ONE line, starting with PASS or FAIL, then one short reason:
-Does the explanation follow from these 3 answers and this archetype mechanism, AND does the switch match the Week 1 core move, AND do the switch and tonight's steps take place at ${moment}? If the explanation drifts to generic advice, contradicts the answers, the switch is not the Week 1 move, or the switch/tonight do not happen at ${moment}, answer FAIL.`;
+Answer TWO questions. Both must pass. Reply on exactly two lines:
+Q1: <PASS or FAIL> — <short reason>
+Q2: <PASS or FAIL> — <short reason>
+
+Q1 (coherence): Does the explanation follow from these 3 answers and this archetype mechanism, AND does the switch match the Week 1 core move, AND do the switch and tonight's steps take place at ${moment}? FAIL if it drifts to generic advice, contradicts the answers, the switch is not the Week 1 move, or the switch/tonight do not happen at ${moment}.
+Q2 (usability): Could a busy parent picture exactly what to do and say, in one read? FAIL if it is vague, abstract, or needs re-reading to act on.`;
 
   const res = await getClient().messages.create({
     model: MODEL,
-    max_tokens: 200,
+    max_tokens: 300,
     messages: [{ role: "user", content: prompt }],
   });
   const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
-  const verdict: "PASS" | "FAIL" = /^\s*FAIL/i.test(text) ? "FAIL" : /^\s*PASS/i.test(text) ? "PASS" : "FAIL";
-  const reason = text.replace(/^\s*(PASS|FAIL)[\s:.\-—]*/i, "").trim() || text;
+  const q1 = /Q1[^\n]*\bFAIL\b/i.test(text) ? "FAIL" : /Q1[^\n]*\bPASS\b/i.test(text) ? "PASS" : "FAIL";
+  const q2 = /Q2[^\n]*\bFAIL\b/i.test(text) ? "FAIL" : /Q2[^\n]*\bPASS\b/i.test(text) ? "PASS" : "FAIL";
+  const verdict: "PASS" | "FAIL" = q1 === "PASS" && q2 === "PASS" ? "PASS" : "FAIL";
+  const reason =
+    verdict === "PASS"
+      ? "both questions PASS"
+      : [q1 === "FAIL" ? "Q1(coherence) FAIL" : "", q2 === "FAIL" ? "Q2(usability) FAIL" : ""].filter(Boolean).join("; ") +
+        " — " + text.replace(/\s+/g, " ").slice(0, 240);
   return { verdict, reason };
 }
