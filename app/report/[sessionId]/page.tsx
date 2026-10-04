@@ -13,9 +13,10 @@ import { fetchPublishedNarrativeReport } from "@/lib/report/fetch-narrative";
 import { resolveChildPronoun, CHILD_NAME_FALLBACK } from "@/lib/report/pronouns";
 import type { Gender } from "@/lib/report/pronouns";
 import ReportV2 from "./ReportV2";
+import { parseCardParam } from "@/lib/report-v2/cards-nav";
 
 type Params = Promise<{ sessionId: string }>;
-type SearchParams = Promise<{ f?: string; report?: string }>;
+type SearchParams = Promise<{ f?: string; report?: string; card?: string; plan?: string }>;
 
 export default async function ReportPage({
   params,
@@ -25,7 +26,7 @@ export default async function ReportPage({
   searchParams: SearchParams;
 }) {
   const { sessionId } = await params;
-  const { f, report } = await searchParams;
+  const { f, report, card, plan } = await searchParams;
   const fallbackMode = f === "1"; // set by generating page on hard-cap timeout — skip redirect
 
   // Validate UUID format before hitting the DB
@@ -110,7 +111,13 @@ export default async function ReportPage({
     isFlowV2 = fsRows[0]?.flow === "v2";
   } catch { /* table missing / no row — treat as not v2 */ }
   if (report === "v2" || isFlowV2) {
-    return <ReportV2 session={sessionId} />;
+    return (
+      <ReportV2
+        session={sessionId}
+        card={parseCardParam(card)}
+        plan={plan === "1" || plan === "true"}
+      />
+    );
   }
 
   // Simplified sessions render the Phase B report DIRECTLY here — no redirect hop —
