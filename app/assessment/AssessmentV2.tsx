@@ -11,6 +11,7 @@ import { displayChildName, CHILD_NAME_FALLBACK_MID, type Gender } from "@/lib/re
 import { HALFWAY_FIRST_READ, HALFWAY_FIRST_READ_FALLBACK, fillHalfwayLine } from "@/content/assessment/halfway-first-read";
 import { FLOW, HEAD, BODY, Wordmark, BackLink, Screen, QuestionProgress, minsLeft } from "@/app/components/FlowShell";
 import ThankYouV2 from "./ThankYouV2";
+import SiteFooter from "@/app/components/SiteFooter";
 
 const LETTERS = "ABCDEF";
 
@@ -199,7 +200,12 @@ export default function AssessmentV2() {
 
   // ── THANK-YOU ────────────────────────────────────────────────────────────────
   if (phase === "thankyou") {
-    return <ThankYouV2 childName={childName} parentName={parentName} phone={phone} archetype={archetype} ageBand={ageBand} gender={genderParam ?? ""} />;
+    return (
+      <>
+        <ThankYouV2 childName={childName} parentName={parentName} phone={phone} archetype={archetype} ageBand={ageBand} gender={genderParam ?? ""} />
+        <SiteFooter />
+      </>
+    );
   }
 
   // ── HALFWAY (navy, dot grid) ─────────────────────────────────────────────────

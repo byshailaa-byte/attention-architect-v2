@@ -758,16 +758,21 @@ function AssessmentForm() {
 function AssessmentRouter() {
   const params = useSearchParams();
   const flow = resolveFlowVariant(params.get("flow"));
-  return flow === "v2" ? <AssessmentV2 /> : <AssessmentForm />;
+  // v2 hides SiteFooter on the assessment screens (questions/halfway/contact) and renders
+  // it itself only on the thank-you screen. v1 keeps the footer, unchanged.
+  if (flow === "v2") return <AssessmentV2 />;
+  return (
+    <>
+      <AssessmentForm />
+      <SiteFooter />
+    </>
+  );
 }
 
 export default function AssessmentPage() {
   return (
-    <>
-      <Suspense>
-        <AssessmentRouter />
-      </Suspense>
-      <SiteFooter />
-    </>
+    <Suspense>
+      <AssessmentRouter />
+    </Suspense>
   );
 }
