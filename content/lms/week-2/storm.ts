@@ -3,7 +3,7 @@ import type { LmsWeekContent } from "@/content/types";
 export const weekContent: LmsWeekContent = {
   archetype: "storm",
   week: 2,
-  weekTitle: "Handling what pulls them away",
+  weekTitle: "Changing the first small thing",
 
   weeklyReading: {
     introShared: `Screens are the one place where you've probably already tried everything — time limits, app blockers, taking the device away entirely — and the fight just moves, it never actually ends. It's worth understanding why, specifically for {{child_name}}, before trying anything new here.

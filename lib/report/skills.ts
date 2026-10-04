@@ -69,7 +69,7 @@ export function weekForSkill(idx: number): number {
 // Single source of truth for both the roadmap and the goal-section framing line.
 export const WEEK_TITLES: Record<number, string> = {
   1: "Getting started without the push",
-  2: "Handling what pulls them away",
+  2: "Changing the first small thing",
   3: "Staying with it on an ordinary day",
   4: "Coming back after a slip",
   5: "Doing it without you in the room",

@@ -2,7 +2,7 @@
 // per week, mapped onto the 6 WEEK_TITLES (lib/report/skills.ts). Gold voice, concrete,
 // outcome-first. NO "homework" unless the worry itself is homework.
 //
-// Week order (titles): 1 Getting started · 2 Handling what pulls them away ·
+// Week order (titles): 1 Getting started · 2 Changing the first small thing ·
 // 3 Staying with it on an ordinary day · 4 Coming back after a slip ·
 // 5 Doing it without you in the room · 6 Running it themselves.
 import { canonicalConcern } from "@/lib/report-v2/goal-mapping";
