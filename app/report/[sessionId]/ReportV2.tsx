@@ -42,7 +42,7 @@ export default async function ReportV2({ session, card, plan }: { session: strin
   });
 
   if (plan) {
-    return <PlanV2 sessionId={session} content={content} ageBand={r.age_band ?? "10-11"} goalOptions={goalOptions} calendlyUrl={CALENDLY} checkinEnabled={CHECKIN_ENABLED} />;
+    return <PlanV2 sessionId={session} content={content} ageBand={r.age_band ?? "10-11"} childName={r.child_name} gender={gender} goalOptions={goalOptions} calendlyUrl={CALENDLY} checkinEnabled={CHECKIN_ENABLED} />;
   }
 
   return (
