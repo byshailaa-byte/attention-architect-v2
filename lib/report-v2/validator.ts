@@ -12,12 +12,34 @@ const BANNED: { re: RegExp; label: string }[] = [
   { re: /you['’]?ve\s+been\b/i,        label: "parent-blame (you've been)" },
   { re: /\byour\s+mistake\b/i,         label: "parent-blame (your mistake)" },
   { re: /\byou\s+always\b/i,           label: "parent-blame (you always)" },
+  // Jargon / not-plain-words (expanded 2026-10-04 after the generator drifted technical).
+  { re: /\bsystems?\b/i,               label: "jargon (system)" },
+  { re: /\bre-?entry\b/i,              label: "jargon (re-entry)" },
+  { re: /\bbrain\b/i,                  label: "jargon (brain)" },
+  { re: /\bneuro\w*/i,                 label: "jargon (neuro)" },
+  { re: /\bexile\b/i,                  label: "jargon (exile)" },
+  { re: /\bdopamine\b/i,               label: "jargon (dopamine)" },
+  { re: /\bregulat\w*/i,               label: "jargon (regulate)" },
+  // Comparative claims about other children (no invented comparisons).
+  { re: /\brare\b/i,                   label: "comparative (rare)" },
+  { re: /\bmost\s+kids\b/i,            label: "comparative (most kids)" },
+  { re: /\bmost\s+children\b/i,        label: "comparative (most children)" },
+  { re: /\bunlike\s+other\s+children\b/i, label: "comparative (unlike other children)" },
+  { re: /\bfew\s+children\b/i,         label: "comparative (few children)" },
 ];
 
 const CAP = {
   shortGood: 90, shortWhy: 90, shortFix: 90,
-  whyPara: 320, instead: 60, try: 60, after: 160, tonight: 130,
+  whyPara: 320, instead: 72, try: 72, after: 160, tonight: 130,
 } as const;
+
+// switch.instead / switch.try must be WORDS A PARENT SAYS, wrapped in quotes.
+const QUOTE_OPEN = /^["“]/;
+const QUOTE_CLOSE = /["”]$/;
+function isQuotedLine(s: string): boolean {
+  const t = s.trim();
+  return QUOTE_OPEN.test(t) && QUOTE_CLOSE.test(t) && t.length >= 2;
+}
 
 function sentences(text: string): string[] {
   return text.split(/[.!?]+/).map((s) => s.trim()).filter(Boolean);
@@ -64,6 +86,8 @@ export function validateGenerated(g: ReportV2Generated): ValidationResult {
   check(g.switch.instead, CAP.instead, "switch.instead", e, false);
   check(g.switch.try,     CAP.try,     "switch.try",     e, false);
   check(g.switch.after,   CAP.after,   "switch.after",   e, true);
+  if (!isQuotedLine(g.switch.instead)) e.push("switch.instead: must be a quoted line a parent says");
+  if (!isQuotedLine(g.switch.try))     e.push("switch.try: must be a quoted line a parent says");
   g.tonight.forEach((t, i) => check(t, CAP.tonight, `tonight[${i}]`, e, true));
   return { ok: e.length === 0, errors: e };
 }

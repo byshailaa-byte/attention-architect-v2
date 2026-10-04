@@ -9,7 +9,7 @@ export const CONCERN_GOAL: Record<string, string> = {
   screens:    "Screens off without a battle.",
   confidence: "{Name} tries the hard thing before asking for help.",
   giveup:     "{Name} keeps going after the first try fails.",
-  finish:     "{Name} finishes what {they} start.",
+  finish:     "{Name} finishes what {they} starts.",
   other:      "{Name} starts and finishes on {their} own.",
 };
 

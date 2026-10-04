@@ -18,9 +18,7 @@ describe("concern → goal mapping", () => {
     expect(goalForConcern("screens", "Aarav", boy)).toBe("Screens off without a battle.");
     expect(goalForConcern("confidence", "Aarav", boy)).toBe("Aarav tries the hard thing before asking for help.");
     expect(goalForConcern("giveup", "Aarav", boy)).toBe("Aarav keeps going after the first try fails.");
-    // Verbatim from the approved mapping ("{they} start"); for a gendered child this
-    // renders "he start" — kept verbatim, flagged for a possible verb-agreement tweak.
-    expect(goalForConcern("finish", "Aarav", boy)).toBe("Aarav finishes what he start.");
+    expect(goalForConcern("finish", "Aarav", boy)).toBe("Aarav finishes what he starts.");
     expect(goalForConcern("other", "Aarav", boy)).toBe("Aarav starts and finishes on his own.");
   });
 
@@ -149,6 +147,35 @@ describe("validator", () => {
     const v = validateGenerated(bad);
     expect(v.ok).toBe(false);
     expect(v.errors.some((e) => e.includes("over 90 chars"))).toBe(true);
+  });
+
+  it("rejects jargon words (system/brain/dopamine/re-entry/regulate)", () => {
+    for (const w of ["This is how the system works.", "It is a brain thing.", "A dopamine hit.", "The re-entry is hard.", "Helps them regulate."]) {
+      const v = validateGenerated({ ...ok, whyParas: [w, ok.whyParas[1]] as [string, string] });
+      expect(v.ok, w).toBe(false);
+      expect(v.errors.some((e) => e.includes("jargon"))).toBe(true);
+    }
+  });
+
+  it("rejects comparative claims about other children", () => {
+    for (const w of ["That focus is rare.", "Most kids do this.", "Most children do this.", "Unlike other children, he waits.", "Few children can do it."]) {
+      const v = validateGenerated({ ...ok, shortGood: "x", whyParas: [w, ok.whyParas[1]] as [string, string] });
+      expect(v.ok, w).toBe(false);
+      expect(v.errors.some((e) => e.includes("comparative"))).toBe(true);
+    }
+  });
+
+  it("rejects a switch line that is not a quoted parent line", () => {
+    const bad = { ...ok, switch: { ...ok.switch, instead: ok.switch.instead.replace(/[“”"]/g, "") } };
+    const v = validateGenerated(bad);
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => e.includes("quoted line a parent says"))).toBe(true);
+  });
+
+  it("accepts a properly quoted switch line", () => {
+    const good = { ...ok, switch: { instead: "“Do it now.”", try: "“Your call — how do you start?”", after: ok.switch.after } };
+    const v = validateGenerated(good);
+    expect(v.errors.filter((e) => e.includes("quoted"))).toEqual([]);
   });
 });
 

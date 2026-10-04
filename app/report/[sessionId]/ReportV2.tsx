@@ -21,18 +21,18 @@ async function loadOrGenerate(session: string): Promise<ReportV2Content | null> 
   } catch { /* table missing pre-migration — fall through to generate */ }
 
   const rows = (await sql`
-    SELECT child_name, child_gender, archetype, concerns, answers, dimensions,
-           goal_text, goal_source
+    SELECT child_name, child_gender, age_band, archetype, concerns, answers, dimensions,
+           report_v2_goal
     FROM assessments WHERE session_id = ${session}::uuid LIMIT 1
   `) as unknown as {
     child_name: string | null;
     child_gender: string | null;
+    age_band: string | null;
     archetype: string | null;
     concerns: string[] | null;
     answers: Record<string, string>;
     dimensions: AssessmentInput["dimensions"];
-    goal_text: string | null;
-    goal_source: string | null;
+    report_v2_goal: string | null;
   }[];
   if (rows.length === 0) return null;
   const r = rows[0];
@@ -40,12 +40,12 @@ async function loadOrGenerate(session: string): Promise<ReportV2Content | null> 
   const g = await generateReportV2({
     childName: r.child_name,
     childGender: r.child_gender,
+    ageBand: r.age_band,
     archetype: r.archetype,
     concerns: r.concerns,
     answers: r.answers ?? {},
     dimensions: r.dimensions ?? {},
-    goalText: r.goal_text,
-    goalSource: r.goal_source,
+    v2Goal: r.report_v2_goal,
   });
   const content = g.content;
 

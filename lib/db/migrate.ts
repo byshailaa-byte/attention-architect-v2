@@ -970,6 +970,14 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_47_report_v2_content') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 48 — Report v2 goal override. v2 ignores the legacy report goal fields
+  // (goal_skill/goal_key/goal_text) and uses the worry→goal mapping, UNLESS the parent
+  // changes the goal inside v2 — which is stored here.
+  if (!applied.has("phase_48_report_v2_goal")) {
+    await sql`ALTER TABLE assessments ADD COLUMN IF NOT EXISTS report_v2_goal TEXT`;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_48_report_v2_goal') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 
