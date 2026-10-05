@@ -26,6 +26,12 @@ export function displayChildName(raw: string | null | undefined): string {
   return name.replace(/\b([A-Za-z])([A-Za-z]*)/g, (_m, a: string, b: string) => a.toUpperCase() + b.toLowerCase());
 }
 
+// Indefinite article for an archetype TYPE name shown on card 4 ("a Storm", "an Inventor",
+// "an All-In Kid"). First letter's vowel sound is a good-enough heuristic for our 8 types.
+export function articleFor(word: string): string {
+  return /^[aeiou]/i.test(word.trim()) ? "an" : "a";
+}
+
 export function resolveChildPronoun(gender: Gender, form: PronounForm): string {
   const isGirl = gender === "girl";
   const isBoy  = gender === "boy";

@@ -9,7 +9,16 @@ export type ValidationResult = { ok: boolean; errors: string[] };
 const MAX_SENTENCE_WORDS = 16;
 const MIN_FLESCH = 70;
 
+// Exact-format rules for the two new card-1 voice fields.
+const SEEN_IT_PREFIX = "You’ve seen it yourself.";
+const HARD_PART_RE = /^The hard part isn’t [^.]+\. It’s [^.]+\.$/;
+
 const BANNED: { re: RegExp; label: string }[] = [
+  // Approved-voice bans (rule 5).
+  { re: /\bfix(es)?\b/i,               label: "banned (fix/fixes)" },
+  { re: /nothing\s+is\s+wrong/i,       label: "banned (nothing is wrong)" },
+  // Rule 3 — never label the child. The type name appears ONLY on card 4.
+  { re: /\b(types?|patterns?|traits?|profiles?)\b/i, label: "label-word (type/pattern/trait/profile)" },
   { re: /\b(may|might|could)\b/i,      label: "hedge (may/might/could)" },
   { re: /can['’]?t\s+promise/i,        label: "hedge (can't promise)" },
   { re: /\b(diagnos\w*|adhd|disorder)\b/i, label: "clinical (diagnose/ADHD/disorder)" },
@@ -56,6 +65,7 @@ const BANNED: { re: RegExp; label: string }[] = [
 ];
 
 const CAP = {
+  seenIt: 170, hardPart: 170,
   shortGood: 110, shortWhy: 90, shortFix: 90,
   whyPara: 320, instead: 72, try: 72, after: 150, tonight: 120,
 } as const;
@@ -116,6 +126,12 @@ export function validateGenerated(g: ReportV2Generated, opts?: { childName?: str
   // instructions (tonight / switch.after) the formula misreads plain words like
   // "reminder"/"offer" — the gold-voice examples themselves score 61–66 there — so those
   // are governed by the 16-word cap, the no-abstract-noun bans, and the judge instead.
+  // Card 1 voice fields.
+  check(g.seenIt, CAP.seenIt, "seenIt", false);
+  if (!g.seenIt.trim().startsWith(SEEN_IT_PREFIX)) e.push(`seenIt: must start with “${SEEN_IT_PREFIX}”`);
+  check(g.hardPart, CAP.hardPart, "hardPart", false);
+  if (!HARD_PART_RE.test(g.hardPart.trim())) e.push("hardPart: must match “The hard part isn’t X. It’s Y.”");
+
   check(g.shortGood, CAP.shortGood, "shortGood", false);
   check(g.shortWhy,  CAP.shortWhy,  "shortWhy",  false);
   check(g.shortFix,  CAP.shortFix,  "shortFix",  false);

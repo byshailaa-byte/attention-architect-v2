@@ -46,82 +46,107 @@ export const ARCHETYPE_DESC: Record<string, string> = {
   "The Live Wire":  "Big energy for whatever really matters to {Name}.",
 };
 
-// Archetype-level: strength line, the one picture-able fix, and the mechanism paragraph.
-type ArchMeta = { shortGood: string; shortFix: string; mechanismPara: string };
+// Archetype-level: strength line, the one picture-able change, the mechanism paragraph, and
+// hardY — the "It’s …" half of card 1's hardPart (the real mechanism, no trailing period).
+type ArchMeta = { shortGood: string; shortFix: string; mechanismPara: string; hardY: string };
 const ARCH_META: Record<string, ArchMeta> = {
   "The Storm": {
-    shortGood: "Nothing is wrong with {Name}. Big energy, and a mind of {their} own.",
+    shortGood: "{Name} has big energy, and a mind of {their} own.",
     shortFix: "Let {Name} pick how it goes. 5 minutes a day.",
     mechanismPara: "{Name} goes all in when something is {their} idea. When the choice is made for {them}, that same energy turns into a fight.",
+    hardY: "that a choice made for {them} turns {their} energy into a fight",
   },
   "The All-In Kid": {
-    shortGood: "Nothing is wrong with {Name}. {Name} dives deep into things {they} picks.",
+    shortGood: "{Name} dives deep into things {they} picks.",
     shortFix: "Leave {Name} alone to work. 5 minutes a day.",
     mechanismPara: "Once {Name} is in, {they} is really in. The hard part is being pulled out halfway.",
+    hardY: "that being pulled out mid-task breaks a deep run of focus",
   },
   "The Inventor": {
-    shortGood: "Nothing is wrong with {Name}. {Name} thinks hard and likes {their} own way.",
+    shortGood: "{Name} thinks hard and likes {their} own way.",
     shortFix: "Let {Name} choose how to start. 5 minutes a day.",
     mechanismPara: "{Name} likes doing things {their} own way. Shown the right way too soon, {they} often stops trying.",
+    hardY: "that being shown the one right way makes {them} stop trying",
   },
   "The Explorer": {
-    shortGood: "Nothing is wrong with {Name}. Quick, curious, full of new ideas.",
+    shortGood: "{Name} is quick, curious, and full of new ideas.",
     shortFix: "Keep a scrap pad beside {Name}. 5 minutes a day.",
     mechanismPara: "One idea sends {Name} somewhere new, fast. That is not lost focus — it is a quick mind with nowhere to put it.",
+    hardY: "that a quick mind needs somewhere to park new ideas",
   },
   "The Magnet": {
-    shortGood: "Nothing is wrong with {Name}. {Name} works best with people around.",
+    shortGood: "{Name} works best with people around.",
     shortFix: "Sit near {Name} with your own work. 5 minutes a day.",
     mechanismPara: "{Name} is at {their} best with people near. Alone, the focus starts to drift.",
+    hardY: "that working alone leaves {their} focus looking for people",
   },
   "The Glue": {
-    shortGood: "Nothing is wrong with {Name}. {Name} reads people and cares how they feel.",
+    shortGood: "{Name} reads people and cares how they feel.",
     shortFix: "Talk for a minute first. 5 minutes a day.",
     mechanismPara: "{Name} feels the mood of a room first. If things feel off, that comes before the work.",
+    hardY: "that an off mood has to settle before any work starts",
   },
   "The Captain": {
-    shortGood: "Nothing is wrong with {Name}. {Name} likes to lead and make the call.",
+    shortGood: "{Name} likes to lead and make the call.",
     shortFix: "Let {Name} make the real call. 5 minutes a day.",
     mechanismPara: "Give {Name} something to run and {they} pushes hard. Told exactly what to do, {they} slows right down.",
+    hardY: "that being told exactly what to do makes {them} slow down",
   },
   "The Live Wire": {
-    shortGood: "Nothing is wrong with {Name}. Big energy when something matters to {them}.",
+    shortGood: "{Name} has big energy when something matters to {them}.",
     shortFix: "Turn it into one real challenge. 5 minutes a day.",
     mechanismPara: "{Name} goes all out when it counts. With nothing on the line, the task slides past.",
+    hardY: "that nothing on the line lets the task slide past",
   },
 };
 const ARCH_META_FALLBACK = ARCH_META["The All-In Kid"];
 
-// Worry-level: the one-line why + the worry paragraph.
-type WorryMeta = { shortWhy: string; worryPara: string };
+// Worry-level: one-line why, the worry paragraph, plus the two card-1 voice halves —
+// seenIt (a concrete moment, starts "You’ve seen it yourself.") and hardX (the "isn’t …"
+// half of hardPart: the wrong read of the worry, no trailing period).
+type WorryMeta = { shortWhy: string; worryPara: string; seenIt: string; hardX: string };
 const WORRY_META: Record<string, WorryMeta> = {
   reminders: {
     shortWhy: "A reminder feels like your plan, so {Name} waits it out.",
     worryPara: "A reminder is someone telling {them} when. When the start is {their} idea, {they} does not wait.",
+    seenIt: "You’ve seen it yourself. You ask once, then twice, and {Name} still hasn’t started.",
+    hardX: "that {Name} won’t start",
   },
   homework: {
     shortWhy: "A big homework lump feels heavy, so starting is the hard part.",
     worryPara: "Homework feels like one big lump. Cut off a tiny first bit and it feels doable.",
+    seenIt: "You’ve seen it yourself. Homework time comes and the table turns into a standoff.",
+    hardX: "that {Name} hates the work",
   },
   screens: {
     shortWhy: "“Screens off now” feels like losing, so {Name} fights it.",
     worryPara: "Being told “off now” is a choice made for {them}. That is why it turns into a battle.",
+    seenIt: "You’ve seen it yourself. Asking {Name} to switch off turns into the same battle.",
+    hardX: "that {Name} loves the screen too much",
   },
   confidence: {
     shortWhy: "A hard bit feels risky, so {Name} asks before trying.",
     worryPara: "Trying feels safer if a grown-up goes first. A small, safe first step gets {Name} to try.",
+    seenIt: "You’ve seen it yourself. The work looks a little hard and {Name} asks for help.",
+    hardX: "that {Name} can’t do it",
   },
   giveup: {
     shortWhy: "One miss feels like proof, so {Name} stops.",
     worryPara: "A quick fail can feel like the whole story. One more small go rewrites it.",
+    seenIt: "You’ve seen it yourself. One thing goes wrong and {Name} is done for the day.",
+    hardX: "that {Name} gives up too easily",
   },
   finish: {
     shortWhy: "The fun is at the start, so the slow end loses {Name}.",
     worryPara: "The start is exciting; the middle drags. A finish {Name} can see pulls {them} through.",
+    seenIt: "You’ve seen it yourself. {Name} starts strong, then drifts before the end.",
+    hardX: "that {Name} stops caring halfway",
   },
   other: {
     shortWhy: "Starting and keeping going each take a push, at different times.",
     worryPara: "Getting going is one job. Keeping going is another. A small first step and a clear end help both.",
+    seenIt: "You’ve seen it yourself. Getting started takes a push, and so does keeping going.",
+    hardX: "that {Name} isn’t trying",
   },
 };
 
@@ -143,7 +168,7 @@ const CELL: Record<string, Record<string, Cell>> = {
     reminders: { instead: "“Have you started? Have you started yet?”", try: "“I'll leave you to start. Shout if you need me.”", after: "Then give {Name} a quiet run at it.", tonight: ["At start time, clear away the noise.", "No check-ins once {Name} begins.", "Let the first stretch run unbroken."] },
     homework: { instead: "“How's the homework going? Need help?”", try: "“I'll leave you to it for half an hour.”", after: "Then clear the next half hour of check-ins.", tonight: ["Pick one task and guard half an hour.", "No check-ins, no snack runs, no questions.", "Let {Name} work right through, once."] },
     screens: { instead: "“Off now. Right now.”", try: "“Finish this one bit, then we stop together.”", after: "Then let {Name} reach a clean stopping point.", tonight: ["Agree one clear end before screens go on.", "Let {Name} reach it without being rushed.", "Give a warning, then stop together, calm."] },
-    confidence: { instead: "“Come on, it's not that hard.”", try: "“Take your time. I won't hover.”", after: "Then give {Name} space to work it out.", tonight: ["When it feels hard, give {Name} room.", "Don't hover or jump in to fix.", "Let {them} stay with it a while."] },
+    confidence: { instead: "“Come on, it's not that hard.”", try: "“Take your time. I won't hover.”", after: "Then give {Name} space to work it out.", tonight: ["When it feels hard, give {Name} room.", "Don't hover or jump in to help.", "Let {them} stay with it a while."] },
     giveup: { instead: "“Don't give up, keep going!”", try: "“Take a breath. No rush, no watching.”", after: "Then let {Name} choose to try again.", tonight: ["After a miss, take the pressure off.", "Give {Name} a quiet minute, no watching.", "Let the next try come from {them}."] },
     finish: { instead: "“Nearly there, don't stop now!”", try: "“Keep going. I'll stay out of your way.”", after: "Then keep the last stretch free of breaks.", tonight: ["Near the end, clear the interruptions.", "Let {Name} run to a natural finish.", "Don't call time before {they} is ready."] },
     other: { instead: "“Have you done it yet?”", try: "“I'll leave you to it. Shout if you're stuck.”", after: "Then give {Name} a quiet run.", tonight: ["At the start, clear the noise.", "No check-ins once {Name} begins.", "Let the first stretch run unbroken."] },
@@ -153,7 +178,7 @@ const CELL: Record<string, Record<string, Cell>> = {
     homework: { instead: "“Here, let me show you the right way.”", try: "“Do it your way. Show me when you're done.”", after: "Then say nothing about how, and let it run.", tonight: ["Pick one task. Let {Name} choose how.", "Don't step in, even if you see faster.", "If {they} gets stuck, ask what {they} would try."] },
     screens: { instead: "“Off now, because I said so.”", try: "“You decide how to wrap up, then screen off.”", after: "Then let {Name} stop {their} own way.", tonight: ["At screen-off, let {Name} pick how to stop.", "Let {them} finish {their} own way first.", "Agree the stop, leave the how to {them}."] },
     confidence: { instead: "“Do it like this, it's easier.”", try: "“Try it your way first. I won't step in.”", after: "Then let {Name}'s own way run, even if slow.", tonight: ["When it feels hard, let {Name} try {their} way.", "Don't show the right way too soon.", "If stuck, ask what {they} would try next."] },
-    giveup: { instead: "“That's wrong. Here, I'll fix it.”", try: "“What would you try next?”", after: "Then let {Name} run {their} own next move.", tonight: ["After a miss, don't fix it for {them}.", "Ask what {they} would try next.", "Let {Name}'s next idea play out."] },
+    giveup: { instead: "“That's wrong. Here, give it to me.”", try: "“What would you try next?”", after: "Then let {Name} run {their} own next move.", tonight: ["After a miss, don't take it over for {them}.", "Ask what {they} would try next.", "Let {Name}'s next idea play out."] },
     finish: { instead: "“Just finish it the normal way.”", try: "“Your way to the end. Show me when it's done.”", after: "Then leave the last bit to {Name}.", tonight: ["Near the end, keep it {Name}'s own way.", "Don't take over to speed it up.", "Let {them} finish how {they} started."] },
     other: { instead: "“Do it the way I told you.”", try: "“Your call how to do this one.”", after: "Then stay quiet and let {Name} run it.", tonight: ["At the start, let {Name} choose how.", "Don't step in with a faster way.", "If stuck, ask what {they} would try."] },
   },
@@ -179,7 +204,7 @@ const CELL: Record<string, Record<string, Cell>> = {
     reminders: { instead: "“Stop stalling and start.”", try: "“Quick chat first, then we start.”", after: "Then make the ask once the air feels clear.", tonight: ["Before start time, chat for two minutes.", "If something feels off, say it plainly.", "Then ask {Name} to begin, calm and small."] },
     homework: { instead: "“Sit down, it's homework time.”", try: "“Let's catch up for a minute first.”", after: "Then make the ask once things feel settled.", tonight: ["Chat for two minutes first, not about work.", "If something feels off, say it plainly.", "Then make the ask, calm and small."] },
     screens: { instead: "“Off now. No arguments.”", try: "“All okay? Two minutes, then we switch off.”", after: "Then switch off together once {Name} feels heard.", tonight: ["Before screen-off, check in with {Name}.", "Name anything that feels tense.", "Then switch off together, calm."] },
-    confidence: { instead: "“It's fine. Just try it.”", try: "“Tell me what feels hard about it first.”", after: "Then start it together once {Name} feels heard.", tonight: ["When it feels hard, ask what's tricky.", "Listen first. Don't fix yet.", "Then start the first bit together."] },
+    confidence: { instead: "“It's fine. Just try it.”", try: "“Tell me what feels hard about it first.”", after: "Then start it together once {Name} feels heard.", tonight: ["When it feels hard, ask what's tricky.", "Listen first. Don't jump in yet.", "Then start the first bit together."] },
     giveup: { instead: "“Don't make a fuss. Try again.”", try: "“That was annoying, wasn't it? Let's go again.”", after: "Then start the retry once {Name} feels heard.", tonight: ["After a miss, name the feeling first.", "Don't rush straight to the retry.", "Then try again together, calm."] },
     finish: { instead: "“Stop moaning and finish it.”", try: "“Nearly there. Anything bugging you first?”", after: "Then help {Name} to the end once things settle.", tonight: ["Near the end, check how {Name} feels.", "Name anything that is off.", "Then finish the last bit together."] },
     other: { instead: "“Come on, just do it.”", try: "“Quick chat, then we start.”", after: "Then make the ask once {Name} feels heard.", tonight: ["At the start, chat for two minutes.", "Name anything that feels off.", "Then ask, calm and small."] },
@@ -234,10 +259,13 @@ export function composeFallback(
   const w = WORRY_META[worry];
   const cell = (CELL[archetype] ?? CELL["The All-In Kid"])[worry];
   return {
+    seenIt: f(w.seenIt),
+    hardPart: f(`The hard part isn’t ${w.hardX}. It’s ${meta.hardY}.`),
     shortGood: f(meta.shortGood),
     shortWhy: f(w.shortWhy),
     shortFix: f(meta.shortFix),
-    whyParas: [f(meta.mechanismPara), f(w.worryPara)],
+    // card 2 para 1 must open with the shared line, then the mechanism.
+    whyParas: [f(`You’ve seen it yourself. ${meta.mechanismPara}`), f(w.worryPara)],
     switch: { instead: f(cell.instead), try: f(cell.try), after: f(cell.after) },
     // tonight's 3rd step is a "Notice:" check of the worry's outcome — the generic one per
     // worry, unless the cell authored its own Notice line (e.g. Live Wire × screens).

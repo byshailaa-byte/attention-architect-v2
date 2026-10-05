@@ -49,5 +49,5 @@ export function selectEvidence(
     if (picked.length >= 3) break;
     if (!usedIds.has(a.id)) { picked.push(a); usedIds.add(a.id); }
   }
-  return picked.slice(0, 3).map((a) => ({ leadIn: leadFor(a.dimension), quote: a.label }));
+  return picked.slice(0, 3).map((a) => ({ leadIn: leadFor(a.dimension), quote: a.label, dim: a.dimension }));
 }

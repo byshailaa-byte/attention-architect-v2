@@ -5,7 +5,7 @@
 import "server-only";
 import { getSql } from "@/lib/db/client";
 import { generateReportV2, fallbackContentFor, type AssessmentInput } from "./generate";
-import type { ReportV2Content } from "./types";
+import { REPORT_V2_VERSION, type ReportV2Content } from "./types";
 
 type Sql = ReturnType<typeof getSql>;
 
@@ -14,7 +14,11 @@ export async function readCachedReportV2(sql: Sql, sessionId: string): Promise<R
     const rows = (await sql`
       SELECT content FROM report_v2_content WHERE session_id = ${sessionId}::uuid LIMIT 1
     `) as unknown as { content: ReportV2Content }[];
-    return rows[0]?.content ?? null;
+    const content = rows[0]?.content ?? null;
+    // Stale-version rows (missing the new fields) are treated as a cache miss: the view shows
+    // the new-shape fallback instantly and a background regenerate overwrites the row.
+    if (!content || content.v !== REPORT_V2_VERSION) return null;
+    return content;
   } catch {
     return null; // table missing pre-migration
   }
@@ -22,19 +26,19 @@ export async function readCachedReportV2(sql: Sql, sessionId: string): Promise<R
 
 export async function loadAssessmentInput(sql: Sql, sessionId: string): Promise<AssessmentInput | null> {
   const rows = (await sql`
-    SELECT child_name, child_gender, age_band, archetype, concerns, answers, dimensions, report_v2_goal
+    SELECT child_name, child_gender, age_band, archetype, concerns, answers, dimensions, report_v2_goal, parent_pattern
     FROM assessments WHERE session_id = ${sessionId}::uuid LIMIT 1
   `) as unknown as {
     child_name: string | null; child_gender: string | null; age_band: string | null;
     archetype: string | null; concerns: string[] | null; answers: Record<string, string>;
-    dimensions: AssessmentInput["dimensions"]; report_v2_goal: string | null;
+    dimensions: AssessmentInput["dimensions"]; report_v2_goal: string | null; parent_pattern: string | null;
   }[];
   if (rows.length === 0) return null;
   const r = rows[0];
   return {
     childName: r.child_name, childGender: r.child_gender, ageBand: r.age_band,
     archetype: r.archetype, concerns: r.concerns, answers: r.answers ?? {},
-    dimensions: r.dimensions ?? {}, v2Goal: r.report_v2_goal,
+    dimensions: r.dimensions ?? {}, v2Goal: r.report_v2_goal, parentPattern: r.parent_pattern,
   };
 }
 
@@ -47,10 +51,11 @@ export async function generateAndStoreReportV2(sessionId: string): Promise<void>
   if (!input) return;
   const { content } = await generateReportV2(input);
   try {
+    // DO UPDATE (not DO NOTHING): a stale-version row must be overwritten by the regenerate.
     await sql`
       INSERT INTO report_v2_content (session_id, content, source)
       VALUES (${sessionId}::uuid, ${JSON.stringify(content)}::jsonb, ${content.source})
-      ON CONFLICT (session_id) DO NOTHING
+      ON CONFLICT (session_id) DO UPDATE SET content = EXCLUDED.content, source = EXCLUDED.source
     `;
   } catch (e) {
     console.warn("[report-v2] store content:", (e as Error).message);

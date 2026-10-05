@@ -10,7 +10,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { WRITING_ENGINE_SYSTEM_PROMPT } from "@/lib/narrative/system-prompt";
 import { QUESTIONS_BY_ID, ALL_QUESTIONS } from "@/lib/engine/questions";
-import { displayChildName, type Gender } from "@/lib/report/pronouns";
+import { displayChildName, buildPronounTokens, type Gender } from "@/lib/report/pronouns";
 import {
   canonicalConcern, goalForConcern, headlineForConcern, worryLabelFor, worryMomentFor, noticeFor, GOLD_LINE,
 } from "./goal-mapping";
@@ -21,7 +21,17 @@ import { validateGenerated, isRepairable, fieldsFromErrors } from "./validator";
 import { programFor, type ProgramAnchor } from "./program";
 import { judgeCoherence, type JudgeVerdict } from "./judge";
 import { composeFallback, archetypeDesc } from "@/content/report-v2/fallbacks";
-import type { ReportV2Content, ReportV2Generated, EvidenceItem } from "./types";
+import { REPORT_V2_VERSION, type ReportV2Content, type ReportV2Generated, type EvidenceItem } from "./types";
+
+// Card 5 — the parent's instinct (assessments.parent_pattern) → its usual move at the worry's
+// moment, in the parent's voice. switch.instead is written FROM this. The instinct's name is
+// never shown. Null → the generator uses its default "tired parent" line.
+const INSTINCT_MOVE: Record<string, string> = {
+  "The Quick Fixer": "doing the first bit for {them}, or sitting down to help",
+  "The Pusher":      "the second or third reminder",
+  "The Negotiator":  "offering “finish this and then you can…”",
+  "The Steady Hand": "waiting it out in silence",
+};
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -43,6 +53,7 @@ export type AssessmentInput = {
   answers: Record<string, string>;
   dimensions: Record<string, { value: string; winning_votes: number; data_points: number }>;
   v2Goal?: string | null; // v2 override only; legacy goal_skill/goal_key/goal_text ignored
+  parentPattern?: string | null; // card 5 instinct
 };
 
 export function answeredFromAssessment(a: AssessmentInput): AnsweredQuestion[] {
@@ -67,8 +78,18 @@ type Context = {
   gender: Gender; name: string; concern: string; worryLabel: string; moment: string; notice: string;
   archetype: string; archDesc: string; headline: string; goal: string;
   program: ProgramAnchor | null; evidence: EvidenceItem[]; evidenceQuotes: string[];
-  evidenceTie: string; disclaimer: string;
+  evidenceTie: string; disclaimer: string; instinctMove: string | null;
 };
+
+function fillTokens(tmpl: string, name: string, gender: Gender): string {
+  const nm = name.trim() ? displayChildName(name) : "your child";
+  const t = buildPronounTokens(gender, nm);
+  return tmpl
+    .replace(/\{Name\}/g, nm)
+    .replace(/\{them\}/g, t.child_pronoun_obj)
+    .replace(/\{their\}/g, t.child_pronoun_poss)
+    .replace(/\{they\}/g, t.child_pronoun_subj);
+}
 
 function buildContext(a: AssessmentInput): Context {
   const gender = (a.childGender ?? null) as Gender;
@@ -83,9 +104,11 @@ function buildContext(a: AssessmentInput): Context {
   const goal = a.v2Goal?.trim() ? a.v2Goal.trim() : goalForConcern(concern, a.childName ?? "", gender);
   const program = programFor(archetype, a.ageBand, a.childName ?? "", gender);
   const evidence = selectEvidence(answeredFromAssessment(a), rankDimensions(dimScores(a)), a.childName ?? "", gender);
+  const moveTmpl = a.parentPattern ? INSTINCT_MOVE[a.parentPattern] ?? null : null;
+  const instinctMove = moveTmpl ? fillTokens(moveTmpl, name, gender) : null;
   return {
     gender, name, concern, worryLabel, moment, notice, archetype, archDesc, headline, goal, program,
-    evidence, evidenceQuotes: evidence.map((e) => e.quote),
+    evidence, evidenceQuotes: evidence.map((e) => e.quote), instinctMove,
     evidenceTie: `Put together, these three answers are what pointed us to ${name}’s pattern.`,
     disclaimer:
       "Attention Architect is an educational tool for parents. It is not a medical or clinical assessment, and not a substitute for professional advice.",
@@ -94,7 +117,7 @@ function buildContext(a: AssessmentInput): Context {
 
 function assemble(ctx: Context, generated: ReportV2Generated, source: "llm" | "fallback"): ReportV2Content {
   return {
-    ...generated, source,
+    ...generated, v: REPORT_V2_VERSION, source,
     childName: ctx.name, concern: ctx.concern, worryLabel: ctx.worryLabel,
     headline: ctx.headline, goldLine: GOLD_LINE, goal: ctx.goal,
     evidence: ctx.evidence, evidenceTie: ctx.evidenceTie,
@@ -113,26 +136,32 @@ const VOICE_GUIDE = `VOICE — write like this:
 const GOLD_EXAMPLES = `GOLD REFERENCE OUTPUTS — match their voice, length and concreteness. DO NOT copy them.
 
 GOLD 1 — Inventor · reminders · boy (name Dhrish):
-shortGood: "Nothing is wrong with Dhrish. He focuses deeply and likes doing things his own way."
+seenIt: "You’ve seen it yourself. You ask once, then twice, and Dhrish still hasn’t started."
+hardPart: "The hard part isn’t that Dhrish won’t start. It’s that a reminder feels like your plan, not his."
+shortGood: "Dhrish focuses deeply and likes doing things his own way."
 shortWhy: "Reminders feel like someone else's plan, so he waits them out."
 shortFix: "Let him choose how to start. 5 minutes a day."
-whyParas: ["Dhrish runs on doing things his way. A reminder is someone else's plan for his time, so it feels like pressure and he waits it out.", "When the start is his idea, the second reminder stops being needed."]
-switch: instead "Dhrish, start your homework. I've told you twice." / try "Maths or reading first? And 5:00 or 5:15? Your call." / after "Then step back, even if his order looks slower."
+whyParas: ["You’ve seen it yourself. Dhrish runs on doing things his way. A reminder is your plan for his time, so he waits it out.", "When the start is his idea, the second reminder stops being needed."]
+switch: instead "Dhrish, start your homework. I've told you twice." / try "Maths or reading first? And 5:00 or 5:15? Your call." / after "The choice only works if it’s real."
 tonight: ["Before the usual reminder, offer two ways to start.", "Let him pick. Say nothing about the choice.", "Notice: did he start without a second reminder?"]
 
 GOLD 2 — Storm · screens · girl (name Meera):
-shortGood: "Nothing is wrong with Meera. She has big energy and knows her own mind."
+seenIt: "You’ve seen it yourself. Asking Meera to switch off turns into the same battle."
+hardPart: "The hard part isn’t that Meera loves the screen too much. It’s that a choice made for her feels like losing."
+shortGood: "Meera has big energy and knows her own mind."
 shortWhy: "“Screens off now” feels like losing, so she fights it."
 shortFix: "Let her choose when it ends. 5 minutes a day."
-whyParas: ["Meera goes all in when something is her idea. When the decision is made for her, that same energy turns into a fight.", "“Screens off now” is a decision made for her. That's why it becomes a battle every evening."]
-switch: instead "Meera, screen off. Now." / try "Off at 6, or after this episode? You pick." / after "Then let her choice stand, even if it's ten minutes later than you'd like."
+whyParas: ["You’ve seen it yourself. Meera goes all in when something is her idea. When the decision is made for her, that energy turns into a fight.", "“Screens off now” is a decision made for her. That's why it becomes a battle every evening."]
+switch: instead "Meera, screen off. Now." / try "Off at 6, or after this episode? You pick." / after "The choice only works if it’s real."
 tonight: ["Before the screen goes on, offer two stop times.", "Let her pick. Write it where she can see it.", "When the time comes, just point to what she chose."]
 
 GOLD 3 — Magnet · homework · boy (name Kabir):
-shortGood: "Nothing is wrong with Kabir. He works best with people around him."
+seenIt: "You’ve seen it yourself. Homework alone in his room, and he drifts within minutes."
+hardPart: "The hard part isn’t that Kabir hates the work. It’s that working alone leaves his focus looking for people."
+shortGood: "Kabir works best with people around him."
 shortWhy: "Homework alone in his room feels lonely, so he drifts."
 shortFix: "Sit near him with your own work. 5 minutes a day."
-whyParas: ["Kabir lights up around people. Alone, his attention goes looking for them.", "So “go do your homework in your room” is the hardest version of homework for him."]
+whyParas: ["You’ve seen it yourself. Kabir lights up around people. Alone, his attention goes looking for them.", "So “go do your homework in your room” is the hardest version of homework for him."]
 switch: instead "Go do your homework in your room. Call me if you're stuck." / try "I've got some work too. Shall we both sit at the table?" / after "Then do your own thing. Don't check his work."
 tonight: ["Sit at the table with something of your own: bills, a book, anything.", "Don't help and don't check. Just be there.", "Notice how long he keeps going."]`;
 
@@ -162,34 +191,46 @@ ${p?.coreMove || "(use the mechanism above)"}
 OUR WEEK 1 DAY 2 MOVE — take its PRINCIPLE, done at ${ctx.moment}, not its homework wording:
 ${p?.day2Move || "(use the mechanism above)"}
 THE GOAL WE ARE WORKING TOWARD: "${ctx.goal}"
+${ctx.instinctMove ? `THE PARENT'S USUAL MOVE AT THIS MOMENT (write switch.instead FROM this, in the parent's voice; NEVER name it): ${ctx.instinctMove}` : ""}
 
 Write JSON ONLY, exactly these keys:
 {
-  "shortGood": "Nothing is wrong with ${ctx.name}. <one concrete strength>.",
+  "seenIt": "You’ve seen it yourself. <one concrete moment from the 3 answers above>",
+  "hardPart": "The hard part isn’t <the wrong read of the worry>. It’s <the real reason, from the mechanism>.",
+  "shortGood": "<one concrete strength of ${ctx.name}, a plain statement — NOT 'nothing is wrong'>",
   "shortWhy": "one line — why the ${ctx.worryLabel} happens, in plain concrete words",
   "shortFix": "one short instruction a parent can picture, then '5 minutes a day.'",
-  "whyParas": ["two short sentences, concrete, using at least one of the 3 answers (\\"you told us…\\")", "one or two short sentences"],
-  "switch": { "instead": "what a tired parent really says today, IN QUOTES", "try": "the exact new words, said to ${ctx.name}, AT ${ctx.moment}, IN QUOTES", "after": "ONE short sentence on what the parent does next" },
+  "whyParas": ["You’ve seen it yourself. <then two short sentences, concrete, from the mechanism + at least one of the 3 answers>", "one or two short sentences"],
+  "switch": { "instead": "what the parent really says today, IN QUOTES", "try": "the exact new words, said to ${ctx.name}, AT ${ctx.moment}, IN QUOTES", "after": "ONE short sentence on what the parent does next" },
   "tonight": ["step 1 — ONE short sentence (two at most), the Day 2 principle done AT ${ctx.moment}", "step 2 — another concrete step", "${ctx.notice}"]
 }
 The THIRD tonight step must be exactly this Notice check of the outcome: "${ctx.notice}"
 
-HARD RULES (rejected otherwise):
-- Match the GOLD voice: concrete, warm, short. EVERY sentence 14 words or fewer. Count them.
-- Each tonight step is ONE short sentence, TWO at most. whyParas: two or three short sentences, none over 14 words.
-- The explanation MUST follow from the 3 answers and the mechanism. Say "you told us…", never "${ctx.name} told".
+VOICE RULES (rejected otherwise):
+1. SHOW BEFORE YOU TELL. seenIt AND whyParas[0] both start exactly: "You’ve seen it yourself." Then a real moment the parent would recognise.
+2. hardPart is EXACTLY one shape: "The hard part isn’t X. It’s Y." X = the wrong read (laziness, won't, can't). Y = the real reason from the mechanism. No other punctuation inside X or Y.
+3. Use ${ctx.name}. NEVER the words type, pattern, trait or profile, and never name the attention type — that appears elsewhere.
+4. Quotation marks ONLY around the parent's own stored answers or the exact words a parent/child says. Not around your own phrases.
+5. Never blame the parent. Never bargain. Never promise an outcome. BANNED: fix, fixes, "nothing is wrong".
+6. EVERY sentence 16 words or fewer. One idea each.
+
+MORE HARD RULES:
+- Each tonight step is ONE short sentence, TWO at most. whyParas: two or three short sentences.
 - The switch AND tonight MUST take place at ${ctx.moment}, using our Week 1 principle there — NOT re-skinned homework advice.
-- switch.instead and switch.try are WORDS A PARENT SAYS, each wrapped in double quotes.
+- switch.instead and switch.try are WORDS A PARENT SAYS, each wrapped in double quotes.${ctx.instinctMove ? ` switch.instead must be the parent's usual move above, said out loud.` : ""}
+- If switch.try offers a real choice, switch.after must be exactly: "The choice only works if it’s real."
 - NO abstract nouns: method, ownership, process, transition, thread, approach, autonomy, structure, engagement, belongs.
 - BANNED words: system, re-entry, brain, neuro, exile, dopamine, regulate, off-ramp, upstairs, diagnose, ADHD, disorder, may, might, could.
-- NEVER BARGAIN with the child. The stop time is fixed and stated plainly. Offer a choice about what comes NEXT, never about whether it happens. BANNED bargaining words: worth it, stake, stakes, reward, treat, treats, deal, earn, earned.
-- No comparisons to other children (rare, most kids, etc). No invented numbers, stats, testimonials. Never blame the parent.
-- Length: shortWhy/shortFix ≤ 90 chars; switch.instead/try ≤ 72 chars.
-Before you answer, re-read every line: each sentence ≤14 words, each tonight step ≤2 sentences, switch.instead/try in quotes.${retry}`;
+- NEVER BARGAIN. The stop time is fixed and stated plainly. BANNED bargaining words: worth it, stake, stakes, reward, treat, treats, deal, earn, earned.
+- No comparisons to other children (rare, most kids, etc). No invented numbers, stats, testimonials.
+- Length: shortWhy/shortFix ≤ 90 chars; switch.instead/try ≤ 72 chars; seenIt/hardPart ≤ 165 chars.
+Before you answer, re-read every line: each sentence ≤16 words, seenIt + whyParas[0] open with "You’ve seen it yourself.", hardPart is "The hard part isn’t X. It’s Y.".${retry}`;
 }
 
 // ---- field get/set for the targeted repair call ----
 function getField(g: ReportV2Generated, path: string): string {
+  if (path === "seenIt") return g.seenIt;
+  if (path === "hardPart") return g.hardPart;
   if (path === "shortGood") return g.shortGood;
   if (path === "shortWhy") return g.shortWhy;
   if (path === "shortFix") return g.shortFix;
@@ -201,6 +242,8 @@ function getField(g: ReportV2Generated, path: string): string {
   return "";
 }
 function setField(g: ReportV2Generated, path: string, val: string) {
+  if (path === "seenIt") { g.seenIt = val; return; }
+  if (path === "hardPart") { g.hardPart = val; return; }
   if (path === "shortGood") { g.shortGood = val; return; }
   if (path === "shortWhy") { g.shortWhy = val; return; }
   if (path === "shortFix") { g.shortFix = val; return; }
@@ -211,22 +254,29 @@ function setField(g: ReportV2Generated, path: string, val: string) {
   const tn = path.match(/^tonight\[(\d)\]$/); if (tn) { g.tonight[+tn[1]] = val; return; }
 }
 
+// Models often emit a straight apostrophe; our fixed-format rules (seenIt prefix, hardPart
+// regex) and gold voice use the typographic ’. Normalise so compliant content isn't rejected
+// on punctuation alone.
+const curly = (s: string): string => s.replace(/'/g, "’");
+
 function parseJson(text: string): ReportV2Generated {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   const raw = fenced ? fenced[1] : text;
   const start = raw.indexOf("{"); const end = raw.lastIndexOf("}");
   const obj = JSON.parse(raw.slice(start, end + 1));
   return {
-    shortGood: String(obj.shortGood ?? ""),
-    shortWhy: String(obj.shortWhy ?? ""),
-    shortFix: String(obj.shortFix ?? ""),
-    whyParas: [String(obj.whyParas?.[0] ?? ""), String(obj.whyParas?.[1] ?? "")],
+    seenIt: curly(String(obj.seenIt ?? "")),
+    hardPart: curly(String(obj.hardPart ?? "")),
+    shortGood: curly(String(obj.shortGood ?? "")),
+    shortWhy: curly(String(obj.shortWhy ?? "")),
+    shortFix: curly(String(obj.shortFix ?? "")),
+    whyParas: [curly(String(obj.whyParas?.[0] ?? "")), curly(String(obj.whyParas?.[1] ?? ""))],
     switch: {
-      instead: String(obj.switch?.instead ?? ""),
-      try: String(obj.switch?.try ?? ""),
-      after: String(obj.switch?.after ?? ""),
+      instead: curly(String(obj.switch?.instead ?? "")),
+      try: curly(String(obj.switch?.try ?? "")),
+      after: curly(String(obj.switch?.after ?? "")),
     },
-    tonight: [String(obj.tonight?.[0] ?? ""), String(obj.tonight?.[1] ?? ""), String(obj.tonight?.[2] ?? "")],
+    tonight: [curly(String(obj.tonight?.[0] ?? "")), curly(String(obj.tonight?.[1] ?? "")), curly(String(obj.tonight?.[2] ?? ""))],
   };
 }
 

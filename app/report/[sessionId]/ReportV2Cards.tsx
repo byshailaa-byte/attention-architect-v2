@@ -2,10 +2,12 @@
 // Report v2 as 7 full-screen cards (behind ?report=v2). Navy: 1,4,7. Cream: 2,3,5,6.
 // Navigate by button, swipe, or browser Back. ?card=N keeps the current card on refresh/share.
 // Nothing overflows: each card's body scrolls inside a fixed 100dvh frame. No SiteFooter.
+// Copy is the approved voice; static per-card text comes in via `copy` (built server-side).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FLOW, HEAD, BODY } from "@/app/components/FlowShell";
 import { CARD_TOTAL as TOTAL, clampCard } from "@/lib/report-v2/cards-nav";
 import type { ReportV2Content } from "@/lib/report-v2/types";
+import type { CardsCopy } from "@/lib/report-v2/cards-copy";
 
 const GREEN = "#2F9E6E";
 
@@ -19,6 +21,7 @@ function fireEvent(eventType: string, sessionId: string, metadata?: Record<strin
 type Props = {
   sessionId: string;
   content: ReportV2Content;
+  copy: CardsCopy;
   strengths: [string, string, string];
   ageBand: string;
   goalOptions: { key: string; text: string }[];
@@ -29,7 +32,7 @@ type Props = {
 };
 
 export default function ReportV2Cards(props: Props) {
-  const { sessionId, content: c, strengths, ageBand, goalOptions, planHref, calendlyUrl, checkinEnabled } = props;
+  const { sessionId, content: c, copy, strengths, goalOptions, planHref, calendlyUrl, checkinEnabled } = props;
   const [card, setCard] = useState(clampCard(props.initialCard || 1));
   const [goal, setGoal] = useState(c.goal);
   const [sheet, setSheet] = useState(false);
@@ -94,6 +97,9 @@ export default function ReportV2Cards(props: Props) {
   const eyebrow = (t: string) => (
     <div style={{ fontFamily: BODY, fontSize: 12, fontWeight: 700, letterSpacing: ".12em", color: navy ? FLOW.goldSoft : FLOW.gold, textTransform: "uppercase", marginBottom: 12 }}>{t}</div>
   );
+  const miniLabel = (t: string, color: string) => (
+    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color, textTransform: "uppercase", marginBottom: 8 }}>{t}</div>
+  );
   const Btn = ({ label, onClick, variant = "primary" as "primary" | "ghost" }: { label: string; onClick: () => void; variant?: "primary" | "ghost" }) => (
     <button onClick={onClick} style={{
       width: "100%", minHeight: 50, borderRadius: 13, cursor: "pointer", fontFamily: BODY, fontWeight: 700, fontSize: 16,
@@ -124,25 +130,39 @@ export default function ReportV2Cards(props: Props) {
       <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px 8px" }}>
         {card === 1 && (<>
           {eyebrow("You told us")}
-          <h1 style={{ fontFamily: HEAD, fontSize: 30, lineHeight: 1.18, margin: "0 0 20px", fontWeight: 500 }}>{c.headline}</h1>
-          <div style={{ background: "#fff", color: FLOW.ink, borderRadius: 14, borderTop: `3px solid ${GREEN}`, padding: "18px 18px 6px", boxShadow: "0 6px 20px rgba(0,0,0,.12)" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".1em", color: FLOW.dim, textTransform: "uppercase", marginBottom: 12 }}>The short version</div>
-            <ShortRow label="This is good news." body={c.shortGood} />
-            <ShortRow label={`Why the ${c.worryLabel} happens`} body={c.shortWhy} />
-            <ShortRow label="What fixes it" body={c.shortFix} last />
+          <h1 style={{ fontFamily: HEAD, fontSize: 30, lineHeight: 1.18, margin: "0 0 18px", fontWeight: 500 }}>{copy.card1Headline}</h1>
+          {c.evidence[0] && (
+            <div style={{ marginBottom: 18 }}>
+              {miniLabel("Your answer", FLOW.goldSoft)}
+              <p style={{ fontFamily: HEAD, fontSize: 18, lineHeight: 1.4, margin: 0, color: "#fff" }}>“{c.evidence[0].quote}”</p>
+            </div>
+          )}
+          <div style={{ background: "#fff", color: FLOW.ink, borderRadius: 14, borderTop: `3px solid ${GREEN}`, padding: "18px 18px", boxShadow: "0 6px 20px rgba(0,0,0,.12)" }}>
+            {miniLabel("What we found", FLOW.dim)}
+            <p style={{ fontSize: 17, fontWeight: 700, color: FLOW.navy, margin: "0 0 10px" }}>{c.childName} can focus.</p>
+            <p style={{ fontSize: 16, lineHeight: 1.5, margin: "0 0 14px" }}>{c.seenIt}</p>
+            <div style={{ height: 1, background: FLOW.line, margin: "0 0 14px" }} />
+            <p style={{ fontSize: 16.5, lineHeight: 1.5, fontWeight: 700, margin: 0, color: FLOW.navy }}>{c.hardPart}</p>
           </div>
+          <p style={{ fontSize: 15.5, lineHeight: 1.5, color: dim, margin: "16px 0 0" }}>That’s a very different problem, and an easier one to work on.</p>
         </>)}
 
         {card === 2 && (<>
-          {eyebrow(`Why the ${c.worryLabel} doesn’t stick`)}
-          {c.whyParas.map((p, i) => <p key={i} style={{ fontSize: 18, lineHeight: 1.5, margin: "0 0 16px" }}>{p}</p>)}
+          {eyebrow("Why this keeps happening")}
+          <h1 style={{ fontFamily: HEAD, fontSize: 28, lineHeight: 1.2, margin: "0 0 18px", fontWeight: 500 }}>{copy.card2Headline}</h1>
+          <p style={{ fontSize: 18, lineHeight: 1.5, margin: "0 0 16px" }}>{c.whyParas[0]}</p>
+          <p style={{ fontSize: 18, lineHeight: 1.5, margin: "0 0 18px", fontWeight: 700 }}>{c.whyParas[1]}</p>
+          <div style={{ display: "inline-block", background: "rgba(47,158,110,.14)", color: "#1F6E4C", fontWeight: 700, fontSize: 14, padding: "8px 14px", borderRadius: 999 }}>
+            Changing this takes 5 minutes a day.
+          </div>
         </>)}
 
         {card === 3 && (<>
-          {eyebrow("It’s in your own answers")}
+          {eyebrow("You told us this too")}
+          <h1 style={{ fontFamily: HEAD, fontSize: 28, lineHeight: 1.2, margin: "0 0 20px", fontWeight: 500 }}>It’s in your own answers.</h1>
           {c.evidence.map((e, i) => (
             <div key={i} style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13, color: FLOW.dim, marginBottom: 4 }}>{e.leadIn}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: FLOW.dim, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 4 }}>{copy.card3Labels[i] ?? e.leadIn}</div>
               <div style={{ fontFamily: HEAD, fontSize: 19, lineHeight: 1.35, color: FLOW.navy }}>“{e.quote}”</div>
             </div>
           ))}
@@ -150,23 +170,27 @@ export default function ReportV2Cards(props: Props) {
         </>)}
 
         {card === 4 && (<>
-          {eyebrow(`A name for how ${c.childName} works`)}
-          <h1 style={{ fontFamily: HEAD, fontSize: 44, lineHeight: 1.1, margin: "0 0 14px", fontWeight: 500 }}>{c.archetype}</h1>
-          <p style={{ fontSize: 15, lineHeight: 1.5, color: dim, margin: "0 0 22px" }}>One of eight common ways children pay attention. None is better or worse.</p>
+          {eyebrow("Many children work this way")}
+          <h1 style={{ fontFamily: HEAD, fontSize: 38, lineHeight: 1.12, margin: "0 0 14px", fontWeight: 500 }}>{c.childName} is {copy.card4.article} {copy.card4.typeName}.</h1>
+          <p style={{ fontSize: 15, lineHeight: 1.5, color: dim, margin: "0 0 22px" }}>{copy.card4.sub}</p>
           {strengths.map((s, i) => (
-            <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 14 }}>
+            <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 13 }}>
               <span style={{ color: FLOW.goldSoft, fontWeight: 800, fontSize: 18, flexShrink: 0 }}>✓</span>
               <span style={{ fontSize: 17, lineHeight: 1.4 }}>{s}</span>
             </div>
           ))}
+          <div style={{ background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.22)", borderRadius: 14, padding: "16px 18px", marginTop: 20 }}>
+            {miniLabel(copy.card4.needsLabel, FLOW.goldSoft)}
+            <p style={{ fontSize: 17, lineHeight: 1.45, margin: 0 }}>{copy.card4.needs}</p>
+          </div>
         </>)}
 
         {card === 5 && (<>
-          {eyebrow("The one switch")}
+          {eyebrow("What to try instead")}
           <h1 style={{ fontFamily: HEAD, fontSize: 26, lineHeight: 1.2, margin: "0 0 20px", fontWeight: 500 }}>Change one sentence tonight.</h1>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: FLOW.dim, textTransform: "uppercase", marginBottom: 6 }}>Instead of</div>
+          {miniLabel("Instead of", FLOW.dim)}
           <p style={{ fontSize: 18, lineHeight: 1.4, color: FLOW.dim, textDecoration: "line-through", margin: "0 0 20px" }}>{c.switch.instead}</p>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".1em", color: "#8A5F0F", textTransform: "uppercase", marginBottom: 6 }}>Try</div>
+          {miniLabel("Try", "#8A5F0F")}
           <div style={{ border: `2px solid ${FLOW.gold}`, borderRadius: 14, padding: "16px 18px", background: FLOW.sel, marginBottom: 18 }}>
             <p style={{ fontFamily: HEAD, fontSize: 22, lineHeight: 1.3, margin: 0, color: FLOW.navy }}>{c.switch.try}</p>
           </div>
@@ -188,17 +212,39 @@ export default function ReportV2Cards(props: Props) {
               We’ll send one WhatsApp tomorrow to ask how it went.
             </p>
           )}
+          <p style={{ fontSize: 16.5, lineHeight: 1.5, fontWeight: 600, color: FLOW.navy, marginTop: 18 }}>{copy.card6Closing}</p>
         </>)}
 
         {card === 7 && (<>
           {eyebrow("In six weeks")}
-          <h1 style={{ fontFamily: HEAD, fontSize: 36, lineHeight: 1.15, margin: "0 0 16px", fontWeight: 500 }}>{goal}</h1>
-          <p style={{ fontSize: 15, lineHeight: 1.5, color: dim, margin: "0 0 10px" }}>
-            Six weeks, one small change a week, 5 minutes a day. Written for {c.archetype}, age {ageBand}.
+          <h1 style={{ fontFamily: HEAD, fontSize: 34, lineHeight: 1.15, margin: "0 0 14px", fontWeight: 500 }}>{goal}</h1>
+          <p style={{ fontSize: 15, lineHeight: 1.5, color: dim, margin: "0 0 20px" }}>
+            {copy.card7.sub}{" "}
+            <button onClick={() => setSheet(true)} style={{ background: "none", border: "none", color: FLOW.goldSoft, fontWeight: 700, fontSize: 15, padding: 0, cursor: "pointer", textDecoration: "underline" }}>
+              Pick another goal
+            </button>
           </p>
-          <button onClick={() => setSheet(true)} style={{ background: "none", border: "none", color: FLOW.goldSoft, fontWeight: 700, fontSize: 15, padding: 0, cursor: "pointer", textDecoration: "underline" }}>
-            Not the goal you want? Pick another
-          </button>
+          <div style={{ background: FLOW.cream, color: FLOW.ink, borderRadius: 16, padding: "20px 18px" }}>
+            {miniLabel("Why this matters", FLOW.gold)}
+            <h2 style={{ fontFamily: HEAD, fontSize: 24, lineHeight: 1.18, margin: "0 0 14px", fontWeight: 500, color: FLOW.navy }}>
+              {copy.card7.whyHeadline[0]}<br />{copy.card7.whyHeadline[1]}
+            </h2>
+            <p style={{ fontSize: 16, lineHeight: 1.5, margin: "0 0 12px" }}>{copy.card7.whyLead}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+              {copy.card7.pills.map((p, i) => (
+                <div key={i} style={{ background: "#fff", border: `1px solid ${FLOW.line}`, borderRadius: 999, padding: "9px 15px", fontSize: 15, color: FLOW.dim }}>“{p}”</div>
+              ))}
+            </div>
+            <p style={{ fontSize: 16, lineHeight: 1.5, margin: "0 0 16px", fontWeight: 600 }}>{copy.card7.whyLearn}</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              {copy.card7.steps.map((s, i) => (
+                <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ background: FLOW.navy, color: "#fff", borderRadius: 8, padding: "6px 11px", fontSize: 13.5, fontWeight: 700 }}>{s}</span>
+                  {i < 2 && <span style={{ color: FLOW.gold, fontWeight: 800 }}>→</span>}
+                </span>
+              ))}
+            </div>
+          </div>
         </>)}
       </div>
 
@@ -208,9 +254,9 @@ export default function ReportV2Cards(props: Props) {
           <Btn label="Show me why →" onClick={() => nav(2)} />
           <button onClick={() => goPlan(true)} style={{ background: "none", border: "none", color: dim, fontWeight: 600, fontSize: 14, cursor: "pointer", minHeight: 38 }}>Skip to the plan</button>
         </>)}
-        {card === 2 && <Btn label="How do you know? →" onClick={() => nav(3)} />}
-        {card === 3 && <Btn label="Next →" onClick={() => nav(4)} />}
-        {card === 4 && <Btn label="So what do I do? →" onClick={() => nav(5)} />}
+        {card === 2 && <Btn label="How can you tell? →" onClick={() => nav(3)} />}
+        {card === 3 && <Btn label="Is this common? →" onClick={() => nav(4)} />}
+        {card === 4 && <Btn label="What do I try? →" onClick={() => nav(5)} />}
         {card === 5 && <Btn label="Try it tonight →" onClick={() => nav(6)} />}
         {card === 6 && <Btn label="Where this goes →" onClick={() => nav(7)} />}
         {card === 7 && (<>
@@ -239,13 +285,3 @@ export default function ReportV2Cards(props: Props) {
     </div>
   );
 }
-
-function ShortRow({ label, body, last }: { label: string; body: string; last?: boolean }) {
-  return (
-    <div style={{ marginBottom: last ? 14 : 14, paddingBottom: last ? 0 : 14, borderBottom: last ? "none" : `1px solid ${FLOW.line}` }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: FLOW.navy, marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 16, lineHeight: 1.45 }}>{body}</div>
-    </div>
-  );
-}
-

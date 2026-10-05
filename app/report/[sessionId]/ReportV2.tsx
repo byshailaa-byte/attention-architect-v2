@@ -6,6 +6,7 @@ import { after } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { viewReportV2, generateAndStoreReportV2 } from "@/lib/report-v2/service";
 import { allGoals, CONCERN_GOAL, CONCERN_ALIAS, canonicalConcern, goalForConcern } from "@/lib/report-v2/goal-mapping";
+import { buildCardsCopy } from "@/lib/report-v2/cards-copy";
 import { strengthsFor } from "@/content/report-v2/archetype-extras";
 import type { Gender } from "@/lib/report/pronouns";
 import ReportV2Cards from "./ReportV2Cards";
@@ -57,6 +58,13 @@ export default async function ReportV2({ session, card, plan }: { session: strin
   }
   const effContent = { ...content, goal: effGoal };
 
+  // Static per-card copy (approved voice). Card 7 follows the CHOSEN goal's worry.
+  const cardsCopy = buildCardsCopy({
+    name: r.child_name ?? "", gender, archetype: effContent.archetype,
+    concern: effContent.concern, ageBand: r.age_band ?? "10-11", goalKey: effGoalKey,
+    evidenceDims: (effContent.evidence ?? []).map((e) => e.dim),
+  });
+
   after(async () => {
     await generateAndStoreReportV2(session).catch((e: unknown) => console.warn("[report-v2] bg generate:", (e as Error).message));
     await sql`
@@ -73,6 +81,7 @@ export default async function ReportV2({ session, card, plan }: { session: strin
     <ReportV2Cards
       sessionId={session}
       content={effContent}
+      copy={cardsCopy}
       strengths={strengths}
       ageBand={r.age_band ?? "10-11"}
       goalOptions={goalOptions}
