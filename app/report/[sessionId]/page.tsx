@@ -110,7 +110,7 @@ export default async function ReportPage({
     `) as unknown as { flow: string }[];
     isFlowV2 = fsRows[0]?.flow === "v2";
   } catch { /* table missing / no row — treat as not v2 */ }
-  if (report === "v2" || isFlowV2) {
+  if (report !== "v1") {
     return (
       <ReportV2
         session={sessionId}

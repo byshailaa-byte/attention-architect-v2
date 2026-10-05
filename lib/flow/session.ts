@@ -23,8 +23,8 @@ export function getFlowSid(): string {
   }
 }
 
-// The new flow is OPT-IN: only ?flow=v2 selects it. Default (no param) and ?flow=v1 both
-// resolve to the current/live flow, which stays byte-identical until the "flip".
+// The v2 flow is now the DEFAULT: no param and anything but ?flow=v1 resolve to v2.
+// ?flow=v1 is the explicit opt-out back to the old/live flow.
 export function resolveFlowVariant(flowParam: string | null | undefined): FlowVariant {
-  return flowParam === "v2" ? "v2" : "v1";
+  return flowParam === "v1" ? "v1" : "v2";
 }
