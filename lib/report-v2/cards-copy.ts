@@ -135,7 +135,9 @@ export function buildCardsCopy(args: {
     card1Answer,
     card2Headline: f(CARD2_HEADLINE[args.archetype] ?? "{Name} works in a way of {his} own."),
     card3Labels: args.evidence.map((e) => f((e.dim && DIM_LABEL[e.dim]) || DIM_LABEL_DEFAULT)),
-    card3Closing: "Three answers. They all point the same way.",
+    card3Closing: args.evidence.length >= 3
+      ? "Three answers. They all point the same way."
+      : "These answers all point the same way.",
     card4: {
       typeName: type,
       article: articleFor(type),

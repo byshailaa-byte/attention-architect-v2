@@ -56,13 +56,15 @@ export default async function ReportV2({ session, card, plan }: { session: strin
     effGoalKey = goalOptions.find((o) => o.text === savedGoal)?.key ?? content.concern;
     effGoal = savedGoal;
   }
-  const effContent = { ...content, goal: effGoal };
+  // Card 3 never shows the parent_instinct answer (defensive — new content already excludes it).
+  const childEvidence = (content.evidence ?? []).filter((e) => e.dim !== "parent_instinct");
+  const effContent = { ...content, goal: effGoal, evidence: childEvidence };
 
   // Static per-card copy (approved voice). Card 7 follows the CHOSEN goal's worry.
   const cardsCopy = buildCardsCopy({
     name: r.child_name ?? "", gender, archetype: effContent.archetype,
     concern: effContent.concern, ageBand: r.age_band ?? "10-11", goalKey: effGoalKey,
-    evidence: (effContent.evidence ?? []).map((e) => ({ quote: e.quote, dim: e.dim })),
+    evidence: childEvidence.map((e) => ({ quote: e.quote, dim: e.dim })),
   });
 
   after(async () => {

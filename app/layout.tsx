@@ -1,42 +1,48 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Instrument_Sans, Caveat, Newsreader, Figtree } from "next/font/google";
+import localFont from "next/font/local";
 import { AnalyticsLoader } from "./analytics";
 import { WhatsAppWidget } from "./components/WhatsAppWidget";
 import "./globals.css";
 
-const bricolage = Bricolage_Grotesque({
-  subsets: ["latin"],
+// Self-hosted (next/font/local) so builds never fetch from Google. Same families/weights as
+// before — the committed files are the latin-subset VARIABLE fonts, so every weight renders
+// identically to the previous next/font/google setup.
+const bricolage = localFont({
+  src: "./fonts/bricolage.woff2",
+  weight: "200 800",
   variable: "--font-bricolage",
   display: "swap",
 });
 
-const instrumentSans = Instrument_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
+const instrumentSans = localFont({
+  src: [
+    { path: "./fonts/instrument.woff2", weight: "400 600", style: "normal" },
+    { path: "./fonts/instrument-italic.woff2", weight: "400 600", style: "italic" },
+  ],
   variable: "--font-instrument",
   display: "swap",
 });
 
-const caveat = Caveat({
-  subsets: ["latin"],
-  weight: ["600"],
+const caveat = localFont({
+  src: "./fonts/caveat.woff2",
+  weight: "400 700",
   variable: "--font-caveat",
   display: "swap",
 });
 
 // Used only by the v2 start flow (?flow=v2): Newsreader headlines, Figtree body.
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  style: ["normal", "italic"],
+const newsreader = localFont({
+  src: [
+    { path: "./fonts/newsreader.woff2", weight: "500 600", style: "normal" },
+    { path: "./fonts/newsreader-italic.woff2", weight: "500 600", style: "italic" },
+  ],
   variable: "--font-newsreader",
   display: "swap",
 });
 
-const figtree = Figtree({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const figtree = localFont({
+  src: "./fonts/figtree.woff2",
+  weight: "400 700",
   variable: "--font-figtree",
   display: "swap",
 });

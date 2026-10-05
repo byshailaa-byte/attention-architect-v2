@@ -36,16 +36,20 @@ export function selectEvidence(
       .replace(/\{Name\}/g, nm)
       .replace(/\{they\}/g, t.child_pronoun_subj);
 
+  // Card 3 shows the CHILD's own answers — never the parent_instinct question (about the parent).
+  const childAnswers = answered.filter((a) => a.dimension !== "parent_instinct");
+  const childRank = dimRank.filter((d) => d !== "parent_instinct");
+
   const picked: AnsweredQuestion[] = [];
   const usedIds = new Set<string>();
   // one per dimension, in rank order
-  for (const dim of dimRank) {
+  for (const dim of childRank) {
     if (picked.length >= 3) break;
-    const hit = answered.find((a) => a.dimension === dim && !usedIds.has(a.id));
+    const hit = childAnswers.find((a) => a.dimension === dim && !usedIds.has(a.id));
     if (hit) { picked.push(hit); usedIds.add(hit.id); }
   }
   // backfill in sequence order if fewer than 3 distinct dimensions answered
-  for (const a of answered) {
+  for (const a of childAnswers) {
     if (picked.length >= 3) break;
     if (!usedIds.has(a.id)) { picked.push(a); usedIds.add(a.id); }
   }

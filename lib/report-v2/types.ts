@@ -4,7 +4,7 @@
 // Bump when the generated-content SHAPE or voice changes. Cached rows stamped with an older
 // version are treated as a cache miss: the view renders the (new-shape) fallback instantly and
 // a background regenerate overwrites the stale row. See service.ts.
-export const REPORT_V2_VERSION = 2;
+export const REPORT_V2_VERSION = 3;
 
 export type ReportV2Generated = {
   // card 1 — the new voice (shown):
