@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { normalizePhone, maskPhone } from "@/lib/phone";
+import { getFlowSid } from "@/lib/flow/session";
 import { FLOW, HEAD, BODY, Wordmark, ModuleIcon } from "@/app/components/FlowShell";
 
 type Preview = {
@@ -29,6 +30,19 @@ export default function ThankYouV2({
   const parentFirst = (parentName.trim().split(/\s+/)[0]) || "there";
   const masked = maskPhone(normalizePhone(phone));
   const [preview, setPreview] = useState<Preview | null>(null);
+
+  // Thank-you screen view — same event name + payload shape as the v1 ThankYouScreen.
+  const firedView = useRef(false);
+  useEffect(() => {
+    if (firedView.current) return;
+    firedView.current = true;
+    const sessionId = getFlowSid();
+    fetch("/api/funnel/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_type: "thankyou_screen_view", session_id: sessionId, metadata: { variant: "v2" } }),
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const p = new URLSearchParams({ archetype, ageBand, name: kid, gender: gender ?? "" });

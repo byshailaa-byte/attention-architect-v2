@@ -5,6 +5,7 @@
 import { useEffect } from "react";
 import Script from "next/script";
 import { FLOW, HEAD, BODY } from "@/app/components/FlowShell";
+import { fireGtag } from "@/lib/gtag";
 
 type RazorpayCtor = new (o: Record<string, unknown>) => { open(): void };
 
@@ -51,7 +52,13 @@ export function PlanPricing({ sessionId, calendlyUrl, childName }: { sessionId: 
       new RZP({
         key: keyId, amount, currency, order_id: orderId,
         name: "Attention Architect", description: TIERS.find((t) => t.tier === tier)?.title,
-        handler: () => { window.location.reload(); },
+        handler: (response: { razorpay_payment_id: string }) => {
+          const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
+          fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR", items: [{ item_id: tier, price: value }] });
+          const fbq = (window as unknown as { fbq?: (...a: unknown[]) => void }).fbq;
+          if (typeof fbq === "function") fbq("track", "Purchase", { value, currency: "INR", content_name: tier }, { eventID: purchaseEventId });
+          window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
+        },
         modal: { ondismiss: () => fireEvent("checkout_modal_dismissed", sessionId, { tier, value, source: "plan_v2" }) },
       }).open();
       fireEvent("checkout_modal_opened", sessionId, { tier, value, source: "plan_v2" });
