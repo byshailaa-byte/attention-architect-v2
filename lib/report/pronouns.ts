@@ -35,10 +35,32 @@ export function articleFor(word: string): string {
 // Report v2 pronouns: boy → he/him/his/himself, girl → she/her/her/herself, anything else →
 // SINGULAR THEY (they/them/their/themselves) — NOT the name, and never "themself". Used only
 // by report v2 copy; v1 keeps buildPronounTokens (name for unset).
-export function reportV2Pronouns(gender: Gender): { subj: string; obj: string; poss: string; reflexive: string } {
-  if (gender === "boy")  return { subj: "he",   obj: "him",  poss: "his",   reflexive: "himself" };
-  if (gender === "girl") return { subj: "she",  obj: "her",  poss: "her",   reflexive: "herself" };
-  return { subj: "they", obj: "them", poss: "their", reflexive: "themselves" };
+// poss = possessive determiner ("his/her/their idea"); possPred = predicate possessive
+// ("it's his/hers/theirs", "truly his/hers/theirs to run").
+export function reportV2Pronouns(gender: Gender): { subj: string; obj: string; poss: string; possPred: string; reflexive: string } {
+  if (gender === "boy")  return { subj: "he",   obj: "him",  poss: "his",   possPred: "his",   reflexive: "himself" };
+  if (gender === "girl") return { subj: "she",  obj: "her",  poss: "her",   possPred: "hers",  reflexive: "herself" };
+  return { subj: "they", obj: "them", poss: "their", possPred: "theirs", reflexive: "themselves" };
+}
+
+// Static report-v2 copy is authored with he/his tokens; when filled for the UNSET case ({they})
+// a 3rd-person-singular verb right after "they" reads wrong ("they stays"). This fixes the verb
+// to its base form (plural agreement) for the small, known verb set our copy uses. Scoped to a
+// verb directly after they / they+adverb, so non-they subjects are never touched.
+const THEY_VERB: Record<string, string> = {
+  is: "are", was: "were", has: "have", does: "do", "doesn’t": "don’t", "isn’t": "aren’t",
+  "hasn’t": "haven’t", "wasn’t": "weren’t",
+  goes: "go", stays: "stay", picks: "pick", pushes: "push", slows: "slow", stops: "stop",
+  needs: "need", throws: "throw", takes: "take", sees: "see", gets: "get", feels: "feel",
+  keeps: "keep", steps: "step", starts: "start", works: "work", waits: "wait", begins: "begin",
+  unwinds: "unwind", hands: "hand", lets: "let", digs: "dig", switches: "switch", drifts: "drift",
+  comes: "come", turns: "turn", sends: "send", loses: "lose", dives: "dive", thinks: "think",
+  likes: "like", resets: "reset", hates: "hate", wants: "want", finds: "find", finishes: "finish",
+  catches: "catch", reads: "read", runs: "run", settles: "settle", locks: "lock", explores: "explore",
+};
+export function pluralizeThey(text: string): string {
+  return text.replace(/\b([Tt]hey)(\s+(?:often|really|completely|just|still|always|also|then|soon))?\s+([a-z’]+)\b/g,
+    (m, they, adv, verb) => (THEY_VERB[verb] ? `${they}${adv || ""} ${THEY_VERB[verb]}` : m));
 }
 
 export function resolveChildPronoun(gender: Gender, form: PronounForm): string {

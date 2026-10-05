@@ -145,7 +145,10 @@ export function validateGenerated(g: ReportV2Generated, opts?: { childName?: str
   check(g.shortGood, CAP.shortGood, "shortGood", false);
   check(g.shortWhy,  CAP.shortWhy,  "shortWhy",  false);
   check(g.shortFix,  CAP.shortFix,  "shortFix",  false);
-  g.whyParas.forEach((p, i) => check(p, CAP.whyPara, `whyParas[${i}]`, true));
+  // Card 2: para 1 ≤ 3 sentences AND ≤ 45 words; bold line ≤ 2 sentences.
+  check(g.whyParas[0], CAP.whyPara, "whyParas[0]", true, 3);
+  if (words(g.whyParas[0]).length > 45) e.push(`whyParas[0]: over 45 words (${words(g.whyParas[0]).length})`);
+  check(g.whyParas[1], CAP.whyPara, "whyParas[1]", true, 2);
   check(g.switch.instead, CAP.instead, "switch.instead", false);
   check(g.switch.try,     CAP.try,     "switch.try",     false);
   check(g.switch.after,   CAP.after,   "switch.after",   false);

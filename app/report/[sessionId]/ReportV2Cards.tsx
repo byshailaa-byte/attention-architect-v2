@@ -131,10 +131,10 @@ export default function ReportV2Cards(props: Props) {
         {card === 1 && (<>
           {eyebrow("You told us")}
           <h1 style={{ fontFamily: HEAD, fontSize: 30, lineHeight: 1.18, margin: "0 0 18px", fontWeight: 500 }}>{copy.card1Headline}</h1>
-          {c.evidence[0] && (
+          {copy.card1Answer && (
             <div style={{ marginBottom: 18 }}>
-              {miniLabel("Your answer", FLOW.goldSoft)}
-              <p style={{ fontFamily: HEAD, fontSize: 18, lineHeight: 1.4, margin: 0, color: "#fff" }}>“{c.evidence[0].quote}”</p>
+              {miniLabel(`Your answer · ${copy.card1Answer.label}`, FLOW.goldSoft)}
+              <p style={{ fontFamily: HEAD, fontSize: 18, lineHeight: 1.4, margin: 0, color: "#fff" }}>“{copy.card1Answer.quote}”</p>
             </div>
           )}
           <div style={{ background: "#fff", color: FLOW.ink, borderRadius: 14, borderTop: `3px solid ${GREEN}`, padding: "18px 18px", boxShadow: "0 6px 20px rgba(0,0,0,.12)" }}>

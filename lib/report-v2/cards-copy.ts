@@ -2,7 +2,7 @@
 // server-built in ReportV2.tsx, then passed to the card deck. Pronoun-filled here so the client
 // never needs gender. The type NAME appears only on card 4 (rule 3). Card 7 depends on the
 // CHOSEN goal's worry, so it's built from the live goalKey, not the cached content.
-import { displayChildName, reportV2Pronouns, articleFor, type Gender } from "@/lib/report/pronouns";
+import { displayChildName, reportV2Pronouns, pluralizeThey, articleFor, type Gender } from "@/lib/report/pronouns";
 import { canonicalConcern } from "./goal-mapping";
 
 // ── card 1: worry line (second person, no quotes) ──────────────────────────────
@@ -24,18 +24,24 @@ const CARD2_HEADLINE: Record<string, string> = {
   "The Explorer":   "{Name}’s mind keeps finding new things to chase.",
   "The Magnet":     "{Name} focuses best with someone nearby.",
   "The Glue":       "{Name} works best once {he} feels connected.",
-  "The Captain":    "{Name} steps up when something is truly {his} to run.",
+  "The Captain":    "{Name} steps up when something is truly {theirs} to run.",
   "The Live Wire":  "{Name} switches on when there’s something real to aim for.",
 };
 
-// ── card 3: evidence dimension → plain label ───────────────────────────────────
+// ── card 3: evidence dimension → plain label (every dimension has one) ─────────
 const DIM_LABEL: Record<string, string> = {
   attention_shape:       "What pulls {him} in",
   reward_driver:         "What gets {him} going",
   friction_response:     "When it gets hard",
   recharge_type:         "How {he} resets",
   attention_competition: "What pulls {him} away",
+  recovery_response:     "After {he} drifts off",
+  parent_instinct:       "How you respond",
 };
+const DIM_LABEL_DEFAULT = "How {he} works";
+// Dimensions allowed as the card-1 quote (the child FOCUSING), in priority order.
+// Never recovery_response / friction_response / attention_competition / parent_instinct.
+const CARD1_DIMS = ["reward_driver", "attention_shape"];
 
 // ── card 4: what each type needs (per archetype) ───────────────────────────────
 const CARD4_NEEDS: Record<string, string> = {
@@ -45,7 +51,7 @@ const CARD4_NEEDS: Record<string, string> = {
   "The Explorer":   "Somewhere to put new ideas, so {he} can come back to the task.",
   "The Magnet":     "Someone nearby. Company, not supervision.",
   "The Glue":       "A few minutes of connection before the task starts.",
-  "The Captain":    "Something that’s truly {his} to run.",
+  "The Captain":    "Something that’s truly {theirs} to run.",
   "The Live Wire":  "A real challenge: a clock to beat, someone watching, a deadline.",
 };
 
@@ -64,15 +70,19 @@ function makeFiller(name: string, gender: Gender) {
   const nm = name.trim() ? displayChildName(name) : "Your child";
   const p = reportV2Pronouns(gender);
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-  return (tmpl: string) =>
-    tmpl
+  const they = p.subj === "they";
+  return (tmpl: string) => {
+    const out = tmpl
       .replace(/\{Name\}/g, nm)
-      .replace(/\{he\}’s/g, p.subj === "they" ? "they’re" : `${p.subj}’s`)
+      .replace(/\{he\}’s/g, they ? "they’re" : `${p.subj}’s`)
       .replace(/\{He\}/g, cap(p.subj)).replace(/\{They\}/g, cap(p.subj))
       .replace(/\{he\}/g, p.subj).replace(/\{they\}/g, p.subj)
       .replace(/\{him\}/g, p.obj).replace(/\{them\}/g, p.obj)
+      .replace(/\{theirs\}/g, p.possPred)
       .replace(/\{his\}/g, p.poss).replace(/\{their\}/g, p.poss)
       .replace(/\{himself\}/g, p.reflexive).replace(/\{themselves\}/g, p.reflexive);
+    return they ? pluralizeThey(out) : out;
+  };
 }
 
 function typeName(archetype: string): string {
@@ -86,6 +96,7 @@ function pluralType(type: string): string {
 
 export type CardsCopy = {
   card1Headline: string;
+  card1Answer: { quote: string; label: string } | null;  // reward_driver → attention_shape → hidden
   card2Headline: string;
   card3Labels: string[];            // one per evidence item, aligned
   card3Closing: string;
@@ -104,7 +115,7 @@ export type CardsCopy = {
 export function buildCardsCopy(args: {
   name: string; gender: Gender; archetype: string; concern: string; ageBand: string;
   goalKey: string;                  // the CHOSEN goal's worry key (drives card 7 pills)
-  evidenceDims: (string | undefined)[];
+  evidence: { quote: string; dim?: string }[];
 }): CardsCopy {
   const f = makeFiller(args.name, args.gender);
   const p = reportV2Pronouns(args.gender);
@@ -113,10 +124,17 @@ export function buildCardsCopy(args: {
   const concern = canonicalConcern(args.concern);
   const goalWorry = canonicalConcern(args.goalKey);
   const type = typeName(args.archetype);
+  // Card 1 quote: the reward_driver answer, else attention_shape, else hidden.
+  let card1Answer: CardsCopy["card1Answer"] = null;
+  for (const dim of CARD1_DIMS) {
+    const hit = args.evidence.find((e) => e.dim === dim && e.quote);
+    if (hit) { card1Answer = { quote: hit.quote, label: f(DIM_LABEL[dim]) }; break; }
+  }
   return {
     card1Headline: f(CARD1_HEADLINE[concern] ?? CARD1_HEADLINE.other),
+    card1Answer,
     card2Headline: f(CARD2_HEADLINE[args.archetype] ?? "{Name} works in a way of {his} own."),
-    card3Labels: args.evidenceDims.map((d) => f((d && DIM_LABEL[d]) || "What you told us")),
+    card3Labels: args.evidence.map((e) => f((e.dim && DIM_LABEL[e.dim]) || DIM_LABEL_DEFAULT)),
     card3Closing: "Three answers. They all point the same way.",
     card4: {
       typeName: type,

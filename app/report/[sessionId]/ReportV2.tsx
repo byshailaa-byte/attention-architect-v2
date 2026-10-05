@@ -62,7 +62,7 @@ export default async function ReportV2({ session, card, plan }: { session: strin
   const cardsCopy = buildCardsCopy({
     name: r.child_name ?? "", gender, archetype: effContent.archetype,
     concern: effContent.concern, ageBand: r.age_band ?? "10-11", goalKey: effGoalKey,
-    evidenceDims: (effContent.evidence ?? []).map((e) => e.dim),
+    evidence: (effContent.evidence ?? []).map((e) => ({ quote: e.quote, dim: e.dim })),
   });
 
   after(async () => {

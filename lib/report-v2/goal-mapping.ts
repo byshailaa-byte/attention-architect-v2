@@ -1,7 +1,7 @@
 // Concern → goal mapping for Report/Plan v2 (decided 2026-10-04). The goal is now
 // concern-driven (v1 derived it from the archetype). Parents can still override via
 // /api/report/goal. Tokens {Name}/{their}/{they} are filled per child.
-import { displayChildName, buildPronounTokens, type Gender } from "@/lib/report/pronouns";
+import { displayChildName, reportV2Pronouns, type Gender } from "@/lib/report/pronouns";
 
 export const CONCERN_GOAL: Record<string, string> = {
   homework:   "{Name} starts homework without a fight.",
@@ -9,7 +9,7 @@ export const CONCERN_GOAL: Record<string, string> = {
   screens:    "Screens off without a battle.",
   confidence: "{Name} tries the hard thing before asking for help.",
   giveup:     "{Name} keeps going after the first try fails.",
-  finish:     "{Name} finishes what {they} starts.",
+  finish:     "{Name} gets to the end on {their} own.",
   other:      "{Name} starts and finishes on {their} own.",
 };
 
@@ -78,11 +78,11 @@ export function canonicalConcern(key: string | null | undefined): string {
 
 function fill(tmpl: string, name: string, gender: Gender): string {
   const nm = name.trim() ? displayChildName(name) : "Your child";
-  const t = buildPronounTokens(gender, nm);
+  const p = reportV2Pronouns(gender); // unset → their/they (never the name repeated)
   return tmpl
     .replace(/\{Name\}/g, nm)
-    .replace(/\{their\}/g, t.child_pronoun_poss)
-    .replace(/\{they\}/g, t.child_pronoun_subj);
+    .replace(/\{their\}/g, p.poss)
+    .replace(/\{they\}/g, p.subj);
 }
 
 export function goalForConcern(concernKey: string | null | undefined, name: string, gender: Gender): string {

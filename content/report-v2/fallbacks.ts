@@ -30,7 +30,7 @@
 // SINGULAR (he/she, or the name) — verbs stay singular; never start a sentence
 // with {they} (it fills lowercase). Tokens: {Name} {they} {their} {them}.
 // ============================================================================
-import { displayChildName, reportV2Pronouns, type Gender } from "@/lib/report/pronouns";
+import { displayChildName, reportV2Pronouns, pluralizeThey, type Gender } from "@/lib/report/pronouns";
 import { canonicalConcern, noticeFor } from "@/lib/report-v2/goal-mapping";
 import type { ReportV2Generated } from "@/lib/report-v2/types";
 
@@ -49,55 +49,63 @@ export const ARCHETYPE_DESC: Record<string, string> = {
 // Archetype-level: strength line, the one picture-able change, the mechanism paragraph, and
 // seenIt — card 1's "You’ve seen it yourself." moment, showing the child FOCUSING WELL
 // (never the worry). Per archetype, drawn from its strength.
-type ArchMeta = { shortGood: string; shortFix: string; mechanismPara: string; seenIt: string };
+type ArchMeta = { shortGood: string; shortFix: string; mechanismPara: string; seenIt: string; card2Bold: string };
 const ARCH_META: Record<string, ArchMeta> = {
   "The Storm": {
     shortGood: "{Name} has big energy, and a mind of {their} own.",
     shortFix: "Let {Name} pick how it goes. 5 minutes a day.",
     mechanismPara: "{Name} goes all in when something is {their} idea. When the choice is made for {them}, that same energy turns into a fight.",
     seenIt: "You’ve seen it yourself. When the idea is {his} own, {he} throws everything into it.",
+    card2Bold: "When the start is {his} choice, the fight has nothing to push against.",
   },
   "The All-In Kid": {
     shortGood: "{Name} dives deep into things {they} picks.",
     shortFix: "Leave {Name} alone to work. 5 minutes a day.",
     mechanismPara: "Once {Name} is in, {they} is really in. The hard part is being pulled out halfway.",
     seenIt: "You’ve seen it yourself. Once {he}’s into something, {he} can go an hour without looking up.",
+    card2Bold: "Once {he}’s in, {he} stays. The work is protecting the way in.",
   },
   "The Inventor": {
     shortGood: "{Name} thinks hard and likes {their} own way.",
     shortFix: "Let {Name} choose how to start. 5 minutes a day.",
     mechanismPara: "{Name} likes doing things {their} own way. Shown the right way too soon, {they} often stops trying.",
     seenIt: "You’ve seen it yourself. When {he}’s working something out {his} own way, {he} stays with it for ages.",
+    card2Bold: "When the how is {his}, {he} starts without a push.",
   },
   "The Explorer": {
     shortGood: "{Name} is quick, curious, and full of new ideas.",
     shortFix: "Keep a scrap pad beside {Name}. 5 minutes a day.",
     mechanismPara: "One idea sends {Name} somewhere new, fast. That is not lost focus — it is a quick mind with nowhere to put it.",
     seenIt: "You’ve seen it yourself. When something new catches {his} interest, {he} can’t stop exploring it.",
+    card2Bold: "When new ideas have somewhere to go, {he} can come back to the task.",
   },
   "The Magnet": {
     shortGood: "{Name} works best with people around.",
     shortFix: "Sit near {Name} with your own work. 5 minutes a day.",
     mechanismPara: "{Name} is at {their} best with people near. Alone, the focus starts to drift.",
     seenIt: "You’ve seen it yourself. With someone nearby, {he} can work for a long stretch.",
+    card2Bold: "With someone nearby, the same task is much easier to start.",
   },
   "The Glue": {
     shortGood: "{Name} reads people and cares how they feel.",
     shortFix: "Talk for a minute first. 5 minutes a day.",
     mechanismPara: "{Name} feels the mood of a room first. If things feel off, that comes before the work.",
-    seenIt: "You’ve seen it yourself. When things feel settled, {he} gets going and stays with it.",
+    seenIt: "You’ve seen it yourself. When things feel settled, {he} gets straight to work.",
+    card2Bold: "A few settled minutes first, and the work goes more smoothly.",
   },
   "The Captain": {
     shortGood: "{Name} likes to lead and make the call.",
     shortFix: "Let {Name} make the real call. 5 minutes a day.",
     mechanismPara: "Give {Name} something to run and {they} pushes hard. Told exactly what to do, {they} slows right down.",
-    seenIt: "You’ve seen it yourself. When something is truly {his} to run, {he} takes charge and sees it through.",
+    seenIt: "You’ve seen it yourself. When something is truly {theirs} to run, {he} takes charge of it.",
+    card2Bold: "When it’s truly {theirs} to run, {he} steps up.",
   },
   "The Live Wire": {
     shortGood: "{Name} has big energy when something matters to {them}.",
     shortFix: "Turn it into one real challenge. 5 minutes a day.",
     mechanismPara: "{Name} goes all out when it counts. With nothing on the line, the task slides past.",
     seenIt: "You’ve seen it yourself. With a clock to beat or someone watching, {he}’s completely locked in.",
+    card2Bold: "Give {him} something real to aim for, and {he} switches on.",
   },
 };
 const ARCH_META_FALLBACK = ARCH_META["The All-In Kid"];
@@ -147,13 +155,13 @@ const HARD_X: Record<string, string> = {
 };
 const HARD_Y: Record<string, Record<string, string>> = {
   "The Storm": {
-    reminders:  "It’s starting on a plan that isn’t {his}.",
+    reminders:  "It’s starting on a plan that isn’t {theirs}.",
     homework:   "It’s that the fight starts the moment it feels decided for {him}.",
     screens:    "It’s that a stop {he} didn’t choose feels like a fight to win.",
     confidence: "It’s trying something {he} didn’t choose, where failing feels like losing.",
-    giveup:     "It’s that when it stops feeling like {his}, {he} lets it go.",
+    giveup:     "It’s that when it stops feeling like {theirs}, {he} lets it go.",
     finish:     "It’s that once it stops feeling like {his} idea, the energy goes.",
-    other:      "It’s that {he} works hard on {his} terms and digs in on anyone else’s.",
+    other:      "It’s that {he} works hard on {his} own terms, not anyone else’s.",
   },
   "The All-In Kid": {
     reminders:  "It’s getting into it, because once {he}’s in, {he} doesn’t need you.",
@@ -170,7 +178,7 @@ const HARD_Y: Record<string, Record<string, string>> = {
     screens:    "It’s that the screen lets {him} decide everything, and homework doesn’t.",
     confidence: "It’s that {he} wants to find {his} own way, not get yours wrong.",
     giveup:     "It’s being corrected midway, while {his} own idea was still working.",
-    finish:     "It’s that once someone changes how {he} does it, it stops being {his}.",
+    finish:     "It’s that once someone changes how {he} does it, it stops being {theirs}.",
     other:      "It’s having room to do it {his} own way.",
   },
   "The Explorer": {
@@ -207,7 +215,7 @@ const HARD_Y: Record<string, Record<string, string>> = {
     confidence: "It’s that {he} hates getting it wrong in front of someone.",
     giveup:     "It’s that when it stops going {his} way, {he} hands it back.",
     finish:     "It’s that the finish line is set by someone else.",
-    other:      "It’s that {he} needs something that’s truly {his} to run.",
+    other:      "It’s that {he} needs something that’s truly {theirs} to run.",
   },
   "The Live Wire": {
     reminders:  "It’s that a reminder has nothing riding on it.",
@@ -303,15 +311,19 @@ function filler(name: string, gender: Gender) {
   const nm = name.trim() ? displayChildName(name) : "Your child";
   const p = reportV2Pronouns(gender);
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-  return (tmpl: string) =>
-    tmpl
+  const they = p.subj === "they";
+  return (tmpl: string) => {
+    const out = tmpl
       .replace(/\{Name\}/g, nm)
-      .replace(/\{he\}’s/g, p.subj === "they" ? "they’re" : `${p.subj}’s`)   // he's / she's / they're
+      .replace(/\{he\}’s/g, they ? "they’re" : `${p.subj}’s`)   // he's / she's / they're
       .replace(/\{They\}/g, cap(p.subj)).replace(/\{He\}/g, cap(p.subj))
       .replace(/\{they\}/g, p.subj).replace(/\{he\}/g, p.subj)
       .replace(/\{them\}/g, p.obj).replace(/\{him\}/g, p.obj)
+      .replace(/\{theirs\}/g, p.possPred)
       .replace(/\{their\}/g, p.poss).replace(/\{his\}/g, p.poss)
       .replace(/\{themselves\}/g, p.reflexive).replace(/\{himself\}/g, p.reflexive);
+    return they ? pluralizeThey(out) : out;
+  };
 }
 
 export function archetypeDesc(archetype: string, name: string, gender: Gender): string {
@@ -339,8 +351,8 @@ export function composeFallback(
     shortGood: f(meta.shortGood),
     shortWhy: f(w.shortWhy),
     shortFix: f(meta.shortFix),
-    // card 2 para 1 opens with the mechanism (NOT "You’ve seen it yourself." — that's card 1).
-    whyParas: [f(meta.mechanismPara), f(w.worryPara)],
+    // card 2: para 1 = mechanism (NOT "You’ve seen it yourself."); bold line = per archetype.
+    whyParas: [f(meta.mechanismPara), f(meta.card2Bold)],
     switch: { instead: f(cell.instead), try: f(cell.try), after: f(cell.after) },
     // tonight's 3rd step is a "Notice:" check of the worry's outcome — the generic one per
     // worry, unless the cell authored its own Notice line (e.g. Live Wire × screens).

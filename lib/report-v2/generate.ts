@@ -211,7 +211,7 @@ Write JSON ONLY, exactly these keys:
   "shortGood": "<one concrete strength of ${ctx.name}, a plain statement — NOT 'nothing is wrong'>",
   "shortWhy": "one line — why the ${ctx.worryLabel} happens, in plain concrete words",
   "shortFix": "one short instruction a parent can picture, then '5 minutes a day.'",
-  "whyParas": ["open with WHAT'S GOING ON in plain words (the mechanism + at least one of the 3 answers). Do NOT start with 'You’ve seen it yourself.'", "one or two short sentences"],
+  "whyParas": ["open with WHAT'S GOING ON in plain words (the mechanism + at least one of the 3 answers). AT MOST 3 sentences and 45 words. Do NOT start with 'You’ve seen it yourself.'", "the bold takeaway — AT MOST 2 sentences"],
   "switch": { "instead": "what the parent really says today, IN QUOTES", "try": "the exact new words, said to ${ctx.name}, AT ${ctx.moment}, IN QUOTES", "after": "ONE short sentence on what the parent does next" },
   "tonight": ["step 1 — ONE short sentence (two at most), the Day 2 principle done AT ${ctx.moment}", "step 2 — another concrete step", "${ctx.notice}"]
 }
@@ -227,7 +227,8 @@ VOICE RULES (rejected otherwise):
 7. EVERY sentence 16 words or fewer. One idea each.
 
 MORE HARD RULES:
-- Each tonight step is ONE short sentence, TWO at most. whyParas: two or three short sentences.
+- Each tonight step is ONE short sentence, TWO at most. whyParas[0]: ≤3 sentences AND ≤45 words. whyParas[1]: ≤2 sentences.
+- Never make the PARENT the cause of the problem. Do NOT write "you push", "every reminder you give", "because you…". Describe what happens for the child, not what the parent does wrong.
 - The switch AND tonight MUST take place at ${ctx.moment}, using our Week 1 principle there — NOT re-skinned homework advice.
 - switch.instead and switch.try are WORDS A PARENT SAYS, each wrapped in double quotes.${ctx.instinctMove ? ` switch.instead must be the parent's usual move above, said out loud.` : ""}
 - If switch.try offers a real choice, switch.after must be exactly: "The choice only works if it’s real."

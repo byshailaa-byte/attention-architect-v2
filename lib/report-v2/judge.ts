@@ -62,7 +62,7 @@ Q4: <PASS or FAIL> — <short reason>
 Q1 (coherence): Does the explanation follow from these 3 answers and this archetype mechanism, AND does the switch match the Week 1 core move, AND do the switch and tonight's steps take place at ${moment}, AND is tonight's THIRD step a "Notice:" check of the worry's outcome? FAIL if it drifts to generic advice, contradicts the answers, the switch is not the Week 1 move, the switch/tonight do not happen at ${moment}, or the third tonight step is not a Notice check.
 Q2 (usability): Could a busy parent picture exactly what to do and say, in one read? FAIL if it is vague, abstract, or needs re-reading to act on.
 Q3 (seenIt): Does seenIt show the child FOCUSING WELL, not struggling? FAIL if it mentions the worry, the problem, reminders, fights, quitting, or anything the child does badly.
-Q4 (relationship): FAIL if anything implies the parent–child relationship, or something "off between you", is the problem.`;
+Q4 (no parent-blame): FAIL if anything implies the parent–child relationship, or something "off between you", is the problem. ALSO FAIL if any line makes the PARENT the cause — e.g. "you push", "every reminder you give", "because you…". The child's wiring is the reason, never the parent.`;
 
   const res = await getClient().messages.create({
     model: MODEL,
