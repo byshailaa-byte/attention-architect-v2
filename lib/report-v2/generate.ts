@@ -10,7 +10,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { WRITING_ENGINE_SYSTEM_PROMPT } from "@/lib/narrative/system-prompt";
 import { QUESTIONS_BY_ID, ALL_QUESTIONS } from "@/lib/engine/questions";
-import { displayChildName, buildPronounTokens, type Gender } from "@/lib/report/pronouns";
+import { displayChildName, reportV2Pronouns, type Gender } from "@/lib/report/pronouns";
+import { strengthsFor } from "@/content/report-v2/archetype-extras";
 import {
   canonicalConcern, goalForConcern, headlineForConcern, worryLabelFor, worryMomentFor, noticeFor, GOLD_LINE,
 } from "./goal-mapping";
@@ -78,17 +79,24 @@ type Context = {
   gender: Gender; name: string; concern: string; worryLabel: string; moment: string; notice: string;
   archetype: string; archDesc: string; headline: string; goal: string;
   program: ProgramAnchor | null; evidence: EvidenceItem[]; evidenceQuotes: string[];
-  evidenceTie: string; disclaimer: string; instinctMove: string | null;
+  evidenceTie: string; disclaimer: string; instinctMove: string | null; archStrengths: string;
 };
 
 function fillTokens(tmpl: string, name: string, gender: Gender): string {
   const nm = name.trim() ? displayChildName(name) : "your child";
-  const t = buildPronounTokens(gender, nm);
+  const p = reportV2Pronouns(gender);
   return tmpl
     .replace(/\{Name\}/g, nm)
-    .replace(/\{them\}/g, t.child_pronoun_obj)
-    .replace(/\{their\}/g, t.child_pronoun_poss)
-    .replace(/\{they\}/g, t.child_pronoun_subj);
+    .replace(/\{them\}/g, p.obj)
+    .replace(/\{their\}/g, p.poss)
+    .replace(/\{they\}/g, p.subj);
+}
+
+// Human label for the pronoun set we require in the copy (shown to the model + judge).
+function pronounRule(gender: Gender): string {
+  if (gender === "boy") return "he/him/his/himself (never she/her)";
+  if (gender === "girl") return "she/her/her/herself (never he/him)";
+  return "singular they — they/them/their/themselves, with plural verbs (they start, they do). NEVER he/she, never the word themself, and never repeat the name in place of a pronoun";
 }
 
 function buildContext(a: AssessmentInput): Context {
@@ -109,6 +117,7 @@ function buildContext(a: AssessmentInput): Context {
   return {
     gender, name, concern, worryLabel, moment, notice, archetype, archDesc, headline, goal, program,
     evidence, evidenceQuotes: evidence.map((e) => e.quote), instinctMove,
+    archStrengths: strengthsFor(archetype).join(" "),
     evidenceTie: `Put together, these three answers are what pointed us to ${name}’s pattern.`,
     disclaimer:
       "Attention Architect is an educational tool for parents. It is not a medical or clinical assessment, and not a substitute for professional advice.",
@@ -136,32 +145,32 @@ const VOICE_GUIDE = `VOICE — write like this:
 const GOLD_EXAMPLES = `GOLD REFERENCE OUTPUTS — match their voice, length and concreteness. DO NOT copy them.
 
 GOLD 1 — Inventor · reminders · boy (name Dhrish):
-seenIt: "You’ve seen it yourself. You ask once, then twice, and Dhrish still hasn’t started."
-hardPart: "The hard part isn’t that Dhrish won’t start. It’s that a reminder feels like your plan, not his."
+seenIt: "You’ve seen it yourself. When Dhrish works something out his own way, he stays with it for ages."
+hardPart: "The hard part isn’t that Dhrish won’t start. It’s starting when the how has already been decided for him."
 shortGood: "Dhrish focuses deeply and likes doing things his own way."
 shortWhy: "Reminders feel like someone else's plan, so he waits them out."
 shortFix: "Let him choose how to start. 5 minutes a day."
-whyParas: ["You’ve seen it yourself. Dhrish runs on doing things his way. A reminder is your plan for his time, so he waits it out.", "When the start is his idea, the second reminder stops being needed."]
+whyParas: ["Dhrish runs on doing things his way. A reminder is your plan for his time, so he waits it out.", "When the start is his idea, the second reminder stops being needed."]
 switch: instead "Dhrish, start your homework. I've told you twice." / try "Maths or reading first? And 5:00 or 5:15? Your call." / after "The choice only works if it’s real."
 tonight: ["Before the usual reminder, offer two ways to start.", "Let him pick. Say nothing about the choice.", "Notice: did he start without a second reminder?"]
 
 GOLD 2 — Storm · screens · girl (name Meera):
-seenIt: "You’ve seen it yourself. Asking Meera to switch off turns into the same battle."
-hardPart: "The hard part isn’t that Meera loves the screen too much. It’s that a choice made for her feels like losing."
+seenIt: "You’ve seen it yourself. When the idea is her own, she throws herself into it completely."
+hardPart: "The hard part isn’t that Meera can’t stop. It’s that a stop she didn’t choose feels like a fight to win."
 shortGood: "Meera has big energy and knows her own mind."
 shortWhy: "“Screens off now” feels like losing, so she fights it."
 shortFix: "Let her choose when it ends. 5 minutes a day."
-whyParas: ["You’ve seen it yourself. Meera goes all in when something is her idea. When the decision is made for her, that energy turns into a fight.", "“Screens off now” is a decision made for her. That's why it becomes a battle every evening."]
+whyParas: ["Meera goes all in when something is her idea. When the decision is made for her, that energy turns into a fight.", "“Screens off now” is a decision made for her. That's why it becomes a battle every evening."]
 switch: instead "Meera, screen off. Now." / try "Off at 6, or after this episode? You pick." / after "The choice only works if it’s real."
 tonight: ["Before the screen goes on, offer two stop times.", "Let her pick. Write it where she can see it.", "When the time comes, just point to what she chose."]
 
 GOLD 3 — Magnet · homework · boy (name Kabir):
-seenIt: "You’ve seen it yourself. Homework alone in his room, and he drifts within minutes."
-hardPart: "The hard part isn’t that Kabir hates the work. It’s that working alone leaves his focus looking for people."
+seenIt: "You’ve seen it yourself. With someone beside him, Kabir can work for a long stretch."
+hardPart: "The hard part isn’t the homework itself. It’s sitting alone with it, because an empty room drains him."
 shortGood: "Kabir works best with people around him."
 shortWhy: "Homework alone in his room feels lonely, so he drifts."
 shortFix: "Sit near him with your own work. 5 minutes a day."
-whyParas: ["You’ve seen it yourself. Kabir lights up around people. Alone, his attention goes looking for them.", "So “go do your homework in your room” is the hardest version of homework for him."]
+whyParas: ["Kabir lights up around people. Alone, his attention goes looking for them.", "So “go do your homework in your room” is the hardest version of homework for him."]
 switch: instead "Go do your homework in your room. Call me if you're stuck." / try "I've got some work too. Shall we both sit at the table?" / after "Then do your own thing. Don't check his work."
 tonight: ["Sit at the table with something of your own: bills, a book, anything.", "Don't help and don't check. Just be there.", "Notice how long he keeps going."]`;
 
@@ -191,28 +200,31 @@ ${p?.coreMove || "(use the mechanism above)"}
 OUR WEEK 1 DAY 2 MOVE — take its PRINCIPLE, done at ${ctx.moment}, not its homework wording:
 ${p?.day2Move || "(use the mechanism above)"}
 THE GOAL WE ARE WORKING TOWARD: "${ctx.goal}"
+${ctx.name}'S STRENGTHS (seenIt draws on these — a moment of FOCUSING WELL): ${ctx.archStrengths}
+PRONOUNS — use ONLY: ${pronounRule(ctx.gender)}
 ${ctx.instinctMove ? `THE PARENT'S USUAL MOVE AT THIS MOMENT (write switch.instead FROM this, in the parent's voice; NEVER name it): ${ctx.instinctMove}` : ""}
 
 Write JSON ONLY, exactly these keys:
 {
-  "seenIt": "You’ve seen it yourself. <one concrete moment from the 3 answers above>",
+  "seenIt": "You’ve seen it yourself. <a moment the parent has seen ${ctx.name} FOCUSING WELL — from the strengths / the 'what pulls in' and 'what lights up' answers. NOT the worry.>",
   "hardPart": "The hard part isn’t <the wrong read of the worry>. It’s <the real reason, from the mechanism>.",
   "shortGood": "<one concrete strength of ${ctx.name}, a plain statement — NOT 'nothing is wrong'>",
   "shortWhy": "one line — why the ${ctx.worryLabel} happens, in plain concrete words",
   "shortFix": "one short instruction a parent can picture, then '5 minutes a day.'",
-  "whyParas": ["You’ve seen it yourself. <then two short sentences, concrete, from the mechanism + at least one of the 3 answers>", "one or two short sentences"],
+  "whyParas": ["open with WHAT'S GOING ON in plain words (the mechanism + at least one of the 3 answers). Do NOT start with 'You’ve seen it yourself.'", "one or two short sentences"],
   "switch": { "instead": "what the parent really says today, IN QUOTES", "try": "the exact new words, said to ${ctx.name}, AT ${ctx.moment}, IN QUOTES", "after": "ONE short sentence on what the parent does next" },
   "tonight": ["step 1 — ONE short sentence (two at most), the Day 2 principle done AT ${ctx.moment}", "step 2 — another concrete step", "${ctx.notice}"]
 }
 The THIRD tonight step must be exactly this Notice check of the outcome: "${ctx.notice}"
 
 VOICE RULES (rejected otherwise):
-1. SHOW BEFORE YOU TELL. seenIt AND whyParas[0] both start exactly: "You’ve seen it yourself." Then a real moment the parent would recognise.
-2. hardPart is EXACTLY one shape: "The hard part isn’t X. It’s Y." X = the wrong read (laziness, won't, can't). Y = the real reason from the mechanism. No other punctuation inside X or Y.
+1. seenIt shows ${ctx.name} FOCUSING WELL (a strength moment). It starts exactly "You’ve seen it yourself." and must NOT mention the worry, reminders, fights, quitting or any problem. whyParas[0] must NOT start with that phrase — it belongs to seenIt only.
+2. hardPart is EXACTLY one shape: "The hard part isn’t X. It’s Y." X = the wrong read (won't, can't, the task itself). Y = the real reason from the mechanism. No other full stops inside X or Y.
 3. Use ${ctx.name}. NEVER the words type, pattern, trait or profile, and never name the attention type — that appears elsewhere.
 4. Quotation marks ONLY around the parent's own stored answers or the exact words a parent/child says. Not around your own phrases.
-5. Never blame the parent. Never bargain. Never promise an outcome. BANNED: fix, fixes, "nothing is wrong".
-6. EVERY sentence 16 words or fewer. One idea each.
+5. Never blame the parent. Never bargain. Never promise an outcome. Never imply the parent–child relationship, or something being "off between you", is the problem. BANNED: fix, fixes, "nothing is wrong".
+6. PRONOUNS: use ONLY ${pronounRule(ctx.gender)}.
+7. EVERY sentence 16 words or fewer. One idea each.
 
 MORE HARD RULES:
 - Each tonight step is ONE short sentence, TWO at most. whyParas: two or three short sentences.
@@ -224,7 +236,7 @@ MORE HARD RULES:
 - NEVER BARGAIN. The stop time is fixed and stated plainly. BANNED bargaining words: worth it, stake, stakes, reward, treat, treats, deal, earn, earned.
 - No comparisons to other children (rare, most kids, etc). No invented numbers, stats, testimonials.
 - Length: shortWhy/shortFix ≤ 90 chars; switch.instead/try ≤ 72 chars; seenIt/hardPart ≤ 165 chars.
-Before you answer, re-read every line: each sentence ≤16 words, seenIt + whyParas[0] open with "You’ve seen it yourself.", hardPart is "The hard part isn’t X. It’s Y.".${retry}`;
+Before you answer, re-read every line: each sentence ≤16 words, seenIt opens with "You’ve seen it yourself." and shows focus (not the worry), whyParas[0] does NOT, hardPart is "The hard part isn’t X. It’s Y.", and pronouns are ${pronounRule(ctx.gender)}.${retry}`;
 }
 
 // ---- field get/set for the targeted repair call ----
@@ -324,6 +336,23 @@ Return JSON ONLY with exactly those keys and the rewritten values, nothing else.
   return out;
 }
 
+// Targeted seenIt repair: rewrite ONLY seenIt as a strength moment (child focusing well),
+// keeping the exact opener and the child's pronouns. Used when the judge fails on seenIt alone.
+async function repairSeenIt(seenIt: string, ctx: Context): Promise<string> {
+  const prompt = `Rewrite this one line for a parent of ${ctx.name}. It must show ${ctx.name} FOCUSING WELL —
+a real moment of deep or happy focus — NOT the worry, not a problem, not reminders or fights.
+Draw on these strengths: ${ctx.archStrengths}
+Rules: start EXACTLY with "You’ve seen it yourself." Then one short sentence (≤16 words). Use only these
+pronouns: ${pronounRule(ctx.gender)}. Plain, concrete words. Return ONLY the rewritten line, nothing else.
+Current (wrong — it describes a problem): ${JSON.stringify(seenIt)}`;
+  try {
+    const res = await getClient().messages.create({ model: MODEL, max_tokens: 120, messages: [{ role: "user", content: prompt }] });
+    const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim().replace(/^["“]|["”]$/g, "");
+    const line = curly(text.split("\n")[0].trim());
+    return line.startsWith("You’ve seen it yourself.") ? line : seenIt;
+  } catch { return seenIt; }
+}
+
 export type GenerateResult = {
   content: ReportV2Content;
   attempts: number;       // full LLM generations (1 + full retries)
@@ -339,7 +368,7 @@ export function fallbackContentFor(a: AssessmentInput): ReportV2Content {
 
 export async function generateReportV2(a: AssessmentInput): Promise<GenerateResult> {
   const ctx = buildContext(a);
-  const vopts = { childName: ctx.name };
+  const vopts = { childName: ctx.name, gender: ctx.gender };
 
   let g: ReportV2Generated | null = null;
   let source: "llm" | "fallback" = "fallback";
@@ -379,9 +408,16 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
       console.log(`[report-v2] judge ${j.verdict}: ${j.reason}`);
       if (j.verdict === "PASS") { g = current; source = "llm"; break; }
       rejections.push(`judge: ${j.reason}`);
+      // seenIt-only failure → cheap targeted repair of seenIt (strength moment), not a full retry.
+      if (j.failed.length === 1 && j.failed[0] === "seenIt" && repairs < 2) {
+        repairs++;
+        console.log(`[report-v2] repair (seenIt strength moment)`);
+        current.seenIt = await repairSeenIt(current.seenIt, ctx);
+        continue;
+      }
       if (retries < 1) {
         retries++; attempts++;
-        current = await callLLM(buildPrompt(ctx, [`Coherence/usability judge FAILED: ${j.reason}`]));
+        current = await callLLM(buildPrompt(ctx, [`Judge FAILED (${j.failed.join(", ")}): ${j.reason}`]));
         current.tonight[2] = ctx.notice;
         continue;
       }

@@ -2,7 +2,7 @@
 // server-built in ReportV2.tsx, then passed to the card deck. Pronoun-filled here so the client
 // never needs gender. The type NAME appears only on card 4 (rule 3). Card 7 depends on the
 // CHOSEN goal's worry, so it's built from the live goalKey, not the cached content.
-import { displayChildName, buildPronounTokens, articleFor, type Gender } from "@/lib/report/pronouns";
+import { displayChildName, reportV2Pronouns, articleFor, type Gender } from "@/lib/report/pronouns";
 import { canonicalConcern } from "./goal-mapping";
 
 // ── card 1: worry line (second person, no quotes) ──────────────────────────────
@@ -62,19 +62,17 @@ const CARD7_PILLS: Record<string, [string, string, string]> = {
 
 function makeFiller(name: string, gender: Gender) {
   const nm = name.trim() ? displayChildName(name) : "Your child";
-  const t = buildPronounTokens(gender, nm);
+  const p = reportV2Pronouns(gender);
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   return (tmpl: string) =>
     tmpl
       .replace(/\{Name\}/g, nm)
-      .replace(/\{He\}/g, cap(t.child_pronoun_subj))
-      .replace(/\{he\}/g, t.child_pronoun_subj)
-      .replace(/\{him\}/g, t.child_pronoun_obj)
-      .replace(/\{his\}/g, t.child_pronoun_poss)
-      .replace(/\{himself\}/g, t.child_pronoun_reflexive)
-      .replace(/\{they\}/g, t.child_pronoun_subj)
-      .replace(/\{their\}/g, t.child_pronoun_poss)
-      .replace(/\{them\}/g, t.child_pronoun_obj);
+      .replace(/\{he\}’s/g, p.subj === "they" ? "they’re" : `${p.subj}’s`)
+      .replace(/\{He\}/g, cap(p.subj)).replace(/\{They\}/g, cap(p.subj))
+      .replace(/\{he\}/g, p.subj).replace(/\{they\}/g, p.subj)
+      .replace(/\{him\}/g, p.obj).replace(/\{them\}/g, p.obj)
+      .replace(/\{his\}/g, p.poss).replace(/\{their\}/g, p.poss)
+      .replace(/\{himself\}/g, p.reflexive).replace(/\{themselves\}/g, p.reflexive);
 }
 
 function typeName(archetype: string): string {
@@ -90,6 +88,7 @@ export type CardsCopy = {
   card1Headline: string;
   card2Headline: string;
   card3Labels: string[];            // one per evidence item, aligned
+  card3Closing: string;
   card4: { typeName: string; article: string; sub: string; needs: string; needsLabel: string };
   card6Closing: string;
   card7: {
@@ -108,6 +107,9 @@ export function buildCardsCopy(args: {
   evidenceDims: (string | undefined)[];
 }): CardsCopy {
   const f = makeFiller(args.name, args.gender);
+  const p = reportV2Pronouns(args.gender);
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const they = p.subj === "they"; // plural verb agreement for unset
   const concern = canonicalConcern(args.concern);
   const goalWorry = canonicalConcern(args.goalKey);
   const type = typeName(args.archetype);
@@ -115,6 +117,7 @@ export function buildCardsCopy(args: {
     card1Headline: f(CARD1_HEADLINE[concern] ?? CARD1_HEADLINE.other),
     card2Headline: f(CARD2_HEADLINE[args.archetype] ?? "{Name} works in a way of {his} own."),
     card3Labels: args.evidenceDims.map((d) => f((d && DIM_LABEL[d]) || "What you told us")),
+    card3Closing: "Three answers. They all point the same way.",
     card4: {
       typeName: type,
       article: articleFor(type),
@@ -127,9 +130,10 @@ export function buildCardsCopy(args: {
       sub: f(`One small change a week, 5 minutes a day. Written for ${articleFor(type)} ${type}, age ${args.ageBand}.`),
       whyHeadline: ["Today’s reminders.", "Tomorrow’s independence."],
       whyLead: f("{Name} won’t always have you beside {him} to say:"),
-      pills: (CARD7_PILLS[goalWorry] ?? CARD7_PILLS.other).map((p) => f(p)) as [string, string, string],
+      pills: (CARD7_PILLS[goalWorry] ?? CARD7_PILLS.other).map((x) => f(x)) as [string, string, string],
       whyLearn: f("These six weeks help {him} learn to say it to {himself}."),
-      steps: [f("You remind"), f("{He} notices"), f("{He} does it {himself}")],
+      // verb agreement: "He notices / They notice", "He does it himself / They do it themselves"
+      steps: ["You remind", `${cap(p.subj)} notice${they ? "" : "s"}`, `${cap(p.subj)} do${they ? "" : "es"} it ${p.reflexive}`],
     },
   };
 }

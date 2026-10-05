@@ -32,6 +32,15 @@ export function articleFor(word: string): string {
   return /^[aeiou]/i.test(word.trim()) ? "an" : "a";
 }
 
+// Report v2 pronouns: boy → he/him/his/himself, girl → she/her/her/herself, anything else →
+// SINGULAR THEY (they/them/their/themselves) — NOT the name, and never "themself". Used only
+// by report v2 copy; v1 keeps buildPronounTokens (name for unset).
+export function reportV2Pronouns(gender: Gender): { subj: string; obj: string; poss: string; reflexive: string } {
+  if (gender === "boy")  return { subj: "he",   obj: "him",  poss: "his",   reflexive: "himself" };
+  if (gender === "girl") return { subj: "she",  obj: "her",  poss: "her",   reflexive: "herself" };
+  return { subj: "they", obj: "them", poss: "their", reflexive: "themselves" };
+}
+
 export function resolveChildPronoun(gender: Gender, form: PronounForm): string {
   const isGirl = gender === "girl";
   const isBoy  = gender === "boy";

@@ -166,7 +166,7 @@ export default function ReportV2Cards(props: Props) {
               <div style={{ fontFamily: HEAD, fontSize: 19, lineHeight: 1.35, color: FLOW.navy }}>“{e.quote}”</div>
             </div>
           ))}
-          <p style={{ fontSize: 16, lineHeight: 1.5, color: FLOW.dim, marginTop: 18 }}>{c.evidenceTie}</p>
+          <p style={{ fontSize: 16, lineHeight: 1.5, color: FLOW.dim, marginTop: 18 }}>{copy.card3Closing}</p>
         </>)}
 
         {card === 4 && (<>

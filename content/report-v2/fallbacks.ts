@@ -30,7 +30,7 @@
 // SINGULAR (he/she, or the name) — verbs stay singular; never start a sentence
 // with {they} (it fills lowercase). Tokens: {Name} {they} {their} {them}.
 // ============================================================================
-import { displayChildName, buildPronounTokens, type Gender } from "@/lib/report/pronouns";
+import { displayChildName, reportV2Pronouns, type Gender } from "@/lib/report/pronouns";
 import { canonicalConcern, noticeFor } from "@/lib/report-v2/goal-mapping";
 import type { ReportV2Generated } from "@/lib/report-v2/types";
 
@@ -47,106 +47,176 @@ export const ARCHETYPE_DESC: Record<string, string> = {
 };
 
 // Archetype-level: strength line, the one picture-able change, the mechanism paragraph, and
-// hardY — the "It’s …" half of card 1's hardPart (the real mechanism, no trailing period).
-type ArchMeta = { shortGood: string; shortFix: string; mechanismPara: string; hardY: string };
+// seenIt — card 1's "You’ve seen it yourself." moment, showing the child FOCUSING WELL
+// (never the worry). Per archetype, drawn from its strength.
+type ArchMeta = { shortGood: string; shortFix: string; mechanismPara: string; seenIt: string };
 const ARCH_META: Record<string, ArchMeta> = {
   "The Storm": {
     shortGood: "{Name} has big energy, and a mind of {their} own.",
     shortFix: "Let {Name} pick how it goes. 5 minutes a day.",
     mechanismPara: "{Name} goes all in when something is {their} idea. When the choice is made for {them}, that same energy turns into a fight.",
-    hardY: "that a choice made for {them} turns {their} energy into a fight",
+    seenIt: "You’ve seen it yourself. When the idea is {his} own, {he} throws everything into it.",
   },
   "The All-In Kid": {
     shortGood: "{Name} dives deep into things {they} picks.",
     shortFix: "Leave {Name} alone to work. 5 minutes a day.",
     mechanismPara: "Once {Name} is in, {they} is really in. The hard part is being pulled out halfway.",
-    hardY: "that being pulled out mid-task breaks a deep run of focus",
+    seenIt: "You’ve seen it yourself. Once {he}’s into something, {he} can go an hour without looking up.",
   },
   "The Inventor": {
     shortGood: "{Name} thinks hard and likes {their} own way.",
     shortFix: "Let {Name} choose how to start. 5 minutes a day.",
     mechanismPara: "{Name} likes doing things {their} own way. Shown the right way too soon, {they} often stops trying.",
-    hardY: "that being shown the one right way makes {them} stop trying",
+    seenIt: "You’ve seen it yourself. When {he}’s working something out {his} own way, {he} stays with it for ages.",
   },
   "The Explorer": {
     shortGood: "{Name} is quick, curious, and full of new ideas.",
     shortFix: "Keep a scrap pad beside {Name}. 5 minutes a day.",
     mechanismPara: "One idea sends {Name} somewhere new, fast. That is not lost focus — it is a quick mind with nowhere to put it.",
-    hardY: "that a quick mind needs somewhere to park new ideas",
+    seenIt: "You’ve seen it yourself. When something new catches {his} interest, {he} can’t stop exploring it.",
   },
   "The Magnet": {
     shortGood: "{Name} works best with people around.",
     shortFix: "Sit near {Name} with your own work. 5 minutes a day.",
     mechanismPara: "{Name} is at {their} best with people near. Alone, the focus starts to drift.",
-    hardY: "that working alone leaves {their} focus looking for people",
+    seenIt: "You’ve seen it yourself. With someone nearby, {he} can work for a long stretch.",
   },
   "The Glue": {
     shortGood: "{Name} reads people and cares how they feel.",
     shortFix: "Talk for a minute first. 5 minutes a day.",
     mechanismPara: "{Name} feels the mood of a room first. If things feel off, that comes before the work.",
-    hardY: "that an off mood has to settle before any work starts",
+    seenIt: "You’ve seen it yourself. When things feel settled, {he} gets going and stays with it.",
   },
   "The Captain": {
     shortGood: "{Name} likes to lead and make the call.",
     shortFix: "Let {Name} make the real call. 5 minutes a day.",
     mechanismPara: "Give {Name} something to run and {they} pushes hard. Told exactly what to do, {they} slows right down.",
-    hardY: "that being told exactly what to do makes {them} slow down",
+    seenIt: "You’ve seen it yourself. When something is truly {his} to run, {he} takes charge and sees it through.",
   },
   "The Live Wire": {
     shortGood: "{Name} has big energy when something matters to {them}.",
     shortFix: "Turn it into one real challenge. 5 minutes a day.",
     mechanismPara: "{Name} goes all out when it counts. With nothing on the line, the task slides past.",
-    hardY: "that nothing on the line lets the task slide past",
+    seenIt: "You’ve seen it yourself. With a clock to beat or someone watching, {he}’s completely locked in.",
   },
 };
 const ARCH_META_FALLBACK = ARCH_META["The All-In Kid"];
 
-// Worry-level: one-line why, the worry paragraph, plus the two card-1 voice halves —
-// seenIt (a concrete moment, starts "You’ve seen it yourself.") and hardX (the "isn’t …"
-// half of hardPart: the wrong read of the worry, no trailing period).
-type WorryMeta = { shortWhy: string; worryPara: string; seenIt: string; hardX: string };
+// Worry-level: one-line why + the worry paragraph.
+type WorryMeta = { shortWhy: string; worryPara: string };
 const WORRY_META: Record<string, WorryMeta> = {
   reminders: {
     shortWhy: "A reminder feels like your plan, so {Name} waits it out.",
     worryPara: "A reminder is someone telling {them} when. When the start is {their} idea, {they} does not wait.",
-    seenIt: "You’ve seen it yourself. You ask once, then twice, and {Name} still hasn’t started.",
-    hardX: "that {Name} won’t start",
   },
   homework: {
     shortWhy: "A big homework lump feels heavy, so starting is the hard part.",
     worryPara: "Homework feels like one big lump. Cut off a tiny first bit and it feels doable.",
-    seenIt: "You’ve seen it yourself. Homework time comes and the table turns into a standoff.",
-    hardX: "that {Name} hates the work",
   },
   screens: {
     shortWhy: "“Screens off now” feels like losing, so {Name} fights it.",
     worryPara: "Being told “off now” is a choice made for {them}. That is why it turns into a battle.",
-    seenIt: "You’ve seen it yourself. Asking {Name} to switch off turns into the same battle.",
-    hardX: "that {Name} loves the screen too much",
   },
   confidence: {
     shortWhy: "A hard bit feels risky, so {Name} asks before trying.",
     worryPara: "Trying feels safer if a grown-up goes first. A small, safe first step gets {Name} to try.",
-    seenIt: "You’ve seen it yourself. The work looks a little hard and {Name} asks for help.",
-    hardX: "that {Name} can’t do it",
   },
   giveup: {
     shortWhy: "One miss feels like proof, so {Name} stops.",
     worryPara: "A quick fail can feel like the whole story. One more small go rewrites it.",
-    seenIt: "You’ve seen it yourself. One thing goes wrong and {Name} is done for the day.",
-    hardX: "that {Name} gives up too easily",
   },
   finish: {
     shortWhy: "The fun is at the start, so the slow end loses {Name}.",
     worryPara: "The start is exciting; the middle drags. A finish {Name} can see pulls {them} through.",
-    seenIt: "You’ve seen it yourself. {Name} starts strong, then drifts before the end.",
-    hardX: "that {Name} stops caring halfway",
   },
   other: {
     shortWhy: "Starting and keeping going each take a push, at different times.",
     worryPara: "Getting going is one job. Keeping going is another. A small first step and a clear end help both.",
-    seenIt: "You’ve seen it yourself. Getting started takes a push, and so does keeping going.",
-    hardX: "that {Name} isn’t trying",
+  },
+};
+
+// card 1 hardPart = "The hard part isn’t {HARD_X[worry]}. {HARD_Y[arch][worry]}" (approved copy).
+const HARD_X: Record<string, string> = {
+  reminders:  "that {Name} won’t start",
+  homework:   "the homework itself",
+  screens:    "that {Name} can’t stop",
+  confidence: "that {Name} can’t do it",
+  giveup:     "that {Name} gives up easily",
+  finish:     "that {Name} stops caring",
+  other:      "that {Name} isn’t trying",
+};
+const HARD_Y: Record<string, Record<string, string>> = {
+  "The Storm": {
+    reminders:  "It’s starting on a plan that isn’t {his}.",
+    homework:   "It’s that the fight starts the moment it feels decided for {him}.",
+    screens:    "It’s that a stop {he} didn’t choose feels like a fight to win.",
+    confidence: "It’s trying something {he} didn’t choose, where failing feels like losing.",
+    giveup:     "It’s that when it stops feeling like {his}, {he} lets it go.",
+    finish:     "It’s that once it stops feeling like {his} idea, the energy goes.",
+    other:      "It’s that {he} works hard on {his} terms and digs in on anyone else’s.",
+  },
+  "The All-In Kid": {
+    reminders:  "It’s getting into it, because once {he}’s in, {he} doesn’t need you.",
+    homework:   "It’s the stopping and starting, because homework comes in broken pieces.",
+    screens:    "It’s that a screen gives {him} the long stretch nothing else does.",
+    confidence: "It’s starting cold, before {he}’s had time to sink in.",
+    giveup:     "It’s being interrupted midway, which makes coming back feel hard.",
+    finish:     "It’s the interruptions, because every break makes the way back longer.",
+    other:      "It’s getting a stretch long enough for {his} focus to switch on.",
+  },
+  "The Inventor": {
+    reminders:  "It’s starting when the how has already been decided for {him}.",
+    homework:   "It’s being shown the right way before {he}’s tried {his} own.",
+    screens:    "It’s that the screen lets {him} decide everything, and homework doesn’t.",
+    confidence: "It’s that {he} wants to find {his} own way, not get yours wrong.",
+    giveup:     "It’s being corrected midway, while {his} own idea was still working.",
+    finish:     "It’s that once someone changes how {he} does it, it stops being {his}.",
+    other:      "It’s having room to do it {his} own way.",
+  },
+  "The Explorer": {
+    reminders:  "It’s that a new idea arrives, and the task gets left behind.",
+    homework:   "It’s that one question leads to another, and the page gets left.",
+    screens:    "It’s that a screen feeds new ideas faster than anything else.",
+    confidence: "It’s that {he}’d rather explore than get one answer wrong.",
+    giveup:     "It’s that a more interesting idea arrives the moment it gets hard.",
+    finish:     "It’s that by the middle, a newer idea is already calling.",
+    other:      "It’s that {his} ideas have nowhere to go, so they take over.",
+  },
+  "The Magnet": {
+    reminders:  "It’s starting alone, when with someone nearby {he} begins easily.",
+    homework:   "It’s sitting alone with it, because an empty room drains {him}.",
+    screens:    "It’s that the screen is company, and turning it off means being alone.",
+    confidence: "It’s trying alone, when with someone nearby {he}’s braver.",
+    giveup:     "It’s getting stuck alone, with no one nearby.",
+    finish:     "It’s that when the company goes, so does the energy.",
+    other:      "It’s that {he} works best with someone in the room.",
+  },
+  "The Glue": {
+    reminders:  "It’s starting before {he} feels settled.",
+    homework:   "It’s that the day’s feelings reach the table before the homework does.",
+    screens:    "It’s that the screen is where {he} unwinds, so stopping feels sudden.",
+    confidence: "It’s that {he} worries more about how it’ll land than about the work.",
+    giveup:     "It’s that a wrong answer feels bigger than it is, and {he} needs settling first.",
+    finish:     "It’s that something else on {his} mind pulls {him} away midway.",
+    other:      "It’s that {he} needs to feel settled before {he} can focus.",
+  },
+  "The Captain": {
+    reminders:  "It’s that being told when feels like being bossed, so {he} waits.",
+    homework:   "It’s that homework is someone else’s plan, and {he} wants to run things.",
+    screens:    "It’s that the stop is never {his} call.",
+    confidence: "It’s that {he} hates getting it wrong in front of someone.",
+    giveup:     "It’s that when it stops going {his} way, {he} hands it back.",
+    finish:     "It’s that the finish line is set by someone else.",
+    other:      "It’s that {he} needs something that’s truly {his} to run.",
+  },
+  "The Live Wire": {
+    reminders:  "It’s that a reminder has nothing riding on it.",
+    homework:   "It’s that homework feels like nothing is riding on it.",
+    screens:    "It’s that nothing after the screen pulls {him} in yet.",
+    confidence: "It’s that it doesn’t feel like a real challenge yet.",
+    giveup:     "It’s that once the excitement drops, nothing is left to push for.",
+    finish:     "It’s that the excitement ends before the task does.",
+    other:      "It’s that {he} switches on for a real challenge, and most tasks aren’t one.",
   },
 };
 
@@ -231,13 +301,17 @@ const CELL: Record<string, Record<string, Cell>> = {
 
 function filler(name: string, gender: Gender) {
   const nm = name.trim() ? displayChildName(name) : "Your child";
-  const t = buildPronounTokens(gender, nm);
+  const p = reportV2Pronouns(gender);
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   return (tmpl: string) =>
     tmpl
       .replace(/\{Name\}/g, nm)
-      .replace(/\{their\}/g, t.child_pronoun_poss)
-      .replace(/\{them\}/g, t.child_pronoun_obj)
-      .replace(/\{they\}/g, t.child_pronoun_subj);
+      .replace(/\{he\}’s/g, p.subj === "they" ? "they’re" : `${p.subj}’s`)   // he's / she's / they're
+      .replace(/\{They\}/g, cap(p.subj)).replace(/\{He\}/g, cap(p.subj))
+      .replace(/\{they\}/g, p.subj).replace(/\{he\}/g, p.subj)
+      .replace(/\{them\}/g, p.obj).replace(/\{him\}/g, p.obj)
+      .replace(/\{their\}/g, p.poss).replace(/\{his\}/g, p.poss)
+      .replace(/\{themselves\}/g, p.reflexive).replace(/\{himself\}/g, p.reflexive);
 }
 
 export function archetypeDesc(archetype: string, name: string, gender: Gender): string {
@@ -258,14 +332,15 @@ export function composeFallback(
   const meta = ARCH_META[archetype] ?? ARCH_META_FALLBACK;
   const w = WORRY_META[worry];
   const cell = (CELL[archetype] ?? CELL["The All-In Kid"])[worry];
+  const hardY = (HARD_Y[archetype] ?? HARD_Y["The All-In Kid"])[worry];
   return {
-    seenIt: f(w.seenIt),
-    hardPart: f(`The hard part isn’t ${w.hardX}. It’s ${meta.hardY}.`),
+    seenIt: f(meta.seenIt),                                          // strength moment (per archetype)
+    hardPart: f(`The hard part isn’t ${HARD_X[worry]}. ${hardY}`),   // worry X + archetype×worry Y
     shortGood: f(meta.shortGood),
     shortWhy: f(w.shortWhy),
     shortFix: f(meta.shortFix),
-    // card 2 para 1 must open with the shared line, then the mechanism.
-    whyParas: [f(`You’ve seen it yourself. ${meta.mechanismPara}`), f(w.worryPara)],
+    // card 2 para 1 opens with the mechanism (NOT "You’ve seen it yourself." — that's card 1).
+    whyParas: [f(meta.mechanismPara), f(w.worryPara)],
     switch: { instead: f(cell.instead), try: f(cell.try), after: f(cell.after) },
     // tonight's 3rd step is a "Notice:" check of the worry's outcome — the generic one per
     // worry, unless the cell authored its own Notice line (e.g. Live Wire × screens).

@@ -17,7 +17,7 @@ function getClient(): Anthropic {
   return _client;
 }
 
-export type JudgeVerdict = { verdict: "PASS" | "FAIL"; reason: string };
+export type JudgeVerdict = { verdict: "PASS" | "FAIL"; reason: string; failed: string[] };
 
 export async function judgeCoherence(args: {
   childName: string;
@@ -41,6 +41,8 @@ THE PARENT'S OWN 3 ANSWERS:
 ${evidenceQuotes.map((q, i) => `${i + 1}. "${q}"`).join("\n")}
 
 THE REPORT:
+- seenIt (card 1, meant to show focusing WELL): ${generated.seenIt}
+- hardPart: ${generated.hardPart}
 - why (short): ${generated.shortWhy}
 - why (para 1): ${generated.whyParas[0]}
 - why (para 2): ${generated.whyParas[1]}
@@ -51,26 +53,29 @@ THE REPORT:
 - tonight 2: ${generated.tonight[1]}
 - tonight 3: ${generated.tonight[2]}
 
-Answer TWO questions. Both must pass. Reply on exactly two lines:
+Answer FOUR questions. ALL must pass. Reply on exactly four lines:
 Q1: <PASS or FAIL> — <short reason>
 Q2: <PASS or FAIL> — <short reason>
+Q3: <PASS or FAIL> — <short reason>
+Q4: <PASS or FAIL> — <short reason>
 
 Q1 (coherence): Does the explanation follow from these 3 answers and this archetype mechanism, AND does the switch match the Week 1 core move, AND do the switch and tonight's steps take place at ${moment}, AND is tonight's THIRD step a "Notice:" check of the worry's outcome? FAIL if it drifts to generic advice, contradicts the answers, the switch is not the Week 1 move, the switch/tonight do not happen at ${moment}, or the third tonight step is not a Notice check.
-Q2 (usability): Could a busy parent picture exactly what to do and say, in one read? FAIL if it is vague, abstract, or needs re-reading to act on.`;
+Q2 (usability): Could a busy parent picture exactly what to do and say, in one read? FAIL if it is vague, abstract, or needs re-reading to act on.
+Q3 (seenIt): Does seenIt show the child FOCUSING WELL, not struggling? FAIL if it mentions the worry, the problem, reminders, fights, quitting, or anything the child does badly.
+Q4 (relationship): FAIL if anything implies the parent–child relationship, or something "off between you", is the problem.`;
 
   const res = await getClient().messages.create({
     model: MODEL,
-    max_tokens: 300,
+    max_tokens: 400,
     messages: [{ role: "user", content: prompt }],
   });
   const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
-  const q1 = /Q1[^\n]*\bFAIL\b/i.test(text) ? "FAIL" : /Q1[^\n]*\bPASS\b/i.test(text) ? "PASS" : "FAIL";
-  const q2 = /Q2[^\n]*\bFAIL\b/i.test(text) ? "FAIL" : /Q2[^\n]*\bPASS\b/i.test(text) ? "PASS" : "FAIL";
-  const verdict: "PASS" | "FAIL" = q1 === "PASS" && q2 === "PASS" ? "PASS" : "FAIL";
-  const reason =
-    verdict === "PASS"
-      ? "both questions PASS"
-      : [q1 === "FAIL" ? "Q1(coherence) FAIL" : "", q2 === "FAIL" ? "Q2(usability) FAIL" : ""].filter(Boolean).join("; ") +
-        " — " + text.replace(/\s+/g, " ").slice(0, 240);
-  return { verdict, reason };
+  const q = (n: number) => /FAIL/i.test((text.match(new RegExp(`Q${n}[^\\n]*`, "i")) || [""])[0]) ? "FAIL"
+    : /PASS/i.test((text.match(new RegExp(`Q${n}[^\\n]*`, "i")) || [""])[0]) ? "PASS" : "FAIL";
+  const names = ["coherence", "usability", "seenIt", "relationship"];
+  const failed = [1, 2, 3, 4].filter((n) => q(n) === "FAIL").map((n) => names[n - 1]);
+  const verdict: "PASS" | "FAIL" = failed.length === 0 ? "PASS" : "FAIL";
+  const reason = verdict === "PASS" ? "all four PASS"
+    : failed.join(", ") + " FAIL — " + text.replace(/\s+/g, " ").slice(0, 240);
+  return { verdict, reason, failed };
 }

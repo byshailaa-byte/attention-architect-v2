@@ -3,6 +3,7 @@
 // no hedges/clinical/comparative/parent-blame, the parent (not the child) did the answering,
 // quoted switch lines a parent would say, tonight steps ≤2 sentences, and length caps.
 import type { ReportV2Generated } from "./types";
+import type { Gender } from "@/lib/report/pronouns";
 
 export type ValidationResult = { ok: boolean; errors: string[] };
 
@@ -103,12 +104,19 @@ function maxSentenceWords(text: string): number {
   return sentences(text).reduce((m, s) => Math.max(m, words(s).length), 0);
 }
 
-export function validateGenerated(g: ReportV2Generated, opts?: { childName?: string }): ValidationResult {
+export function validateGenerated(g: ReportV2Generated, opts?: { childName?: string; gender?: Gender }): ValidationResult {
   const e: string[] = [];
   const bans = [...BANNED];
   if (opts?.childName) {
     const nm = opts.childName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     bans.push({ re: new RegExp(`\\b${nm}\\s+told\\b`, "i"), label: "child-attribution ({Name} told)" });
+  }
+  // Pronoun leak: only the child's own gender's pronouns may appear. Unset → singular they,
+  // so NO gendered pronoun at all. Checked on the filled text; repairable.
+  if (opts && "gender" in opts) {
+    if (opts.gender === "boy") bans.push({ re: /\b(she|her|hers|herself)\b/i, label: "pronoun-leak (she/her)" });
+    else if (opts.gender === "girl") bans.push({ re: /\b(he|him|his|himself)\b/i, label: "pronoun-leak (he/him)" });
+    else bans.push({ re: /\b(he|him|his|himself|she|her|hers|herself|themself)\b/i, label: "pronoun-leak (gendered / themself)" });
   }
 
   const check = (text: string, cap: number, field: string, prose: boolean, maxSentences?: number) => {
@@ -131,6 +139,8 @@ export function validateGenerated(g: ReportV2Generated, opts?: { childName?: str
   if (!g.seenIt.trim().startsWith(SEEN_IT_PREFIX)) e.push(`seenIt: must start with “${SEEN_IT_PREFIX}”`);
   check(g.hardPart, CAP.hardPart, "hardPart", false);
   if (!HARD_PART_RE.test(g.hardPart.trim())) e.push("hardPart: must match “The hard part isn’t X. It’s Y.”");
+  // "You’ve seen it yourself." belongs to card 1 (seenIt) ONLY — card 2 must not reuse it.
+  if (g.whyParas[0].trim().startsWith(SEEN_IT_PREFIX)) e.push(`whyParas[0]: must NOT start with “${SEEN_IT_PREFIX}”`);
 
   check(g.shortGood, CAP.shortGood, "shortGood", false);
   check(g.shortWhy,  CAP.shortWhy,  "shortWhy",  false);
@@ -156,7 +166,7 @@ export function isLengthOnly(errors: string[]): boolean {
 // (clinical, parent-blame, missing quotes, child-attribution, comparatives) still need a full
 // retry, not a line-level rewrite.
 export function isRepairable(errors: string[]): boolean {
-  return errors.length > 0 && errors.every((x) => LENGTHY_RE.test(x) || /bargaining \(/.test(x));
+  return errors.length > 0 && errors.every((x) => LENGTHY_RE.test(x) || /bargaining \(/.test(x) || /pronoun-leak/.test(x));
 }
 // The set of field names referenced by a list of errors (prefix before the first colon).
 export function fieldsFromErrors(errors: string[]): string[] {
