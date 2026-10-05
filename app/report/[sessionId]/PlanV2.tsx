@@ -21,8 +21,8 @@ import type { Gender } from "@/lib/report/pronouns";
 import type { ReportV2Content } from "@/lib/report-v2/types";
 import { PlanView, PlanPricing, PlanCallCard } from "./PlanInteractive";
 
-export default function PlanV2({ sessionId, content: c, ageBand, childName, gender, calendlyUrl }: {
-  sessionId: string; content: ReportV2Content; ageBand: string; childName: string | null;
+export default function PlanV2({ sessionId, content: c, goalKey, ageBand, childName, gender, calendlyUrl }: {
+  sessionId: string; content: ReportV2Content; goalKey: string; ageBand: string; childName: string | null;
   gender: Gender; goalOptions: { key: string; text: string }[]; calendlyUrl: string; checkinEnabled: boolean;
 }) {
   const band = (["8-9", "10-11", "12-14"].includes(ageBand) ? ageBand : "10-11") as AgeBand;
@@ -30,7 +30,9 @@ export default function PlanV2({ sessionId, content: c, ageBand, childName, gend
   const d1 = week1 ? getDayCard(week1, 1) : null;
   const day1Raw = d1?.content[band] ?? "";
   const day1 = day1Raw ? fillLmsContent(day1Raw, childName ?? c.childName, gender).replace(/[*_]/g, "") : null;
-  const outcomes = weekOutcomesFor(c.concern);
+  // Week rows follow the CHOSEN goal's concern key (not the original worry), so changing the
+  // goal changes the week-by-week outcomes too.
+  const outcomes = weekOutcomesFor(goalKey);
   const weeks = [1, 2, 3, 4, 5, 6] as const;
 
   const section: React.CSSProperties = { maxWidth: 560, margin: "0 auto", padding: "0 22px" };

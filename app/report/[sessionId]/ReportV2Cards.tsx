@@ -70,7 +70,9 @@ export default function ReportV2Cards(props: Props) {
   const saveGoal = async (opt: { key: string; text: string }) => {
     setGoal(opt.text); setSheet(false);
     fireEvent("goal_changed", sessionId, { goalKey: opt.key });
-    fetch("/api/report/goal-v2", {
+    // Awaited so the choice is committed before the parent can navigate to the plan — the plan
+    // reads report_v2_goal live, so a pending write must not race the server render.
+    await fetch("/api/report/goal-v2", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId, goal: opt.text, goalKey: opt.key }),
     }).catch(() => {});

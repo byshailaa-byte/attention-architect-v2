@@ -26,12 +26,22 @@ export default async function ReportV2({ session, card, plan }: { session: strin
 
   const sql = getSql();
   const rows = (await sql`
-    SELECT child_name, child_gender, age_band FROM assessments WHERE session_id = ${session}::uuid LIMIT 1
-  `) as unknown as { child_name: string | null; child_gender: string | null; age_band: string | null }[];
-  const r = rows[0] ?? { child_name: null, child_gender: null, age_band: null };
+    SELECT child_name, child_gender, age_band, report_v2_goal FROM assessments WHERE session_id = ${session}::uuid LIMIT 1
+  `) as unknown as { child_name: string | null; child_gender: string | null; age_band: string | null; report_v2_goal: string | null }[];
+  const r = rows[0] ?? { child_name: null, child_gender: null, age_band: null, report_v2_goal: null };
   const gender = (r.child_gender ?? null) as Gender;
   const goalOptions = allGoals(r.child_name ?? "", gender);
   const strengths = strengthsFor(content.archetype);
+
+  // The parent's chosen goal (assessments.report_v2_goal) is the source of truth. It's read
+  // LIVE here (not from the cached report_v2_content, whose goal is frozen at generation time),
+  // so the cards' goal, the plan hero, and the week-by-week rows all follow a goal change —
+  // even after a reload. Fall back to the recommended goal only when no choice is saved. The
+  // chosen goal's concern key drives the plan's week outcomes.
+  const savedGoal = r.report_v2_goal?.trim() ?? "";
+  const effGoal = savedGoal || content.goal;
+  const effGoalKey = savedGoal ? (goalOptions.find((o) => o.text === savedGoal)?.key ?? content.concern) : content.concern;
+  const effContent = { ...content, goal: effGoal };
 
   after(async () => {
     await generateAndStoreReportV2(session).catch((e: unknown) => console.warn("[report-v2] bg generate:", (e as Error).message));
@@ -42,13 +52,13 @@ export default async function ReportV2({ session, card, plan }: { session: strin
   });
 
   if (plan) {
-    return <PlanV2 sessionId={session} content={content} ageBand={r.age_band ?? "10-11"} childName={r.child_name} gender={gender} goalOptions={goalOptions} calendlyUrl={CALENDLY} checkinEnabled={CHECKIN_ENABLED} />;
+    return <PlanV2 sessionId={session} content={effContent} goalKey={effGoalKey} ageBand={r.age_band ?? "10-11"} childName={r.child_name} gender={gender} goalOptions={goalOptions} calendlyUrl={CALENDLY} checkinEnabled={CHECKIN_ENABLED} />;
   }
 
   return (
     <ReportV2Cards
       sessionId={session}
-      content={content}
+      content={effContent}
       strengths={strengths}
       ageBand={r.age_band ?? "10-11"}
       goalOptions={goalOptions}
