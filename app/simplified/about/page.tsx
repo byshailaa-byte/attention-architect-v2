@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle } from "../_shared";
+import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle, startHref } from "../_shared";
 import { FounderByline } from "@/app/components/FounderByline";
 import { SHASHI, SHAILY, SHASHANK } from "@/lib/founders-data";
 import { ENTITY } from "@/lib/entity";
@@ -34,7 +34,7 @@ const TRUST_ITEMS = [
 
 export default function AboutPage() {
   const router = useRouter();
-  const go = () => router.push("/start");
+  const go = () => router.push(startHref());
 
   const h2: React.CSSProperties = { ...headingStyle, fontSize: "var(--type-display-size)", lineHeight: 1.16 };
   const h3: React.CSSProperties = { ...headingStyle, fontSize: "var(--text-2xl)", lineHeight: 1.3 };

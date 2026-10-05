@@ -24,10 +24,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid goalKey" }, { status: 400 });
   }
 
+  // Store the canonical concern KEY (reminders/homework/screens/…) so the sentence can be
+  // rebuilt from the mapping on read. Older rows that hold a full sentence still work —
+  // ReportV2 falls back to reverse-matching the text. When no key is sent (legacy client),
+  // store the sentence as before.
+  const toStore = typeof goalKey === "string" && goalKey ? goalKey : goal.trim();
+
   const sql = getSql();
   try {
     const rows = (await sql`
-      UPDATE assessments SET report_v2_goal = ${goal.trim()}
+      UPDATE assessments SET report_v2_goal = ${toStore}
       WHERE session_id = ${sessionId}::uuid
       RETURNING session_id
     `) as unknown as { session_id: string }[];

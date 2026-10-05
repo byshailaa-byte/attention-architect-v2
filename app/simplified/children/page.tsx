@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle } from "../_shared";
+import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle, startHref } from "../_shared";
 import { BREAK_IDX, SKILL_NAMES, DEFAULT_BREAK_IDX } from "@/lib/report/skills";
 
 type Archetype = {
@@ -135,7 +135,7 @@ function ArchetypeCard({ a, expanded, onToggle }: { a: Archetype; expanded: bool
 
 export default function ChildrenPage() {
   const router = useRouter();
-  const go = () => router.push("/start");
+  const go = () => router.push(startHref());
   const [expandedId, setExpandedId] = useState<string>("storm");
 
   const h2: React.CSSProperties = { ...headingStyle, fontSize: "var(--type-display-size)", lineHeight: 1.16 };

@@ -5,7 +5,7 @@
 import { after } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { viewReportV2, generateAndStoreReportV2 } from "@/lib/report-v2/service";
-import { allGoals } from "@/lib/report-v2/goal-mapping";
+import { allGoals, CONCERN_GOAL, CONCERN_ALIAS, canonicalConcern, goalForConcern } from "@/lib/report-v2/goal-mapping";
 import { strengthsFor } from "@/content/report-v2/archetype-extras";
 import type { Gender } from "@/lib/report/pronouns";
 import ReportV2Cards from "./ReportV2Cards";
@@ -39,9 +39,22 @@ export default async function ReportV2({ session, card, plan }: { session: strin
   // so the cards' goal, the plan hero, and the week-by-week rows all follow a goal change —
   // even after a reload. Fall back to the recommended goal only when no choice is saved. The
   // chosen goal's concern key drives the plan's week outcomes.
+  //
+  // New rows store the canonical concern KEY; we rebuild the sentence from the mapping.
+  // Legacy rows store the full sentence — fall back to reverse-matching it to a key.
   const savedGoal = r.report_v2_goal?.trim() ?? "";
-  const effGoal = savedGoal || content.goal;
-  const effGoalKey = savedGoal ? (goalOptions.find((o) => o.text === savedGoal)?.key ?? content.concern) : content.concern;
+  let effGoal: string;
+  let effGoalKey: string;
+  if (!savedGoal) {
+    effGoal = content.goal;
+    effGoalKey = content.concern;
+  } else if (savedGoal in CONCERN_GOAL || savedGoal in CONCERN_ALIAS) {
+    effGoalKey = canonicalConcern(savedGoal);
+    effGoal = goalForConcern(savedGoal, r.child_name ?? "", gender);
+  } else {
+    effGoalKey = goalOptions.find((o) => o.text === savedGoal)?.key ?? content.concern;
+    effGoal = savedGoal;
+  }
   const effContent = { ...content, goal: effGoal };
 
   after(async () => {

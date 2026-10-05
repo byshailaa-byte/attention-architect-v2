@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle } from "../_shared";
+import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle, startHref } from "../_shared";
 
 const REFRAME_TABS = [
   {
@@ -45,7 +45,7 @@ const SIX_SKILLS = [
 
 export default function AttentionHealthPage() {
   const router = useRouter();
-  const go = () => router.push("/start");
+  const go = () => router.push(startHref());
   const [activeTab, setActiveTab] = useState(0);
   const tab = REFRAME_TABS[activeTab];
 

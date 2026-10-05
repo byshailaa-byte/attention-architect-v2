@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle } from "../_shared";
+import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle, startHref } from "../_shared";
 
 const CASES = [
   {
@@ -65,7 +65,7 @@ const ARTICLES = [
 
 export default function ResourcesPage() {
   const router = useRouter();
-  const go = () => router.push("/start");
+  const go = () => router.push(startHref());
   const [tab, setTab] = useState<"cases" | "articles">("cases");
 
   const h2: React.CSSProperties = { ...headingStyle, fontSize: "var(--type-display-size)", lineHeight: 1.16 };

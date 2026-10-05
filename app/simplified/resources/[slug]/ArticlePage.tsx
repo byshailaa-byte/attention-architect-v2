@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { SiteNav, SiteFooterFull, CloseBand, Wrap, Eyebrow } from "../../_shared";
+import { SiteNav, SiteFooterFull, CloseBand, Wrap, Eyebrow, startHref } from "../../_shared";
 import { notFound } from "next/navigation";
 import { ENTITY } from "@/lib/entity";
 
@@ -370,7 +370,7 @@ export default function ArticlePage({ slug }: { slug: string }) {
 
   const Body = BODIES[slug];
   const router = useRouter();
-  const go = () => router.push("/start");
+  const go = () => router.push(startHref());
 
   return (
     <div className="aa-site">

@@ -2,6 +2,13 @@
 import { useState } from "react";
 import { ENTITY } from "@/lib/entity";
 
+// Target for the "Take free assessment" CTAs. Preserve the query string
+// (utm_*, fbclid, gclid) across the client nav so /start still sees it —
+// same behaviour as the homepage's go() (app/simplified/page.tsx).
+export function startHref() {
+  return `/start${typeof window !== "undefined" ? window.location.search : ""}`;
+}
+
 // ─── Nav items (all hrefs wired) ─────────────────────────────────────────────
 
 export const NAV_ITEMS = [

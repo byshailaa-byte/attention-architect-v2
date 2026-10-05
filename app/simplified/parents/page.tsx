@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle } from "../_shared";
+import { SiteNav, SiteFooterFull, Eyebrow, Wrap, CloseBand, headingStyle, startHref } from "../_shared";
 
 const INSTINCTS = [
   {
@@ -31,7 +31,7 @@ const INSTINCTS = [
 
 export default function ParentsPage() {
   const router = useRouter();
-  const go = () => router.push("/start");
+  const go = () => router.push(startHref());
 
   const h2: React.CSSProperties = { ...headingStyle, fontSize: "var(--type-display-size)", lineHeight: 1.16 };
 
