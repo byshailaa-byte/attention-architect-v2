@@ -40,6 +40,11 @@ export function AnalyticsLoader({
 
   if (!ready) return null;
 
+  // Internal traffic (aa_internal cookie): do NOT load the Meta pixel — install a no-op fbq
+  // stub instead so no pixel events reach Meta, while any fbq(...) call still no-ops safely.
+  const internal =
+    typeof document !== "undefined" && /(?:^|;\s*)aa_internal=1(?:;|$)/.test(document.cookie);
+
   return (
     <>
       {gaId && (
@@ -64,7 +69,16 @@ export function AnalyticsLoader({
           />
         </>
       )}
-      {pixelId && (
+      {pixelId && internal && (
+        <Script
+          id="meta-pixel-internal-stub"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `window.fbq=window.fbq||function(){};window.fbq.queue=[];window.fbq.loaded=true;window._fbq=window.fbq;`,
+          }}
+        />
+      )}
+      {pixelId && !internal && (
         <>
           <Script
             id="meta-pixel-init"

@@ -184,6 +184,13 @@ export default function AssessmentV2() {
       });
       if (!cr.ok) { const d = await cr.json().catch(() => ({})); throw new Error((d as { error?: string }).error ?? "Something went wrong"); }
       fireGtag("generate_lead");
+      // Set external_id (raw session id) as pixel advanced matching so the browser Lead carries
+      // the same external_id the CAPI Lead sends (both hash to SHA-256 of the session id). The
+      // shared eventID below dedups browser + server into one Lead.
+      const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+      if (pixelId && typeof window !== "undefined" && typeof window.fbq === "function") {
+        window.fbq("init", pixelId, { external_id: sessionId });
+      }
       fireFbq("track", "Lead", {}, `lead:${sessionId}`);
       setSubmitting(false);
       setPhase("thankyou");

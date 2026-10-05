@@ -4,6 +4,7 @@ import { verifyPaymentSignature } from "@/lib/razorpay/client";
 import { capturePayment, setWatiPurchasedAttributes } from "@/lib/razorpay/capture";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { sendCapiEvents } from "@/lib/meta/capi";
+import { metaMatchFromRequest, isInternalRequest } from "@/lib/meta/match";
 import { sendPurchaseReceipt } from "@/lib/auth/email";
 
 assertBootGuards();
@@ -52,12 +53,14 @@ export async function POST(req: NextRequest) {
     if (outcome === "processed") {
       const baseUrl =
         process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
+      const internalReq = isInternalRequest(req);
+      const match = metaMatchFromRequest(req);
 
       after(async () => {
         try {
           const rows = (await sql`
             SELECT a.session_id::text, p.tier, p.amount_paise, a.email, a.phone,
-                   a.child_name, u.email AS user_email
+                   a.child_name, a.is_internal, a.utm->>'fbclid' AS fbclid, u.email AS user_email
             FROM purchases p
             JOIN assessments a ON a.id = p.assessment_id
             LEFT JOIN users u ON u.id = p.user_id
@@ -70,6 +73,8 @@ export async function POST(req: NextRequest) {
             email: string | null;
             phone: string | null;
             child_name: string | null;
+            is_internal: boolean | null;
+            fbclid: string | null;
             user_email: string | null;
           }[];
           const row = rows[0];
@@ -78,13 +83,23 @@ export async function POST(req: NextRequest) {
           // Purchase confirmed → stop the WATI drip for this buyer (purchased=yes + tier).
           await setWatiPurchasedAttributes(row.phone, row.tier);
 
+          // Internal traffic: never reaches Meta.
+          if (!internalReq && row.is_internal !== true) {
           await sendCapiEvents([{
             event_name: "Purchase",
             event_time: Math.floor(Date.now() / 1000),
             event_id: `purchase:${razorpayPaymentId}`,
             event_source_url: `${baseUrl}/report/${row.session_id}`,
             action_source: "website",
-            userData: { email: row.email, phone: row.phone },
+            userData: {
+              email: row.email,
+              phone: row.phone,
+              externalId: row.session_id,
+              fbp: match.fbp,
+              fbc: match.fbc ?? (row.fbclid ? `fb.1.${Date.now()}.${row.fbclid}` : undefined),
+              clientIp: match.clientIp,
+              clientUserAgent: match.clientUserAgent,
+            },
             custom_data: {
               value: row.amount_paise / 100,
               currency: "INR",
@@ -94,6 +109,7 @@ export async function POST(req: NextRequest) {
               num_items: 1,
             },
           }]);
+          }
 
           await sql`
             INSERT INTO funnel_events (event_type, session_id, metadata)

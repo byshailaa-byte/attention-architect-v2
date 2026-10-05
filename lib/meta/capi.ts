@@ -16,6 +16,13 @@ function normalizePhone(phone: string): string {
 export type CapiUserData = {
   email?: string | null;
   phone?: string | null;
+  // external_id: we pass the RAW session id and hash it here (SHA-256). The browser pixel is
+  // given the same raw session id and hashes it the same way, so both sides send an identical
+  // value — the match Meta flagged as missing.
+  externalId?: string | null;
+  // fbp/fbc from the _fbp/_fbc cookies (fbc falls back to fbclid). Sent plain per Meta spec.
+  fbp?: string | null;
+  fbc?: string | null;
   // Sent plain-text per Meta spec (not hashed)
   clientIp?: string | null;
   clientUserAgent?: string | null;
@@ -33,8 +40,11 @@ export type CapiEvent = {
 
 function buildUserData(ud: CapiUserData): Record<string, string> {
   const out: Record<string, string> = {};
-  if (ud.email) out.em = sha256(ud.email);
-  if (ud.phone) out.ph = sha256(normalizePhone(ud.phone));
+  if (ud.email) out.em = sha256(ud.email);                       // normalised: lowercased, trimmed
+  if (ud.phone) out.ph = sha256(normalizePhone(ud.phone));       // country code + digits only, hashed
+  if (ud.externalId) out.external_id = sha256(ud.externalId);    // SHA-256 of the session id
+  if (ud.fbp) out.fbp = ud.fbp;                                  // plain _fbp cookie
+  if (ud.fbc) out.fbc = ud.fbc;                                  // plain _fbc cookie / fbclid-derived
   if (ud.clientIp) out.client_ip_address = ud.clientIp;
   if (ud.clientUserAgent) out.client_user_agent = ud.clientUserAgent;
   return out;

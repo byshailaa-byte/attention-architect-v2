@@ -3,6 +3,7 @@ import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { sendWhatsAppReport, upsertWatiContactAfterSend } from "@/lib/whatsapp";
 import { sendCapiEvents } from "@/lib/meta/capi";
+import { metaMatchFromRequest, isInternalRequest } from "@/lib/meta/match";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
 assertBootGuards();
@@ -53,8 +54,12 @@ export async function POST(req: NextRequest) {
         tried        = ${tried ?? []},
         better       = ${better ?? []}
       WHERE session_id = ${sessionId}::uuid
-      RETURNING id
-    `) as unknown as unknown[];
+      RETURNING id, is_internal, utm->>'fbclid' AS fbclid
+    `) as unknown as { id: string; is_internal: boolean | null; fbclid: string | null }[];
+
+    // Match keys + internal check must be read from the live request (not inside after()).
+    const internal = isInternalRequest(req) || result[0]?.is_internal === true;
+    const match = metaMatchFromRequest(req, { fbclid: result[0]?.fbclid });
 
     // best-effort timestamp — column added in Phase 7a migration; silently skipped if missing
     sql`UPDATE assessments SET parent_details_at = now() WHERE session_id = ${sessionId}::uuid`
@@ -181,21 +186,29 @@ export async function POST(req: NextRequest) {
       }
       } // end else (report published)
 
-      // CAPI Lead — event_id matches client-side fbq call: `lead:${sessionId}`
-      try {
-        await sendCapiEvents([{
-          event_name: "Lead",
-          event_time: Math.floor(Date.now() / 1000),
-          event_id: `lead:${sessionId}`,
-          event_source_url: `${baseUrl}/report/${sessionId}`,
-          action_source: "website",
-          userData: {
-            email: email.trim(),
-            phone: effPhone,
-          },
-        }]);
-      } catch (e: unknown) {
-        console.warn("[capi] lead:", (e as Error).message);
+      // CAPI Lead — event_id matches client-side fbq call: `lead:${sessionId}` (dedup).
+      // Skipped entirely for internal traffic so our test runs never reach Meta.
+      if (!internal) {
+        try {
+          await sendCapiEvents([{
+            event_name: "Lead",
+            event_time: Math.floor(Date.now() / 1000),
+            event_id: `lead:${sessionId}`,
+            event_source_url: `${baseUrl}/report/${sessionId}`,
+            action_source: "website",
+            userData: {
+              email: email.trim(),
+              phone: effPhone,
+              externalId: sessionId,
+              fbp: match.fbp,
+              fbc: match.fbc,
+              clientIp: match.clientIp,
+              clientUserAgent: match.clientUserAgent,
+            },
+          }]);
+        } catch (e: unknown) {
+          console.warn("[capi] lead:", (e as Error).message);
+        }
       }
     });
 

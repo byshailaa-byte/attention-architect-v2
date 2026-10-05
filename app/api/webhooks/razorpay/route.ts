@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
         try {
           const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
           const rows = await sql`
-            SELECT a.session_id::text, p.tier, p.amount_paise, a.email, a.phone
+            SELECT a.session_id::text, p.tier, p.amount_paise, a.email, a.phone, a.is_internal
             FROM purchases p
             JOIN assessments a ON a.id = p.assessment_id
             WHERE p.razorpay_order_id = ${razorpayOrderId}
@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
             amount_paise: number;
             email: string | null;
             phone: string | null;
+            is_internal: boolean | null;
           }[];
           const row = rows[0];
           if (!row) return;
@@ -109,13 +110,18 @@ export async function POST(req: NextRequest) {
           // Purchase confirmed → stop the WATI drip for this buyer (purchased=yes + tier).
           await setWatiPurchasedAttributes(row.phone, row.tier);
 
+          // Internal traffic: never reaches Meta. The webhook is server-to-server (no cookie),
+          // so we gate on the is_internal flag stamped at phone capture.
+          if (row.is_internal === true) {
+            console.log(`[capi] skipping Purchase for internal session ${row.session_id}`);
+          } else {
           await sendCapiEvents([{
             event_name: "Purchase",
             event_time: Math.floor(Date.now() / 1000),
             event_id: `purchase:${razorpayPaymentId}`,
             event_source_url: `${baseUrl}/report/${row.session_id}`,
             action_source: "website",
-            userData: { email: row.email, phone: row.phone },
+            userData: { email: row.email, phone: row.phone, externalId: row.session_id },
             custom_data: {
               value: row.amount_paise / 100,
               currency: "INR",
@@ -125,6 +131,7 @@ export async function POST(req: NextRequest) {
               num_items: 1,
             },
           }]);
+          }
           await sql`
             INSERT INTO funnel_events (event_type, session_id, metadata)
             VALUES ('purchase', ${row.session_id}::uuid, ${JSON.stringify({

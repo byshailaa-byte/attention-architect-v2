@@ -1,6 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { sendCapiEvents } from "@/lib/meta/capi";
+import { metaMatchFromRequest, isInternalRequest } from "@/lib/meta/match";
 import { assertBootGuards } from "@/lib/boot-guard";
 
 assertBootGuards();
@@ -24,18 +25,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? undefined;
-  const ua = req.headers.get("user-agent") ?? undefined;
+  const internal = isInternalRequest(req);
+  const match = metaMatchFromRequest(req);
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
+
+  // Internal traffic: never reaches Meta.
+  if (internal) return NextResponse.json({ ok: true });
 
   after(async () => {
     try {
       const sql = getSql();
       const rows = await sql`
-        SELECT email, phone FROM assessments WHERE session_id = ${sessionId}::uuid LIMIT 1
-      ` as unknown as { email: string | null; phone: string | null }[];
+        SELECT email, phone, is_internal, utm->>'fbclid' AS fbclid
+        FROM assessments WHERE session_id = ${sessionId}::uuid LIMIT 1
+      ` as unknown as { email: string | null; phone: string | null; is_internal: boolean | null; fbclid: string | null }[];
 
       const row = rows[0];
+      if (row?.is_internal === true) return; // marked internal after the cookie check
       await sendCapiEvents([{
         event_name: "InitiateCheckout",
         event_time: Math.floor(Date.now() / 1000),
@@ -45,8 +51,11 @@ export async function POST(req: NextRequest) {
         userData: {
           email: row?.email,
           phone: row?.phone,
-          clientIp: ip,
-          clientUserAgent: ua,
+          externalId: sessionId,
+          fbp: match.fbp,
+          fbc: match.fbc ?? (row?.fbclid ? `fb.1.${Date.now()}.${row.fbclid}` : undefined),
+          clientIp: match.clientIp,
+          clientUserAgent: match.clientUserAgent,
         },
         custom_data: {
           value: TIER_VALUE[tier] ?? 999,

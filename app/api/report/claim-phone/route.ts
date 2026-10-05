@@ -3,6 +3,7 @@ import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { sendWhatsAppReport, upsertWatiContactAfterSend } from "@/lib/whatsapp";
 import { sendCapiEvents } from "@/lib/meta/capi";
+import { metaMatchFromRequest, isInternalRequest } from "@/lib/meta/match";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
 assertBootGuards();
@@ -41,14 +42,16 @@ export async function POST(req: NextRequest) {
       UPDATE assessments
       SET phone = ${normalizedPhone}
       WHERE session_id = ${sessionId}::uuid
-      RETURNING id, child_name, parent_name
-    `) as unknown as { id: string; child_name: string | null; parent_name: string | null }[];
+      RETURNING id, child_name, parent_name, is_internal, utm->>'fbclid' AS fbclid
+    `) as unknown as { id: string; child_name: string | null; parent_name: string | null; is_internal: boolean | null; fbclid: string | null }[];
 
     if (result.length === 0) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
     const row = result[0];
+    const internal = isInternalRequest(req) || row.is_internal === true;
+    const match = metaMatchFromRequest(req, { fbclid: row.fbclid });
 
     await sql`
       INSERT INTO funnel_events (event_type, session_id, metadata)
@@ -154,20 +157,28 @@ export async function POST(req: NextRequest) {
         console.warn("[whatsapp] claim-phone:", (e as Error).message);
       }
 
-      // CAPI Lead — phone only, same event_id as control arm for dedup
-      try {
-        await sendCapiEvents([{
-          event_name: "Lead",
-          event_time: Math.floor(Date.now() / 1000),
-          event_id: `lead:${sessionId}`,
-          event_source_url: `${baseUrl}/report/${sessionId}`,
-          action_source: "website",
-          userData: {
-            phone: normalizedPhone,
-          },
-        }]);
-      } catch (e: unknown) {
-        console.warn("[capi] lead (phone_only):", (e as Error).message);
+      // CAPI Lead — phone only, same event_id as control arm for dedup.
+      // Skipped entirely for internal traffic so our test runs never reach Meta.
+      if (!internal) {
+        try {
+          await sendCapiEvents([{
+            event_name: "Lead",
+            event_time: Math.floor(Date.now() / 1000),
+            event_id: `lead:${sessionId}`,
+            event_source_url: `${baseUrl}/report/${sessionId}`,
+            action_source: "website",
+            userData: {
+              phone: normalizedPhone,
+              externalId: sessionId,
+              fbp: match.fbp,
+              fbc: match.fbc,
+              clientIp: match.clientIp,
+              clientUserAgent: match.clientUserAgent,
+            },
+          }]);
+        } catch (e: unknown) {
+          console.warn("[capi] lead (phone_only):", (e as Error).message);
+        }
       }
     });
 
