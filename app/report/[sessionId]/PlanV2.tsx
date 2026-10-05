@@ -21,9 +21,10 @@ import type { Gender } from "@/lib/report/pronouns";
 import type { ReportV2Content } from "@/lib/report-v2/types";
 import { PlanView, PlanPricing, PlanCallCard } from "./PlanInteractive";
 
-export default function PlanV2({ sessionId, content: c, goalKey, ageBand, childName, gender, calendlyUrl }: {
+export default function PlanV2({ sessionId, content: c, goalKey, ageBand, childName, gender, calendlyUrl, parentName = "", email = "", phone = "" }: {
   sessionId: string; content: ReportV2Content; goalKey: string; ageBand: string; childName: string | null;
   gender: Gender; goalOptions: { key: string; text: string }[]; calendlyUrl: string; checkinEnabled: boolean;
+  parentName?: string; email?: string; phone?: string;
 }) {
   const band = (["8-9", "10-11", "12-14"].includes(ageBand) ? ageBand : "10-11") as AgeBand;
   const week1 = getLmsWeekContent(c.archetype, 1, band);
@@ -86,7 +87,7 @@ export default function PlanV2({ sessionId, content: c, goalKey, ageBand, childN
       {/* 4 — pricing */}
       <section style={{ ...section, paddingTop: 30, paddingBottom: 8 }}>
         <div style={{ ...eyebrow, marginBottom: 16 }}>Get the plan</div>
-        <PlanPricing sessionId={sessionId} calendlyUrl={calendlyUrl} childName={childName ?? c.childName} />
+        <PlanPricing sessionId={sessionId} calendlyUrl={calendlyUrl} childName={childName ?? c.childName} parentName={parentName} email={email} phone={phone} />
       </section>
 
       {/* 6 — not sure yet */}

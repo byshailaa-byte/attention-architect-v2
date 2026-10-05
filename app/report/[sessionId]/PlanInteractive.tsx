@@ -36,7 +36,14 @@ export function PlanView({ sessionId }: { sessionId: string }) {
   return null;
 }
 
-export function PlanPricing({ sessionId, calendlyUrl, childName }: { sessionId: string; calendlyUrl: string; childName: string }) {
+export function PlanPricing({ sessionId, calendlyUrl, childName, parentName = "", email = "", phone = "" }: { sessionId: string; calendlyUrl: string; childName: string; parentName?: string; email?: string; phone?: string }) {
+  // Prefill Razorpay with the contact already captured this session (same values/format v1
+  // uses — RoadmapView passes { name, email, contact: phone }). Omit anything missing.
+  const prefill: { name?: string; email?: string; contact?: string } = {};
+  if (parentName) prefill.name = parentName;
+  if (email) prefill.email = email;
+  if (phone) prefill.contact = phone;
+
   async function openCheckout(tier: "tier1" | "tier2", value: number) {
     fireEvent("plan_cta_click", sessionId, { tier, value });
     fireEvent("begin_checkout", sessionId, { tier, value, source: "plan_v2" });
@@ -52,6 +59,7 @@ export function PlanPricing({ sessionId, calendlyUrl, childName }: { sessionId: 
       new RZP({
         key: keyId, amount, currency, order_id: orderId,
         name: "Attention Architect", description: TIERS.find((t) => t.tier === tier)?.title,
+        prefill,
         handler: (response: { razorpay_payment_id: string }) => {
           const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
           fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR", items: [{ item_id: tier, price: value }] });
