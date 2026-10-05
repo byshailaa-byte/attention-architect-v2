@@ -65,6 +65,11 @@ export default function StartFlowV2() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Fire once each time the age screen (step 2) is shown — to measure drop at the age step.
+  useEffect(() => {
+    if (step === 2 && sidRef.current) fireEvent("start_age_view", sidRef.current);
+  }, [step]);
+
   const worryObj = worry ? WORRIES.find((w) => w.key === worry) ?? null : null;
   const kidName    = childName.trim() ? displayChildName(childName) : "your child";
   const kidNameCap = childName.trim() ? displayChildName(childName) : "Your child";
@@ -80,6 +85,7 @@ export default function StartFlowV2() {
     setStep(3);
   }
   function openOob(band: "younger" | "older") {
+    fireEvent("start_oob", sidRef.current, { choice: band });
     setOobPopup(band); setOobName(""); setOobPhone(""); setOobSubmitting(false); setOobResult(null); setOobError(null);
   }
   async function submitOobPopup() {
@@ -93,6 +99,7 @@ export default function StartFlowV2() {
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; setOobError(d.error || "Please enter a valid 10-digit mobile number"); return; }
       const d = await res.json().catch(() => ({})) as { wa_sent?: boolean };
+      fireEvent("start_oob_submit", sidRef.current, { choice: oobPopup });
       setOobResult({ wa_sent: d.wa_sent ?? false });
     } catch { setOobError("Something went wrong, please try again."); }
     finally { setOobSubmitting(false); }

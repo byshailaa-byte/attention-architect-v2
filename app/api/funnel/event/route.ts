@@ -26,10 +26,13 @@ const ALLOWED = new Set([
   "founder_call_requested",
   "roadmap_cta_click",
   "whatsapp_click",
-  // v2 start-flow (?flow=v2) step events — kept in sync with the phase_44 DB CHECK.
+  // v2 start-flow (?flow=v2) step events — kept in sync with the phase_44/phase_49 DB CHECK.
   "landing_view",
   "start_worry",
   "start_age",
+  "start_age_view",
+  "start_oob",
+  "start_oob_submit",
   "start_child",
   "start_phone",
   "phone_captured",
