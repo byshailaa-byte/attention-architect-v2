@@ -73,6 +73,16 @@ const AAP_RE = /\b(?:aap|aapk[aeiou]|aapko|aapse)\b|\b\w+(?:iye|iyega)\b|\b(?:ka
 export function aapForm(text: string): boolean {
   return AAP_RE.test((text || "").replace(/["“][^"”]*["”]/g, " ")); // ignore quoted child-lines
 }
+// Tum-form VERBS aimed at the parent (verb agreement): informal imperatives ("karo", "raho",
+// "dekho"…) and 2nd-person "ho" ("kar rahe ho", "sahi raah par ho"). The aap forms are
+// kariye/karein, rahiye, "kar rahe hain", hain. Quoted parent→child lines are ignored, and the
+// "ho" clause excludes impersonal perfective/modal continuations ("theek ho gaya", "ho sakta hai").
+const TUM_VERB_RE = /\b(?:karo|karho|raho|rahho|socho|sochho|suno|sunno|dekho|dikhao|batao|bolo|jao|jaao|aao|khao|piyo|padho|padhho|likho|rakho|chhodo|chodo|utho|baitho|chalo|samjho|samajho|karlo|kardo|dedo|lelo|lagao|banao|hatao|puchho|poochho|maano|aazmao)\b/i;
+const TUM_BE_RE = /\brah[ei]\s+ho\b|\b(?:par|theek|thik|sahi|tayaar|taiyaar|ready|khush|pareshaan)\s+ho\b(?!\s+(?:gaya|gayi|gaye|gae|sakta|sakti|sakte|raha|rahi|rahe|jaa|jaaye|jaye|jaega|paye|paaye|paa))/i;
+export function usesTumVerb(text: string): boolean {
+  const narration = (text || "").replace(/["“][^"”]*["”]/g, " "); // drop quoted parent→child lines
+  return TUM_VERB_RE.test(narration) || TUM_BE_RE.test(narration);
+}
 // Is the reply written in Hindi/Hinglish (so the aap rule applies)? Devanagari, or ≥2 Hindi markers.
 const HINDI_MARKERS = /\b(?:hai|hain|ho|hoga|kya|kyun|nahi|nahin|karo|kariye|karna|karein|kaam|aaj|kal|phir|bas|raha|rahi|rahe|lagta|lagti|uska|usko|woh|wo|yeh|ye|aap|apne|apna|kuch|sab|theek|acha|accha|mat|abhi|thoda|zyada|samay|waqt)\b/gi;
 export function looksHindi(text: string): boolean {
@@ -211,13 +221,16 @@ export async function enforceReplyQuality(
       if (t) text = t;
     }
   }
-  // Respectful address: a Hindi/Hinglish reply must address the parent with "aap" forms — never
-  // tum/tu, and never the informal "karo/do" imperative without an aap form present.
-  if (looksHindi(text) && (usesTumTu(text) || !aapForm(text))) {
+  // Respectful address + verb agreement: a Hindi/Hinglish reply must address the parent with "aap"
+  // forms — never tum/tu, never a tum-form verb aimed at the parent (karo/raho/ho/do…), and it must
+  // actually contain an aap form. Quoted parent→child lines may stay informal. Up to three attempts —
+  // forms like "mat bolo" / "kar rahe ho" are stubborn, so one pass isn't always enough.
+  for (let attempt = 0; attempt < 3 && looksHindi(text) && (usesTumTu(text) || usesTumVerb(text) || !aapForm(text)); attempt++) {
     fired.aap++;
-    log(`[coach-guard] parent not addressed as aap — regenerating`);
-    const t = await regenerate("Address the parent respectfully as 'aap', using aap-verb forms (aap, aapka, kariye/karein/dijiye) — never the informal 'tum'/'tu' or 'karo/do' forms. The sentence the parent SAYS to the child may stay informal.");
-    if (t) text = t;
+    log(`[coach-guard] parent not addressed in aap form — regenerating`);
+    const t = await regenerate(`Address the parent ONLY in the respectful 'aap' form. Re-read your draft and fix EVERY verb aimed at the parent: any command ending in "-o" becomes "-iye" (bolo→boliye, karo→kariye, dekho→dekhiye, suno→suniye, socho→sochiye), raho→rahiye, do→dijiye, and "...ho"→"...hain" ("kar rahe ho"→"kar rahe hain"). Never tum/tu. The sentence the parent SAYS to the child (inside quotes) may stay informal.`);
+    if (!t) break;
+    text = t;
   }
   return { text, fired };
 }

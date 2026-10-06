@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   bannedPhrase, wordCount, extractQuotes, hasQuotedSentence,
   quotePlusQuestion, groupsChild, enforceReplyQuality,
-  firstForeignScriptChar, hasDevanagari, usesTumTu, aapForm, looksHindi,
+  firstForeignScriptChar, hasDevanagari, usesTumTu, usesTumVerb, aapForm, looksHindi,
 } from "@/lib/lms/coach/guards";
 
 describe("banned words — report-v2 + coach list, whole-word", () => {
@@ -49,6 +49,20 @@ describe("script + address helpers", () => {
     expect(usesTumTu("Aap bas wait kariye.")).toBe(false);
     // parent speaking to their own child inside the quote — not a violation
     expect(usesTumTu('Aap kahiye: "Tum pehle karo ya baad mein — tum decide karo."')).toBe(false);
+  });
+  it("flags tum-form verbs aimed at the parent (verb agreement)", () => {
+    expect(usesTumVerb("Wahi kaam karo.")).toBe(true);
+    expect(usesTumVerb("Bas isi tarah chalte raho.")).toBe(true);
+    expect(usesTumVerb("Aap sahi raah par ho.")).toBe(true);
+    expect(usesTumVerb("Aap kar rahe ho.")).toBe(true);
+    // aap-forms are fine
+    expect(usesTumVerb("Aap bas wait kariye aur dekhiye.")).toBe(false);
+    expect(usesTumVerb("Aap sahi raah par hain.")).toBe(false);
+    // impersonal "ho" must not false-fire
+    expect(usesTumVerb("Aaj theek ho gaya.")).toBe(false);
+    expect(usesTumVerb("Yeh ho sakta hai.")).toBe(false);
+    // tum-verb inside a quoted parent→child line is allowed
+    expect(usesTumVerb('Aap kahiye: "Pehle homework karo."')).toBe(false);
   });
   it("detects aap-form and Hindi/Hinglish text", () => {
     expect(aapForm("Aap bas wait kariye.")).toBe(true);
@@ -139,6 +153,15 @@ describe("enforceReplyQuality regen loop", () => {
     );
     expect(out.fired.aap).toBe(1);
     expect(aapForm(out.text)).toBe(true);
+  });
+  it("regenerates a reply that has aap but a tum-form verb aimed at the parent", async () => {
+    const out = await enforceReplyQuality(
+      "Aap bas wait karo aur dekho.",               // has 'aap' but tum-form verbs
+      async () => "Aap bas wait kariye aur dekhiye.",
+      undefined, [], "Aaj ka step kya hai?",
+    );
+    expect(out.fired.aap).toBe(1);
+    expect(usesTumVerb(out.text)).toBe(false);
   });
   it("regenerates when the 'say this' sentence repeats one already given", async () => {
     const reply = 'Try again tonight. Say "Your call how to begin."';
