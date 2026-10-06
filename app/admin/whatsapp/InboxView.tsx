@@ -111,13 +111,18 @@ export function InboxView({ conversations, thread, filter, templates }: {
     );
   };
 
-  const Composer = () => (
-    <div style={{ background: T.card, borderTop: `1px solid ${T.cardBorder}`, padding: "12px 20px", display: "flex", flexDirection: "column", gap: 8 }}>
+  const Composer = ({ mobile }: { mobile?: boolean }) => (
+    <div style={{
+      background: T.card, borderTop: `1px solid ${T.cardBorder}`, display: "flex", flexDirection: "column", gap: 8,
+      ...(mobile
+        ? { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, padding: "10px 14px calc(10px + env(safe-area-inset-bottom))", boxShadow: "0 -4px 16px rgba(20,40,77,.08)" }
+        : { padding: "12px 20px" }),
+    }}>
       {mode === "free" ? (
         <>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", fontSize: 12.5, fontWeight: 600 }}>
-            <span style={{ color: T.text2, padding: "5px 0" }}>Saved replies:</span>
-            {thread?.savedReplies.map((s) => <span key={s.label} onClick={() => setDraft(s.body)} style={{ border: `1px solid ${T.inputBorder}`, borderRadius: 999, padding: "5px 10px", color: T.navy, cursor: "pointer" }}>{s.label}</span>)}
+          <div style={{ display: "flex", gap: 6, fontSize: 12.5, fontWeight: 600, alignItems: "center", ...(mobile ? { flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 2 } : { flexWrap: "wrap" }) }}>
+            <span style={{ color: T.text2, padding: "5px 0", flexShrink: 0 }}>Saved replies:</span>
+            {thread?.savedReplies.map((s) => <span key={s.label} onClick={() => setDraft(s.body)} style={{ border: `1px solid ${T.inputBorder}`, borderRadius: 999, padding: "5px 10px", color: T.navy, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>{s.label}</span>)}
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
             <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`Hi ${thread?.conversation.displayName.split(" ")[0]}, …`} style={{ flex: 1, border: `1px solid ${T.inputBorder}`, borderRadius: 12, padding: "10px 12px", fontSize: 14, color: T.textRow, minHeight: 44, fontFamily: "inherit", resize: "vertical", background: T.card }} />
@@ -181,7 +186,7 @@ export function InboxView({ conversations, thread, filter, templates }: {
             </div>
           </div>
         )}
-        <div style={{ flex: 1, padding: "18px 24px", display: "flex", flexDirection: "column", gap: 10, fontSize: 14, lineHeight: 1.45, overflowY: "auto" }}>
+        <div style={{ flex: 1, padding: mobile ? "14px 14px 184px" : "18px 24px", display: "flex", flexDirection: "column", gap: 10, fontSize: 14, lineHeight: 1.45, overflowY: "auto" }}>
           {thread.messages.map((m) => <Bubble key={m.id} m={m} />)}
           {win.open && c.dripState?.startsWith("paused") && (
             <div style={{ alignSelf: "center", fontSize: 12, color: T.successText, background: T.successBg, borderRadius: 10, padding: "6px 12px", textAlign: "center" }}>
@@ -189,7 +194,7 @@ export function InboxView({ conversations, thread, filter, templates }: {
             </div>
           )}
         </div>
-        <Composer />
+        <Composer mobile={mobile} />
       </section>
     );
   };

@@ -146,9 +146,6 @@ export default async function LmsUserDetailPage({ params }: { params: Params }) 
         <Link href="/admin/lms-user" style={{ marginLeft: "auto", color: "#5B6577", fontSize: "12px", textDecoration: "none" }}>
           ← Search
         </Link>
-        <Link href="/admin" style={{ color: "#5B6577", fontSize: "12px", textDecoration: "none" }}>
-          Admin dashboard
-        </Link>
       </div>
 
       <div style={{ padding: "32px 24px 0" }}>

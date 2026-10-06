@@ -81,10 +81,6 @@ export default function LeadsView({
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: BG, padding: "28px 36px 64px" }}>
-      <a href="/admin" style={{ fontFamily: FG, fontSize: 12, color: C.muted, textDecoration: "none" }}>
-        ← Back to admin
-      </a>
-
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, margin: "16px 0 22px" }}>
         <div>

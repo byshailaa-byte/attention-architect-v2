@@ -52,9 +52,6 @@ export default async function LmsUserLookupPage({ searchParams }: Props) {
           ⚠ ADMIN — LMS USER VIEW
         </span>
         <span style={{ color: "#5B6577", fontSize: "12px" }}>Read-only. No actions taken on behalf of any user.</span>
-        <Link href="/admin" style={{ marginLeft: "auto", color: "#5B6577", fontSize: "12px", textDecoration: "none" }}>
-          ← Admin dashboard
-        </Link>
       </div>
 
       <h1 style={{ fontSize: "22px", fontWeight: 700, margin: "0 0 8px", color: "#111" }}>
