@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useReadOnly } from "@/components/lms/ReadOnlyContext";
 
 // Records that this reading module was opened — ONLY on a genuine, visible view.
 // Guards:
@@ -10,8 +11,10 @@ import { useEffect, useRef } from "react";
 //    tab to become visible. (Module <Link>s also set prefetch={false}.)
 // The endpoint is idempotent (UNIQUE user/week/module) as a final backstop.
 export default function V2ModuleRead({ week, module }: { week: number; module: number }) {
+  const readOnly = useReadOnly();
   const sent = useRef(false);
   useEffect(() => {
+    if (readOnly) return;
     if (sent.current) return;
     const record = () => {
       if (sent.current) return;
@@ -28,6 +31,6 @@ export default function V2ModuleRead({ week, module }: { week: number; module: n
       document.addEventListener("visibilitychange", record);
       return () => document.removeEventListener("visibilitychange", record);
     }
-  }, [week, module]);
+  }, [week, module, readOnly]);
   return null;
 }

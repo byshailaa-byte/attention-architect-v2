@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
+import { blockIfAdminView } from "@/lib/lms/admin-view-guard";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
 
@@ -7,6 +8,7 @@ assertBootGuards();
 
 export async function POST(req: NextRequest) {
   try {
+    const roBlock = blockIfAdminView(req); if (roBlock) return roBlock; // admin view: read-only
     const token = req.cookies.get(COOKIE_NAME)?.value ?? "";
     const userId = verifySessionToken(token);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

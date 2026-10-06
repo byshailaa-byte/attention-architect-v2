@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLmsUserContext } from "@/lib/lms/user-context";
 import { getLmsWeekContent } from "@/lib/lms/content";
+import { getUserProgress, isWeekUnlocked } from "@/lib/lms/progress";
 import { renderMarkdown, fillLmsContent } from "@/lib/lms/render";
 import { buildModules } from "@/lib/lms/modules";
 import V2ModuleRead from "@/components/lms-v2/V2ModuleRead";
+import { LockedWeekCard } from "../../../../LockedWeekCard";
 import { V2, HEAD, BODY } from "../../../../v2ui";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +20,13 @@ export default async function ModuleReader({ params }: { params: Promise<{ week:
   const ctx = await getLmsUserContext();
   const content = getLmsWeekContent(ctx.archetype, week, ctx.ageBand);
   if (!content) notFound();
+
+  // Week lock: the reading is withheld until the week opens (v2 only).
+  const now = new Date();
+  const prevProg = week > 1 ? await getUserProgress(ctx.userId, week - 1) : null;
+  if (!isWeekUnlocked(week, prevProg, now)) {
+    return <LockedWeekCard week={week} prevDay5Time={prevProg?.completionTimes.get(5)} now={now} />;
+  }
 
   const fill = (s: string) => fillLmsContent(s, ctx.childName, ctx.childGender);
   const modules = buildModules(content, ctx.ageBand);

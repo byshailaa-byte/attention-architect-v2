@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ReflectionOutcome } from "@/content/types";
+import { useReadOnly, READ_ONLY_TOOLTIP } from "@/components/lms/ReadOnlyContext";
 
 declare global {
   interface Window {
@@ -35,6 +36,7 @@ export default function DayCardActions({
   nextHref,
 }: Props) {
   const router = useRouter();
+  const readOnly = useReadOnly();
 
   type Step = "idle" | "completing" | "reflecting" | "submitting" | "done";
   const initialStep: Step =
@@ -49,6 +51,7 @@ export default function DayCardActions({
   const [error, setError] = useState("");
 
   async function markComplete() {
+    if (readOnly) return;
     setStep("completing");
     setError("");
     try {
@@ -81,6 +84,7 @@ export default function DayCardActions({
   }
 
   async function submitReflection(outcome: ReflectionOutcome) {
+    if (readOnly) return;
     setSelected(outcome);
     setStep("submitting");
     try {
@@ -132,14 +136,16 @@ export default function DayCardActions({
           {OUTCOMES.map(({ value, label, emoji }) => (
             <button
               key={value}
-              disabled={step === "submitting"}
+              disabled={step === "submitting" || readOnly}
+              title={readOnly ? READ_ONLY_TOOLTIP : undefined}
               onClick={() => submitReflection(value)}
               className="flex-1 rounded-lg px-3 py-3 text-sm font-semibold text-center transition-all"
               style={{
                 background: selected === value ? "var(--ink)" : "var(--card)",
                 color: selected === value ? "#fff" : "var(--ink)",
                 border: "1.5px solid var(--line)",
-                opacity: step === "submitting" ? 0.6 : 1,
+                opacity: readOnly ? 0.5 : step === "submitting" ? 0.6 : 1,
+                cursor: readOnly ? "not-allowed" : undefined,
               }}
             >
               <div className="text-lg mb-1">{emoji}</div>
@@ -180,13 +186,14 @@ export default function DayCardActions({
       )}
       <button
         onClick={markComplete}
-        disabled={step === "completing"}
+        disabled={step === "completing" || readOnly}
+        title={readOnly ? READ_ONLY_TOOLTIP : undefined}
         className="w-full rounded-lg px-4 py-3 text-base font-semibold transition-opacity"
         style={{
           background: "var(--ink)",
           color: "#fff",
-          opacity: step === "completing" ? 0.5 : 1,
-          cursor: step === "completing" ? "not-allowed" : "pointer",
+          opacity: readOnly ? 0.5 : step === "completing" ? 0.5 : 1,
+          cursor: readOnly || step === "completing" ? "not-allowed" : "pointer",
         }}
       >
         {step === "completing" ? "Saving…" : "Done for today"}

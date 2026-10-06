@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLmsUserContext } from "@/lib/lms/user-context";
 import { getLmsWeekContent, getDayCard } from "@/lib/lms/content";
-import { getUserProgress, isDayUnlocked } from "@/lib/lms/progress";
+import { getUserProgress, isDayUnlocked, isWeekUnlocked } from "@/lib/lms/progress";
 import { fillLmsContent } from "@/lib/lms/render";
 import { buildModules, readingTotalRange, BAND_LABEL } from "@/lib/lms/modules";
 import { getSql } from "@/lib/db/client";
+import { LockedWeekCard } from "../../LockedWeekCard";
 import { V2, HEAD, BODY } from "../../v2ui";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,11 @@ export default async function WeekOverview({ params }: { params: Promise<{ week:
     getSql()`SELECT COUNT(*)::int AS cnt FROM lms_progress WHERE user_id = ${ctx.userId} AND day BETWEEN 1 AND 5` as unknown as Promise<{ cnt: number }[]>,
     getSql()`SELECT module FROM lms_module_reads WHERE user_id = ${ctx.userId} AND week = ${week}` as unknown as Promise<{ module: number }[]>,
   ]);
+  // Week lock: withhold the whole week until Week N-1 is finished + 24h (v2 only).
+  if (!isWeekUnlocked(week, prevProg, now)) {
+    return <LockedWeekCard week={week} prevDay5Time={prevProg?.completionTimes.get(5)} now={now} />;
+  }
+
   const totalCompleted = totalRows[0]?.cnt ?? 0;
   const readModules = new Set(readRows.map((r) => r.module));
 

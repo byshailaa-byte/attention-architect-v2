@@ -183,6 +183,17 @@ export default async function LmsUserDetailPage({ params }: { params: Params }) 
           {!purchase && (
             <p style={{ marginTop: "10px", fontSize: "13px", color: "#9B2C2C" }}>No paid purchase found — LMS access unknown.</p>
           )}
+          {purchase && (
+            <div style={{ marginTop: "16px" }}>
+              <Link href={`/admin/lms-user/${userId}/view`} style={{
+                display: "inline-block", background: "#1E3A5F", color: "#fff", fontWeight: 700,
+                fontSize: "14px", padding: "10px 16px", borderRadius: "8px", textDecoration: "none",
+              }}>
+                View their LMS →
+              </Link>
+              <span style={{ marginLeft: "10px", fontSize: "12px", color: "#888" }}>Opens their real LMS, read-only.</span>
+            </div>
+          )}
         </div>
 
         {/* Current position callout */}

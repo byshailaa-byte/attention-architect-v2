@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ReflectionOutcome } from "@/content/types";
 import { V2, BODY, OUTCOMES, OUTCOME_LABEL } from "@/app/lms-v2/v2ui";
+import { useReadOnly, READ_ONLY_TOOLTIP } from "@/components/lms/ReadOnlyContext";
 
 export default function V2DayActions({
   week,
@@ -23,6 +24,7 @@ export default function V2DayActions({
   nextLabel: string;
 }) {
   const router = useRouter();
+  const readOnly = useReadOnly();
   const needsReflection = reflectionPrompt !== null; // days 2–5
   const [selected, setSelected] = useState<ReflectionOutcome | null>(existingReflection);
   const [note, setNote] = useState("");
@@ -30,6 +32,7 @@ export default function V2DayActions({
   const [error, setError] = useState<string | null>(null);
 
   async function done() {
+    if (readOnly) return;
     if (busy) return;
     if (needsReflection && !selected) return;
     setBusy(true);
@@ -104,8 +107,8 @@ export default function V2DayActions({
 
       {error && <p style={{ margin: 0, fontSize: 13, color: "#C0392B" }}>{error}</p>}
 
-      <button type="button" onClick={done} disabled={busy || !ready}
-        style={{ minHeight: 52, borderRadius: 12, border: 0, background: V2.navy, color: V2.white, font: "inherit", fontFamily: BODY, fontSize: 16, fontWeight: 600, cursor: busy || !ready ? "default" : "pointer", opacity: busy || !ready ? 0.55 : 1 }}>
+      <button type="button" onClick={done} disabled={busy || !ready || readOnly} title={readOnly ? READ_ONLY_TOOLTIP : undefined}
+        style={{ minHeight: 52, borderRadius: 12, border: 0, background: V2.navy, color: V2.white, font: "inherit", fontFamily: BODY, fontSize: 16, fontWeight: 600, cursor: readOnly ? "not-allowed" : busy || !ready ? "default" : "pointer", opacity: readOnly ? 0.5 : busy || !ready ? 0.55 : 1 }}>
         {busy ? "Saving…" : "Done for today"}
       </button>
     </>

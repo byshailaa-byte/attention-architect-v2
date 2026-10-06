@@ -91,12 +91,6 @@ export default async function ResourceArticlePage({ params }: Props) {
               border:"1px solid var(--v2-line)", borderRadius:9, padding:"10px 16px", fontSize:12.5,
               fontWeight:600, color:"var(--v2-navy)", background:"#fff", cursor:"pointer", fontFamily:"var(--v2-IS)",
             }}>
-              Share via WhatsApp
-            </button>
-            <button style={{
-              border:"1px solid var(--v2-line)", borderRadius:9, padding:"10px 16px", fontSize:12.5,
-              fontWeight:600, color:"var(--v2-navy)", background:"#fff", cursor:"pointer", fontFamily:"var(--v2-IS)",
-            }}>
               Email to yourself
             </button>
           </div>

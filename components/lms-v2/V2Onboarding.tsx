@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { V2, HEAD, BODY } from "@/app/lms-v2/v2ui";
+import { useReadOnly, READ_ONLY_TOOLTIP } from "@/components/lms/ReadOnlyContext";
 
 export default function V2Onboarding({
   childName,
@@ -16,10 +17,12 @@ export default function V2Onboarding({
   recap: string; // filled s2Anecdote — the report's "this pattern has a name" line
 }) {
   const router = useRouter();
+  const readOnly = useReadOnly();
   const [screen, setScreen] = useState<1 | 2>(1);
   const [busy, setBusy] = useState(false);
 
   async function start() {
+    if (readOnly) return;
     setBusy(true);
     try {
       await fetch("/api/lms/onboarding-complete", { method: "POST" });
@@ -84,7 +87,7 @@ export default function V2Onboarding({
       </div>
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: V2.dim }}>Miss a day? Nothing resets. Pick up where you left off.</p>
       <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
-        <button onClick={start} disabled={busy} style={{ width: "100%", minHeight: 52, borderRadius: 12, background: V2.navy, color: V2.white, border: 0, fontSize: 16, fontWeight: 600, fontFamily: BODY, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>{busy ? "Starting…" : "Start Week 1"}</button>
+        <button onClick={start} disabled={busy || readOnly} title={readOnly ? READ_ONLY_TOOLTIP : undefined} style={{ width: "100%", minHeight: 52, borderRadius: 12, background: V2.navy, color: V2.white, border: 0, fontSize: 16, fontWeight: 600, fontFamily: BODY, cursor: readOnly ? "not-allowed" : busy ? "default" : "pointer", opacity: readOnly ? 0.5 : busy ? 0.6 : 1 }}>{busy ? "Starting…" : "Start Week 1"}</button>
         <button onClick={() => setScreen(1)} style={{ background: "none", border: 0, textAlign: "center", fontSize: 14, color: V2.dim, minHeight: 44, fontFamily: BODY, cursor: "pointer" }}>Back</button>
       </div>
     </div>

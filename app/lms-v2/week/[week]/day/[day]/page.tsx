@@ -2,11 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLmsUserContext } from "@/lib/lms/user-context";
 import { getLmsWeekContent, getDayCard } from "@/lib/lms/content";
-import { getUserProgress, isDayUnlocked, UNLOCK_DELAY_MS } from "@/lib/lms/progress";
+import { getUserProgress, isDayUnlocked, isWeekUnlocked, UNLOCK_DELAY_MS } from "@/lib/lms/progress";
 import { renderMarkdown, fillLmsContent } from "@/lib/lms/render";
 import type { ReflectionOutcome } from "@/content/types";
 import { getSql } from "@/lib/db/client";
 import V2DayActions from "@/components/lms-v2/V2DayActions";
+import { LockedWeekCard } from "../../../../LockedWeekCard";
 import { V2, HEAD, BODY } from "../../../../v2ui";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,11 @@ export default async function DayPage({ params }: { params: Promise<{ week: stri
 
   const now = new Date();
   const progress = await getUserProgress(ctx.userId, week);
-  const prevWeekProgress = week > 1 && day === 1 ? await getUserProgress(ctx.userId, week - 1) : null;
+  const prevWeekProgress = week > 1 ? await getUserProgress(ctx.userId, week - 1) : null;
+  // Week lock takes precedence over the per-day card (v2 only).
+  if (!isWeekUnlocked(week, prevWeekProgress, now)) {
+    return <LockedWeekCard week={week} prevDay5Time={prevWeekProgress?.completionTimes.get(5)} now={now} />;
+  }
   const unlocked = isDayUnlocked(day, week, progress, prevWeekProgress, now);
   const alreadyComplete = progress.completedDays.has(day);
   const existingReflection = (progress.reflections.get(day) ?? null) as ReflectionOutcome | null;

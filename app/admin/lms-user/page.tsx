@@ -95,32 +95,37 @@ export default async function LmsUserLookupPage({ searchParams }: Props) {
       {results.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {results.map((u) => (
-            <Link
+            <div
               key={u.id}
-              href={`/admin/lms-user/${u.id}`}
               style={{
-                display: "block", padding: "14px 18px",
-                background: "#f9f9f9", border: "1px solid #e5e5e5",
-                borderRadius: "8px", textDecoration: "none", color: "#111",
+                padding: "14px 18px", background: "#f9f9f9", border: "1px solid #e5e5e5",
+                borderRadius: "8px", color: "#111",
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
+              <Link href={`/admin/lms-user/${u.id}`} style={{ textDecoration: "none", color: "#111", minWidth: 0, flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <span style={{ fontWeight: 600, fontSize: "14px" }}>
                     {u.email ?? u.phone ?? "—"}
                   </span>
                   {u.email && u.phone && (
-                    <span style={{ color: "#888", fontSize: "12px", marginLeft: "10px" }}>{u.phone}</span>
+                    <span style={{ color: "#888", fontSize: "12px" }}>{u.phone}</span>
                   )}
+                  <span style={{ fontSize: "12px", color: "#aaa", marginLeft: "auto" }}>
+                    {new Date(u.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
                 </div>
-                <span style={{ fontSize: "12px", color: "#aaa" }}>
-                  {new Date(u.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                </span>
-              </div>
-              <div style={{ marginTop: "4px", fontFamily: "monospace", fontSize: "11px", color: "#bbb" }}>
-                {u.id}
-              </div>
-            </Link>
+                <div style={{ marginTop: "4px", fontFamily: "monospace", fontSize: "11px", color: "#bbb" }}>
+                  {u.id}
+                </div>
+              </Link>
+              <Link href={`/admin/lms-user/${u.id}/view`} style={{
+                flexShrink: 0, background: "#1E3A5F", color: "#fff", fontWeight: 700, fontSize: "13px",
+                padding: "8px 12px", borderRadius: "8px", textDecoration: "none", whiteSpace: "nowrap",
+              }}>
+                View their LMS →
+              </Link>
+            </div>
           ))}
         </div>
       )}

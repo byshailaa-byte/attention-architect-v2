@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
-import {
-  getUserProgress,
-  isDayUnlocked,
-  markDayComplete,
-  getActiveAssessmentId,
-} from "@/lib/lms/progress";
+import { blockIfAdminView } from "@/lib/lms/admin-view-guard";
+import { markDayComplete, getActiveAssessmentId } from "@/lib/lms/progress";
+import { checkUnlocked } from "@/lib/lms/unlock-gate";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
 
@@ -13,6 +10,7 @@ assertBootGuards();
 
 export async function POST(req: NextRequest) {
   try {
+    const roBlock = blockIfAdminView(req); if (roBlock) return roBlock; // admin view: read-only
     const token = req.cookies.get(COOKIE_NAME)?.value ?? "";
     const userId = verifySessionToken(token);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -25,11 +23,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "week and day must be integers" }, { status: 400 });
     }
 
-    const progress = await getUserProgress(userId, week);
-    const prevWeekProgress =
-      week > 1 && day === 1 ? await getUserProgress(userId, week - 1) : null;
-    if (!isDayUnlocked(day, week, progress, prevWeekProgress)) {
-      return NextResponse.json({ error: "Day not yet unlocked" }, { status: 403 });
+    const { unlocked } = await checkUnlocked(userId, week, day);
+    if (!unlocked) {
+      return NextResponse.json({ error: "Not unlocked yet" }, { status: 403 });
     }
 
     const assessmentId = await getActiveAssessmentId(userId);

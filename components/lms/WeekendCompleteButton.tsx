@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useReadOnly, READ_ONLY_TOOLTIP } from "@/components/lms/ReadOnlyContext";
 
 declare global {
   interface Window {
@@ -24,10 +25,12 @@ export default function WeekendCompleteButton({
   nextWeekUnlockHours: number;
   onCompleted?: () => void;
 }) {
+  const readOnly = useReadOnly();
   const [done, setDone] = useState(alreadyComplete);
   const [loading, setLoading] = useState(false);
 
   async function markComplete() {
+    if (readOnly) return;
     setLoading(true);
     try {
       await fetch("/api/lms/complete", {
@@ -108,13 +111,14 @@ export default function WeekendCompleteButton({
   return (
     <button
       onClick={markComplete}
-      disabled={loading}
+      disabled={loading || readOnly}
+      title={readOnly ? READ_ONLY_TOOLTIP : undefined}
       className="w-full rounded-lg px-4 py-3 text-base font-semibold transition-opacity"
       style={{
         background: "var(--ink)",
         color: "#fff",
-        opacity: loading ? 0.5 : 1,
-        cursor: loading ? "not-allowed" : "pointer",
+        opacity: readOnly ? 0.5 : loading ? 0.5 : 1,
+        cursor: readOnly || loading ? "not-allowed" : "pointer",
       }}
     >
       {loading ? "Saving…" : `Mark Week ${week} complete →`}

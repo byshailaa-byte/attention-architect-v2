@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLmsUserContext } from "@/lib/lms/user-context";
 import { getLmsWeekContent } from "@/lib/lms/content";
-import { getUserProgress, isDayUnlocked, computeWeekTrend } from "@/lib/lms/progress";
+import { getUserProgress, isDayUnlocked, isWeekUnlocked, computeWeekTrend } from "@/lib/lms/progress";
 import { renderWeekendContent, renderMarkdown, fillLmsContent } from "@/lib/lms/render";
 import V2WeekendComplete from "@/components/lms-v2/V2WeekendComplete";
+import { LockedWeekCard } from "../../../LockedWeekCard";
 import { V2, HEAD, BODY, OUTCOME_LABEL } from "../../../v2ui";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,11 @@ export default async function WeekendPage({ params }: { params: Promise<{ week: 
   if (!content) notFound();
 
   const now = new Date();
+  // Week lock: withhold until the week opens (v2 only).
+  const prevProg = week > 1 ? await getUserProgress(ctx.userId, week - 1) : null;
+  if (!isWeekUnlocked(week, prevProg, now)) {
+    return <LockedWeekCard week={week} prevDay5Time={prevProg?.completionTimes.get(5)} now={now} />;
+  }
   const progress = await getUserProgress(ctx.userId, week);
   const unlocked = isDayUnlocked(0, week, progress, null, now);
   const alreadyComplete = progress.completedDays.has(0);

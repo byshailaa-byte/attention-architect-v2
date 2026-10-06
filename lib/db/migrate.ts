@@ -1004,6 +1004,20 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_49_start_oob_events') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 50 — admin "view as user" audit log. One row each time an operator opens a customer's
+  // LMS read-only. No PII stored (user id + the LMS path only).
+  if (!applied.has("phase_50_admin_view_log")) {
+    await sql`
+      CREATE TABLE IF NOT EXISTS admin_view_log (
+        id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        viewed_user_id UUID NOT NULL,
+        path           TEXT NOT NULL,
+        viewed_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_50_admin_view_log') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 

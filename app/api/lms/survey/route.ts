@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
+import { blockIfAdminView } from "@/lib/lms/admin-view-guard";
+import { checkUnlocked } from "@/lib/lms/unlock-gate";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
 
@@ -9,6 +11,7 @@ type SurveyType = "week3_pulse" | "week6_comprehensive";
 
 export async function POST(req: NextRequest) {
   try {
+    const roBlock = blockIfAdminView(req); if (roBlock) return roBlock; // admin view: read-only
     const token = req.cookies.get(COOKIE_NAME)?.value ?? "";
     const userId = verifySessionToken(token);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -30,6 +33,13 @@ export async function POST(req: NextRequest) {
 
     if (type !== "week3_pulse" && type !== "week6_comprehensive") {
       return NextResponse.json({ error: "Invalid survey type" }, { status: 400 });
+    }
+
+    // v2 week lock: the week-3 pulse / week-6 survey can't be written before that week opens.
+    const surveyWeek = type === "week3_pulse" ? 3 : 6;
+    const { unlocked } = await checkUnlocked(userId, surveyWeek, null);
+    if (!unlocked) {
+      return NextResponse.json({ error: "Not unlocked yet" }, { status: 403 });
     }
 
     const sql = getSql();

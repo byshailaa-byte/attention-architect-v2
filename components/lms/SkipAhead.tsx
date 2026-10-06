@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useReadOnly, READ_ONLY_TOOLTIP } from "@/components/lms/ReadOnlyContext";
 
 export default function SkipAhead({ week }: { week: number }) {
   const router = useRouter();
+  const readOnly = useReadOnly();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function skip(targetDay: number) {
+    if (readOnly) return;
     setLoading(true);
     try {
       await fetch("/api/lms/skip", {
@@ -49,10 +52,11 @@ export default function SkipAhead({ week }: { week: number }) {
         {[2, 3, 4, 5].map((day) => (
           <button
             key={day}
-            disabled={loading}
+            disabled={loading || readOnly}
+            title={readOnly ? READ_ONLY_TOOLTIP : undefined}
             onClick={() => skip(day)}
             className="rounded-lg px-3 py-2 text-sm font-semibold"
-            style={{ background: "var(--ink)", color: "#fff", opacity: loading ? 0.5 : 1 }}
+            style={{ background: "var(--ink)", color: "#fff", opacity: readOnly ? 0.5 : loading ? 0.5 : 1, cursor: readOnly ? "not-allowed" : undefined }}
           >
             Day {day}
           </button>

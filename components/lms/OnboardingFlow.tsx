@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useReadOnly, READ_ONLY_TOOLTIP } from "@/components/lms/ReadOnlyContext";
 
 const BG = `'Bricolage Grotesque', system-ui, sans-serif`;
 const PP = `'Public Sans', 'Inter', system-ui, sans-serif`;
@@ -102,6 +103,7 @@ function Dots({ current, total }: { current: number; total: number }) {
 
 export default function OnboardingFlow({ childName }: { childName: string }) {
   const router = useRouter();
+  const readOnly = useReadOnly();
   const [screen, setScreen] = useState(0);
   const [completing, setCompleting] = useState(false);
 
@@ -110,6 +112,7 @@ export default function OnboardingFlow({ childName }: { childName: string }) {
   }
 
   async function finish() {
+    if (readOnly) return;
     setCompleting(true);
     await fetch("/api/lms/onboarding-complete", { method: "POST" }).catch(() => {});
     router.push("/lms");
@@ -185,7 +188,7 @@ export default function OnboardingFlow({ childName }: { childName: string }) {
       <div style={{ ...S.eyebrow, textAlign: "center" }}>Let&rsquo;s Begin</div>
       <h2 style={{ ...S.h, textAlign: "center" }}>Week 1 is ready.</h2>
       <p style={{ ...S.sub, margin: "0 auto 0" }}>One small move today. That&rsquo;s all Day 1 is.</p>
-      <button style={{ ...S.btn, opacity: completing ? 0.6 : 1 }} onClick={finish} disabled={completing}>
+      <button style={{ ...S.btn, opacity: readOnly ? 0.5 : completing ? 0.6 : 1, cursor: readOnly ? "not-allowed" : S.btn.cursor }} onClick={finish} disabled={completing || readOnly} title={readOnly ? READ_ONLY_TOOLTIP : undefined}>
         {completing ? "One moment…" : "Start Week 1 →"}
       </button>
       <Dots current={4} total={5} />

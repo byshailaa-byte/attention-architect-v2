@@ -80,7 +80,7 @@ export default function PlanV2({ sessionId, content: c, goalKey, ageBand, childN
             {d1?.title && <div style={{ fontFamily: HEAD, fontSize: 18, color: C.navy, marginBottom: 8 }}>{fillLmsContent(d1.title, childName ?? c.childName, gender).replace(/[*_]/g, "")}</div>}
             <p style={{ fontSize: 16, lineHeight: 1.55, margin: 0 }}>{day1}</p>
           </div>
-          <p style={{ fontSize: 13, color: C.dim, marginTop: 10 }}>This is Day 1. The full six weeks unlock with the plan.</p>
+          <p style={{ fontSize: 13, color: C.dim, marginTop: 10 }}>This is Day 1. All six weeks are yours. Each one opens when you finish the one before.</p>
         </section>
       )}
 

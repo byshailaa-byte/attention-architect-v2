@@ -46,6 +46,16 @@ export async function middleware(req: NextRequest) {
     // /admin uses Basic Auth (no session cookie of its own), so we set a dedicated marker
     // cookie here that /api/flow/* reads.
     res.cookies.set("aa_internal", "1", { path: "/", maxAge: 60 * 60 * 24 * 30, sameSite: "lax" });
+
+    // Admin "view as user" read-only marker. Set only while on a .../view path; cleared on any
+    // other admin page. /api/lms/* mutation routes read it and 403 (defense-in-depth; the buttons
+    // are also disabled and the admin holds no customer session). Never the customer's cookie.
+    const inLmsView = /^\/admin\/lms-user\/[^/]+\/view(\/|$)/.test(pathname);
+    if (inLmsView) {
+      res.cookies.set("aa_lms_view", "1", { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 30 });
+    } else {
+      res.cookies.set("aa_lms_view", "", { path: "/", maxAge: 0 });
+    }
     return res;
   }
 

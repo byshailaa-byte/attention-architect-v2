@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getLmsUserContext } from "@/lib/lms/user-context";
-import { getUserProgress, isDayUnlocked } from "@/lib/lms/progress";
+import { getUserProgress, isWeekUnlocked } from "@/lib/lms/progress";
 import { getLmsWeekContent, getDayCard } from "@/lib/lms/content";
 import { fillLmsContent } from "@/lib/lms/render";
 import { WEEK_TITLES } from "@/lib/report/skills";
@@ -32,7 +32,7 @@ export default async function LmsV2Home() {
     const prog = allProgress[week - 1];
     const prevProg = week > 1 ? allProgress[week - 2] : null;
     const hasContent = getLmsWeekContent(ctx.archetype, week, ctx.ageBand) !== null;
-    const unlocked = hasContent ? isDayUnlocked(1, week, prog, prevProg, now) : false;
+    const unlocked = hasContent ? isWeekUnlocked(week, prevProg, now) : false;
     const completedDays = [1, 2, 3, 4, 5].filter((d) => prog.completedDays.has(d));
     return { week, completedDays, weekendDone: prog.completedDays.has(0), unlocked, hasContent };
   });
@@ -106,9 +106,10 @@ export default async function LmsV2Home() {
             const title = WEEK_TITLES[ws.week] ?? `Week ${ws.week}`;
             const isNow = ws.week === currentWeek;
             const done = ws.weekendDone; // week fully complete once the weekend review is recorded (E3)
+            const locked = !ws.unlocked;
             const inner = (
               <>
-                <span style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", fontSize: 13, fontWeight: 700, background: done ? V2.tintGreen : isNow ? V2.gold : "transparent", color: done ? V2.green : isNow ? V2.navy : V2.dim2, border: done || isNow ? "none" : "1px solid #CFC6B4" }}>{done ? "✓" : ws.week}</span>
+                <span style={{ width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "grid", placeItems: "center", fontSize: locked ? 12 : 13, fontWeight: 700, background: done ? V2.tintGreen : isNow ? V2.gold : "transparent", color: done ? V2.green : isNow ? V2.navy : V2.dim2, border: done || isNow ? "none" : "1px solid #CFC6B4" }}>{done ? "✓" : locked ? <span aria-label="locked">🔒</span> : ws.week}</span>
                 <span style={{ flexGrow: 1, fontSize: 15, fontWeight: isNow ? 600 : 400 }}>{title}</span>
                 {isNow && !done && <span style={{ fontSize: 12, fontWeight: 700, color: V2.darkGold }}>NOW</span>}
               </>

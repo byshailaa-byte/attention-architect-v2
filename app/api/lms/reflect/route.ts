@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
+import { blockIfAdminView } from "@/lib/lms/admin-view-guard";
 import { storeReflection, getActiveAssessmentId } from "@/lib/lms/progress";
+import { checkUnlocked } from "@/lib/lms/unlock-gate";
 import { getSql } from "@/lib/db/client";
 import type { ReflectionOutcome } from "@/content/types";
 import { assertBootGuards } from "@/lib/boot-guard";
@@ -11,6 +13,7 @@ const VALID_OUTCOMES: ReflectionOutcome[] = ["worked", "mixed", "didnt_land"];
 
 export async function POST(req: NextRequest) {
   try {
+    const roBlock = blockIfAdminView(req); if (roBlock) return roBlock; // admin view: read-only
     const token = req.cookies.get(COOKIE_NAME)?.value ?? "";
     const userId = verifySessionToken(token);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,6 +32,11 @@ export async function POST(req: NextRequest) {
     }
     if (!VALID_OUTCOMES.includes(outcome)) {
       return NextResponse.json({ error: "Invalid outcome" }, { status: 400 });
+    }
+
+    const { unlocked } = await checkUnlocked(userId, week, day);
+    if (!unlocked) {
+      return NextResponse.json({ error: "Not unlocked yet" }, { status: 403 });
     }
 
     await storeReflection(userId, week, day, outcome, note);

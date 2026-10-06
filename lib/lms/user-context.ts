@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
+import { currentImpersonation } from "@/lib/lms/impersonation";
 import { getSql } from "@/lib/db/client";
 import type { AgeBand } from "@/content/types";
 import type { Gender } from "@/lib/report/pronouns";
@@ -32,10 +33,19 @@ function normalizeGender(raw: string | null): Gender {
 // most recent paid assessment. Redirects to /lms/login if unauthenticated,
 // redirects to / if no paid assessment exists.
 export async function getLmsUserContext(): Promise<LmsUserContext> {
-  const jar = await cookies();
-  const token = jar.get(COOKIE_NAME)?.value ?? "";
-  const userId = verifySessionToken(token);
-  if (!userId) redirect("/lms/login");
+  // Admin "view as user": when the render is wrapped in runImpersonated(), resolve the target
+  // user instead of the session cookie. This path is reachable ONLY from the admin route (the
+  // sole caller of runImpersonated), never from /lms/*, and never reads/sets the customer cookie.
+  const imp = currentImpersonation();
+  let userId: string | null;
+  if (imp) {
+    userId = imp.userId;
+  } else {
+    const jar = await cookies();
+    const token = jar.get(COOKIE_NAME)?.value ?? "";
+    userId = verifySessionToken(token);
+    if (!userId) redirect("/lms/login");
+  }
 
   const sql = getSql();
   const [rows, userRows] = await Promise.all([
@@ -66,7 +76,10 @@ export async function getLmsUserContext(): Promise<LmsUserContext> {
     sql`SELECT onboarding_completed_at FROM users WHERE id = ${userId}` as unknown as Promise<{ onboarding_completed_at: Date | null }[]>,
   ]);
 
-  if (rows.length === 0) redirect("/");
+  if (rows.length === 0) {
+    if (imp) throw new Error("Impersonated user has no paid assessment");
+    redirect("/");
+  }
 
   const a = rows[0];
   return {

@@ -74,6 +74,20 @@ export function isDayUnlocked(
   );
 }
 
+// v2 week-level lock. A week is unlocked at the SAME instant Week N Day 1 unlocks, so this reuses
+// isDayUnlocked (no second timing rule): Week 1 always open; Week N (2–6) opens once Week N-1 Day 5
+// is complete AND 24h has elapsed. `prevWeekProgress` is the progress for week N-1 (null for N=1).
+// v1 does NOT use this — v1 LMS keeps its original no-week-gate behaviour.
+const EMPTY_PROGRESS: LmsProgress = { completedDays: new Set(), completionTimes: new Map(), reflections: new Map() };
+export function isWeekUnlocked(
+  week: number,
+  prevWeekProgress: LmsProgress | null,
+  now: Date = new Date(),
+): boolean {
+  if (week <= 1) return true;
+  return isDayUnlocked(1, week, EMPTY_PROGRESS, prevWeekProgress, now);
+}
+
 // Where the user should land next inside a given week.
 // Returns 1 if nothing complete, 0 (weekend) if days 1–5 done, else max_complete + 1.
 export function getNextDay(progress: LmsProgress): number {

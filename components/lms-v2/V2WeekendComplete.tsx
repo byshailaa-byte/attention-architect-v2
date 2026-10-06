@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { V2, BODY } from "@/app/lms-v2/v2ui";
+import { useReadOnly, READ_ONLY_TOOLTIP } from "@/components/lms/ReadOnlyContext";
 
 export default function V2WeekendComplete({
   week,
@@ -14,12 +15,14 @@ export default function V2WeekendComplete({
   nextWeek: number | null; // null when this is the final week
 }) {
   const router = useRouter();
+  const readOnly = useReadOnly();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const go = () => router.push(nextWeek ? `/lms-v2/week/${nextWeek}` : "/lms-v2");
 
   async function markComplete() {
+    if (readOnly) return;
     if (busy) return;
     setBusy(true);
     setError(null);
@@ -49,7 +52,7 @@ export default function V2WeekendComplete({
   }
   return (
     <>
-      <button type="button" onClick={markComplete} disabled={busy} style={{ ...primary, opacity: busy ? 0.6 : 1 }}>
+      <button type="button" onClick={markComplete} disabled={busy || readOnly} title={readOnly ? READ_ONLY_TOOLTIP : undefined} style={{ ...primary, opacity: readOnly ? 0.5 : busy ? 0.6 : 1, cursor: readOnly ? "not-allowed" : primary.cursor }}>
         {busy ? "Saving…" : `Mark week complete · ${label}`}
       </button>
       {error && <p style={{ margin: 0, fontSize: 13, color: "#C0392B", textAlign: "center" }}>{error}</p>}

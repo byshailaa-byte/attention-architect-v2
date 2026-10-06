@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useReadOnly, READ_ONLY_TOOLTIP } from "@/components/lms/ReadOnlyContext";
 
 const PP = `'Public Sans', 'Inter', system-ui, sans-serif`;
 
 export default function Week3Pulse({ childName }: { childName: string }) {
+  const readOnly = useReadOnly();
   const [dismissed, setDismissed] = useState(false);
   const [rating, setRating] = useState<number | null>(null);
   const [text, setText] = useState("");
@@ -14,6 +16,7 @@ export default function Week3Pulse({ childName }: { childName: string }) {
   if (dismissed || done) return null;
 
   async function dismiss() {
+    if (readOnly) return;
     setDismissed(true);
     fetch("/api/lms/survey", {
       method: "POST",
@@ -23,6 +26,7 @@ export default function Week3Pulse({ childName }: { childName: string }) {
   }
 
   async function submit() {
+    if (readOnly) return;
     if (!rating) return;
     setSubmitting(true);
     await fetch("/api/lms/survey", {
@@ -57,8 +61,10 @@ export default function Week3Pulse({ childName }: { childName: string }) {
       }}>
         <button
           onClick={dismiss}
+          disabled={readOnly}
+          title={readOnly ? READ_ONLY_TOOLTIP : undefined}
           aria-label="Dismiss"
-          style={{ position: "absolute", top: 16, right: 18, color: "var(--jm-ink-faint)", fontSize: 16, background: "none", border: "none", cursor: "pointer", fontFamily: PP }}
+          style={{ position: "absolute", top: 16, right: 18, color: "var(--jm-ink-faint)", fontSize: 16, background: "none", border: "none", cursor: readOnly ? "not-allowed" : "pointer", fontFamily: PP, opacity: readOnly ? 0.5 : 1 }}
         >
           ✕
         </button>
@@ -80,6 +86,8 @@ export default function Week3Pulse({ childName }: { childName: string }) {
             <button
               key={v}
               onClick={() => setRating(v)}
+              disabled={readOnly}
+              title={readOnly ? READ_ONLY_TOOLTIP : undefined}
               style={{
                 flex: 1,
                 background: rating === v ? "var(--jm-accent-soft)" : "var(--jm-paper2)",
@@ -90,8 +98,9 @@ export default function Week3Pulse({ childName }: { childName: string }) {
                 fontSize: 13,
                 fontWeight: 700,
                 color: rating === v ? "var(--jm-accent)" : "var(--jm-ink)",
-                cursor: "pointer",
+                cursor: readOnly ? "not-allowed" : "pointer",
                 fontFamily: PP,
+                opacity: readOnly ? 0.5 : 1,
               }}
             >
               {v}
@@ -129,7 +138,8 @@ export default function Week3Pulse({ childName }: { childName: string }) {
 
         <button
           onClick={submit}
-          disabled={!rating || submitting}
+          disabled={!rating || submitting || readOnly}
+          title={readOnly ? READ_ONLY_TOOLTIP : undefined}
           style={{
             background: rating && !submitting ? "var(--jm-accent-b)" : "var(--jm-paper2)",
             color: rating && !submitting ? "#fff" : "var(--jm-ink-faint)",
@@ -141,8 +151,9 @@ export default function Week3Pulse({ childName }: { childName: string }) {
             borderRadius: 10,
             width: "100%",
             marginTop: 16,
-            cursor: rating && !submitting ? "pointer" : "not-allowed",
+            cursor: readOnly ? "not-allowed" : rating && !submitting ? "pointer" : "not-allowed",
             boxShadow: rating ? "0 8px 22px rgba(31,122,76,.28)" : "none",
+            opacity: readOnly ? 0.5 : 1,
           }}
         >
           {submitting ? "Sending…" : "Send →"}

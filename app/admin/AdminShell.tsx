@@ -80,6 +80,12 @@ export function AdminShell({ children, callsDue, needsReply }: { children: React
   const groups = buildGroups(callsDue, needsReply);
   const activeKey = activeKeyFor(pathname, searchParams.get("tab"));
 
+  // "View as user" renders the real LMS full-bleed (its own chrome + the read-only banner); the
+  // admin sidebar would only get in the way, so drop it on these paths.
+  if (/^\/admin\/lms-user\/[^/]+\/view(\/|$)/.test(pathname)) {
+    return <>{children}</>;
+  }
+
   const Badge = ({ n, kind }: { n: number; kind: "amber" | "wa" }) => (
     <span style={{
       background: kind === "amber" ? T.amber : T.wa, color: kind === "amber" ? T.navy : T.waText,

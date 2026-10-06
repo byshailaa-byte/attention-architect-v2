@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useReadOnly, READ_ONLY_TOOLTIP } from "@/components/lms/ReadOnlyContext";
 
 const BG = `'Bricolage Grotesque', system-ui, sans-serif`;
 const PP = `'Public Sans', 'Inter', system-ui, sans-serif`;
@@ -19,6 +20,7 @@ const ADVOCATE_OPTIONS = [
 ];
 
 export default function Week6Survey({ childName, onDone }: { childName: string; onDone: () => void }) {
+  const readOnly = useReadOnly();
   const [nps, setNps] = useState<number | null>(null);
   const [behavior, setBehavior] = useState<string | null>(null);
   const [workedBest, setWorkedBest] = useState("");
@@ -40,6 +42,7 @@ export default function Week6Survey({ childName, onDone }: { childName: string; 
   }
 
   async function submit() {
+    if (readOnly) return;
     if (nps === null || !behavior) return;
     setSubmitting(true);
     await fetch("/api/lms/survey", {
@@ -102,11 +105,13 @@ export default function Week6Survey({ childName, onDone }: { childName: string; 
                 <button
                   key={n}
                   onClick={() => setNps(n)}
+                  disabled={readOnly}
+                  title={readOnly ? READ_ONLY_TOOLTIP : undefined}
                   style={{
                     flex: 1, aspectRatio: "1", background: nps === n ? "var(--jm-accent-b)" : "var(--jm-paper2)",
                     border: `1.5px solid ${nps === n ? "var(--jm-accent-b)" : "transparent"}`,
                     borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 12.5, fontWeight: 700, color: nps === n ? "#fff" : "var(--jm-ink)", cursor: "pointer", fontFamily: PP,
+                    fontSize: 12.5, fontWeight: 700, color: nps === n ? "#fff" : "var(--jm-ink)", cursor: readOnly ? "not-allowed" : "pointer", fontFamily: PP, opacity: readOnly ? 0.5 : 1,
                   }}
                 >{n}</button>
               ))}
@@ -126,11 +131,13 @@ export default function Week6Survey({ childName, onDone }: { childName: string; 
                 <button
                   key={opt}
                   onClick={() => setBehavior(opt)}
+                  disabled={readOnly}
+                  title={readOnly ? READ_ONLY_TOOLTIP : undefined}
                   style={{
                     background: behavior === opt ? "var(--jm-accent-soft)" : "var(--jm-paper2)",
                     border: `1.5px solid ${behavior === opt ? "var(--jm-accent-b)" : "transparent"}`,
                     borderRadius: 10, padding: "12px 14px", fontSize: 13.5, color: "var(--jm-ink)",
-                    textAlign: "left" as const, cursor: "pointer", fontFamily: PP,
+                    textAlign: "left" as const, cursor: readOnly ? "not-allowed" : "pointer", fontFamily: PP, opacity: readOnly ? 0.5 : 1,
                   }}
                 >{opt}</button>
               ))}
@@ -180,12 +187,14 @@ export default function Week6Survey({ childName, onDone }: { childName: string; 
                     <button
                       key={opt.id}
                       onClick={() => toggleAdvocate(opt.id)}
+                      disabled={readOnly}
+                      title={readOnly ? READ_ONLY_TOOLTIP : undefined}
                       style={{
                         background: advocates.has(opt.id) ? "rgba(52,80,63,.08)" : "var(--jm-white)",
                         border: `1px solid ${advocates.has(opt.id) ? "var(--jm-accent)" : "var(--jm-rule)"}`,
                         borderRadius: 10, padding: "14px 16px",
                         display: "flex", alignItems: "center", gap: 12, textAlign: "left" as const,
-                        cursor: "pointer", fontFamily: PP, width: "100%",
+                        cursor: readOnly ? "not-allowed" : "pointer", fontFamily: PP, width: "100%", opacity: readOnly ? 0.5 : 1,
                       }}
                     >
                       <span style={{ fontSize: 18 }}>{opt.icon}</span>
@@ -212,14 +221,16 @@ export default function Week6Survey({ childName, onDone }: { childName: string; 
 
           <button
             onClick={submit}
-            disabled={!nps || !behavior || submitting}
+            disabled={!nps || !behavior || submitting || readOnly}
+            title={readOnly ? READ_ONLY_TOOLTIP : undefined}
             style={{
               background: nps !== null && behavior && !submitting ? "var(--jm-accent-b)" : "var(--jm-paper2)",
               color: nps !== null && behavior && !submitting ? "#fff" : "var(--jm-ink-faint)",
               border: "none", fontFamily: PP, fontWeight: 700, fontSize: 14.5,
               padding: "14px 26px", borderRadius: 10, width: "100%", marginTop: 20,
-              cursor: nps !== null && behavior && !submitting ? "pointer" : "not-allowed",
+              cursor: readOnly ? "not-allowed" : nps !== null && behavior && !submitting ? "pointer" : "not-allowed",
               boxShadow: nps !== null && behavior ? "0 8px 22px rgba(31,122,76,.28)" : "none",
+              opacity: readOnly ? 0.5 : 1,
             }}
           >
             {submitting ? "Sending…" : "Send feedback →"}
