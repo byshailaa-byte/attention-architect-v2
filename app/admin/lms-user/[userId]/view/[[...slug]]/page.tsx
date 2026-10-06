@@ -13,6 +13,10 @@ import V2DayPage from "@/app/lms-v2/week/[week]/day/[day]/page";
 import V2ModulePage from "@/app/lms-v2/week/[week]/module/[module]/page";
 import V2WeekendPage from "@/app/lms-v2/week/[week]/weekend/page";
 import V2Onboarding from "@/app/lms-v2/onboarding/page";
+import V2Progress from "@/app/lms-v2/progress/page";
+import V2Resources from "@/app/lms-v2/resources/page";
+import V2ResourceSlug from "@/app/lms-v2/resources/[slug]/page";
+import V2WhatToSay from "@/app/lms-v2/what-to-say/page";
 import LmsV1Home from "@/app/lms/page";
 import V1WeekPage from "@/app/lms/week/[week]/page";
 import V1DayPage from "@/app/lms/week/[week]/day/[day]/page";
@@ -25,12 +29,21 @@ export const dynamic = "force-dynamic";
 type PageFn = (props?: any) => Promise<ReactElement> | ReactElement;
 
 // Map the LMS sub-path (catch-all slug) to the real page component + its params, per version.
+// Covers every content page under app/lms-v2 and app/lms (auth pages — login/*-password — are
+// intentionally excluded). Anything not matched returns null → a friendly card (never a bare 404),
+// so a newly-added LMS page degrades gracefully until it's mapped here.
 function resolve(version: "v1" | "v2", slug: string[]): { Comp: PageFn; props?: unknown } | null {
   const s = slug ?? [];
   const P = (o: Record<string, string>) => ({ params: Promise.resolve(o) });
   if (version === "v2") {
     if (s.length === 0) return { Comp: LmsV2Home };
     if (s[0] === "onboarding" && s.length === 1) return { Comp: V2Onboarding };
+    if (s[0] === "progress" && s.length === 1) return { Comp: V2Progress };
+    if (s[0] === "what-to-say" && s.length === 1) return { Comp: V2WhatToSay };
+    if (s[0] === "resources") {
+      if (s.length === 1) return { Comp: V2Resources };
+      if (s[1] && s.length === 2) return { Comp: V2ResourceSlug, props: P({ slug: s[1] }) };
+    }
     if (s[0] === "week" && s[1]) {
       if (s.length === 2) return { Comp: V2WeekOverview, props: P({ week: s[1] }) };
       if (s[2] === "day" && s[3] && s.length === 4) return { Comp: V2DayPage, props: P({ week: s[1], day: s[3] }) };
@@ -47,6 +60,19 @@ function resolve(version: "v1" | "v2", slug: string[]): { Comp: PageFn; props?: 
     if (s[2] === "weekend" && s.length === 3) return { Comp: V1WeekendPage, props: P({ week: s[1] }) };
   }
   return null;
+}
+
+function UnavailableCard({ userId }: { userId: string }) {
+  return (
+    <div style={{ fontFamily: "var(--font-figtree), Figtree, system-ui, sans-serif", minHeight: "60dvh", background: "#FBF6EE", padding: "48px 22px", textAlign: "center", color: "#1E3A5F" }}>
+      <div style={{ maxWidth: 420, margin: "0 auto", background: "#fff", border: "1px solid #E7E0D2", borderRadius: 18, padding: 28 }}>
+        <div style={{ fontSize: 26, marginBottom: 10 }} aria-hidden>👁️</div>
+        <p style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700 }}>This page isn&rsquo;t available in admin view</p>
+        <p style={{ margin: "0 0 18px", fontSize: 14, color: "#5B6577" }}>Some LMS pages (sign-in and account screens) can&rsquo;t be viewed as a user.</p>
+        <a href={`/admin/lms-user/${userId}/view`} style={{ display: "inline-block", borderRadius: 10, padding: "10px 20px", fontSize: 14, fontWeight: 600, background: "#1E3A5F", color: "#fff", textDecoration: "none" }}>Back to their LMS home</a>
+      </div>
+    </div>
+  );
 }
 
 export default async function AdminLmsViewPage({
@@ -68,7 +94,6 @@ export default async function AdminLmsViewPage({
 
   const version = await getLmsVersion(sql, userId);
   const route = resolve(version, slug ?? []);
-  if (!route) notFound();
 
   // Audit: one row per viewed path. Defensive: a missing table must not break the view.
   const path = "/" + (slug ?? []).join("/");
@@ -76,6 +101,15 @@ export default async function AdminLmsViewPage({
     await sql`INSERT INTO admin_view_log (viewed_user_id, path) VALUES (${userId}, ${path})`;
   } catch (e) {
     console.error("[admin_view_log] insert failed (table may not exist yet):", (e as Error).message);
+  }
+
+  // Unknown sub-path (e.g. an auth page, or a route not yet mapped) → friendly card, never a 404.
+  if (!route) {
+    return (
+      <AdminLmsView userId={userId} firstName={firstName} version={version}>
+        <UnavailableCard userId={userId} />
+      </AdminLmsView>
+    );
   }
 
   // Render the real LMS component for the target user. getLmsUserContext() resolves the target via

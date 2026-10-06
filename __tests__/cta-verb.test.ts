@@ -15,10 +15,12 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 // Every component that renders a primary CTA button or anchor whose text should start "Open".
+// NOTE: PriceCards no longer renders its own paywall CTA — it delegates to the shared v2 plan
+// pricing (PlanInteractive.PlanPricing, "Start …'s plan" / "Get the plan"), so Rule 8's "Open"
+// lock does not apply to it. StickyCta/ClosingCtaButton keep their "Open …'s Roadmap" CTAs.
 const CTA_FILES = [
   "app/report/[sessionId]/ClosingCtaButton.tsx",
   "app/report/[sessionId]/StickyCta.tsx",
-  "app/report/[sessionId]/PriceCards.tsx",
   "app/report/[sessionId]/NarrativeReportView.tsx",
 ] as const;
 

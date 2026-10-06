@@ -438,7 +438,7 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
             {[
               { label: "Month of Tuition", price: "₹3–8K", what: "Teaches one subject", highlight: false },
               { label: "Behavior Consult",  price: "₹1,500+", what: "One conversation",   highlight: false },
-              { label: "Full Roadmap",      price: "₹999",   what: `Six weeks, ${tokens.child_pronoun_poss}`, highlight: true  },
+              { label: "Full Roadmap",      price: "₹2,999",   what: `Six weeks, ${tokens.child_pronoun_poss}`, highlight: true  },
             ].map(({ label, price, what, highlight }) => (
               <div key={label} style={{ flex: "1 1 130px", background: highlight ? "rgba(240,197,80,.08)" : "rgba(255,255,255,.05)", border: highlight ? "1px solid rgba(240,197,80,.3)" : "1px solid rgba(255,255,255,.09)", borderRadius: "12px", padding: "16px", minWidth: "0" }}>
                 <div style={{ fontSize: "11.5px", color: highlight ? "var(--marker)" : "#9c9aa8", fontWeight: highlight ? 700 : 400, marginBottom: "4px" }}>{label}</div>

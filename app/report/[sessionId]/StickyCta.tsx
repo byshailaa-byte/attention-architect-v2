@@ -74,15 +74,15 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
     openedRef.current = true;
     setTimeout(() => { openedRef.current = false; }, 3000);
 
-    const value = 999;
-    const initiateEventId = `${sessionId}:initiate_checkout:full`;
-    fireEvent("begin_checkout", sessionId, { tier: "full", value, source: "sticky_cta" });
-    fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: "full", price: value }] });
-    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: "full" }, initiateEventId);
+    const value = 2999;
+    const initiateEventId = `${sessionId}:initiate_checkout:tier1`;
+    fireEvent("begin_checkout", sessionId, { tier: "tier1", value, source: "sticky_cta" });
+    fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: "tier1", price: value }] });
+    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: "tier1" }, initiateEventId);
     fetch("/api/meta/initiate-checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, tier: "full", eventId: initiateEventId }),
+      body: JSON.stringify({ sessionId, tier: "tier1", eventId: initiateEventId }),
     }).catch(() => {});
 
     if (!document.querySelector('script[src*="checkout.razorpay"]')) {
@@ -95,7 +95,7 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
     const res = await fetch("/api/checkout/order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, tier: "full" }),
+      body: JSON.stringify({ sessionId, tier: "tier1" }),
     });
     if (!res.ok) {
       alert("Could not create order. Please try again.");
@@ -103,7 +103,7 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
       return;
     }
     const { orderId, amount, currency, keyId } = await res.json();
-    const tier = "full";
+    const tier = "tier1";
     const source = "sticky_cta";
     fireEvent("checkout_modal_opened", sessionId, { tier, value, source });
     new window.Razorpay({
@@ -123,7 +123,7 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
       handler: function (response: { razorpay_payment_id: string }) {
         const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
         fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR" });
-        fireFbq("track", "Purchase", { value, currency: "INR", content_name: "full" }, purchaseEventId);
+        fireFbq("track", "Purchase", { value, currency: "INR", content_name: "tier1" }, purchaseEventId);
         window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
       },
     }).open();
@@ -164,7 +164,7 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
             cursor: "pointer",
           }}
         >
-          Open {childName}&rsquo;s Roadmap — ₹999 →
+          Open {childName}&rsquo;s Roadmap — ₹2,999 →
         </button>
         <div style={{ textAlign: "center", fontSize: "11.5px", color: "#7a7870", marginTop: "6px" }}>
           Full 6-week program

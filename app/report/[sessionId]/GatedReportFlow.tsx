@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { PlanPricing } from "./PlanInteractive";
 
 declare global {
   interface Window {
@@ -262,13 +263,6 @@ function TeaserScreen({
 
 // ── Screen 3: Paywall ─────────────────────────────────────────────────────────
 
-const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
-const TIER_AMOUNT: Record<"module1" | "full", number> = { module1: 499, full: 999 };
-const TIER_LABEL: Record<"module1" | "full", string> = {
-  module1: "Read the report + Week 1",
-  full: "Full 6-week roadmap",
-};
-
 function PaywallScreen({
   sessionId,
   childName,
@@ -281,108 +275,10 @@ function PaywallScreen({
   const fired = useRef(false);
 
   useEffect(() => {
-    const s = document.createElement("script");
-    s.src = "https://checkout.razorpay.com/v1/checkout.js";
-    s.async = true;
-    document.head.appendChild(s);
-    return () => { document.head.contains(s) && document.head.removeChild(s); };
-  }, []);
-
-  useEffect(() => {
     if (fired.current) return;
     fired.current = true;
     fireEvent("paywall_shown", sessionId, { variant: "gated" });
   }, [sessionId]);
-
-  async function openModal(tier: "module1" | "full") {
-    const value = TIER_AMOUNT[tier];
-    const initiateEventId = `${sessionId}:initiate_checkout:${tier}`;
-
-    fireEvent("begin_checkout", sessionId, { tier, value, source: "gated_paywall", variant: "gated" });
-    fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: tier, price: value }] });
-    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: tier }, initiateEventId);
-    fetch("/api/meta/initiate-checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, tier, eventId: initiateEventId }),
-    }).catch(() => {});
-
-    const res = await fetch("/api/checkout/order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, tier }),
-    });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      alert((d as { error?: string }).error ?? "Could not create order. Please try again.");
-      return;
-    }
-    const { orderId, amount, currency, keyId } = (await res.json()) as {
-      orderId: string;
-      amount: number;
-      currency: string;
-      keyId: string;
-    };
-
-    if (typeof window.Razorpay === "undefined") {
-      alert("Payment system still loading. Please try again in a moment.");
-      return;
-    }
-
-    fireEvent("checkout_modal_opened", sessionId, { tier, value, source: "gated_paywall" });
-
-    new window.Razorpay({
-      key: keyId,
-      amount,
-      currency,
-      order_id: orderId,
-      name: "Attention Architect",
-      description:
-        tier === "module1"
-          ? "Report + Week 1 Guide"
-          : `${childName}'s Six-Week Journey`,
-      prefill: { contact: phone },
-      theme: { color: "#F6C63D" },
-      modal: {
-        ondismiss: () => {
-          fireEvent("checkout_modal_dismissed", sessionId, { tier, value, source: "gated_paywall" });
-        },
-      },
-      handler: async function (response: {
-        razorpay_payment_id: string;
-        razorpay_order_id: string;
-        razorpay_signature: string;
-      }) {
-        const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
-        fireGtag("purchase", {
-          transaction_id: response.razorpay_payment_id,
-          value,
-          currency: "INR",
-          items: [{ item_id: tier, price: value }],
-        });
-        fireFbq("track", "Purchase", { value, currency: "INR", content_name: tier }, purchaseEventId);
-
-        // Fast-path: verify and record payment server-side before navigating,
-        // so the report page sees the paid purchase immediately on load.
-        try {
-          await fetch("/api/checkout/gated-confirm", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sessionId,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            }),
-          });
-        } catch {
-          // Non-fatal: the webhook will capture the payment even if this fails.
-          // Navigate anyway — the report will be accessible once the webhook fires.
-        }
-        window.location.href = `/report/${sessionId}`;
-      },
-    }).open();
-  }
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6" style={{ background: "var(--paper)" }}>
@@ -394,130 +290,7 @@ function PaywallScreen({
           Unlock {childName}&rsquo;s report
         </p>
 
-        {/* Primary ₹999 card */}
-        <div
-          style={{
-            background: "#f5e6c3",
-            borderRadius: 16,
-            padding: "24px 20px",
-            textAlign: "left",
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ fontFamily: BG, fontWeight: 800, fontSize: 26, color: "var(--ink)" }}>₹999</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#3a3830", margin: "6px 0 12px" }}>
-            {TIER_LABEL.full}
-          </div>
-          <ul style={{ margin: "0 0 18px", padding: 0, listStyle: "none" }}>
-            {[
-              "The complete report, unlocked now",
-              `All 6 weeks, sequenced specifically for ${childName}`,
-              "One weekly step — never a 20-item list at once",
-              "The reasoning behind each step, not just instructions",
-              "Yours to keep and revisit, no expiry",
-            ].map((item) => (
-              <li
-                key={item}
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "flex-start",
-                  marginBottom: 7,
-                  fontSize: 12.5,
-                  color: "#5C5950",
-                  lineHeight: 1.5,
-                }}
-              >
-                <span style={{ color: "#34503F", fontWeight: 700, flexShrink: 0 }}>✓</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-          <div style={{ borderTop: "1px solid rgba(32,30,25,0.10)", paddingTop: "14px", marginBottom: "14px" }}>
-            <p style={{ fontFamily: BG, fontSize: "12.5px", color: "#5C5950", fontStyle: "italic", margin: "0 0 5px", lineHeight: 1.55 }}>
-              &ldquo;A few simple changes reduced the daily arguments, and studying no longer feels like a battle.&rdquo;
-            </p>
-            <div style={{ fontSize: "11px", color: "#7a7870" }}>— Sandeel Shukla, Parent of a 14-year-old Son · Raipur</div>
-          </div>
-          <button
-            onClick={() => openModal("full")}
-            style={{
-              display: "block",
-              width: "100%",
-              background: "#1a1a1f",
-              color: "var(--paper)",
-              textAlign: "center",
-              fontFamily: BG,
-              fontWeight: 800,
-              fontSize: 14,
-              padding: 13,
-              borderRadius: 10,
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            Open {childName}&rsquo;s Roadmap
-          </button>
-        </div>
-
-        {/* Secondary ₹499 card — white background, same card shape */}
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 16,
-            padding: "24px 20px",
-            textAlign: "left",
-            marginBottom: 16,
-            border: "1.5px solid rgba(32,30,25,0.12)",
-          }}
-        >
-          <div style={{ fontFamily: BG, fontWeight: 800, fontSize: 22, color: "var(--ink)" }}>₹499</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#3a3830", margin: "6px 0 12px" }}>
-            {TIER_LABEL.module1}
-          </div>
-          <ul style={{ margin: "0 0 18px", padding: 0, listStyle: "none" }}>
-            {[
-              "The complete report, unlocked now",
-              "Week 1 of the roadmap, to see how it feels",
-              "Upgrade to the full 6 weeks anytime",
-            ].map((item) => (
-              <li
-                key={item}
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "flex-start",
-                  marginBottom: 7,
-                  fontSize: 12.5,
-                  color: "#5C5950",
-                  lineHeight: 1.5,
-                }}
-              >
-                <span style={{ color: "#34503F", fontWeight: 700, flexShrink: 0 }}>✓</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-          <button
-            onClick={() => openModal("module1")}
-            style={{
-              display: "block",
-              width: "100%",
-              background: "transparent",
-              border: "1.5px solid #1a1a1f",
-              color: "#1a1a1f",
-              textAlign: "center",
-              fontFamily: BG,
-              fontWeight: 800,
-              fontSize: 14,
-              padding: 13,
-              borderRadius: 10,
-              cursor: "pointer",
-            }}
-          >
-            Open the Report + Week 1
-          </button>
-        </div>
+        <PlanPricing sessionId={sessionId} calendlyUrl="" childName={childName} phone={phone} />
 
         {/* Trust row */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>

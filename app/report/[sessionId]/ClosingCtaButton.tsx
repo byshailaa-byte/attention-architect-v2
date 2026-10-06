@@ -55,21 +55,21 @@ export default function ClosingCtaButton({ sessionId, childName, parentName, ema
   }, []);
 
   async function open() {
-    const value = 999;
-    const initiateEventId = `${sessionId}:initiate_checkout:full`;
-    fireEvent("begin_checkout", sessionId, { tier: "full", value, source: "closing_cta" });
-    fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: "full", price: value }] });
-    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: "full" }, initiateEventId);
+    const value = 2999;
+    const initiateEventId = `${sessionId}:initiate_checkout:tier1`;
+    fireEvent("begin_checkout", sessionId, { tier: "tier1", value, source: "closing_cta" });
+    fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: "tier1", price: value }] });
+    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: "tier1" }, initiateEventId);
     fetch("/api/meta/initiate-checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, tier: "full", eventId: initiateEventId }),
+      body: JSON.stringify({ sessionId, tier: "tier1", eventId: initiateEventId }),
     }).catch(() => {});
 
     const res = await fetch("/api/checkout/order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, tier: "full" }),
+      body: JSON.stringify({ sessionId, tier: "tier1" }),
     });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
@@ -81,7 +81,7 @@ export default function ClosingCtaButton({ sessionId, childName, parentName, ema
       alert("Payment system still loading. Please try again in a moment.");
       return;
     }
-    const tier = "full";
+    const tier = "tier1";
     const source = "closing_cta";
     fireEvent("checkout_modal_opened", sessionId, { tier, value, source });
     new window.Razorpay({
@@ -100,8 +100,8 @@ export default function ClosingCtaButton({ sessionId, childName, parentName, ema
       },
       handler: function (response: { razorpay_payment_id: string }) {
         const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
-        fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR", items: [{ item_id: "full", price: value }] });
-        fireFbq("track", "Purchase", { value, currency: "INR", content_name: "full" }, purchaseEventId);
+        fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR", items: [{ item_id: "tier1", price: value }] });
+        fireFbq("track", "Purchase", { value, currency: "INR", content_name: "tier1" }, purchaseEventId);
         window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
       },
     }).open();
@@ -114,7 +114,7 @@ export default function ClosingCtaButton({ sessionId, childName, parentName, ema
         Invest in {childName}&rsquo;s Attention
       </div>
 
-      <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "30px", color: "#f2f1ed", marginTop: "6px" }}>₹999</div>
+      <div style={{ fontFamily: BG, fontWeight: 800, fontSize: "30px", color: "#f2f1ed", marginTop: "6px" }}>₹2,999</div>
       <div style={{ fontSize: "14px", color: "#c9c7d1", margin: "8px 0 4px", lineHeight: 1.5 }}>
         All 6 weeks, sequenced specifically for {childName}.
       </div>

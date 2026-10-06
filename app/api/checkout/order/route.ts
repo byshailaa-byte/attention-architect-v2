@@ -27,8 +27,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    if (!(tier in TIERS)) {
-      return NextResponse.json({ error: "Invalid tier" }, { status: 400 });
+    // Only the two current plans are sellable: tier1 (₹2,999) and tier2 (₹4,999). Legacy tiers
+    // (module1 ₹499 / full ₹999 / topup) stay in TIERS and are still READ elsewhere so existing
+    // buyers keep full LMS access — but a NEW order can never be created for them.
+    const SELLABLE_TIERS = new Set<string>(["tier1", "tier2"]);
+    if (!SELLABLE_TIERS.has(tier)) {
+      return NextResponse.json({ error: "unknown_tier" }, { status: 400 });
     }
 
     const sql = getSql();
