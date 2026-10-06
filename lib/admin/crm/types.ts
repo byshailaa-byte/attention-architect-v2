@@ -68,6 +68,7 @@ export type Message = {
   body: string;
   source: MessageSource;
   templateName?: string;
+  label?: string;             // AUTO header override, e.g. "DRIP STEP 3" (templateName is reused across steps)
   category?: MessageCategory;
   status: MessageStatus;
   at: string;                 // "9:13 pm" | ISO

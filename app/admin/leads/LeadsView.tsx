@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { maskPhone } from "@/lib/phone";
 import { CHANNEL_LABEL, type Channel, type Lead } from "@/lib/leads/merge";
 import type { SourceCounts } from "./page";
-import { C, BG, MONO, Badge, ChannelBadge, UrgentStatus, SafetyStatus, timeAgo, rupees } from "./ui";
+import { C, BG, FG, MONO, Badge, ChannelBadge, UrgentStatus, SafetyStatus, timeAgo, rupees } from "./ui";
 
 type ChipKey = "all" | Channel;
 
@@ -34,12 +34,12 @@ const PERIODS: { key: string; label: string }[] = [
 const TH: React.CSSProperties = {
   padding: "11px 16px",
   textAlign: "left",
-  fontFamily: MONO,
-  fontSize: 10,
-  fontWeight: 600,
-  letterSpacing: "0.08em",
+  fontFamily: FG,
+  fontSize: 10.5,
+  fontWeight: 700,
+  letterSpacing: "0.1em",
   textTransform: "uppercase",
-  color: C.muted,
+  color: "#8A6322",
 };
 const TD: React.CSSProperties = { padding: "13px 16px", fontSize: 13, verticalAlign: "top" };
 
@@ -81,7 +81,7 @@ export default function LeadsView({
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: BG, padding: "28px 36px 64px" }}>
-      <a href="/admin" style={{ fontFamily: MONO, fontSize: 12, color: C.muted, textDecoration: "none" }}>
+      <a href="/admin" style={{ fontFamily: FG, fontSize: 12, color: C.muted, textDecoration: "none" }}>
         ← Back to admin
       </a>
 
@@ -94,7 +94,7 @@ export default function LeadsView({
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <label htmlFor="range" style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>Period</label>
+          <label htmlFor="range" style={{ fontFamily: FG, fontSize: 11, color: C.muted }}>Period</label>
           <select
             id="range"
             value={range}
@@ -107,7 +107,7 @@ export default function LeadsView({
       </div>
 
       {error && (
-        <div style={{ background: `${C.red}12`, border: `1px solid ${C.red}40`, borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontFamily: MONO, fontSize: 12, color: C.red }}>
+        <div style={{ background: `${C.red}12`, border: `1px solid ${C.red}40`, borderRadius: 8, padding: "10px 14px", marginBottom: 18, fontFamily: FG, fontSize: 12, color: C.red }}>
           Could not load leads: {error}
         </div>
       )}
@@ -116,7 +116,7 @@ export default function LeadsView({
       <section aria-label="Lead counts by source" style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 12, marginBottom: 22 }}>
         {CARDS.map((c) => (
           <div key={c.key} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px" }}>
-            <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: C.muted }}>{c.label}</div>
+            <div style={{ fontFamily: FG, fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#8A6322" }}>{c.label}</div>
             <div style={{ fontSize: 28, fontWeight: 800, margin: "4px 0 2px", lineHeight: 1 }}>{counts[c.key]}</div>
             <div style={{ fontSize: 11, color: C.muted }}>{c.sub}</div>
           </div>
@@ -187,7 +187,7 @@ export default function LeadsView({
                   <div style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>{maskPhone(l.phone)}</div>
                 </td>
                 <td style={TD}><ChannelBadge channel={l.firstChannel} label={CHANNEL_LABEL[l.firstChannel]} /></td>
-                <td style={{ ...TD, fontFamily: MONO, fontSize: 11, color: C.muted }}>{l.campaignAd ?? "—"}</td>
+                <td style={{ ...TD, fontFamily: FG, fontSize: 11, color: C.muted }}>{l.campaignAd ?? "—"}</td>
                 <td style={TD}>
                   {l.furthestStep === "paid"
                     ? <span style={{ fontWeight: 600, color: C.green }}>Paid{l.amountPaise ? ` ${rupees(l.amountPaise)}` : ""}</span>

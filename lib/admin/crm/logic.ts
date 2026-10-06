@@ -60,6 +60,41 @@ export function nextLeadId(currentId: string, orderedIds: string[]): string | nu
   return orderedIds[i + 1];
 }
 
+// Worry keys (from the assessment/report) → short human labels for compact CRM rows.
+// Mirrors the public funnel's concern labels. The backend returns the raw key; the UI must
+// ALWAYS pass it through here so a raw key ("giveup", "finish") is never shown to an operator.
+const WORRY_LABELS: Record<string, string> = {
+  homework: "homework",
+  reminders: "reminders",
+  screens: "screens",
+  confidence: "confidence",
+  giveup: "gives up",
+  finish: "finishing",
+  focus: "focus",
+  other: "focus",
+};
+export function worryLabel(key: string): string {
+  return WORRY_LABELS[key] ?? key.replace(/_/g, " ");
+}
+
+// Drip controls are state-dependent (A4/A3 right panel):
+//   running          → [Pause drip] [Stop drip]
+//   paused           → [Resume drip] [Stop drip]
+//   stopped/finished → text only ("Drip stopped" / "Drip finished")
+//   opted out        → text only ("Opted out")
+//   none             → text only ("No drip running")
+export type DripState = "running" | "paused" | "stopped" | "opted_out" | "none";
+export type DripControl = { state: DripState; label: string };
+export function dripControl(dripState: string | null, optedOut = false): DripControl {
+  if (optedOut) return { state: "opted_out", label: "Opted out" };
+  if (!dripState) return { state: "none", label: "No drip running" };
+  const s = dripState.toLowerCase();
+  if (s.startsWith("paused")) return { state: "paused", label: dripState };
+  if (s.includes("stopped")) return { state: "stopped", label: "Drip stopped" };
+  if (s.includes("finished") || s.includes("ended") || s.includes("complete")) return { state: "stopped", label: "Drip finished" };
+  return { state: "running", label: dripState };
+}
+
 // ₹ formatting: ₹0.86, ₹4,999. Two decimals only when there's a fractional part.
 export function formatInr(amount: number): string {
   const whole = Number.isInteger(amount);

@@ -15,5 +15,6 @@ export type { CrmSource } from "./source";
 export * from "./types";
 export {
   replyWindow, composerMode, rowPill, waLink, telLink, maskPhone, nextLeadId, formatInr,
-  COMPOSER_FREE_NOTE, type ReplyWindow, type RowPill,
+  worryLabel, dripControl, COMPOSER_FREE_NOTE,
+  type ReplyWindow, type RowPill, type DripControl, type DripState,
 } from "./logic";

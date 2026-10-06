@@ -17,9 +17,10 @@ const WA_REPLY_LINE = ""; // empty — no reply-time claim
 
 // Paths where the widget must NOT render at all (prefix match). Verified against
 // real routes: /pre-assessment, /assessment, /simplified/start and /start (its
-// rewrite target), /report/generating (report build screen), and /lms — which
-// via startsWith also covers /lms-v2, so programme customers get no floating
-// assessment-support button.
+// rewrite target), /report/generating (report build screen), /lms — which via
+// startsWith also covers /lms-v2, so programme customers get no floating
+// assessment-support button — and /admin (operator CRM has its own WhatsApp tools;
+// the public support FAB must never appear over the admin UI).
 const HIDE_ON = [
   "/pre-assessment",
   "/assessment",
@@ -27,6 +28,7 @@ const HIDE_ON = [
   "/start",
   "/report/generating",
   "/lms",
+  "/admin",
 ];
 
 // Revenue pages: raise the FAB so it clears the inline pricing CTA. /roadmap is

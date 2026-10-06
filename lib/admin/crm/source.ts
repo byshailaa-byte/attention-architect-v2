@@ -20,7 +20,7 @@ export interface CrmSource {
   // "Preview data: not saved".
   logCall(input: LogCallInput): Promise<void>;
   sendMessage(input: SendMessageInput): Promise<void>;
-  setDrip(leadId: string, action: "resume" | "stop"): Promise<void>;
+  setDrip(leadId: string, action: "pause" | "resume" | "stop"): Promise<void>;
 
   // True in fixture mode → UI renders the "Preview data. Nothing is saved or sent." banner.
   readonly isPreview: boolean;

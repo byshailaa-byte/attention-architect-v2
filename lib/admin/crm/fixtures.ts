@@ -176,7 +176,7 @@ const CONVERSATIONS: Conversation[] = [
   },
   {
     id: "neha-ishaan", leadId: "neha-ishaan", matched: true, displayName: "Neha · Ishaan’s mother", childName: "Ishaan",
-    phoneE164: "+919700330055", stage: "read_report", lastPreview: "You: Here’s the plan link for Ishaan…  ✓✓",
+    phoneE164: "+919700330055", stage: "read_report", lastPreview: "You: Here’s the plan link for Ishaan…",
     lastAt: "Sat", lastInboundAt: null, needsReply: false, optedOut: false, dripState: "step 3 of 5 on Thu",
   },
 ];
@@ -192,7 +192,8 @@ function buildThread(id: string): Thread | null {
   const conv = CONVERSATIONS.find((c) => c.id === id);
   if (!conv) return null;
   const lead = conv.leadId ? byId.get(conv.leadId) ?? null : null;
-  // Priya has the fully-authored thread from A3; others get a short representative thread.
+  // Priya has the fully-authored thread from A3; Neha·Ishaan shows a later drip step (step 3);
+  // others get a short representative thread.
   const messages = id === "priya"
     ? [
         { id: "m1", direction: "out", source: "auto", templateName: "report_ready", category: "utility", status: "read",
@@ -201,6 +202,13 @@ function buildThread(id: string): Thread | null {
           at: "10:00 am", body: "Did tonight’s step work with Kabir? Reply here and tell us how it went." } as const,
         { id: "m3", direction: "in", source: "manual", status: "delivered", at: "11:02 am",
           body: "What happens in the 3 calls?" } as const,
+      ]
+    : id === "neha-ishaan"
+    ? [
+        { id: "m1", direction: "out", source: "auto", templateName: "report_ready", category: "utility", status: "read",
+          at: "Thu", body: "Hi Neha, Ishaan’s attention report is ready. Open it here: attentionparents…/r/••••" } as const,
+        { id: "m2", direction: "out", source: "auto", templateName: "step_check_in", label: "DRIP STEP 3", category: "marketing", status: "read",
+          at: "Sat", body: "Here’s the plan link for Ishaan: attentionparents…/r/••••" } as const,
       ]
     : [
         { id: "m1", direction: "out", source: "auto", templateName: "report_ready", category: "utility", status: "read",

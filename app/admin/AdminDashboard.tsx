@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { normalizePhone } from "@/lib/phone";
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -20,7 +20,10 @@ const C = {
 } as const;
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
-const MONO = "'JetBrains Mono', 'Fira Code', monospace";
+// Body/label font. Labels and table text use Figtree now (was monospace). ID is the monospace
+// face, kept only for true identifiers (session/report IDs, phone digits) where fixed-width helps.
+const FG = "var(--font-figtree), Figtree, system-ui, sans-serif";
+const ID = "'JetBrains Mono', 'Fira Code', monospace";
 
 // ── Responsive helper ─────────────────────────────────────────────────────────
 
@@ -282,7 +285,7 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: C.muted, margin: "0 0 14px" }}>
+    <p style={{ fontFamily: FG, fontSize: 11.5, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#8A6322", margin: "0 0 14px" }}>
       {children}
     </p>
   );
@@ -291,9 +294,9 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
   return (
     <Card style={{ flex: "1 1 160px", minWidth: 0 }}>
-      <p style={{ fontFamily: MONO, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: C.muted, margin: "0 0 10px" }}>{label}</p>
+      <p style={{ fontFamily: FG, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: C.muted, margin: "0 0 10px" }}>{label}</p>
       <p style={{ fontFamily: BG, fontSize: 28, fontWeight: 800, color: accent ? C.yellow : C.text, margin: "0 0 4px", lineHeight: 1 }}>{value}</p>
-      {sub && <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: 0 }}>{sub}</p>}
+      {sub && <p style={{ fontFamily: FG, fontSize: 11, color: C.muted, margin: 0 }}>{sub}</p>}
     </Card>
   );
 }
@@ -303,14 +306,14 @@ function HBar({ label, count, max, color, pctOfPrev }: { label: string; count: n
   return (
     <div style={{ marginBottom: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, alignItems: "center" }}>
-        <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>{label}</span>
+        <span style={{ fontFamily: FG, fontSize: 11, color: C.muted }}>{label}</span>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {pctOfPrev != null && (
-            <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted }}>
+            <span style={{ fontFamily: FG, fontSize: 10, color: C.muted }}>
               {pctOfPrev}% of prev
             </span>
           )}
-          <span style={{ fontFamily: MONO, fontSize: 11, color: C.text }}>{count}</span>
+          <span style={{ fontFamily: FG, fontSize: 11, color: C.text }}>{count}</span>
         </div>
       </div>
       <div style={{ height: 6, background: C.border, borderRadius: 3, overflow: "hidden" }}>
@@ -327,7 +330,7 @@ function ActivityDot({ type }: { type: string }) {
 
 function Badge({ text, color }: { text: string; color: string }) {
   return (
-    <span style={{ fontFamily: MONO, fontSize: 10, color, border: `1px solid ${color}30`, background: `${color}12`, borderRadius: 4, padding: "2px 7px", letterSpacing: "0.06em" }}>
+    <span style={{ fontFamily: FG, fontSize: 10, color, border: `1px solid ${color}30`, background: `${color}12`, borderRadius: 4, padding: "2px 7px", letterSpacing: "0.06em" }}>
       {text}
     </span>
   );
@@ -351,7 +354,7 @@ function FunnelChart({ stages }: { stages: { label: string; count: number; color
           <div key={stage.label}>
             {i > 0 && (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 14 }}>
-                <span style={{ fontFamily: MONO, fontSize: 9, color: C.muted }}>
+                <span style={{ fontFamily: FG, fontSize: 9, color: C.muted }}>
                   {pctOfPrev != null ? `↓ ${pctOfPrev}%` : "—"}
                 </span>
               </div>
@@ -369,16 +372,16 @@ function FunnelChart({ stages }: { stages: { label: string; count: number; color
                   paddingLeft: 10,
                 }}>
                   {barWidth > 15 && (
-                    <span style={{ fontFamily: MONO, fontSize: 11, color: C.bg, fontWeight: 700, whiteSpace: "nowrap" }}>
+                    <span style={{ fontFamily: FG, fontSize: 11, color: C.bg, fontWeight: 700, whiteSpace: "nowrap" }}>
                       {stage.count}
                     </span>
                   )}
                 </div>
               </div>
               <div style={{ minWidth: 140, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>{stage.label}</span>
+                <span style={{ fontFamily: FG, fontSize: 11, color: C.muted }}>{stage.label}</span>
                 {barWidth <= 15 && (
-                  <span style={{ fontFamily: MONO, fontSize: 11, color: C.text, marginLeft: 8 }}>{stage.count}</span>
+                  <span style={{ fontFamily: FG, fontSize: 11, color: C.text, marginLeft: 8 }}>{stage.count}</span>
                 )}
               </div>
             </div>
@@ -407,9 +410,9 @@ function SessionTimeline({ sessionId }: { sessionId: string }) {
       .finally(() => setLoading(false));
   }, [sessionId]);
 
-  if (loading) return <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>Loading events…</p>;
+  if (loading) return <p style={{ fontFamily: FG, fontSize: 11, color: C.muted }}>Loading events…</p>;
   if (!events) return null;
-  if (events.length === 0) return <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>No events recorded for this session.</p>;
+  if (events.length === 0) return <p style={{ fontFamily: FG, fontSize: 11, color: C.muted }}>No events recorded for this session.</p>;
 
   return (
     <div>
@@ -421,24 +424,24 @@ function SessionTimeline({ sessionId }: { sessionId: string }) {
           <div key={i}>
             {gap && (
               <div style={{ paddingLeft: 16, marginBottom: 2 }}>
-                <span style={{ fontFamily: MONO, fontSize: 9, color: C.muted }}>{gap}</span>
+                <span style={{ fontFamily: FG, fontSize: 9, color: C.muted }}>{gap}</span>
               </div>
             )}
             <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
               <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0, marginTop: 3 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                  <span style={{ fontFamily: MONO, fontSize: 11, color: C.text }}>
+                  <span style={{ fontFamily: FG, fontSize: 11, color: C.text }}>
                     {ev.event_type === "scroll_milestone" && typeof ev.metadata?.depth === "number"
                       ? `Scroll milestone — ${ev.metadata.depth}%`
                       : (EVENT_LABEL[ev.event_type] ?? ev.event_type)}
                   </span>
-                  <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted, whiteSpace: "nowrap" }}>
+                  <span style={{ fontFamily: FG, fontSize: 10, color: C.muted, whiteSpace: "nowrap" }}>
                     {fmtDateTime(ev.created_at)}
                   </span>
                 </div>
                 {meta.length > 0 && (
-                  <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted }}>
+                  <span style={{ fontFamily: FG, fontSize: 10, color: C.muted }}>
                     {meta.map(([k, v]) => `${k}: ${v}`).join(" · ")}
                   </span>
                 )}
@@ -482,7 +485,7 @@ function AnswersPanel({ assessment, onClose }: { assessment: AssessmentData; onC
               <p style={{ fontFamily: BG, fontWeight: 700, fontSize: 17, color: C.text, margin: "0 0 8px" }}>
                 {assessment.child_name}
                 {assessment.parent_name && (
-                  <span style={{ fontFamily: MONO, fontWeight: 400, fontSize: 11, color: C.muted, marginLeft: 10 }}>
+                  <span style={{ fontFamily: FG, fontWeight: 400, fontSize: 11, color: C.muted, marginLeft: 10 }}>
                     parent: {assessment.parent_name}
                   </span>
                 )}
@@ -499,14 +502,14 @@ function AnswersPanel({ assessment, onClose }: { assessment: AssessmentData; onC
                   href={`/report/${assessment.session_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ background: "none", border: `1px solid ${C.border}`, color: C.blue, borderRadius: 6, padding: "6px 12px", fontFamily: MONO, fontSize: 12, textDecoration: "none" }}
+                  style={{ background: "none", border: `1px solid ${C.border}`, color: C.blue, borderRadius: 6, padding: "6px 12px", fontFamily: FG, fontSize: 12, textDecoration: "none" }}
                 >
                   Report →
                 </a>
               )}
               <button
                 onClick={onClose}
-                style={{ background: "none", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontFamily: MONO, fontSize: 12 }}
+                style={{ background: "none", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontFamily: FG, fontSize: 12 }}
               >
                 Close
               </button>
@@ -514,29 +517,29 @@ function AnswersPanel({ assessment, onClose }: { assessment: AssessmentData; onC
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0 }}>Email</span>
+            <span style={{ fontFamily: FG, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0 }}>Email</span>
             {assessment.email ? (
-              <span style={{ fontFamily: MONO, fontSize: 12, color: C.text }}>{assessment.email}</span>
+              <span style={{ fontFamily: FG, fontSize: 12, color: C.text }}>{assessment.email}</span>
             ) : (
-              <span style={{ fontFamily: MONO, fontSize: 12, color: C.red }}>Not captured</span>
+              <span style={{ fontFamily: FG, fontSize: 12, color: C.red }}>Not captured</span>
             )}
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: (assessment.concerns ?? []).length > 0 ? 12 : 0 }}>
-            <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0 }}>Phone</span>
+            <span style={{ fontFamily: FG, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0 }}>Phone</span>
             {assessment.phone ? (
-              <span style={{ fontFamily: MONO, fontSize: 12, color: C.text }}>{assessment.phone}</span>
+              <span style={{ fontFamily: ID, fontSize: 12, color: C.text }}>{assessment.phone}</span>
             ) : (
-              <span style={{ fontFamily: MONO, fontSize: 12, color: C.red }}>Not captured</span>
+              <span style={{ fontFamily: FG, fontSize: 12, color: C.red }}>Not captured</span>
             )}
           </div>
 
           {(assessment.concerns ?? []).length > 0 && (
             <div>
-              <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Concerns</span>
+              <span style={{ fontFamily: FG, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Concerns</span>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 7 }}>
                 {assessment.concerns.map((c, i) => (
-                  <span key={i} style={{ fontFamily: MONO, fontSize: 11, color: C.text, background: C.border, borderRadius: 4, padding: "3px 9px" }}>{c}</span>
+                  <span key={i} style={{ fontFamily: FG, fontSize: 11, color: C.text, background: C.border, borderRadius: 4, padding: "3px 9px" }}>{c}</span>
                 ))}
               </div>
             </div>
@@ -553,7 +556,7 @@ function AnswersPanel({ assessment, onClose }: { assessment: AssessmentData; onC
                   border: "none",
                   borderBottom: tab === t ? `2px solid ${C.yellow}` : "2px solid transparent",
                   color: tab === t ? C.text : C.muted,
-                  fontFamily: MONO,
+                  fontFamily: FG,
                   fontSize: 11,
                   padding: "8px 16px",
                   cursor: "pointer",
@@ -577,17 +580,17 @@ function AnswersPanel({ assessment, onClose }: { assessment: AssessmentData; onC
               {assessment.resolved_answers.length > 0 ? (
                 assessment.resolved_answers.map(({ id, question, answer }) => (
                   <div key={id} style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
-                    <p style={{ fontFamily: MONO, fontSize: 10, color: C.yellow, letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 5px" }}>{id}</p>
+                    <p style={{ fontFamily: ID, fontSize: 10, color: C.yellow, letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 5px" }}>{id}</p>
                     <p style={{ fontSize: 13, color: C.muted, margin: "0 0 7px", lineHeight: 1.5 }}>{question}</p>
                     <p style={{ fontSize: 14, color: C.text, fontWeight: 600, margin: 0 }}>{answer}</p>
                   </div>
                 ))
               ) : (
-                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No answers recorded.</p>
+                <p style={{ fontFamily: FG, fontSize: 12, color: C.muted }}>No answers recorded.</p>
               )}
               {(assessment.tried ?? []).length > 0 && (
                 <div style={{ marginTop: 16 }}>
-                  <p style={{ fontFamily: MONO, fontSize: 10, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 8px" }}>What They&apos;ve Tried</p>
+                  <p style={{ fontFamily: FG, fontSize: 10, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 8px" }}>What They&apos;ve Tried</p>
                   {(assessment.tried ?? []).map((t, i) => (
                     <p key={i} style={{ fontSize: 13, color: C.text, margin: "0 0 4px" }}>· {t}</p>
                   ))}
@@ -595,7 +598,7 @@ function AnswersPanel({ assessment, onClose }: { assessment: AssessmentData; onC
               )}
               {(assessment.better ?? []).length > 0 && (
                 <div style={{ marginTop: 16 }}>
-                  <p style={{ fontFamily: MONO, fontSize: 10, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 8px" }}>What &ldquo;Better&rdquo; Looks Like</p>
+                  <p style={{ fontFamily: FG, fontSize: 10, color: C.muted, letterSpacing: "0.1em", textTransform: "uppercase", margin: "0 0 8px" }}>What &ldquo;Better&rdquo; Looks Like</p>
                   {(assessment.better ?? []).map((b, i) => (
                     <p key={i} style={{ fontSize: 13, color: C.text, margin: "0 0 4px" }}>· {b}</p>
                   ))}
@@ -689,140 +692,75 @@ function RangeControl({
     router.push(`/admin${qs}`);
   }
 
-  const presetBtn = (active: boolean): React.CSSProperties => ({
-    flex: 1,
+  // Horizontal toolbar styles (this control sits in the top toolbar row, not a sidebar column).
+  const presetBtn = (active: boolean, accent: string = C.yellow): React.CSSProperties => ({
     border: "none",
-    borderRadius: 4,
-    padding: "5px 0",
-    fontFamily: MONO,
-    fontSize: 10,
+    borderRadius: 7,
+    padding: "7px 11px",
+    fontFamily: FG,
+    fontSize: 12,
+    fontWeight: active ? 700 : 500,
     cursor: "pointer",
-    background: active ? C.yellow : C.border,
-    color: active ? C.text : C.muted,
-    fontWeight: active ? 700 : 400,
+    background: active ? accent : C.border,
+    color: active ? (accent === C.yellow ? C.text : "#fff") : C.muted,
+    whiteSpace: "nowrap",
   });
-
   const dateInput: React.CSSProperties = {
-    background: C.border,
+    background: C.card,
     border: `1px solid ${C.border}`,
-    borderRadius: 4,
-    padding: "4px 8px",
-    fontFamily: MONO,
-    fontSize: 10,
+    borderRadius: 7,
+    padding: "7px 9px",
+    fontFamily: FG,
+    fontSize: 11,
     color: C.text,
     outline: "none",
-    width: "100%",
     boxSizing: "border-box",
   };
+  const toggleBtn = (on: boolean, accent: string): React.CSSProperties => ({
+    background: on ? `${accent}1c` : C.card,
+    border: `1px solid ${on ? accent + "80" : C.border}`,
+    borderRadius: 7,
+    color: on ? accent : C.muted,
+    fontFamily: FG,
+    fontSize: 11.5,
+    fontWeight: 600,
+    padding: "7px 11px",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  });
 
   return (
-    <div style={{ padding: "10px 12px 4px", borderTop: `1px solid ${C.border}` }}>
-      <p style={{ fontFamily: MONO, fontSize: 9, color: C.muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 6px" }}>
-        Date Range
-      </p>
-      {CAMPAIGN_PRESETS.length > 0 && (
-        <div style={{ display: "flex", gap: 3, marginBottom: 3 }}>
-          {CAMPAIGN_PRESETS.map(p => (
-            <button key={p.key} onClick={() => selectPreset(p.key)} style={{ ...presetBtn(activePreset === p.key), background: activePreset === p.key ? C.blue : C.border, color: activePreset === p.key ? "#fff" : C.muted }}>
-              {p.label}
-            </button>
-          ))}
-          {CAMPAIGN_PRESETS.length > 0 && (
-            <span style={{ fontFamily: MONO, fontSize: 8, color: C.muted, padding: "5px 4px", letterSpacing: "0.04em" }}>
-              {activePreset === "c1" ? "Jul 20–Aug 11" : activePreset === "c2" ? "Aug 12+" : "campaigns"}
-            </span>
-          )}
-        </div>
-      )}
-      <div style={{ display: "flex", gap: 3, marginBottom: showCustom || isCustom ? 6 : 4 }}>
-        {BASE_PRESETS.map(p => (
-          <button key={p.key} onClick={() => selectPreset(p.key)} style={presetBtn(activePreset === p.key)}>
-            {p.label}
-          </button>
-        ))}
-        <button
-          onClick={() => setShowCustom(v => !v)}
-          style={{ ...presetBtn(activePreset === "custom"), flex: 1.4 }}
-        >
-          Custom
-        </button>
-      </div>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <span style={{ fontFamily: FG, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#8A6322" }}>Range</span>
+      {CAMPAIGN_PRESETS.map(p => (
+        <button key={p.key} onClick={() => selectPreset(p.key)} style={presetBtn(activePreset === p.key, C.blue)}>{p.label}</button>
+      ))}
+      {BASE_PRESETS.map(p => (
+        <button key={p.key} onClick={() => selectPreset(p.key)} style={presetBtn(activePreset === p.key)}>{p.label}</button>
+      ))}
+      <button onClick={() => setShowCustom(v => !v)} style={presetBtn(activePreset === "custom")}>Custom</button>
 
       {(showCustom || isCustom) && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 4 }}>
-          <input
-            type="date"
-            value={customFrom}
-            onChange={e => setCustomFrom(e.target.value)}
-            style={dateInput}
-          />
-          <input
-            type="date"
-            value={customTo}
-            onChange={e => setCustomTo(e.target.value)}
-            style={dateInput}
-          />
+        <>
+          <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} style={dateInput} />
+          <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} style={dateInput} />
           <button
             onClick={applyCustom}
             disabled={!customFrom || !customTo}
-            style={{
-              background: customFrom && customTo ? C.yellow : C.border,
-              color: customFrom && customTo ? C.text : C.muted,
-              border: "none",
-              borderRadius: 4,
-              padding: "5px",
-              fontFamily: MONO,
-              fontSize: 10,
-              cursor: customFrom && customTo ? "pointer" : "not-allowed",
-              fontWeight: 700,
-            }}
+            style={{ background: customFrom && customTo ? C.yellow : C.border, color: customFrom && customTo ? C.text : C.muted, border: "none", borderRadius: 7, padding: "7px 12px", fontFamily: FG, fontSize: 12, cursor: customFrom && customTo ? "pointer" : "not-allowed", fontWeight: 700 }}
           >
             Apply
           </button>
-        </div>
+        </>
       )}
 
       {campaignLaunchAt && (
-        <button
-          onClick={toggleArchive}
-          style={{
-            display: "block",
-            width: "100%",
-            background: showArchive ? `${C.red}18` : "none",
-            border: `1px solid ${showArchive ? C.red + "50" : C.border}`,
-            borderRadius: 4,
-            color: showArchive ? C.red : C.muted,
-            fontFamily: MONO,
-            fontSize: 9,
-            padding: "5px 8px",
-            cursor: "pointer",
-            textAlign: "left",
-            letterSpacing: "0.04em",
-            marginBottom: 4,
-          }}
-        >
-          {showArchive ? "✕ Hide pre-launch data" : "⊞ Show archived data"}
+        <button onClick={toggleArchive} style={toggleBtn(showArchive, C.red)}>
+          {showArchive ? "✕ Hide pre-launch" : "⊞ Archived"}
         </button>
       )}
-      <button
-        onClick={toggleInternal}
-        style={{
-          display: "block",
-          width: "100%",
-          background: showInternal ? `${C.yellow}28` : "none",
-          border: `1px solid ${showInternal ? C.yellow + "80" : C.border}`,
-          borderRadius: 4,
-          color: showInternal ? C.yellow : C.muted,
-          fontFamily: MONO,
-          fontSize: 9,
-          padding: "5px 8px",
-          cursor: "pointer",
-          textAlign: "left",
-          letterSpacing: "0.04em",
-          marginBottom: 4,
-        }}
-      >
-        {showInternal ? "✕ Hide internal sessions" : "⊞ Show internal sessions"}
+      <button onClick={toggleInternal} style={toggleBtn(showInternal, C.yellow)}>
+        {showInternal ? "✕ Hide internal" : "⊞ Internal"}
       </button>
     </div>
   );
@@ -832,18 +770,6 @@ function RangeControl({
 
 type Section = "overview" | "funnel" | "journeys" | "dropoffs" | "lms" | "users" | "archetypes" | "handbook" | "events";
 
-const NAV: { id: Section; label: string }[] = [
-  { id: "overview",   label: "Overview" },
-  { id: "funnel",     label: "Funnel" },
-  { id: "journeys",   label: "User Journeys" },
-  { id: "dropoffs",   label: "Drop-offs" },
-  { id: "lms",        label: "LMS Activity" },
-  { id: "users",      label: "Users" },
-  { id: "archetypes", label: "Archetypes" },
-  { id: "handbook",   label: "Handbook" },
-  { id: "events",     label: "Events" },
-];
-
 export default function AdminDashboard({
   kpi, assessments, archetypes, activity, lms,
   funnelEvents, dropOffs, funnelSince,
@@ -852,11 +778,17 @@ export default function AdminDashboard({
   campaignLaunchAt, campaign2LaunchAt, showArchive, showInternal,
   pendingNarrativeReviews, handbookLeads, waFailures, neverGenerated,
 }: AdminDashboardProps) {
-  const [active, setActive] = useState<Section>("overview");
   const [search, setSearch] = useState("");
   const [viewingId, setViewingId] = useState<string | null>(null);
   const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // The section is driven by ?tab= (set by the sidebar in AdminShell), not internal state, so the
+  // nav lives in one place. A live search always jumps to the Users list, as it did before.
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const SECTIONS: Section[] = ["overview", "funnel", "journeys", "dropoffs", "lms", "users", "archetypes", "handbook", "events"];
+  const urlSection: Section = tabParam && (SECTIONS as string[]).includes(tabParam) ? (tabParam as Section) : "overview";
+  const active: Section = search.trim() ? "users" : urlSection;
 
   // Handbook backfill: N = queued rows whose phone is actually sendable.
   const queuedHandbookCount = useMemo(
@@ -884,11 +816,6 @@ export default function AdminDashboard({
     } finally {
       setSendingQueued(false);
     }
-  }
-
-  function handleNav(section: Section) {
-    setActive(section);
-    if (isMobile) setSidebarOpen(false);
   }
 
   const viewingAssessment = viewingId ? assessments.find(a => a.id === viewingId) ?? null : null;
@@ -946,224 +873,55 @@ export default function AdminDashboard({
     return pages;
   }, [scrollMilestones]);
 
-  const sidebarStyle: React.CSSProperties = isMobile ? {
-    position: "fixed",
-    top: 0,
-    left: sidebarOpen ? 0 : -220,
-    bottom: 0,
-    width: 220,
-    zIndex: 101,
-    background: C.card,
-    borderRight: `1px solid ${C.border}`,
-    display: "flex",
-    flexDirection: "column",
-    overflowY: "auto",
-    transition: "left 0.25s ease",
-  } : {
-    width: 200,
-    flexShrink: 0,
-    background: C.card,
-    borderRight: `1px solid ${C.border}`,
-    display: "flex",
-    flexDirection: "column",
-    position: "sticky",
-    top: 0,
-    height: "100vh",
-    overflowY: "auto",
-  };
-
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: C.bg, fontFamily: BG, color: C.text }}>
+    <div style={{ background: C.bg, fontFamily: BG, color: C.text, minHeight: "100vh" }}>
+      <main style={{ minWidth: 0, padding: isMobile ? "16px 16px 80px" : "28px 32px 64px", overflowX: "hidden" }}>
 
-      {/* Mobile top bar */}
-      {isMobile && (
-        <div style={{
-          position: "fixed",
-          top: 0, left: 0, right: 0,
-          zIndex: 80,
-          height: 48,
-          background: C.card,
-          borderBottom: `1px solid ${C.border}`,
-          display: "flex",
-          alignItems: "center",
-          padding: "0 16px",
-          gap: 14,
-        }}>
-          <button
-            onClick={() => setSidebarOpen(v => !v)}
-            aria-label="Open menu"
-            style={{ background: "none", border: "none", color: C.text, cursor: "pointer", fontSize: 20, lineHeight: 1, padding: "4px 0", flexShrink: 0 }}
-          >
-            ☰
-          </button>
-          <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 18, width: "auto", opacity: 0.9 }} />
-          <span style={{ fontFamily: BG, fontWeight: 700, fontSize: 14, color: C.text, marginLeft: "auto" }}>
-            {NAV.find(n => n.id === active)?.label ?? "Admin"}
-          </span>
-        </div>
-      )}
-
-      {/* Sidebar backdrop (mobile only) */}
-      {isMobile && sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 100 }}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside style={sidebarStyle}>
-        <div style={{ padding: isMobile ? "16px 20px 12px" : "24px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        {/* Toolbar: global search · date range / archived / internal · refresh. The nav itself
+            now lives once, in the AdminShell sidebar. */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 22, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
           <div>
-            <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 22, width: "auto", opacity: 0.9, marginBottom: 4 }} />
-            <p style={{ fontFamily: BG, fontWeight: 800, fontSize: 15, color: C.text, margin: 0 }}>Admin</p>
+            <input
+              type="text"
+              placeholder="Search email, phone, session…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ width: 260, maxWidth: "100%", background: C.card, border: `1px solid ${search ? C.yellow : C.border}`, borderRadius: 8, padding: "9px 12px", fontFamily: FG, fontSize: 13, color: C.text, outline: "none", boxSizing: "border-box" }}
+            />
+            {search && (
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
+                <span style={{ fontFamily: FG, fontSize: 11, color: C.muted }}>{filtered.length} match{filtered.length !== 1 ? "es" : ""}</span>
+                <button onClick={() => setSearch("")} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontFamily: FG, fontSize: 11, padding: 0 }}>clear</button>
+              </div>
+            )}
           </div>
-          {isMobile && (
-            <button
-              onClick={() => setSidebarOpen(false)}
-              style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 4 }}
-            >
-              ✕
-            </button>
-          )}
-        </div>
 
-        {/* Global search */}
-        <div style={{ padding: "0 12px 10px" }}>
-          <input
-            type="text"
-            placeholder="Search email, phone, session…"
-            value={search}
-            onChange={e => { setSearch(e.target.value); if (e.target.value.trim()) setActive("users"); }}
-            style={{
-              width: "100%",
-              background: C.border,
-              border: `1px solid ${search ? C.yellow : C.border}`,
-              borderRadius: 6,
-              padding: "7px 10px",
-              fontFamily: MONO,
-              fontSize: 11,
-              color: C.text,
-              outline: "none",
-              boxSizing: "border-box",
-            }}
-          />
-          {search && (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-              <span style={{ fontFamily: MONO, fontSize: 9, color: C.muted }}>{filtered.length} match{filtered.length !== 1 ? "es" : ""}</span>
-              <button onClick={() => setSearch("")} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontFamily: MONO, fontSize: 9, padding: 0 }}>clear</button>
-            </div>
-          )}
-        </div>
-
-        <nav style={{ flex: 1, padding: "4px 12px" }}>
-          {NAV.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => handleNav(id)}
-              style={{
-                display: "block",
-                width: "100%",
-                textAlign: "left",
-                background: active === id ? `${C.yellow}18` : "none",
-                border: "none",
-                borderRadius: 6,
-                color: active === id ? C.yellow : C.muted,
-                fontFamily: MONO,
-                fontSize: 12,
-                padding: "9px 12px",
-                cursor: "pointer",
-                marginBottom: 2,
-                fontWeight: active === id ? 700 : 400,
-                letterSpacing: "0.04em",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-          {/* Pending narrative reviews badge */}
           {pendingNarrativeReviews > 0 && (
-            <div style={{
-              margin:       "8px 0",
-              padding:      "8px 12px",
-              background:   "rgba(246, 198, 61, 0.1)",
-              border:       `1px solid rgba(246, 198, 61, 0.3)`,
-              borderRadius: 6,
-              display:      "flex",
-              alignItems:   "center",
-              gap:          8,
-            }}>
-              <span style={{
-                background:   C.yellow,
-                color:        "#000",
-                borderRadius: "50%",
-                width:        20,
-                height:       20,
-                display:      "inline-flex",
-                alignItems:   "center",
-                justifyContent: "center",
-                fontSize:     11,
-                fontWeight:   800,
-                flexShrink:   0,
-              }}>
-                {pendingNarrativeReviews}
-              </span>
-              <span style={{ fontFamily: MONO, fontSize: 11, color: C.yellow, lineHeight: 1.3 }}>
-                report{pendingNarrativeReviews === 1 ? "" : "s"} pending review
-              </span>
-            </div>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(246,198,61,0.12)", border: "1px solid rgba(246,198,61,0.4)", borderRadius: 8, padding: "7px 10px" }}>
+              <span style={{ background: C.yellow, color: "#000", borderRadius: "50%", width: 20, height: 20, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{pendingNarrativeReviews}</span>
+              <span style={{ fontFamily: FG, fontSize: 12, color: "#8A6322", fontWeight: 600 }}>report{pendingNarrativeReviews === 1 ? "" : "s"} pending review</span>
+            </span>
           )}
 
-          {/* External tools */}
-          <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 8, paddingTop: 8 }}>
-            <a
-              href="/admin/leads"
-              style={{
-                display: "flex", alignItems: "center", width: "100%", textAlign: "left",
-                background: "none", borderRadius: 6, color: C.muted,
-                fontFamily: MONO, fontSize: 12, padding: "9px 12px",
-                textDecoration: "none", marginBottom: 2, letterSpacing: "0.04em",
-              }}
-            >
-              Leads
-              <span style={{ fontSize: 9, fontWeight: 700, marginLeft: 6, padding: "1px 5px", borderRadius: 8, background: C.yellow, color: "#000", letterSpacing: "0.06em" }}>NEW</span>
-            </a>
-            <a
-              href="/admin/lms-user"
-              style={{
-                display: "block", width: "100%", textAlign: "left",
-                background: "none", borderRadius: 6, color: C.muted,
-                fontFamily: MONO, fontSize: 12, padding: "9px 12px",
-                textDecoration: "none", marginBottom: 2, letterSpacing: "0.04em",
-              }}
-            >
-              View as user →
-            </a>
-          </div>
-        </nav>
+          <div style={{ flex: 1, minWidth: 12 }} />
 
-        <RangeControl
-          rangeParam={rangeParam}
-          fromParam={fromParam}
-          toParam={toParam}
-          campaignLaunchAt={campaignLaunchAt}
-          campaign2LaunchAt={campaign2LaunchAt}
-          showArchive={showArchive}
-          showInternal={showInternal}
-        />
+          <RangeControl
+            rangeParam={rangeParam}
+            fromParam={fromParam}
+            toParam={toParam}
+            campaignLaunchAt={campaignLaunchAt}
+            campaign2LaunchAt={campaign2LaunchAt}
+            showArchive={showArchive}
+            showInternal={showInternal}
+          />
 
-        <div style={{ padding: "10px 20px 20px" }}>
           <a
             href="/admin"
-            style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textDecoration: "none", display: "block", textAlign: "center", border: `1px solid ${C.border}`, borderRadius: 6, padding: "6px 0" }}
+            style={{ fontFamily: FG, fontSize: 12, fontWeight: 600, color: C.muted, textDecoration: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "9px 14px", background: C.card, whiteSpace: "nowrap" }}
           >
             ↺ Refresh
           </a>
         </div>
-      </aside>
-
-      {/* Main Content */}
-      <main style={{ flex: 1, minWidth: 0, padding: isMobile ? "64px 16px 80px" : "32px 32px 64px", overflowX: "hidden" }}>
 
         {/* Archive banner */}
         {showArchive && campaignLaunchAt && (
@@ -1178,7 +936,7 @@ export default function AdminDashboard({
             gap: 10,
           }}>
             <span style={{ color: C.red, fontSize: 14 }}>⚠</span>
-            <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>
+            <span style={{ fontFamily: FG, fontSize: 11, color: C.muted }}>
               Viewing archived data from before campaign launch —{" "}
               <span style={{ color: C.text }}>
                 {new Date(campaignLaunchAt).toLocaleString("en-IN", {
@@ -1225,12 +983,12 @@ export default function AdminDashboard({
                     Report Generation Failed — {neverGenerated.length} session{neverGenerated.length !== 1 ? "s" : ""} with no published report
                   </span>
                 </SectionLabel>
-                <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 14px", lineHeight: 1.6 }}>
+                <p style={{ fontFamily: FG, fontSize: 11, color: C.muted, margin: "0 0 14px", lineHeight: 1.6 }}>
                   Gate was submitted but no report was published after 10+ minutes. Generation likely hit the 300s ceiling or failed silently.
                   WhatsApp will not send until a report exists — trigger generation manually via /api/internal/report/auto-generate or promote a draft.
                 </p>
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FG, fontSize: 12 }}>
                     <thead>
                       <tr style={{ borderBottom: `1px solid ${C.border}` }}>
                         {["Child", "Parent", "Phone", "Archetype", "WA Attempts", "Session", "When"].map(h => (
@@ -1243,7 +1001,7 @@ export default function AdminDashboard({
                         <tr key={row.session_id} style={{ borderBottom: `1px solid ${C.border}` }}>
                           <td style={{ padding: "10px 12px 10px 0", color: C.text }}>{row.child_name ?? "—"}</td>
                           <td style={{ padding: "10px 12px 10px 0", color: C.muted }}>{row.parent_name ?? "—"}</td>
-                          <td style={{ padding: "10px 12px 10px 0", color: C.muted, fontFamily: MONO }}>{row.phone ?? "—"}</td>
+                          <td style={{ padding: "10px 12px 10px 0", color: C.muted, fontFamily: ID }}>{row.phone ?? "—"}</td>
                           <td style={{ padding: "10px 12px 10px 0", color: C.muted }}>{row.archetype ?? "—"}</td>
                           <td style={{ padding: "10px 12px 10px 0" }}>
                             <Badge text={String(row.whatsapp_send_attempts)} color="#B45309" />
@@ -1253,7 +1011,7 @@ export default function AdminDashboard({
                               href={`/report/${row.session_id}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              style={{ color: C.blue, textDecoration: "none" }}
+                              style={{ color: C.blue, textDecoration: "none", fontFamily: ID }}
                             >
                               {row.session_id.slice(0, 8)}… →
                             </a>
@@ -1276,12 +1034,12 @@ export default function AdminDashboard({
                     WhatsApp delivery — not yet sent — {waFailures.length} session{waFailures.length !== 1 ? "s" : ""}
                   </span>
                 </SectionLabel>
-                <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 14px", lineHeight: 1.6 }}>
+                <p style={{ fontFamily: FG, fontSize: 11, color: C.muted, margin: "0 0 14px", lineHeight: 1.6 }}>
                   Phone-bearing sessions with a published report that hasn&apos;t been delivered yet.
                   Status is derived per row from the send-attempt state.
                 </p>
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FG, fontSize: 12 }}>
                     <thead>
                       <tr style={{ borderBottom: `1px solid ${C.border}` }}>
                         {["Child", "Parent", "Phone", "Attempts", "Status", "Session", "When"].map(h => (
@@ -1296,7 +1054,7 @@ export default function AdminDashboard({
                         <tr key={row.session_id} style={{ borderBottom: `1px solid ${C.border}` }}>
                           <td style={{ padding: "10px 12px 10px 0", color: C.text }}>{row.child_name ?? "—"}</td>
                           <td style={{ padding: "10px 12px 10px 0", color: C.muted }}>{row.parent_name ?? "—"}</td>
-                          <td style={{ padding: "10px 12px 10px 0", color: C.muted, fontFamily: MONO }}>{row.phone ?? "—"}</td>
+                          <td style={{ padding: "10px 12px 10px 0", color: C.muted, fontFamily: ID }}>{row.phone ?? "—"}</td>
                           <td style={{ padding: "10px 12px 10px 0" }}>
                             <Badge text={String(row.whatsapp_send_attempts)} color={C.muted} />
                           </td>
@@ -1308,7 +1066,7 @@ export default function AdminDashboard({
                               href={`/report/${row.session_id}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              style={{ color: C.blue, textDecoration: "none" }}
+                              style={{ color: C.blue, textDecoration: "none", fontFamily: ID }}
                             >
                               {row.session_id.slice(0, 8)}… →
                             </a>
@@ -1328,7 +1086,7 @@ export default function AdminDashboard({
             <Card style={{ marginBottom: 24 }}>
               <SectionLabel>Recent Activity</SectionLabel>
               {activity.length === 0 ? (
-                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No activity in this period.</p>
+                <p style={{ fontFamily: FG, fontSize: 12, color: C.muted }}>No activity in this period.</p>
               ) : (
                 activity.map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", padding: "10px 0", borderBottom: i < activity.length - 1 ? `1px solid ${C.border}` : "none" }}>
@@ -1337,13 +1095,13 @@ export default function AdminDashboard({
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                         <span style={{ fontSize: 13, color: C.text, fontWeight: 500 }}>
                           {item.email ?? "—"}
-                          {item.detail && <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted, marginLeft: 10 }}>{item.detail}</span>}
+                          {item.detail && <span style={{ fontFamily: FG, fontSize: 11, color: C.muted, marginLeft: 10 }}>{item.detail}</span>}
                         </span>
-                        <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted, whiteSpace: "nowrap", flexShrink: 0 }}>
+                        <span style={{ fontFamily: FG, fontSize: 10, color: C.muted, whiteSpace: "nowrap", flexShrink: 0 }}>
                           {fmtDateTime(item.created_at)}
                         </span>
                       </div>
-                      <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{item.type}</span>
+                      <span style={{ fontFamily: FG, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{item.type}</span>
                     </div>
                   </div>
                 ))
@@ -1372,10 +1130,10 @@ export default function AdminDashboard({
                   : null;
                 return (
                   <Card key={stage.label}>
-                    <p style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 8px" }}>{stage.label}</p>
+                    <p style={{ fontFamily: FG, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 8px" }}>{stage.label}</p>
                     <p style={{ fontFamily: BG, fontSize: 32, fontWeight: 800, color: stage.color, margin: "0 0 4px", lineHeight: 1 }}>{stage.count}</p>
                     {pctOfPrev != null && (
-                      <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: 0 }}>{pctOfPrev}% of previous stage</p>
+                      <p style={{ fontFamily: FG, fontSize: 11, color: C.muted, margin: 0 }}>{pctOfPrev}% of previous stage</p>
                     )}
                   </Card>
                 );
@@ -1386,7 +1144,7 @@ export default function AdminDashboard({
               <SectionLabel>Funnel Flow</SectionLabel>
               <FunnelChart stages={funnelStages} />
               {funnelSince && (
-                <p style={{ fontFamily: MONO, fontSize: 10, color: C.muted, margin: "18px 0 0", lineHeight: 1.6, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+                <p style={{ fontFamily: FG, fontSize: 10, color: C.muted, margin: "18px 0 0", lineHeight: 1.6, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
                   Event tracking active from{" "}
                   <span style={{ color: C.text }}>
                     {new Date(funnelSince).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}
@@ -1406,7 +1164,7 @@ export default function AdminDashboard({
                     const maxCount = Math.max(...depths.map(d => d.count), 1);
                     return (
                       <div key={page}>
-                        <p style={{ fontFamily: MONO, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 10px" }}>{page}</p>
+                        <p style={{ fontFamily: FG, fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 10px" }}>{page}</p>
                         {depths.map(({ depth, count }) => (
                           <HBar key={depth} label={`${depth}%`} count={count} max={maxCount} color={C.blue} />
                         ))}
@@ -1421,7 +1179,7 @@ export default function AdminDashboard({
             {questionCompletions.length > 0 && (
               <Card>
                 <SectionLabel>Question Completion (unique sessions per question)</SectionLabel>
-                <p style={{ fontFamily: MONO, fontSize: 10, color: C.muted, margin: "0 0 14px", lineHeight: 1.5 }}>
+                <p style={{ fontFamily: FG, fontSize: 10, color: C.muted, margin: "0 0 14px", lineHeight: 1.5 }}>
                   Drop at any question = users who answered that question but not the next. Tracked from Aug 12, 2026.
                 </p>
                 {questionCompletions.map(({ question_id, count }) => (
@@ -1442,7 +1200,7 @@ export default function AdminDashboard({
         {active === "journeys" && (
           <div>
             <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 8px" }}>User Journeys</h2>
-            <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
+            <p style={{ fontFamily: FG, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
               Sessions with activity in the selected date range. Event Timeline shows the full session history regardless of range.
             </p>
             <AssessmentsTable
@@ -1465,7 +1223,7 @@ export default function AdminDashboard({
               : ["Last Event", "Last Seen", "Child", "Parent", "Session"];
             return (
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FG, fontSize: 12 }}>
                   <thead>
                     <tr style={{ borderBottom: `1px solid ${C.border}` }}>
                       {headers.map(h => (
@@ -1487,7 +1245,7 @@ export default function AdminDashboard({
                         {showEmail && (
                           <td style={{ padding: "12px 12px 12px 0", color: C.muted }}>{row.email ?? <span style={{ color: C.border }}>—</span>}</td>
                         )}
-                        <td style={{ padding: "12px 0 12px 0", color: C.muted, fontFamily: MONO, fontSize: 10 }}>
+                        <td style={{ padding: "12px 0 12px 0", color: C.muted, fontFamily: ID, fontSize: 10 }}>
                           {row.session_id.slice(0, 8)}…
                         </td>
                       </tr>
@@ -1501,7 +1259,7 @@ export default function AdminDashboard({
           return (
             <div>
               <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 8px" }}>Drop-offs</h2>
-              <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
+              <p style={{ fontFamily: FG, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
                 Sessions inactive for &gt;30 min in the selected date range, grouped by where they stopped.
               </p>
 
@@ -1509,7 +1267,7 @@ export default function AdminDashboard({
               <Card style={{ marginBottom: 16 }}>
                 <SectionLabel>Post-assessment ({postDrops.length}) — completed, didn&apos;t purchase</SectionLabel>
                 {postDrops.length === 0 ? (
-                  <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No post-assessment drop-offs in this period.</p>
+                  <p style={{ fontFamily: FG, fontSize: 12, color: C.muted }}>No post-assessment drop-offs in this period.</p>
                 ) : (
                   <DropTable rows={postDrops} showEmail />
                 )}
@@ -1518,11 +1276,11 @@ export default function AdminDashboard({
               {/* Pre-assessment drop-offs */}
               <Card>
                 <SectionLabel>Pre-assessment ({preDrops.length}) — never completed assessment</SectionLabel>
-                <p style={{ fontFamily: MONO, fontSize: 10, color: C.muted, margin: "0 0 14px", lineHeight: 1.5 }}>
+                <p style={{ fontFamily: FG, fontSize: 10, color: C.muted, margin: "0 0 14px", lineHeight: 1.5 }}>
                   Last event shows where in the funnel they stopped. Q-level precision requires per-question events (tracked from Aug 12, 2026).
                 </p>
                 {preDrops.length === 0 ? (
-                  <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No pre-assessment drop-offs in this period.</p>
+                  <p style={{ fontFamily: FG, fontSize: 12, color: C.muted }}>No pre-assessment drop-offs in this period.</p>
                 ) : (
                   <DropTable rows={preDrops} />
                 )}
@@ -1537,7 +1295,7 @@ export default function AdminDashboard({
             <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 24px" }}>LMS Activity</h2>
             {lms.length === 0 ? (
               <Card>
-                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No LMS progress in this period.</p>
+                <p style={{ fontFamily: FG, fontSize: 12, color: C.muted }}>No LMS progress in this period.</p>
               </Card>
             ) : (
               lmsWeeks.map(({ week, days }) => (
@@ -1546,11 +1304,11 @@ export default function AdminDashboard({
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {days.map(({ day, user_count }) => (
                       <div key={day} style={{ display: "flex", flexDirection: "column", alignItems: "center", background: C.border, borderRadius: 6, padding: "8px 14px" }}>
-                        <span style={{ fontFamily: MONO, fontSize: 10, color: C.muted, marginBottom: 4 }}>
+                        <span style={{ fontFamily: FG, fontSize: 10, color: C.muted, marginBottom: 4 }}>
                           {day === 0 ? "Review" : `Day ${day}`}
                         </span>
                         <span style={{ fontFamily: BG, fontWeight: 700, fontSize: 20, color: C.green }}>{user_count}</span>
-                        <span style={{ fontFamily: MONO, fontSize: 9, color: C.muted }}>user{user_count !== 1 ? "s" : ""}</span>
+                        <span style={{ fontFamily: FG, fontSize: 9, color: C.muted }}>user{user_count !== 1 ? "s" : ""}</span>
                       </div>
                     ))}
                   </div>
@@ -1564,7 +1322,7 @@ export default function AdminDashboard({
         {active === "users" && (
           <div>
             <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 8px" }}>Users</h2>
-            <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
+            <p style={{ fontFamily: FG, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
               All users shown. Dimmed rows are outside the selected date range.
             </p>
             <AssessmentsTable
@@ -1584,7 +1342,7 @@ export default function AdminDashboard({
             <Card>
               <SectionLabel>Distribution</SectionLabel>
               {archetypes.length === 0 ? (
-                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No data in this period.</p>
+                <p style={{ fontFamily: FG, fontSize: 12, color: C.muted }}>No data in this period.</p>
               ) : (
                 archetypes.map(({ archetype, count }) => (
                   <HBar
@@ -1604,7 +1362,7 @@ export default function AdminDashboard({
         {active === "events" && (
           <div>
             <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 8px" }}>Events Inventory</h2>
-            <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 24px", lineHeight: 1.6 }}>
+            <p style={{ fontFamily: FG, fontSize: 11, color: C.muted, margin: "0 0 24px", lineHeight: 1.6 }}>
               Every tracked event, by layer. &ldquo;Awaited&rdquo; = guaranteed on success. &ldquo;Fire-and-forget&rdquo; = best-effort, may miss on tab-close. Manually maintained — verify against code on changes.
             </p>
 
@@ -1680,7 +1438,7 @@ export default function AdminDashboard({
               <Card key={heading} style={{ marginBottom: 16 }}>
                 <SectionLabel><span style={{ color }}>{heading}</span></SectionLabel>
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 11 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FG, fontSize: 11 }}>
                     <thead>
                       <tr style={{ borderBottom: `1px solid ${C.border}` }}>
                         {["Event", "When", "Layer", "Reliability", "Metadata"].map(h => (
@@ -1691,7 +1449,7 @@ export default function AdminDashboard({
                     <tbody>
                       {rows.map(([event, when, layer, reliability, meta]) => (
                         <tr key={event} style={{ borderBottom: `1px solid ${C.border}` }}>
-                          <td style={{ padding: "9px 14px 9px 0", color: C.yellow, whiteSpace: "nowrap" }}>{event}</td>
+                          <td style={{ padding: "9px 14px 9px 0", color: C.yellow, whiteSpace: "nowrap", fontFamily: ID }}>{event}</td>
                           <td style={{ padding: "9px 14px 9px 0", color: C.text }}>{when}</td>
                           <td style={{ padding: "9px 14px 9px 0", color: C.muted, whiteSpace: "nowrap" }}>{layer}</td>
                           <td style={{ padding: "9px 14px 9px 0", color: C.muted, whiteSpace: "nowrap" }}>{reliability}</td>
@@ -1710,14 +1468,14 @@ export default function AdminDashboard({
         {active === "handbook" && (
           <div>
             <h2 style={{ fontFamily: BG, fontWeight: 800, fontSize: 20, color: C.text, margin: "0 0 8px" }}>Handbook Leads</h2>
-            <p style={{ fontFamily: MONO, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
+            <p style={{ fontFamily: FG, fontSize: 11, color: C.muted, margin: "0 0 24px" }}>
               Parents who submitted via the Younger / Older popup.{" "}
               <span style={{ color: C.green }}>Sent</span> = WhatsApp delivered.{" "}
               <span style={{ color: C.yellow }}>Queued</span> = saved but not yet sent.
             </p>
             <Card>
               {handbookLeads.length === 0 ? (
-                <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No submissions yet.</p>
+                <p style={{ fontFamily: FG, fontSize: 12, color: C.muted }}>No submissions yet.</p>
               ) : (
                 <>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
@@ -1728,13 +1486,13 @@ export default function AdminDashboard({
                     </SectionLabel>
                     {queuedHandbookCount > 0 && (
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        {queuedResult && <span style={{ fontFamily: MONO, fontSize: 11, color: C.muted }}>{queuedResult}</span>}
+                        {queuedResult && <span style={{ fontFamily: FG, fontSize: 11, color: C.muted }}>{queuedResult}</span>}
                         <button
                           onClick={sendQueuedHandbooks}
                           disabled={sendingQueued}
                           style={{
                             background: C.yellow, color: "#000", border: "none", borderRadius: 6,
-                            fontFamily: MONO, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
+                            fontFamily: FG, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
                             padding: "9px 14px", cursor: sendingQueued ? "default" : "pointer", opacity: sendingQueued ? 0.6 : 1,
                           }}
                         >
@@ -1744,7 +1502,7 @@ export default function AdminDashboard({
                     )}
                   </div>
                   <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FG, fontSize: 12 }}>
                       <thead>
                         <tr style={{ borderBottom: `1px solid ${C.border}` }}>
                           {["Name", "WhatsApp", "Age Band", "Submitted", "Status"].map(h => (
@@ -1756,7 +1514,7 @@ export default function AdminDashboard({
                         {handbookLeads.map(lead => (
                           <tr key={lead.id} style={{ borderBottom: `1px solid ${C.border}` }}>
                             <td style={{ padding: "12px 16px 12px 0", color: C.text, fontWeight: 600 }}>{lead.name}</td>
-                            <td style={{ padding: "12px 16px 12px 0", color: C.muted, fontFamily: MONO }}>{lead.phone}</td>
+                            <td style={{ padding: "12px 16px 12px 0", color: C.muted, fontFamily: ID }}>{lead.phone}</td>
                             <td style={{ padding: "12px 16px 12px 0", color: C.muted }}>{lead.age_band}</td>
                             <td style={{ padding: "12px 16px 12px 0", color: C.muted, whiteSpace: "nowrap" }}>{fmtDateTime(lead.created_at)}</td>
                             <td style={{ padding: "12px 0 12px 0" }}>
@@ -1814,7 +1572,7 @@ function AssessmentsTable({
             border: `1px solid ${search ? C.yellow : C.border}`,
             borderRadius: 6,
             padding: "7px 14px",
-            fontFamily: MONO,
+            fontFamily: FG,
             fontSize: 12,
             color: C.text,
             outline: "none",
@@ -1824,10 +1582,10 @@ function AssessmentsTable({
         />
       </div>
       {filtered.length === 0 ? (
-        <p style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}>No results.</p>
+        <p style={{ fontFamily: FG, fontSize: 12, color: C.muted }}>No results.</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: MONO, fontSize: 12 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FG, fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.border}` }}>
                 {["Child", "Parent", "Email", "Phone", "Archetype", "Age", "Purchase", "LMS", "Date", ""].map(h => (
@@ -1884,7 +1642,7 @@ function AssessmentsTable({
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         onClick={() => setViewingId(a.id)}
-                        style={{ background: "none", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 5, padding: "4px 12px", cursor: "pointer", fontFamily: MONO, fontSize: 11 }}
+                        style={{ background: "none", border: `1px solid ${C.border}`, color: C.muted, borderRadius: 5, padding: "4px 12px", cursor: "pointer", fontFamily: FG, fontSize: 11 }}
                       >
                         Answers →
                       </button>
@@ -1893,12 +1651,12 @@ function AssessmentsTable({
                           href={`/report/${a.session_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ background: "none", border: `1px solid ${C.border}`, color: C.blue, borderRadius: 5, padding: "4px 12px", fontFamily: MONO, fontSize: 11, textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                          style={{ background: "none", border: `1px solid ${C.border}`, color: C.blue, borderRadius: 5, padding: "4px 12px", fontFamily: FG, fontSize: 11, textDecoration: "none", display: "inline-flex", alignItems: "center" }}
                         >
                           Report →
                         </a>
                       ) : (
-                        <span style={{ fontFamily: MONO, fontSize: 11, color: C.border, padding: "4px 0" }}>—</span>
+                        <span style={{ fontFamily: FG, fontSize: 11, color: C.border, padding: "4px 0" }}>—</span>
                       )}
                     </div>
                   </td>

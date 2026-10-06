@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { Conversation, Thread, Template, ConversationFilter, Message } from "@/lib/admin/crm";
-import { getCrmSource, replyWindow, rowPill, composerMode, telLink, formatInr, COMPOSER_FREE_NOTE } from "@/lib/admin/crm";
+import { getCrmSource, replyWindow, rowPill, composerMode, telLink, formatInr, maskPhone, dripControl, COMPOSER_FREE_NOTE } from "@/lib/admin/crm";
 import { T, STAGE } from "../crm-theme";
 import { PreviewBanner, Toaster, previewToast } from "../PreviewUI";
 
@@ -13,11 +13,22 @@ function pillStyle(kind: "open" | "closing" | "closed"): React.CSSProperties {
   return { background: T.greyBg, color: T.greyText };
 }
 
+// Compact phone glyph for the phone-screen thread header (where a "Call" word button crowds
+// the ⋯ menu).
+function PhoneGlyph({ size = 17 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" style={{ display: "block" }}>
+      <path fill="#fff" d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.3 1.1l-2.2 2.2z" />
+    </svg>
+  );
+}
+
 export function InboxView({ conversations, thread, filter, templates }: {
   conversations: Conversation[]; thread: Thread | null; filter: ConversationFilter; templates: Template[];
 }) {
   const [draft, setDraft] = useState("");
   const [picked, setPicked] = useState<string>(templates.find((t) => t.status === "approved")?.name ?? "");
+  const [menuOpen, setMenuOpen] = useState(false); // mobile thread-header ⋯ menu
   const selId = thread?.conversation.id ?? null;
 
   const filters: { k: ConversationFilter; label: string; count?: number }[] = [
@@ -34,7 +45,7 @@ export function InboxView({ conversations, thread, filter, templates }: {
     previewToast("Preview data: not saved");
     setDraft("");
   };
-  const setDrip = async (action: "resume" | "stop") => {
+  const setDrip = async (action: "pause" | "resume" | "stop") => {
     if (!thread?.conversation.leadId) return;
     await getCrmSource().setDrip(thread.conversation.leadId, action);
     previewToast("Preview data: not saved");
@@ -92,7 +103,7 @@ export function InboxView({ conversations, thread, filter, templates }: {
     return (
       <div style={{ alignSelf: out ? "flex-end" : "flex-start", maxWidth: "62%", background: out ? T.bubbleOut : T.bubbleIn, borderRadius: out ? "12px 12px 2px 12px" : "12px 12px 12px 2px", padding: "8px 12px" }}>
         {out && m.source === "auto" && m.templateName && (
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.successText, letterSpacing: "0.06em" }}>AUTO · {TEMPLATE_LABEL[m.templateName] ?? m.templateName.toUpperCase()} · {(m.category ?? "utility").toUpperCase()}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: T.successText, letterSpacing: "0.06em" }}>AUTO · {m.label ?? TEMPLATE_LABEL[m.templateName] ?? m.templateName.toUpperCase()} · {(m.category ?? "utility").toUpperCase()}</div>
         )}
         {m.body}
         <div style={{ textAlign: "right", fontSize: 11, color: T.text2 }}>{m.at}{out && m.status === "read" ? " ✓✓ read" : out ? " ✓✓" : ""}</div>
@@ -134,21 +145,42 @@ export function InboxView({ conversations, thread, filter, templates }: {
   const ThreadPane = ({ mobile }: { mobile?: boolean }) => {
     if (!thread) return <section style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: T.text2, background: T.thread }}>Select a conversation</section>;
     const c = thread.conversation;
+    const reportId = thread.context?.reportId;
+    const maskedPhone = c.matched ? maskPhone(c.phoneE164) : c.phoneE164.replace(/\d(?=\d{3})/g, "•");
     return (
       <section style={{ flex: 1, display: "flex", flexDirection: "column", background: T.thread, minWidth: 0 }}>
-        <div style={{ background: T.card, borderBottom: `1px solid ${T.cardBorder}`, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
-            {mobile && <a href={`/admin/whatsapp?filter=${filter}`} style={{ fontSize: 20, color: T.navy, textDecoration: "none" }}>←</a>}
+        {mobile ? (
+          <div style={{ background: T.card, borderBottom: `1px solid ${T.cardBorder}`, padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+            <a href={`/admin/whatsapp?filter=${filter}`} aria-label="Back to inbox" style={{ fontSize: 22, color: T.navy, textDecoration: "none", lineHeight: 1, padding: "4px 6px", flexShrink: 0 }}>←</a>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.displayName}</div>
+              <div style={{ fontSize: 12, color: T.text2, fontVariantNumeric: "tabular-nums" }}>{maskedPhone}</div>
+            </div>
+            <a href={telLink(c.phoneE164)} aria-label="Call" style={{ background: T.navy, color: "#fff", borderRadius: 10, padding: "9px 11px", display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}><PhoneGlyph /></a>
+            <button aria-label="More actions" aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)} style={{ background: T.card, border: `1px solid ${T.inputBorder}`, borderRadius: 10, padding: "7px 12px", fontSize: 18, lineHeight: 1, color: T.text, cursor: "pointer", flexShrink: 0 }}>⋯</button>
+            {menuOpen && (
+              <>
+                <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 20 }} />
+                <div style={{ position: "absolute", top: 52, right: 10, zIndex: 21, background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 12, boxShadow: "0 8px 24px rgba(20,40,77,.16)", overflow: "hidden", minWidth: 180 }}>
+                  {c.leadId && <a href={`/admin/calls/${c.leadId}`} style={{ display: "block", padding: "11px 14px", fontSize: 14, color: T.text, textDecoration: "none", borderBottom: reportId ? `1px solid ${T.divider}` : undefined }}>Open call screen</a>}
+                  {reportId && <a href={`/report/${reportId}`} target="_blank" rel="noopener noreferrer" style={{ display: "block", padding: "11px 14px", fontSize: 14, color: T.text, textDecoration: "none" }}>Open report ↗</a>}
+                  {!c.leadId && !reportId && <div style={{ padding: "11px 14px", fontSize: 13, color: T.text2 }}>No linked lead</div>}
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <div style={{ background: T.card, borderBottom: `1px solid ${T.cardBorder}`, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 16, fontWeight: 700 }}>{c.displayName}</div>
-              <div style={{ fontSize: 12.5, color: T.text2 }}>{c.matched ? `+91 98•• ••• ${c.phoneE164.slice(-3)} · lead ${c.leadId ? "" : ""}` : c.phoneE164.replace(/\d(?=\d{3})/g, "•")} · {c.dripState ?? "no drip"}</div>
+              <div style={{ fontSize: 12.5, color: T.text2 }}>{maskedPhone} · {c.dripState ?? "no drip"}</div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <a href={telLink(c.phoneE164)} style={{ background: T.navy, color: "#fff", borderRadius: 10, padding: "9px 14px", fontWeight: 700, fontSize: 14, textDecoration: "none", whiteSpace: "nowrap" }}>Call</a>
+              {c.leadId && <a href={`/admin/calls/${c.leadId}`} style={{ background: T.card, border: `1px solid ${T.inputBorder}`, borderRadius: 10, padding: "9px 14px", fontWeight: 600, fontSize: 14, textDecoration: "none", color: T.text, whiteSpace: "nowrap" }}>Open call screen</a>}
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <a href={telLink(c.phoneE164)} style={{ background: T.navy, color: "#fff", borderRadius: 10, padding: "9px 14px", fontWeight: 700, fontSize: 14, textDecoration: "none", whiteSpace: "nowrap" }}>Call</a>
-            {c.leadId && <a href={`/admin/calls/${c.leadId}`} style={{ background: T.card, border: `1px solid ${T.inputBorder}`, borderRadius: 10, padding: "9px 14px", fontWeight: 600, fontSize: 14, textDecoration: "none", color: T.text, whiteSpace: "nowrap" }}>Open call screen</a>}
-          </div>
-        </div>
+        )}
         <div style={{ flex: 1, padding: "18px 24px", display: "flex", flexDirection: "column", gap: 10, fontSize: 14, lineHeight: 1.45, overflowY: "auto" }}>
           {thread.messages.map((m) => <Bubble key={m.id} m={m} />)}
           {win.open && c.dripState?.startsWith("paused") && (
@@ -165,8 +197,10 @@ export function InboxView({ conversations, thread, filter, templates }: {
   const Context = () => {
     if (!thread?.context) return null;
     const ctx = thread.context; const r = ctx.report;
+    const dc = dripControl(thread.conversation.dripState, thread.conversation.optedOut);
     const sec: React.CSSProperties = { background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: 14, display: "flex", flexDirection: "column", gap: 8, fontSize: 13.5 };
     const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: T.label };
+    const dripBtn: React.CSSProperties = { border: `1px solid ${T.inputBorder}`, borderRadius: 8, padding: "5px 9px", fontWeight: 600, color: T.navy, fontSize: 12.5, cursor: "pointer", background: T.card };
     return (
       <aside style={{ width: 300, flexShrink: 0, padding: "18px 16px", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
         <section style={sec}>
@@ -181,18 +215,19 @@ export function InboxView({ conversations, thread, filter, templates }: {
           <div><span style={{ color: T.text2 }}>Last call:</span> {ctx.lastCall}</div>
           <div><span style={{ color: T.text2 }}>Next:</span> <b>{ctx.nextFollowUp}</b></div>
           <div><span style={{ color: T.text2 }}>Drip:</span> {ctx.drip}</div>
-          <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
-            <span onClick={() => setDrip("resume")} style={{ border: `1px solid ${T.inputBorder}`, borderRadius: 8, padding: "5px 9px", fontWeight: 600, color: T.navy, fontSize: 12.5, cursor: "pointer" }}>Resume drip</span>
-            <span onClick={() => setDrip("stop")} style={{ border: `1px solid ${T.inputBorder}`, borderRadius: 8, padding: "5px 9px", fontWeight: 600, color: T.navy, fontSize: 12.5, cursor: "pointer" }}>Stop drip</span>
+          <div style={{ display: "flex", gap: 6, marginTop: 2, alignItems: "center", flexWrap: "wrap" }}>
+            {dc.state === "running" && <>
+              <button onClick={() => setDrip("pause")} style={dripBtn}>Pause drip</button>
+              <button onClick={() => setDrip("stop")} style={dripBtn}>Stop drip</button>
+            </>}
+            {dc.state === "paused" && <>
+              <button onClick={() => setDrip("resume")} style={dripBtn}>Resume drip</button>
+              <button onClick={() => setDrip("stop")} style={dripBtn}>Stop drip</button>
+            </>}
+            {(dc.state === "stopped" || dc.state === "opted_out" || dc.state === "none") && (
+              <span style={{ fontSize: 12.5, color: T.text2, fontWeight: 600 }}>{dc.label}</span>
+            )}
           </div>
-        </section>
-        <section style={{ ...sec, fontSize: 13 }}>
-          <div style={lbl}>WHEN THE WINDOW IS CLOSED</div>
-          <div style={{ color: T.textRow, lineHeight: 1.45 }}>The text box turns into a template picker. Only approved templates can go out, and each costs about {formatInr(0.86)} (marketing) or {formatInr(0.12)} (utility).</div>
-          <div style={{ background: T.chipFill, borderRadius: 10, padding: "8px 10px", color: T.textRow }}>Pick template ▾ · “Checking in about {thread.conversation.childName}’s plan” · {formatInr(0.86)}</div>
-        </section>
-        <section style={{ ...sec, fontSize: 13, color: T.textRow }}>
-          <span><b>Opt-out:</b> if a parent sends STOP, they’re marked opted out and nothing automatic goes to them again.</span>
         </section>
       </aside>
     );

@@ -20,6 +20,8 @@ export const C = {
 } as const;
 
 export const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
+// FG (Figtree) for labels/table text; MONO kept only for identifiers / phone digits.
+export const FG = "var(--font-figtree), Figtree, system-ui, sans-serif";
 export const MONO = "'JetBrains Mono', 'Fira Code', monospace";
 
 // First-channel badge colour per the mockup's "First came from" column.
@@ -35,7 +37,7 @@ export function Badge({ text, color }: { text: string; color: string }) {
     <span
       style={{
         display: "inline-block",
-        fontFamily: MONO,
+        fontFamily: FG,
         fontSize: 11,
         fontWeight: 600,
         color,
@@ -62,7 +64,7 @@ export function UrgentStatus({ text }: { text: string }) {
     <span
       style={{
         display: "inline-block",
-        fontFamily: MONO,
+        fontFamily: FG,
         fontSize: 11,
         fontWeight: 700,
         color: "#fff",
@@ -84,7 +86,7 @@ export function SafetyStatus({ text }: { text: string }) {
     <span
       style={{
         display: "inline-block",
-        fontFamily: MONO,
+        fontFamily: FG,
         fontSize: 11,
         fontWeight: 800,
         color: "#fff",

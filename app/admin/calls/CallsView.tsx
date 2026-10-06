@@ -1,8 +1,17 @@
 "use client";
 import type { Lead, QueueTab, Stats } from "@/lib/admin/crm";
-import { telLink, waLink } from "@/lib/admin/crm";
+import { telLink, waLink, worryLabel } from "@/lib/admin/crm";
 import { T, STAGE } from "../crm-theme";
 import { PreviewBanner, Toaster } from "../PreviewUI";
+
+// WhatsApp glyph (compact action button on phones, where a "WA" label reads as a typo).
+function WaGlyph({ size = 18, fill = T.waText }: { size?: number; fill?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden="true" style={{ display: "block" }}>
+      <path fill={fill} d="M16.03 3C9.4 3 4.02 8.37 4.02 15c0 2.12.55 4.19 1.6 6.01L4 29l8.2-1.58A11.97 11.97 0 0 0 16.03 27C22.65 27 28.03 21.63 28.03 15S22.65 3 16.03 3zm0 21.9c-1.78 0-3.52-.48-5.04-1.38l-.36-.21-4.87.94.97-4.75-.24-.38A9.87 9.87 0 0 1 6.1 15c0-5.46 4.44-9.9 9.93-9.9s9.93 4.44 9.93 9.9-4.45 9.9-9.93 9.9zm5.44-7.42c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.7.63.71.23 1.36.2 1.87.12.57-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35z" />
+    </svg>
+  );
+}
 
 const TABS: { key: QueueTab; label: string; count?: number }[] = [];
 
@@ -29,11 +38,21 @@ export function CallsView({ stats, leads, tab }: { stats: Stats; leads: Lead[]; 
       <span style={{ fontSize: 13, color: T.text2 }}>{label}</span>
     </div>
   );
+  // Action controls live INSIDE the row link, so they are <button>s (not <a>s) to avoid an
+  // invalid <a>-inside-<a> nesting (a React hydration error). preventDefault stops the row
+  // link from also firing when a button is clicked.
   const btnCall = (l: Lead) => (
-    <a href={telLink(l.phoneE164)} style={{ background: T.navy, color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Call</a>
+    <button
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = telLink(l.phoneE164); }}
+      style={{ background: T.navy, color: "#fff", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+    >Call</button>
   );
-  const btnWa = (l: Lead, label = "WhatsApp") => (
-    <a href={waLink(l.phoneE164)} target="_blank" rel="noopener noreferrer" style={{ background: T.wa, color: T.waText, borderRadius: 8, padding: "6px 10px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>{label}</a>
+  const btnWa = (l: Lead) => (
+    <button
+      aria-label="WhatsApp"
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(waLink(l.phoneE164), "_blank", "noopener"); }}
+      style={{ background: T.wa, color: T.waText, border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+    >WhatsApp</button>
   );
 
   return (
@@ -83,7 +102,7 @@ export function CallsView({ stats, leads, tab }: { stats: Stats; leads: Lead[]; 
                   <span style={{ width: 16, height: 16, border: `1.5px solid ${T.checkbox}`, borderRadius: 4 }}></span>
                   <span style={{ fontWeight: 600 }}>{l.parentName}</span>
                   <span style={{ color: T.textRow }}>{l.childName}, {l.ageBand}</span>
-                  <span style={{ color: T.text2 }}>{l.typeName} · {l.worry}</span>
+                  <span style={{ color: T.text2 }}>{l.typeName} · {worryLabel(l.worry)}</span>
                   <span><span style={{ fontSize: 12, fontWeight: 600, background: st.bg, color: st.fg, borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" }}>{st.label}</span></span>
                   <span style={{ fontWeight: 600, color: l.followUpUrgent ? T.warmText : T.text }}>{l.followUpDue}</span>
                   <span>{l.status}</span>
@@ -117,12 +136,12 @@ export function CallsView({ stats, leads, tab }: { stats: Stats; leads: Lead[]; 
                   <span style={{ fontWeight: 700, fontSize: 16 }}>{l.parentName}</span>
                   <span style={{ fontSize: 12, fontWeight: 600, background: st.bg, color: st.fg, borderRadius: 999, padding: "3px 9px" }}>{st.label}</span>
                 </div>
-                <div style={{ color: T.textRow, fontSize: 14 }}>{l.childName}, {l.ageBand} · {l.typeName} · {l.worry}</div>
+                <div style={{ color: T.textRow, fontSize: 14 }}>{l.childName}, {l.ageBand} · {l.typeName} · {worryLabel(l.worry)}</div>
                 <div style={{ fontSize: 13, color: l.followUpUrgent ? T.warmText : T.text2, fontWeight: 600 }}>{l.followUpDue !== "—" ? l.followUpDue : l.status}</div>
               </a>
               <div style={{ display: "flex", gap: 8 }}>
                 <a href={telLink(l.phoneE164)} style={{ flex: 1, textAlign: "center", background: T.navy, color: "#fff", borderRadius: 10, padding: "11px", fontWeight: 700, textDecoration: "none" }}>Call</a>
-                <a href={waLink(l.phoneE164)} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" style={{ background: T.wa, color: T.waText, borderRadius: 10, padding: "11px 16px", fontWeight: 700, textDecoration: "none" }}>WA</a>
+                <a href={waLink(l.phoneE164)} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" style={{ background: T.wa, color: T.waText, borderRadius: 10, padding: "11px 16px", display: "flex", alignItems: "center" }}><WaGlyph size={20} /></a>
               </div>
             </div>
           );
