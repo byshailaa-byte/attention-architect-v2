@@ -8,7 +8,7 @@ type NavItem = {
   href: string;
   key: string;              // identity for active-state matching (route path, or "tab:<id>")
   badge?: number;
-  badgeKind?: "amber" | "wa";
+  badgeKind?: "amber" | "wa" | "danger";
   noActive?: boolean;       // placeholder item that never highlights (e.g. Purchases)
 };
 type NavGroup = { label: string; items: NavItem[] };
@@ -16,7 +16,7 @@ type NavGroup = { label: string; items: NavItem[] };
 // Single source of truth for the whole /admin nav. Each item routes to the destination it had
 // before this pass: CRM/standalone pages go to their own routes; the old dashboard's internal
 // sections become ?tab= on /admin (AdminDashboard reads ?tab= and renders that section).
-function buildGroups(callsDue: number, needsReply: number): NavGroup[] {
+function buildGroups(callsDue: number, needsReply: number, coachNeedsLook: number): NavGroup[] {
   return [
     {
       label: "Sell",
@@ -42,6 +42,7 @@ function buildGroups(callsDue: number, needsReply: number): NavGroup[] {
     {
       label: "Product",
       items: [
+        { label: "Coach chats", href: "/admin/coach", key: "/admin/coach", badge: coachNeedsLook, badgeKind: "danger" },
         { label: "Users", href: "/admin?tab=users", key: "tab:users" },
         { label: "LMS activity", href: "/admin?tab=lms", key: "tab:lms" },
         { label: "Archetypes", href: "/admin?tab=archetypes", key: "tab:archetypes" },
@@ -64,6 +65,7 @@ function activeKeyFor(pathname: string, tab: string | null): string {
   if (pathname.startsWith("/admin/start-flow")) return "/admin/start-flow";
   if (pathname.startsWith("/admin/report-preview")) return "/admin/report-preview";
   if (pathname.startsWith("/admin/lms-user")) return "/admin/lms-user";
+  if (pathname.startsWith("/admin/coach")) return "/admin/coach";
   return "";
 }
 
@@ -72,12 +74,12 @@ const GROUP_LABEL: React.CSSProperties = {
   textTransform: "uppercase", padding: "14px 8px 6px",
 };
 
-export function AdminShell({ children, callsDue, needsReply }: { children: React.ReactNode; callsDue: number; needsReply: number }) {
+export function AdminShell({ children, callsDue, needsReply, coachNeedsLook = 0 }: { children: React.ReactNode; callsDue: number; needsReply: number; coachNeedsLook?: number }) {
   const pathname = usePathname() || "/admin";
   const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const groups = buildGroups(callsDue, needsReply);
+  const groups = buildGroups(callsDue, needsReply, coachNeedsLook);
   const activeKey = activeKeyFor(pathname, searchParams.get("tab"));
 
   // "View as user" renders the real LMS full-bleed (its own chrome + the read-only banner); the
@@ -86,9 +88,10 @@ export function AdminShell({ children, callsDue, needsReply }: { children: React
     return <>{children}</>;
   }
 
-  const Badge = ({ n, kind }: { n: number; kind: "amber" | "wa" }) => (
+  const Badge = ({ n, kind }: { n: number; kind: "amber" | "wa" | "danger" }) => (
     <span style={{
-      background: kind === "amber" ? T.amber : T.wa, color: kind === "amber" ? T.navy : T.waText,
+      background: kind === "amber" ? T.amber : kind === "danger" ? "#C0392B" : T.wa,
+      color: kind === "amber" ? T.navy : kind === "danger" ? "#fff" : T.waText,
       borderRadius: 999, padding: "0 7px", fontSize: 12, fontWeight: 700,
     }}>{n}</span>
   );
