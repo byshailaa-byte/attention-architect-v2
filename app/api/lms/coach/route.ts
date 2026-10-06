@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
       },
       (m) => console.warn(`${m} (user ${userId.slice(0, 8)})`),
       priorQuotes,
+      message,
     );
 
     await sql`INSERT INTO coach_messages (user_id, role, content, source, week, day)
