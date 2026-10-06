@@ -31,7 +31,7 @@ Think about where the worst friction happens. For most Storm households, it's no
 
 Here's what's actually happening in that moment, underneath:
 
-Your Storm doesn't resist the work itself. They resist being *placed into it* — on someone else's timing, someone else's terms. The instant homework feels like something happening *to* them, their attention switches off. Not to be difficult. That's just how a Storm is wired: ownership is the on-switch. Without it, the engine doesn't run.
+Your Storm doesn't resist the work itself. They resist being *placed into it* — on someone else's timing, someone else's terms. The instant homework feels like something happening *to* them, their attention switches off. Not to be difficult. For a Storm, ownership is the on-switch. Without it, the engine doesn't run.
 
 **This week's one move: Let them choose how to start**
 
@@ -72,7 +72,7 @@ Real opening choices at this age:
 
 Yes — some of these mean genuinely stepping back, possibly a lot. That's not you giving up. For a 14-year-old Storm, offering real autonomy *is* the move. Pushing a teenager who's already pulling away doesn't just fail — it can damage the relationship in ways that are hard to repair, and a teen can withdraw completely in a way an 8-year-old can't.
 
-**Your work — and it's the hardest part:** when they take the autonomy you offered and you can see them about to do it badly, hold back anyway, unless it's genuinely high-stakes. The trust you build by *not* stepping in is the thing that makes them let you back in later.`,
+**Your work — and it's the hardest part:** when they take the autonomy you offered and you can see them about to do it badly, hold back anyway, unless something important is truly at risk. The trust you build by *not* stepping in is the thing that makes them let you back in later.`,
     },
 
     moveOutroShared:
@@ -83,7 +83,7 @@ Yes — some of these mean genuinely stepping back, possibly a lot. That's not y
     whatWorkingLooksLike:
 `Let's be honest about the size of the win, because a false promise here would break your trust the first night it doesn't come true.
 
-**You are not going to fix homework this week.** You're not going to change your child's attention type — that's not a thing that changes, and it's not the goal. Your Storm will still be a Storm on Sunday.
+**Homework won't be solved this week.** And you're not trying to change how your child's attention works — that doesn't change, and it isn't the goal. Your Storm will still be a Storm on Sunday.
 
 What you're looking for is smaller and more important than that: **a few nights where the *start* of homework was less of a fight than usual.** That's it. Maybe two out of five days. Maybe the stand-off was shorter. Maybe they sat down without you asking twice. Maybe you noticed your own urge to push and held it, and something eased.
 
@@ -125,7 +125,7 @@ Next week, we take this same principle off the homework table and into the momen
         prompt: "How did it go?",
         nextDayOpening: {
           worked:     "Yesterday worked. Good. Today, protect it. Offer the same kind of choice again, and this time the whole job is to not add anything on top of a good thing.",
-          mixed:      "Yesterday was mixed. Normal. A partial result on day one is exactly what most parents see. Run it again today; consistency is what turns a flicker into a pattern.",
+          mixed:      "Yesterday was mixed. Normal. A partial result on day one is exactly what most parents see. Run it again today; doing it again is what turns a flicker into a habit.",
           didnt_land: "Yesterday didn't land. The single most common reason is that the choice wasn't fully real — a reminder or an override slipped in right after, or the options were \"my way or my other way.\" Today, offer the choice and then say nothing else at all for five minutes. Test whether pure, un-topped-up ownership changes anything.",
         },
       },
@@ -134,7 +134,7 @@ Next week, we take this same principle off the homework table and into the momen
       day: 3,
       title: "Same move, and this time catch yourself.",
       content: {
-        "8-9":   "Offer the opening choice again. Today: the moment you feel like adding \"and hurry up\" or fixing the option they chose — don't. Just let their choice be the whole instruction. Notice how hard that is.",
+        "8-9":   "Offer the opening choice again. Today: the moment you feel like adding \"and hurry up\" or changing the option they chose — don't. Just let their choice be the whole instruction. Notice how hard that is.",
         "10-11": "Offer the opening choice again, and the moment you feel the urge to add something — a reminder, a \"hurry up,\" a better suggestion than the one they picked — *don't.* Let their choice be the only instruction. Notice how that feels for you. (Uncomfortable is normal.)",
         "12-14": "Offer the opening choice again. Today, catch the moment you want to modify it after they've chosen — a \"but just make sure you...\" or a check-in five minutes later. Don't. Let the choice stand alone.",
       },
@@ -189,15 +189,15 @@ Next week, we take this same principle off the homework table and into the momen
     // 12-14 block in "mostly_didnt_land" includes a teen-specific sentence (see spec).
     content: {
       "8-9":
-`{{#if week_trend == "mostly_worked"}}You've just seen the whole system work in miniature. What you did this week — hand over real ownership, hold back your instinct — is the exact thing every week ahead builds on, applied to bigger moments. You're ready for screens.{{/if}}{{#if week_trend == "mixed"}}That's the most common week-one shape, and it's a good sign, not a bad one. A pattern that flickers a few times is a pattern that can be built. The consistency comes next week.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Real data, not failure. The most common cause: the choice wasn't fully real.{{/if}}
+`{{#if week_trend == "mostly_worked"}}You've just seen the whole system work in miniature. What you did this week — hand over real ownership, hold back your instinct — is the exact thing every week ahead builds on, applied to bigger moments. You're ready for screens.{{/if}}{{#if week_trend == "mixed"}}That's the most common week-one shape, and it's a good sign, not a bad one. Something that shows up a few times is something you can build on. The consistency comes next week.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Real data, not failure. The most common cause: the choice wasn't fully real.{{/if}}
 
 You're not looking for a transformed child. You're looking for one small, real shift in one specific moment. That shift — even one instance of it — is the proof the whole system rests on.`,
       "10-11":
-`{{#if week_trend == "mostly_worked"}}You've just seen the whole system work in miniature. What you did this week — hand over real ownership, hold back your instinct — is the exact thing every week ahead builds on, applied to bigger moments. You're ready for screens.{{/if}}{{#if week_trend == "mixed"}}That's the most common week-one shape, and it's a good sign, not a bad one. A pattern that flickers a few times is a pattern that can be built. The consistency comes next week.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Real data, not failure. The most common cause: the choice wasn't fully real.{{/if}}
+`{{#if week_trend == "mostly_worked"}}You've just seen the whole system work in miniature. What you did this week — hand over real ownership, hold back your instinct — is the exact thing every week ahead builds on, applied to bigger moments. You're ready for screens.{{/if}}{{#if week_trend == "mixed"}}That's the most common week-one shape, and it's a good sign, not a bad one. Something that shows up a few times is something you can build on. The consistency comes next week.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Real data, not failure. The most common cause: the choice wasn't fully real.{{/if}}
 
 You're not looking for a transformed child. You're looking for one small, real shift in one specific moment. That shift — even one instance of it — is the proof the whole system rests on.`,
       "12-14":
-`{{#if week_trend == "mostly_worked"}}You've just seen the whole system work in miniature. What you did this week — hand over real ownership, hold back your instinct — is the exact thing every week ahead builds on, applied to bigger moments. You're ready for screens.{{/if}}{{#if week_trend == "mixed"}}That's the most common week-one shape, and it's a good sign, not a bad one. A pattern that flickers a few times is a pattern that can be built. The consistency comes next week.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Real data, not failure. The most common cause: the choice wasn't fully real. With a teenager especially, they may have spent the week testing whether the autonomy you offered was genuine, and held back to find out. That test is normal, and passing it — by staying hands-off — is often what unlocks week two.{{/if}}
+`{{#if week_trend == "mostly_worked"}}You've just seen the whole system work in miniature. What you did this week — hand over real ownership, hold back your instinct — is the exact thing every week ahead builds on, applied to bigger moments. You're ready for screens.{{/if}}{{#if week_trend == "mixed"}}That's the most common week-one shape, and it's a good sign, not a bad one. Something that shows up a few times is something you can build on. The consistency comes next week.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Real data, not failure. The most common cause: the choice wasn't fully real. With a teenager especially, they may have spent the week testing whether the autonomy you offered was genuine, and held back to find out. That test is normal, and passing it — by staying hands-off — is often what unlocks week two.{{/if}}
 
 You're not looking for a transformed child. You're looking for one small, real shift in one specific moment. That shift — even one instance of it — is the proof the whole system rests on.`,
     },
