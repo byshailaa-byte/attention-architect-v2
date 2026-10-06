@@ -40,8 +40,8 @@ export default async function ReportV2Funnel() {
     v1 = { reports: r.v1_reports ?? 0, plans: r.v1_plans ?? 0, checkouts: r.v1_checkouts ?? 0, paid: r.v1_paid ?? 0 };
   } catch { /* events not migrated yet — show zeros */ }
 
-  const cell: React.CSSProperties = { padding: "8px 14px", borderBottom: "1px solid #eee", textAlign: "right", fontVariantNumeric: "tabular-nums" };
-  const head: React.CSSProperties = { ...cell, textAlign: "left", fontWeight: 700, color: "#333" };
+  const cell: React.CSSProperties = { padding: "8px 14px", borderBottom: "1px solid #EFE8DA", textAlign: "right", fontVariantNumeric: "tabular-nums" };
+  const head: React.CSSProperties = { ...cell, textAlign: "left", fontWeight: 700, color: "#1B2333" };
   const rowEl = (label: string, a: number, b: number) => (
     <tr>
       <td style={{ ...cell, textAlign: "left" }}>{label}</td>
@@ -53,7 +53,7 @@ export default async function ReportV2Funnel() {
   return (
     <section style={{ maxWidth: 900, margin: "24px auto", padding: "0 24px", fontFamily: "system-ui, sans-serif" }}>
       <h2 style={{ fontSize: 18, marginBottom: 4 }}>Report v2 funnel (internal excluded)</h2>
-      <p style={{ fontSize: 12, color: "#777", marginTop: 0 }}>Distinct sessions. v2 = report_v2_view cohort; v1 = (simplified) report_view cohort with no v2 view.</p>
+      <p style={{ fontSize: 12, color: "#5B6577", marginTop: 0 }}>Distinct sessions. v2 = report_v2_view cohort; v1 = (simplified) report_view cohort with no v2 view.</p>
       <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
         <thead><tr><th style={head}>Step</th><th style={{ ...head, textAlign: "right" }}>v1</th><th style={{ ...head, textAlign: "right" }}>v2</th></tr></thead>
         <tbody>

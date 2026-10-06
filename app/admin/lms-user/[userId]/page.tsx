@@ -134,18 +134,19 @@ export default async function LmsUserDetailPage({ params }: { params: Params }) 
     <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: "860px", margin: "0 auto", padding: "0 0 60px" }}>
       {/* Sticky admin banner */}
       <div style={{
-        background: "#1a1a2e", color: "#e0e0e0", padding: "12px 24px",
+        background: "#FFFFFF", color: "#1B2333", padding: "12px 24px",
         fontSize: "13px", position: "sticky", top: 0, zIndex: 100,
+        borderBottom: "1px solid #EFE8DA",
         display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap",
       }}>
-        <span style={{ fontWeight: 700, color: "#ffd700", letterSpacing: ".05em" }}>
+        <span style={{ fontWeight: 700, color: "#8A6322", letterSpacing: ".05em" }}>
           ⚠ ADMIN — LMS VIEW AS USER
         </span>
-        <span style={{ color: "#aaa", fontSize: "12px" }}>Read-only. Nothing submitted on this user&apos;s behalf.</span>
-        <Link href="/admin/lms-user" style={{ marginLeft: "auto", color: "#aaa", fontSize: "12px", textDecoration: "none" }}>
+        <span style={{ color: "#5B6577", fontSize: "12px" }}>Read-only. Nothing submitted on this user&apos;s behalf.</span>
+        <Link href="/admin/lms-user" style={{ marginLeft: "auto", color: "#5B6577", fontSize: "12px", textDecoration: "none" }}>
           ← Search
         </Link>
-        <Link href="/admin" style={{ color: "#aaa", fontSize: "12px", textDecoration: "none" }}>
+        <Link href="/admin" style={{ color: "#5B6577", fontSize: "12px", textDecoration: "none" }}>
           Admin dashboard
         </Link>
       </div>
@@ -183,7 +184,7 @@ export default async function LmsUserDetailPage({ params }: { params: Params }) 
             </div>
           )}
           {!purchase && (
-            <p style={{ marginTop: "10px", fontSize: "13px", color: "#c00" }}>No paid purchase found — LMS access unknown.</p>
+            <p style={{ marginTop: "10px", fontSize: "13px", color: "#9B2C2C" }}>No paid purchase found — LMS access unknown.</p>
           )}
         </div>
 
@@ -245,7 +246,7 @@ export default async function LmsUserDetailPage({ params }: { params: Params }) 
               <span style={{ fontSize: "12px", color: "#aaa" }}>No content available yet</span>
             )}
             {week2HasContent && !week2Unlocked && (
-              <span style={{ fontSize: "12px", color: "#c00", fontWeight: 600 }}>LOCKED</span>
+              <span style={{ fontSize: "12px", color: "#9B2C2C", fontWeight: 600 }}>LOCKED</span>
             )}
             {week2Unlocked && (
               <span style={{ fontSize: "12px", color: "#155724", fontWeight: 600 }}>UNLOCKED</span>
@@ -279,7 +280,7 @@ export default async function LmsUserDetailPage({ params }: { params: Params }) 
               <span style={{ fontSize: "12px", color: "#aaa" }}>No content available yet</span>
             )}
             {week3HasContent && !week3Unlocked && (
-              <span style={{ fontSize: "12px", color: "#c00", fontWeight: 600 }}>LOCKED</span>
+              <span style={{ fontSize: "12px", color: "#9B2C2C", fontWeight: 600 }}>LOCKED</span>
             )}
             {week3Unlocked && (
               <span style={{ fontSize: "12px", color: "#155724", fontWeight: 600 }}>UNLOCKED</span>

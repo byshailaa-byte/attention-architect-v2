@@ -86,23 +86,24 @@ export default async function ReportPreviewDetailPage({ params }: { params: Para
     <div>
       {/* Admin banner — not visible to parents */}
       <div style={{
-        background: "#1a1a2e",
-        color: "#e0e0e0",
+        background: "#FFFFFF",
+        color: "#1B2333",
         padding: "12px 24px",
         fontSize: "13px",
         position: "sticky",
         top: 0,
         zIndex: 100,
+        borderBottom: "1px solid #EFE8DA",
         display: "flex",
         alignItems: "center",
         gap: "24px",
         flexWrap: "wrap",
       }}>
-        <span style={{ fontWeight: 700, color: "#ffd700", letterSpacing: ".05em" }}>
+        <span style={{ fontWeight: 700, color: "#8A6322", letterSpacing: ".05em" }}>
           ⚠ ADMIN PREVIEW
         </span>
         <span style={{
-          color:         row.status === "published" ? "#7fff7f" : row.status === "draft" ? "#ff9f40" : "#e0e0e0",
+          color:         row.status === "published" ? "#2F5D3A" : row.status === "draft" ? "#B45309" : "#1B2333",
           fontSize:      "12px",
           fontWeight:    600,
           textTransform: "uppercase",
@@ -111,20 +112,20 @@ export default async function ReportPreviewDetailPage({ params }: { params: Para
         </span>
         <span>
           Quality:{" "}
-          <strong style={{ color: row.quality_passed ? "#7fff7f" : "#ff7f7f" }}>
+          <strong style={{ color: row.quality_passed ? "#2F5D3A" : "#9B2C2C" }}>
             {row.quality_passed ? "✓ PASSED" : `✗ FAILED (${failures.length} checks)`}
           </strong>
         </span>
-        <span style={{ color: "#aaa" }}>
-          Archetype: <strong style={{ color: "#fff" }}>{row.archetype}</strong>
+        <span style={{ color: "#5B6577" }}>
+          Archetype: <strong style={{ color: "#1B2333" }}>{row.archetype}</strong>
           {row.archetype_fit_tier && (
-            <span style={{ marginLeft: "6px", color: "#bbb" }}>({row.archetype_fit_tier})</span>
+            <span style={{ marginLeft: "6px", color: "#5B6577" }}>({row.archetype_fit_tier})</span>
           )}
         </span>
-        <span style={{ color: "#aaa" }}>
-          Parent instinct: <strong style={{ color: "#fff" }}>{row.parent_instinct}</strong>
+        <span style={{ color: "#5B6577" }}>
+          Parent instinct: <strong style={{ color: "#1B2333" }}>{row.parent_instinct}</strong>
         </span>
-        <span style={{ color: "#666", fontSize: "11px" }}>
+        <span style={{ color: "#5B6577", fontSize: "11px" }}>
           {new Date(row.generated_at).toLocaleString()}
         </span>
         <span style={{ marginLeft: "auto" }}>

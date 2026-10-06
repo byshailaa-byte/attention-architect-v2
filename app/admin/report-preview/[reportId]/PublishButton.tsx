@@ -22,9 +22,9 @@ export function PublishButton({ reportId, initialStatus, qualityPassed }: Props)
         borderRadius:  "6px",
         fontSize:      "12px",
         fontWeight:    700,
-        background:    "rgba(127, 255, 127, 0.15)",
-        color:         "#7fff7f",
-        border:        "1px solid rgba(127, 255, 127, 0.3)",
+        background:    "#EAF0EA",
+        color:         "#2F5D3A",
+        border:        "1px solid rgba(47, 93, 58, 0.3)",
         letterSpacing: ".04em",
       }}>
         ✓ Published
@@ -67,9 +67,9 @@ export function PublishButton({ reportId, initialStatus, qualityPassed }: Props)
           fontSize:      "12px",
           fontWeight:    700,
           cursor:        loading || blocked ? "not-allowed" : "pointer",
-          background:    blocked ? "rgba(160, 160, 160, 0.15)" : "rgba(52, 80, 63, 0.9)",
-          color:         blocked ? "#888" : "#e0fbe8",
-          border:        `1px solid ${blocked ? "#555" : "rgba(127, 255, 127, 0.3)"}`,
+          background:    blocked ? "rgba(27, 35, 51, 0.06)" : "#2F5D3A",
+          color:         blocked ? "#8A93A3" : "#FFFFFF",
+          border:        `1px solid ${blocked ? "#E6DECF" : "rgba(47, 93, 58, 0.5)"}`,
           letterSpacing: ".04em",
           opacity:       loading ? 0.7 : 1,
           transition:    "opacity 0.15s ease",
@@ -78,7 +78,7 @@ export function PublishButton({ reportId, initialStatus, qualityPassed }: Props)
         {loading ? "Publishing…" : blocked ? "Quality failed" : "Publish"}
       </button>
       {error && (
-        <span style={{ color: "#ff7f7f", fontSize: "11px" }}>{error}</span>
+        <span style={{ color: "#9B2C2C", fontSize: "11px" }}>{error}</span>
       )}
     </div>
   );

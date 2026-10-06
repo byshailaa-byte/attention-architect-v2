@@ -7,16 +7,16 @@ import { normalizePhone } from "@/lib/phone";
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
 const C = {
-  bg:       "#0e0f11",
-  card:     "#1a1b1f",
-  border:   "#2a2b30",
-  text:     "#e8e6f0",
-  muted:    "#9c9aa8",
-  yellow:   "#F6C63D",
-  green:    "#4caf82",
-  red:      "#e05252",
-  blue:     "#5b9cf6",
-  purple:   "#a78bfa",
+  bg:       "#F6F3EC",
+  card:     "#FFFFFF",
+  border:   "#EFE8DA",
+  text:     "#1B2333",
+  muted:    "#5B6577",
+  yellow:   "#E8A33D",
+  green:    "#2F5D3A",
+  red:      "#9B2C2C",
+  blue:     "#1E3A5F",
+  purple:   "#6E5FB0",
 } as const;
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
@@ -698,7 +698,7 @@ function RangeControl({
     fontSize: 10,
     cursor: "pointer",
     background: active ? C.yellow : C.border,
-    color: active ? C.bg : C.muted,
+    color: active ? C.text : C.muted,
     fontWeight: active ? 700 : 400,
   });
 
@@ -767,7 +767,7 @@ function RangeControl({
             disabled={!customFrom || !customTo}
             style={{
               background: customFrom && customTo ? C.yellow : C.border,
-              color: customFrom && customTo ? C.bg : C.muted,
+              color: customFrom && customTo ? C.text : C.muted,
               border: "none",
               borderRadius: 4,
               padding: "5px",
@@ -996,7 +996,7 @@ export default function AdminDashboard({
           >
             ☰
           </button>
-          <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 18, width: "auto", filter: "brightness(3)", opacity: 0.9 }} />
+          <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 18, width: "auto", opacity: 0.9 }} />
           <span style={{ fontFamily: BG, fontWeight: 700, fontSize: 14, color: C.text, marginLeft: "auto" }}>
             {NAV.find(n => n.id === active)?.label ?? "Admin"}
           </span>
@@ -1015,7 +1015,7 @@ export default function AdminDashboard({
       <aside style={sidebarStyle}>
         <div style={{ padding: isMobile ? "16px 20px 12px" : "24px 20px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 22, width: "auto", filter: "brightness(3)", opacity: 0.9, marginBottom: 4 }} />
+            <img src="/logo-horizontal-icon-wordmark.png" alt="Attention Architect" style={{ height: 22, width: "auto", opacity: 0.9, marginBottom: 4 }} />
             <p style={{ fontFamily: BG, fontWeight: 800, fontSize: 15, color: C.text, margin: 0 }}>Admin</p>
           </div>
           {isMobile && (

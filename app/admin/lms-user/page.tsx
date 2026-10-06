@@ -43,15 +43,16 @@ export default async function LmsUserLookupPage({ searchParams }: Props) {
     <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: "860px", margin: "40px auto", padding: "0 24px" }}>
       {/* Admin banner */}
       <div style={{
-        background: "#1a1a2e", color: "#e0e0e0", padding: "12px 24px",
+        background: "#FFFFFF", color: "#1B2333", padding: "12px 24px",
         fontSize: "13px", marginBottom: "32px", borderRadius: "8px",
+        border: "1px solid #EFE8DA",
         display: "flex", alignItems: "center", gap: "16px",
       }}>
-        <span style={{ fontWeight: 700, color: "#ffd700", letterSpacing: ".05em" }}>
+        <span style={{ fontWeight: 700, color: "#8A6322", letterSpacing: ".05em" }}>
           ⚠ ADMIN — LMS USER VIEW
         </span>
-        <span style={{ color: "#888", fontSize: "12px" }}>Read-only. No actions taken on behalf of any user.</span>
-        <Link href="/admin" style={{ marginLeft: "auto", color: "#aaa", fontSize: "12px", textDecoration: "none" }}>
+        <span style={{ color: "#5B6577", fontSize: "12px" }}>Read-only. No actions taken on behalf of any user.</span>
+        <Link href="/admin" style={{ marginLeft: "auto", color: "#5B6577", fontSize: "12px", textDecoration: "none" }}>
           ← Admin dashboard
         </Link>
       </div>
@@ -70,14 +71,14 @@ export default async function LmsUserLookupPage({ searchParams }: Props) {
           defaultValue={query}
           placeholder="Email or phone number"
           style={{
-            flex: 1, padding: "10px 14px", border: "1.5px solid #ddd",
+            flex: 1, padding: "10px 14px", border: "1.5px solid #E6DECF",
             borderRadius: "8px", fontSize: "14px", outline: "none",
           }}
         />
         <button
           type="submit"
           style={{
-            padding: "10px 20px", background: "#111", color: "#fff",
+            padding: "10px 20px", background: "#1B2333", color: "#fff",
             border: "none", borderRadius: "8px", fontSize: "14px",
             fontWeight: 600, cursor: "pointer",
           }}
@@ -87,7 +88,7 @@ export default async function LmsUserLookupPage({ searchParams }: Props) {
       </form>
 
       {searchError && (
-        <p style={{ color: "#c00", fontSize: "14px" }}>Error: {searchError}</p>
+        <p style={{ color: "#9B2C2C", fontSize: "14px" }}>Error: {searchError}</p>
       )}
 
       {query && results.length === 0 && !searchError && (

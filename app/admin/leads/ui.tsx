@@ -6,17 +6,17 @@ import React from "react";
 import type { Channel } from "@/lib/leads/merge";
 
 export const C = {
-  bg: "#0e0f11",
-  card: "#1a1b1f",
-  border: "#2a2b30",
-  text: "#e8e6f0",
-  muted: "#9c9aa8",
-  yellow: "#F6C63D",
-  green: "#4caf82",
-  red: "#e05252",
-  blue: "#5b9cf6",
-  purple: "#a78bfa",
-  orange: "#d1783c",
+  bg: "#F6F3EC",
+  card: "#FFFFFF",
+  border: "#EFE8DA",
+  text: "#1B2333",
+  muted: "#5B6577",
+  yellow: "#E8A33D",
+  green: "#2F5D3A",
+  red: "#9B2C2C",
+  blue: "#1E3A5F",
+  purple: "#6E5FB0",
+  orange: "#B45309",
 } as const;
 
 export const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
