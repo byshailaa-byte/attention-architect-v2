@@ -5,7 +5,8 @@ import { loadLmsUserContextById } from "@/lib/lms/user-context";
 import { getSql } from "@/lib/db/client";
 import { isSafetyMessage, safetyReply } from "@/lib/lms/coach/safety";
 import { buildCoachContext } from "@/lib/lms/coach/context";
-import { callCoach } from "@/lib/lms/coach/llm";
+import { callCoach, type CoachResult } from "@/lib/lms/coach/llm";
+import { enforceReplyQuality, primarySayThis } from "@/lib/lms/coach/guards";
 import { updateCoachMemory } from "@/lib/lms/coach/memory";
 import { COACH_DAILY_LIMIT, overDailyLimit } from "@/lib/lms/coach/limits";
 import { sendCoachSafetyAlert } from "@/lib/auth/email";
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Normal coaching turn ──
-    let result;
+    let result: CoachResult;
     try {
       result = await callCoach(coachCtx.system, [...coachCtx.history, { role: "user", content: message }]);
     } catch (e) {
@@ -84,20 +85,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "model_failed", reply: "The Coach couldn't answer just now. Try again in a minute." }, { status: 502 });
     }
 
-    // Length guard: a reply over 110 words gets ONE shorter regeneration; if still long, send it.
-    const wc = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
-    if (wc(result.text) > 110) {
-      console.warn(`[coach] reply ${wc(result.text)} words > 110 — regenerating shorter (user ${userId.slice(0, 8)})`);
-      try {
-        const shorter = await callCoach(coachCtx.system, [
-          ...coachCtx.history,
-          { role: "user", content: message },
-          { role: "assistant", content: result.text },
-          { role: "user", content: "Shorter: max 60 words." },
-        ]);
-        if (shorter.text) result = shorter;
-      } catch { /* keep the original reply */ }
-    }
+    // Reply-quality guards (each fires at most once): too long (>90 words), a quoted sentence AND a
+    // trailing question, or a banned method-drift phrase. Each regenerates with a targeted fix.
+    const priorQuotes = coachCtx.history.filter((h) => h.role === "assistant").map((h) => primarySayThis(h.content)).filter((q): q is string => !!q);
+    await enforceReplyQuality(
+      result.text,
+      async (correction) => {
+        try {
+          const r = await callCoach(coachCtx.system, [
+            ...coachCtx.history,
+            { role: "user", content: message },
+            { role: "assistant", content: result.text },
+            { role: "user", content: correction },
+          ]);
+          if (r.text) result = r; // keep tokens/cost of the reply we actually send
+          return result.text;
+        } catch { return ""; }
+      },
+      (m) => console.warn(`${m} (user ${userId.slice(0, 8)})`),
+      priorQuotes,
+    );
 
     await sql`INSERT INTO coach_messages (user_id, role, content, source, week, day)
               VALUES (${userId}, 'parent', ${message}, ${source}, ${week}, ${day})`;

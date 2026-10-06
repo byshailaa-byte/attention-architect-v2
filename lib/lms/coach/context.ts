@@ -3,7 +3,8 @@
 // conversation. Works for both v1 and v2 users (report_v2_content is used when present).
 import { getSql } from "@/lib/db/client";
 import { readCachedReportV2 } from "@/lib/report-v2/service";
-import { archetypeDesc } from "@/content/report-v2/fallbacks";
+import { archetypeDesc, composeFallback } from "@/content/report-v2/fallbacks";
+import { weekOutcomesFor } from "@/content/report-v2/plan-outcomes";
 import { getUserProgress, isWeekUnlocked } from "@/lib/lms/progress";
 import { getLmsWeekContent, getDayCard } from "@/lib/lms/content";
 import { fillLmsContent } from "@/lib/lms/render";
@@ -12,6 +13,7 @@ import { CONCERN_CARD_LABELS } from "@/lib/concerns";
 import { ENTITY } from "@/lib/entity";
 import type { LmsUserContext } from "@/lib/lms/user-context";
 import { buildSystemPrompt, coachPronoun, type PromptVars } from "./prompt";
+import { primarySayThis } from "./guards";
 import type { CoachTurn } from "./llm";
 
 export type CoachContext = {
@@ -23,6 +25,7 @@ export type CoachContext = {
   week: number;
   day: number;
   tonightStep: string;   // short, for the opening template
+  dayText: string;       // tonight's step body, verbatim (for evals/consistency checks)
   hasCalls: boolean;     // tier2 (plan + calls)
 };
 
@@ -76,6 +79,16 @@ export async function buildCoachContext(
   const dayText = dayCard ? fill(dayCard.content[ctx.ageBand]).replace(/[*_]/g, "") : "";
   const doneDays = [1, 2, 3, 4, 5].filter((d) => prog.completedDays.has(d));
 
+  // This week's title + the "what changes this week" aim line (mapped from the worry).
+  const weekAim = weekOutcomesFor(concernKey)[Math.min(Math.max(week, 1), 6) - 1] ?? "";
+  const weekGoal = `${WEEK_TITLES[week] ?? ""}${weekAim ? ` — ${weekAim}` : ""}`;
+  // The hard part: prefer the cached report; fall back to the deterministic report-v2 fallback
+  // so the method section is always grounded (test users have no cached report).
+  const hardPart = (report?.hardPart
+    ? fill(report.hardPart)
+    : composeFallback(ctx.archetype, concernKey, ctx.childName, ctx.childGender).hardPart
+  ).replace(/[*_]/g, "");
+
   // last 3 day outcomes + memory
   const outcomes = (await sql`SELECT week, day, outcome FROM lms_day_outcome WHERE user_id = ${ctx.userId} ORDER BY created_at DESC LIMIT 3`) as unknown as { week: number; day: number; outcome: string }[];
   const mem = (await sql`SELECT facts, summary FROM coach_memory WHERE user_id = ${ctx.userId}`) as unknown as { facts: string[]; summary: string }[];
@@ -89,10 +102,19 @@ export async function buildCoachContext(
     ORDER BY created_at DESC LIMIT 20
   `) as unknown as { role: string; content: string }[];
   const history: CoachTurn[] = hist.reverse().map((m) => ({ role: m.role === "parent" ? "user" : "assistant", content: m.content }));
+  // "Say this" sentences already given this chat — so the model doesn't repeat one.
+  const priorQuotes = [...new Set(
+    history.filter((h) => h.role === "assistant").map((h) => primarySayThis(h.content)).filter((q): q is string => !!q)
+  )].slice(-6);
 
   const vars: PromptVars = {
     parent, child: ctx.childName, age_band: ctx.ageBand, archetype: ctx.archetype,
     week, pronoun, support_email: ENTITY.supportEmail,
+    archetype_description: archetypeDesc(ctx.archetype, ctx.childName, ctx.childGender),
+    day_title: tonightStep,
+    day_body: dayText,
+    week_goal: weekGoal,
+    hard_part: hardPart,
   };
 
   // Facts the model should know — appended to the system prompt. Report fields are present only
@@ -104,13 +126,11 @@ export async function buildCoachContext(
     `The worry: ${worry}. The goal: ${goal}.`,
     `Plan: ${hasCalls ? "tier2 — the six-week plan + 3 calls with us" : "the six-week plan"}.`,
     `Right now: Week ${week} — "${WEEK_TITLES[week] ?? ""}", Day ${day === 0 ? "weekend" : day}. Days done this week: ${doneDays.join(", ") || "none"}.`,
-    tonightStep ? `Tonight's step: ${tonightStep}.` : "",
-    dayText ? `Today's step text: ${dayText}` : "",
-    report?.hardPart ? `The hard part (from the report): ${fill(report.hardPart).replace(/[*_]/g, "")}` : "",
     report?.seenIt ? `What they saw: ${fill(report.seenIt).replace(/[*_]/g, "")}` : "",
     outcomes.length ? `Recent day outcomes: ${outcomes.map((o) => `W${o.week}D${o.day}=${o.outcome}`).join(", ")}.` : "",
     facts.length ? `Remembered facts: ${facts.join("; ")}.` : "",
     summary ? `Summary of past chats: ${summary}` : "",
+    priorQuotes.length ? `Sentences you've already suggested this chat (do NOT repeat — give a fresh one): ${priorQuotes.map((q) => `"${q}"`).join("; ")}` : "",
     source === "after_done" && outcome ? `The parent just marked today "${outcome}". Respond to that first.` : "",
   ].filter(Boolean);
 
@@ -120,6 +140,6 @@ export async function buildCoachContext(
     child: ctx.childName,
     parent,
     supportEmail: ENTITY.supportEmail,
-    week, day, tonightStep, hasCalls,
+    week, day, tonightStep, dayText, hasCalls,
   };
 }
