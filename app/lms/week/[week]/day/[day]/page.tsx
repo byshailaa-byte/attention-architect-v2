@@ -172,6 +172,13 @@ export default async function DayCardPage({ params }: Props) {
           ))}
         </div>
 
+        {/* Ask the Coach about tonight */}
+        <a href="/lms/coach?source=day_card&prefill=About%20tonight%27s%20step%3A%20" style={{ display: "flex", alignItems: "center", gap: 10, background: "#FBF4E6", border: "1px solid #F0DDB8", borderRadius: 14, padding: "12px 14px", textDecoration: "none", color: "#1E3A5F", marginBottom: 12 }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#E8A33D", color: "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>AC</div>
+          <div style={{ flex: 1, fontSize: 14, lineHeight: 1.4 }}><b>Not sure how to say it to {ctx.childName}?</b><br /><span style={{ color: "#5B6577" }}>Ask the Coach about tonight</span></div>
+          <span style={{ color: "#8A6322", fontSize: 18 }}>›</span>
+        </a>
+
         {/* Complete + reflection */}
         <DayCardActions
           week={week}

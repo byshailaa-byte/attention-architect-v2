@@ -1018,6 +1018,51 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_50_admin_view_log') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 51 — Attention Coach: chat messages, per-user memory, team notes, day outcomes.
+  if (!applied.has("phase_51_coach")) {
+    await sql`
+      CREATE TABLE IF NOT EXISTS coach_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('parent','coach','safety')),
+        content TEXT NOT NULL,
+        source TEXT,
+        week INT, day INT,
+        safety_flag BOOLEAN NOT NULL DEFAULT false,
+        feedback SMALLINT CHECK (feedback IN (-1,1)),
+        feedback_reason TEXT,
+        reviewed_at TIMESTAMPTZ,
+        model TEXT, input_tokens INT, output_tokens INT, cost_paise INT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS coach_messages_user_time ON coach_messages (user_id, created_at)`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS coach_memory (
+        user_id UUID PRIMARY KEY,
+        facts JSONB NOT NULL DEFAULT '[]'::jsonb,
+        summary TEXT NOT NULL DEFAULT '',
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS coach_team_notes (
+        user_id UUID PRIMARY KEY,
+        note TEXT NOT NULL DEFAULT '',
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`
+      CREATE TABLE IF NOT EXISTS lms_day_outcome (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL, week INT NOT NULL, day INT NOT NULL,
+        outcome TEXT NOT NULL CHECK (outcome IN ('worked','sort_of','didnt_work')),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_51_coach') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 

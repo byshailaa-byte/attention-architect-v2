@@ -265,6 +265,16 @@ export default function JourneyMap({
         ))}
       </div>
 
+      {/* Attention Coach card */}
+      <a href="/lms/coach?source=home" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 14, background: "#1E3A5F", color: "#fff", borderRadius: 14, padding: "16px 20px", marginBottom: 12 }}>
+        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#E8A33D", color: "#1E3A5F", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, flexShrink: 0 }}>AC</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>Stuck? Ask the Attention Coach</div>
+          <div style={{ fontSize: 13, color: "#C9D6E6", marginTop: 2 }}>It knows {childName}&rsquo;s report and tonight&rsquo;s step.</div>
+        </div>
+        <span style={{ fontSize: 20, color: "#E8A33D" }}>›</span>
+      </a>
+
       {/* Attention Health hub card */}
       <Link href="/handbook" style={{ textDecoration: "none" }}>
         <div style={{

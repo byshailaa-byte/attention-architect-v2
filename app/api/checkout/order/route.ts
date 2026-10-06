@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { getRazorpayClient, getPublicKeyId } from "@/lib/razorpay/client";
+import { isSellableTier } from "@/lib/checkout/tiers";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { SHASHANK } from "@/lib/founders-data";
 
@@ -30,8 +31,7 @@ export async function POST(req: NextRequest) {
     // Only the two current plans are sellable: tier1 (₹2,999) and tier2 (₹4,999). Legacy tiers
     // (module1 ₹499 / full ₹999 / topup) stay in TIERS and are still READ elsewhere so existing
     // buyers keep full LMS access — but a NEW order can never be created for them.
-    const SELLABLE_TIERS = new Set<string>(["tier1", "tier2"]);
-    if (!SELLABLE_TIERS.has(tier)) {
+    if (!isSellableTier(tier)) {
       return NextResponse.json({ error: "unknown_tier" }, { status: 400 });
     }
 

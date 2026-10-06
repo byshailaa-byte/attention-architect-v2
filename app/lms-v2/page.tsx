@@ -92,6 +92,15 @@ export default async function LmsV2Home() {
           <span style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 48, borderRadius: 12, background: V2.navy, color: V2.white, fontSize: 15, fontWeight: 600 }}>{isWeekend ? "Open the weekend review" : "Open tonight's move"}</span>
         </Link>
 
+        <a href="/lms-v2/coach?source=home" style={{ display: "flex", gap: 12, alignItems: "center", background: V2.navy, color: V2.white, borderRadius: 16, padding: 16, textDecoration: "none" }}>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: V2.gold, color: V2.navy, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, flexShrink: 0 }}>AC</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>Stuck? Ask the Attention Coach</div>
+            <div style={{ fontSize: 13, color: V2.onNavy, lineHeight: 1.4, marginTop: 2 }}>It knows {ctx.childName}&rsquo;s report and tonight&rsquo;s step.</div>
+          </div>
+          <span style={{ fontSize: 20, color: V2.gold }}>›</span>
+        </a>
+
         <Link href={`/lms-v2/week/${currentWeek}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: V2.white, border: `1px solid ${V2.line}`, borderRadius: 14, padding: 14, minHeight: 56, textDecoration: "none", color: V2.navy }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <div style={{ fontSize: 15, fontWeight: 700 }}>This week&rsquo;s reading</div>

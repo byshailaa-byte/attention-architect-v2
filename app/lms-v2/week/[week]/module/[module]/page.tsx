@@ -62,6 +62,7 @@ export default async function ModuleReader({ params }: { params: Promise<{ week:
         )}
 
         <div className="v2-prose" dangerouslySetInnerHTML={{ __html: renderMarkdown(fill(m.body)) }} />
+        <a href="/lms-v2/coach?source=module" style={{ alignSelf: "flex-start", marginTop: 6, fontSize: 14, fontWeight: 600, color: V2.darkGold, textDecoration: "none" }}>Ask the Coach about this ›</a>
       </article>
 
       <div style={{ marginTop: "auto", padding: "0 22px 26px", display: "flex", flexDirection: "column", gap: 10 }}>

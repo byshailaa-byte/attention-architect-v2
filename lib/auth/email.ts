@@ -51,6 +51,27 @@ async function resendSend(payload: {
   }
 }
 
+// ── Coach safety alert (internal) ──────────────────────────────────────────────
+// Sent to ADMIN_ALERT_EMAIL when the Coach flags a safety message. NEVER includes the message
+// content — only the parent's first name and a deep link to the admin Coach thread.
+export async function sendCoachSafetyAlert(parentFirstName: string, deepLink: string): Promise<{ sent: boolean; detail: string }> {
+  const to = process.env.ADMIN_ALERT_EMAIL;
+  if (!to) {
+    console.warn("[coach] ADMIN_ALERT_EMAIL not set — safety alert not emailed");
+    return { sent: false, detail: "ADMIN_ALERT_EMAIL unset" };
+  }
+  const safeName = (parentFirstName || "A parent").replace(/[<>]/g, "");
+  const html = `<p>${safeName} sent a message the Coach flagged for safety.</p><p>Open the thread: <a href="${deepLink}">${deepLink}</a></p><p>(Message content is intentionally omitted.)</p>`;
+  const text = `${safeName} sent a message the Coach flagged for safety.\nOpen the thread: ${deepLink}\n(Message content is intentionally omitted.)`;
+  try {
+    await resendSend({ from: FROM, to: [to], subject: "Coach safety flag", html, text });
+    return { sent: true, detail: process.env.RESEND_API_KEY ? "resend accepted" : "no RESEND_API_KEY (logged only)" };
+  } catch (e) {
+    console.error("[coach] safety alert email failed:", (e as Error).message);
+    return { sent: false, detail: (e as Error).message };
+  }
+}
+
 // ── Password reset ───────────────────────────────────────────────────────────
 
 function buildPasswordResetHtml(resetUrl: string): string {

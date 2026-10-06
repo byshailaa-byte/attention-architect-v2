@@ -17,7 +17,9 @@ import V2Progress from "@/app/lms-v2/progress/page";
 import V2Resources from "@/app/lms-v2/resources/page";
 import V2ResourceSlug from "@/app/lms-v2/resources/[slug]/page";
 import V2WhatToSay from "@/app/lms-v2/what-to-say/page";
+import V2Coach from "@/app/lms-v2/coach/page";
 import LmsV1Home from "@/app/lms/page";
+import V1Coach from "@/app/lms/coach/page";
 import V1WeekPage from "@/app/lms/week/[week]/page";
 import V1DayPage from "@/app/lms/week/[week]/day/[day]/page";
 import V1WeekendPage from "@/app/lms/week/[week]/weekend/page";
@@ -38,6 +40,7 @@ function resolve(version: "v1" | "v2", slug: string[]): { Comp: PageFn; props?: 
   if (version === "v2") {
     if (s.length === 0) return { Comp: LmsV2Home };
     if (s[0] === "onboarding" && s.length === 1) return { Comp: V2Onboarding };
+    if (s[0] === "coach" && s.length === 1) return { Comp: V2Coach, props: { searchParams: Promise.resolve({}) } };
     if (s[0] === "progress" && s.length === 1) return { Comp: V2Progress };
     if (s[0] === "what-to-say" && s.length === 1) return { Comp: V2WhatToSay };
     if (s[0] === "resources") {
@@ -54,6 +57,7 @@ function resolve(version: "v1" | "v2", slug: string[]): { Comp: PageFn; props?: 
   }
   if (s.length === 0) return { Comp: LmsV1Home };
   if (s[0] === "onboarding" && s.length === 1) return { Comp: V1Onboarding };
+  if (s[0] === "coach" && s.length === 1) return { Comp: V1Coach, props: { searchParams: Promise.resolve({}) } };
   if (s[0] === "week" && s[1]) {
     if (s.length === 2) return { Comp: V1WeekPage, props: P({ week: s[1] }) };
     if (s[2] === "day" && s[3] && s.length === 4) return { Comp: V1DayPage, props: P({ week: s[1], day: s[3] }) };

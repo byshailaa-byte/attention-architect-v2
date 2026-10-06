@@ -101,6 +101,7 @@ export default async function DayPage({ params }: { params: Promise<{ week: stri
         <V2DayActions
           week={week}
           day={day}
+          childName={ctx.childName}
           reflectionPrompt={dayCard.reflection ? "How did it go?" : null}
           alreadyComplete={alreadyComplete}
           existingReflection={existingReflection}
