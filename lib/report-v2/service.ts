@@ -49,7 +49,7 @@ export async function generateAndStoreReportV2(sessionId: string): Promise<void>
   if (await readCachedReportV2(sql, sessionId)) return;
   const input = await loadAssessmentInput(sql, sessionId);
   if (!input) return;
-  const { content } = await generateReportV2(input);
+  const { content, cost } = await generateReportV2(input);
   try {
     // DO UPDATE (not DO NOTHING): a stale-version row must be overwritten by the regenerate.
     await sql`
@@ -59,6 +59,15 @@ export async function generateAndStoreReportV2(sessionId: string): Promise<void>
     `;
   } catch (e) {
     console.warn("[report-v2] store content:", (e as Error).message);
+  }
+  // Phase 52: one cost/outcome row per generation (model, calls, tokens, cost, outcome + reason).
+  try {
+    await sql`
+      INSERT INTO report_generation_log (session_id, model, calls, input_tokens, output_tokens, cost_paise, outcome, reason)
+      VALUES (${sessionId}::uuid, ${cost.model}, ${cost.calls}, ${cost.inputTokens}, ${cost.outputTokens}, ${cost.costPaise}, ${cost.outcome}, ${cost.reason})
+    `;
+  } catch (e) {
+    console.warn("[report-v2] cost log:", (e as Error).message);
   }
 }
 

@@ -1,6 +1,7 @@
 // Coach LLM client — reuses the report-v2 Anthropic SDK + ANTHROPIC_API_KEY, on the FAST tier
 // (Haiku 4.5) because the Coach is a high-volume, short-turn chat.
 import Anthropic from "@anthropic-ai/sdk";
+import { coachApiKey } from "@/lib/ai/anthropic-keys";
 
 // Fast/cheap tier (the report-v2 generator uses sonnet-4-6; the Coach uses the fast model).
 export const COACH_MODEL = "claude-haiku-4-5-20251001";
@@ -19,8 +20,7 @@ export function costPaise(inputTokens: number, outputTokens: number): number {
 let _client: Anthropic | null = null;
 function client(): Anthropic {
   if (!_client) {
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not set");
-    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    _client = new Anthropic({ apiKey: coachApiKey() });
   }
   return _client;
 }

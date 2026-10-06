@@ -8,6 +8,7 @@
 //      specific failing lines before we spend a full retry.
 // Budget: 1 repair + 1 full retry, then static fallback. Only runs for ?report=v2.
 import Anthropic from "@anthropic-ai/sdk";
+import { reportsApiKey } from "@/lib/ai/anthropic-keys";
 import { WRITING_ENGINE_SYSTEM_PROMPT } from "@/lib/narrative/system-prompt";
 import { QUESTIONS_BY_ID, ALL_QUESTIONS } from "@/lib/engine/questions";
 import { displayChildName, reportV2Pronouns, type Gender } from "@/lib/report/pronouns";
@@ -36,11 +37,26 @@ const INSTINCT_MOVE: Record<string, string> = {
 
 const MODEL = "claude-sonnet-4-6";
 
+// Per-call token usage, accumulated across one generation for report_generation_log (phase 52).
+type Usage = { inTok: number; outTok: number };
+const usageOf = (res: { usage?: { input_tokens?: number; output_tokens?: number } | null }): Usage =>
+  ({ inTok: res.usage?.input_tokens ?? 0, outTok: res.usage?.output_tokens ?? 0 });
+// Report tier price: Sonnet $3 / $15 per 1M tokens, USD→INR 84.
+export function reportCostPaise(inTok: number, outTok: number): number {
+  return Math.round(((inTok / 1_000_000) * 3 + (outTok / 1_000_000) * 15) * 84 * 100);
+}
+// Map the judge's failed questions to the reason enum (Q1 coherence, Q2 usability, Q3 seenIt, Q4 parent-blame).
+function judgeReason(failed: string[]): string {
+  const Q: Record<string, string> = { coherence: "q1", usability: "q2", seenIt: "q3", relationship: "q4" };
+  const qs = failed.map((n) => Q[n]).filter(Boolean);
+  return "judge_" + (qs.length ? qs.join("_") : "unknown");
+}
+export type ReportCost = { model: string; calls: number; inputTokens: number; outputTokens: number; costPaise: number; outcome: "llm" | "fallback"; reason: string | null };
+
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
   if (!_client) {
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not set");
-    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    _client = new Anthropic({ apiKey: reportsApiKey() });
   }
   return _client;
 }
@@ -293,19 +309,19 @@ function parseJson(text: string): ReportV2Generated {
   };
 }
 
-async function callLLM(prompt: string): Promise<ReportV2Generated> {
+async function callLLM(prompt: string): Promise<{ gen: ReportV2Generated; usage: Usage }> {
   const res = await getClient().messages.create({
     model: MODEL, max_tokens: 1024, system: WRITING_ENGINE_SYSTEM_PROMPT,
     messages: [{ role: "user", content: prompt }],
   });
   const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
-  return parseJson(text);
+  return { gen: parseJson(text), usage: usageOf(res) };
 }
 
 // Cheap targeted repair: shorten ONLY the failing fields to satisfy the exact rule each one
 // broke, keeping meaning + voice. Merges the returned fields back into g. Used when the only
 // problems are length/readability.
-async function repairFields(g: ReportV2Generated, errors: string[], ctx: Context): Promise<ReportV2Generated> {
+async function repairFields(g: ReportV2Generated, errors: string[], ctx: Context): Promise<{ gen: ReportV2Generated; usage: Usage }> {
   const fields = fieldsFromErrors(errors);
   const rulesByField = (f: string) => errors.filter((e) => e.startsWith(`${f}:`)).map((e) => e.split(":").slice(1).join(":").trim());
   const lines = fields.map((f) => `"${f}": ${JSON.stringify(getField(g, f))}    // fix: ${rulesByField(f).join("; ")}`).join("\n");
@@ -334,12 +350,12 @@ Return JSON ONLY with exactly those keys and the rewritten values, nothing else.
   const obj = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
   const out: ReportV2Generated = { ...g, switch: { ...g.switch }, whyParas: [...g.whyParas] as [string, string], tonight: [...g.tonight] as [string, string, string] };
   for (const f of fields) if (typeof obj[f] === "string" && obj[f].trim()) setField(out, f, String(obj[f]));
-  return out;
+  return { gen: out, usage: usageOf(res) };
 }
 
 // Targeted seenIt repair: rewrite ONLY seenIt as a strength moment (child focusing well),
 // keeping the exact opener and the child's pronouns. Used when the judge fails on seenIt alone.
-async function repairSeenIt(seenIt: string, ctx: Context): Promise<string> {
+async function repairSeenIt(seenIt: string, ctx: Context): Promise<{ text: string; usage: Usage }> {
   const prompt = `Rewrite this one line for a parent of ${ctx.name}. It must show ${ctx.name} FOCUSING WELL —
 a real moment of deep or happy focus — NOT the worry, not a problem, not reminders or fights.
 Draw on these strengths: ${ctx.archStrengths}
@@ -350,8 +366,8 @@ Current (wrong — it describes a problem): ${JSON.stringify(seenIt)}`;
     const res = await getClient().messages.create({ model: MODEL, max_tokens: 120, messages: [{ role: "user", content: prompt }] });
     const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim().replace(/^["“]|["”]$/g, "");
     const line = curly(text.split("\n")[0].trim());
-    return line.startsWith("You’ve seen it yourself.") ? line : seenIt;
-  } catch { return seenIt; }
+    return { text: line.startsWith("You’ve seen it yourself.") ? line : seenIt, usage: usageOf(res) };
+  } catch { return { text: seenIt, usage: { inTok: 0, outTok: 0 } }; }
 }
 
 export type GenerateResult = {
@@ -360,6 +376,7 @@ export type GenerateResult = {
   repairs: number;        // targeted repair calls used
   judges: JudgeVerdict[];
   rejections: string[];   // every validator error + judge-FAIL reason, across attempts
+  cost: ReportCost;       // phase 52: tokens/cost/outcome/reason for report_generation_log
 };
 
 export function fallbackContentFor(a: AssessmentInput): ReportV2Content {
@@ -374,11 +391,14 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
   let g: ReportV2Generated | null = null;
   let source: "llm" | "fallback" = "fallback";
   let attempts = 0, repairs = 0, retries = 0;
+  let calls = 0, inTok = 0, outTok = 0, reason: string | null = null;
+  const acc = (u: Usage) => { calls++; inTok += u.inTok; outTok += u.outTok; };
   const judges: JudgeVerdict[] = [];
   const rejections: string[] = [];
 
   try {
-    let current = await callLLM(buildPrompt(ctx)); attempts = 1;
+    const first = await callLLM(buildPrompt(ctx)); acc(first.usage);
+    let current = first.gen; attempts = 1;
     current.tonight[2] = ctx.notice; // tonight's 3rd step is always the deterministic Notice check
     // Budget: 2 repairs + 1 full retry.
     for (;;) {
@@ -388,44 +408,48 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
         if (isRepairable(v.errors) && repairs < 2) {
           repairs++;
           console.log(`[report-v2] repair (length-only): ${fieldsFromErrors(v.errors).join(", ")}`);
-          current = await repairFields(current, v.errors, ctx);
+          const rp = await repairFields(current, v.errors, ctx); acc(rp.usage); current = rp.gen;
           current.tonight[2] = ctx.notice;
           continue;
         }
         if (retries < 1) {
           retries++; attempts++;
           console.log(`[report-v2] full retry: ${v.errors.join("; ")}`);
-          current = await callLLM(buildPrompt(ctx, v.errors));
+          const rt = await callLLM(buildPrompt(ctx, v.errors)); acc(rt.usage); current = rt.gen;
           current.tonight[2] = ctx.notice;
           continue;
         }
+        reason = isRepairable(v.errors) ? "repair_exhausted" : "validator";
         break; // → fallback
       }
       const j = await judgeCoherence({
         childName: ctx.name, worryLabel: ctx.worryLabel, moment: ctx.moment,
         archetype: ctx.archetype, program: ctx.program, evidenceQuotes: ctx.evidenceQuotes, generated: current,
       });
+      acc({ inTok: j.inTok, outTok: j.outTok });
       judges.push(j);
       console.log(`[report-v2] judge ${j.verdict}: ${j.reason}`);
-      if (j.verdict === "PASS") { g = current; source = "llm"; break; }
+      if (j.verdict === "PASS") { g = current; source = "llm"; reason = null; break; }
       rejections.push(`judge: ${j.reason}`);
       // seenIt-only failure → cheap targeted repair of seenIt (strength moment), not a full retry.
       if (j.failed.length === 1 && j.failed[0] === "seenIt" && repairs < 2) {
         repairs++;
         console.log(`[report-v2] repair (seenIt strength moment)`);
-        current.seenIt = await repairSeenIt(current.seenIt, ctx);
+        const rs = await repairSeenIt(current.seenIt, ctx); acc(rs.usage); current.seenIt = rs.text;
         continue;
       }
       if (retries < 1) {
         retries++; attempts++;
-        current = await callLLM(buildPrompt(ctx, [`Judge FAILED (${j.failed.join(", ")}): ${j.reason}`]));
+        const jr = await callLLM(buildPrompt(ctx, [`Judge FAILED (${j.failed.join(", ")}): ${j.reason}`])); acc(jr.usage); current = jr.gen;
         current.tonight[2] = ctx.notice;
         continue;
       }
+      reason = judgeReason(j.failed);
       break; // → fallback
     }
   } catch (e) {
     rejections.push(`error: ${(e as Error).message}`);
+    reason = "api_error";
     console.log(`[report-v2] error:`, (e as Error).message);
   }
 
@@ -435,5 +459,10 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
     console.log(`[report-v2] using static fallback (${ctx.archetype} × ${ctx.concern})`);
   }
 
-  return { content: assemble(ctx, g, source), attempts, repairs, judges, rejections };
+  const cost: ReportCost = {
+    model: MODEL, calls, inputTokens: inTok, outputTokens: outTok,
+    costPaise: reportCostPaise(inTok, outTok),
+    outcome: source, reason: source === "llm" ? null : (reason ?? "unknown"),
+  };
+  return { content: assemble(ctx, g, source), attempts, repairs, judges, rejections, cost };
 }

@@ -11,6 +11,7 @@
 // is already in the source moment. Nothing new is invented.
 
 import Anthropic from "@anthropic-ai/sdk";
+import { reportsApiKey } from "@/lib/ai/anthropic-keys";
 import { WRITING_ENGINE_SYSTEM_PROMPT } from "./system-prompt";
 
 const MODEL = "claude-sonnet-4-6";
@@ -18,8 +19,7 @@ const MODEL = "claude-sonnet-4-6";
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
   if (!_client) {
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not set");
-    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    _client = new Anthropic({ apiKey: reportsApiKey() });
   }
   return _client;
 }

@@ -1063,6 +1063,29 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_51_coach') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 52 — report generation cost + outcome log. One row per generateReportV2 call: model,
+  // call count, tokens, cost_paise, and outcome (llm | fallback + reason). For diagnosing
+  // fallbacks and tracking report AI spend — nothing was logged before.
+  if (!applied.has("phase_52_report_generation_log")) {
+    await sql`
+      CREATE TABLE IF NOT EXISTS report_generation_log (
+        id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        session_id    UUID NOT NULL,
+        model         TEXT,
+        calls         INTEGER NOT NULL DEFAULT 0,
+        input_tokens  INTEGER NOT NULL DEFAULT 0,
+        output_tokens INTEGER NOT NULL DEFAULT 0,
+        cost_paise    INTEGER NOT NULL DEFAULT 0,
+        outcome       TEXT NOT NULL,
+        reason        TEXT,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS report_generation_log_session_idx ON report_generation_log (session_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS report_generation_log_created_idx ON report_generation_log (created_at)`;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_52_report_generation_log') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 

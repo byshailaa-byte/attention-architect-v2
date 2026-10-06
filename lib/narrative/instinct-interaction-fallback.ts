@@ -10,6 +10,7 @@
 // A fixed closing line is appended in code at render time — never generated.
 
 import Anthropic from "@anthropic-ai/sdk";
+import { reportsApiKey } from "@/lib/ai/anthropic-keys";
 import { WRITING_ENGINE_SYSTEM_PROMPT } from "./system-prompt";
 import type { AttentionMoment } from "./types";
 
@@ -18,8 +19,7 @@ const MODEL = "claude-sonnet-4-6";
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
   if (!_client) {
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not set");
-    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    _client = new Anthropic({ apiKey: reportsApiKey() });
   }
   return _client;
 }

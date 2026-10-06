@@ -3,6 +3,7 @@
 // evidence answers + the archetype mechanism, AND that the switch matches the Week 1 move.
 // FAIL → the caller retries once with the reason, then falls back to static copy.
 import Anthropic from "@anthropic-ai/sdk";
+import { reportsApiKey } from "@/lib/ai/anthropic-keys";
 import type { ReportV2Generated } from "./types";
 import type { ProgramAnchor } from "./program";
 
@@ -11,13 +12,12 @@ const MODEL = "claude-sonnet-4-6";
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
   if (!_client) {
-    if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not set");
-    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    _client = new Anthropic({ apiKey: reportsApiKey() });
   }
   return _client;
 }
 
-export type JudgeVerdict = { verdict: "PASS" | "FAIL"; reason: string; failed: string[] };
+export type JudgeVerdict = { verdict: "PASS" | "FAIL"; reason: string; failed: string[]; inTok: number; outTok: number };
 
 export async function judgeCoherence(args: {
   childName: string;
@@ -77,5 +77,5 @@ Q4 (no parent-blame): FAIL if anything implies the parent–child relationship, 
   const verdict: "PASS" | "FAIL" = failed.length === 0 ? "PASS" : "FAIL";
   const reason = verdict === "PASS" ? "all four PASS"
     : failed.join(", ") + " FAIL — " + text.replace(/\s+/g, " ").slice(0, 240);
-  return { verdict, reason, failed };
+  return { verdict, reason, failed, inTok: res.usage?.input_tokens ?? 0, outTok: res.usage?.output_tokens ?? 0 };
 }
