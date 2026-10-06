@@ -8,6 +8,12 @@ const FILTERS: { k: CoachFilter; label: string }[] = [
   { k: "needs_look", label: "Needs a look" }, { k: "all", label: "All" }, { k: "safety", label: "Safety" }, { k: "thumbsdown", label: "👎" },
 ];
 const words = (s: string) => (s || "").trim().split(/\s+/).filter(Boolean).length;
+// Render coach replies like the parent view: **bold**, *italic*, newlines (HTML escaped first).
+function renderInline(text: string): string {
+  let h = (text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  h = h.replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>").replace(/(?<!\*)\*(?!\*)([^*\n]+?)\*(?!\*)/g, "<em>$1</em>");
+  return h.replace(/\n/g, "<br/>");
+}
 const istTime = (d: Date) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true }).format(d).toLowerCase();
 const rel = (d: Date) => {
   const h = (Date.now() - d.getTime()) / 3600_000;
@@ -44,7 +50,7 @@ export default async function AdminCoachPage({ searchParams }: { searchParams: P
         {tile(String(stats.parentMessages), "Parent messages")}
         {tile(stats.helpfulPct == null ? "—" : `${stats.helpfulPct}%`, `Helpful (${stats.thumbsUp} 👍 · ${stats.thumbsDown} 👎)`, T.successText)}
         {tile(String(stats.safetyFlags), "Safety flags", T.dangerText)}
-        {tile(`₹${stats.costRupees}`, "AI cost")}
+        {tile(`₹${stats.costPaise / 100 < 10 ? (stats.costPaise / 100).toFixed(2) : Math.round(stats.costPaise / 100)}`, "AI cost")}
       </div>
 
       <div style={{ flex: 1, display: "grid", gridTemplateColumns: "320px minmax(0, 1fr) 280px", gap: 14, minHeight: 0 }}>
@@ -99,7 +105,7 @@ export default async function AdminCoachPage({ searchParams }: { searchParams: P
                   if (m.role === "parent") {
                     return (
                       <div key={m.id} style={{ alignSelf: "flex-end", maxWidth: "72%", background: T.navy, color: "#fff", borderRadius: "12px 12px 3px 12px", padding: "8px 11px" }}>
-                        <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+                        <div dangerouslySetInnerHTML={{ __html: renderInline(m.content) }} />
                         <div style={{ fontSize: 11, color: "#C9D6E6", textAlign: "right", marginTop: 3 }}>{istTime(m.createdAt)}{m.source && m.source !== "coach" ? ` · from ${m.source.replace(/_/g, " ")}` : ""}</div>
                       </div>
                     );

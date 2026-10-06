@@ -84,6 +84,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "model_failed", reply: "The Coach couldn't answer just now. Try again in a minute." }, { status: 502 });
     }
 
+    // Length guard: a reply over 110 words gets ONE shorter regeneration; if still long, send it.
+    const wc = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
+    if (wc(result.text) > 110) {
+      console.warn(`[coach] reply ${wc(result.text)} words > 110 — regenerating shorter (user ${userId.slice(0, 8)})`);
+      try {
+        const shorter = await callCoach(coachCtx.system, [
+          ...coachCtx.history,
+          { role: "user", content: message },
+          { role: "assistant", content: result.text },
+          { role: "user", content: "Shorter: max 60 words." },
+        ]);
+        if (shorter.text) result = shorter;
+      } catch { /* keep the original reply */ }
+    }
+
     await sql`INSERT INTO coach_messages (user_id, role, content, source, week, day)
               VALUES (${userId}, 'parent', ${message}, ${source}, ${week}, ${day})`;
     const coachRows = (await sql`

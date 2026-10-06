@@ -6,7 +6,7 @@ export type CoachFilter = "needs_look" | "all" | "safety" | "thumbsdown";
 export type CoachStats = {
   paidUsed: number; totalPaid: number; parentMessages: number;
   thumbsUp: number; thumbsDown: number; helpfulPct: number | null;
-  safetyFlags: number; costRupees: number;
+  safetyFlags: number; costPaise: number;
 };
 
 export async function getCoachStats(): Promise<CoachStats> {
@@ -22,7 +22,7 @@ export async function getCoachStats(): Promise<CoachStats> {
   return {
     paidUsed: pu?.c ?? 0, totalPaid: tp?.c ?? 0, parentMessages: pm?.c ?? 0,
     thumbsUp: up, thumbsDown: down, helpfulPct: up + down > 0 ? Math.round((up / (up + down)) * 100) : null,
-    safetyFlags: sf?.c ?? 0, costRupees: Math.round((cost?.c ?? 0) / 100),
+    safetyFlags: sf?.c ?? 0, costPaise: cost?.c ?? 0,
   };
 }
 

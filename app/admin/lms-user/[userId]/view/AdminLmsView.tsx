@@ -5,6 +5,7 @@
 //  - a capture-phase click interceptor that keeps in-LMS navigation inside the admin route
 //    (rewrites /lms and /lms-v2 links to /admin/lms-user/<id>/view/...), so the operator never
 //    lands on the real /lms/* (where impersonation does not apply).
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ReadOnlyContext } from "@/components/lms/ReadOnlyContext";
 
@@ -13,6 +14,25 @@ export function AdminLmsView({
 }: { userId: string; firstName: string; version: "v1" | "v2"; children: React.ReactNode }) {
   const router = useRouter();
   const base = `/admin/lms-user/${userId}/view`;
+
+  // While the admin view is mounted, tag this page's /api/lms/* calls with x-aa-admin-view: 1 so
+  // the server guard blocks any mutation (defense-in-depth; the controls are also disabled). This
+  // is strictly scoped to this component's lifetime — nothing persists after Exit, no cookie.
+  useEffect(() => {
+    const orig = window.fetch;
+    window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
+      try {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.pathname : (input as Request).url;
+        if (typeof url === "string" && /\/api\/lms\//.test(url)) {
+          const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+          headers.set("x-aa-admin-view", "1");
+          return orig(input as RequestInfo, { ...init, headers });
+        }
+      } catch { /* fall through to the original fetch */ }
+      return orig(input as RequestInfo, init);
+    };
+    return () => { window.fetch = orig; };
+  }, []);
 
   function mapHref(href: string): string | null {
     let rest: string | null = null;

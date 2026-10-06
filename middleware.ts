@@ -5,6 +5,15 @@ import { LMS_VER_COOKIE } from "@/lib/auth/lms-version-cookie";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Expire the legacy admin-view marker cookie on LMS + LMS API paths. Admin view is now decided
+  // ONLY by the x-aa-admin-view request header, so a stale aa_lms_view cookie must never 403 a
+  // normal parent. These paths handle their own auth, so just clear + continue.
+  if (pathname.startsWith("/lms-v2") || pathname.startsWith("/api/lms")) {
+    const res = NextResponse.next();
+    res.cookies.set("aa_lms_view", "", { path: "/", maxAge: 0 });
+    return res;
+  }
+
   // ── Admin: HTTP Basic Auth ────────────────────────────────────────────────
   // Covers both the dashboard UI (/admin/*) and the admin API (/api/admin/*).
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
@@ -47,15 +56,10 @@ export async function middleware(req: NextRequest) {
     // cookie here that /api/flow/* reads.
     res.cookies.set("aa_internal", "1", { path: "/", maxAge: 60 * 60 * 24 * 30, sameSite: "lax" });
 
-    // Admin "view as user" read-only marker. Set only while on a .../view path; cleared on any
-    // other admin page. /api/lms/* mutation routes read it and 403 (defense-in-depth; the buttons
-    // are also disabled and the admin holds no customer session). Never the customer's cookie.
-    const inLmsView = /^\/admin\/lms-user\/[^/]+\/view(\/|$)/.test(pathname);
-    if (inLmsView) {
-      res.cookies.set("aa_lms_view", "1", { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 30 });
-    } else {
-      res.cookies.set("aa_lms_view", "", { path: "/", maxAge: 0 });
-    }
+    // The admin-view read-only signal is NOT a cookie anymore (it was sticky and leaked into the
+    // operator's own normal-parent session). It's the x-aa-admin-view header added by AdminLmsView.
+    // Expire any stale cookie from the old build.
+    res.cookies.set("aa_lms_view", "", { path: "/", maxAge: 0 });
     return res;
   }
 
@@ -85,12 +89,14 @@ export async function middleware(req: NextRequest) {
       v2.search = "";
       return NextResponse.redirect(v2);
     }
-    return NextResponse.next();
+    const res = NextResponse.next();
+    res.cookies.set("aa_lms_view", "", { path: "/", maxAge: 0 }); // expire stale admin-view cookie
+    return res;
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*", "/lms/:path*"],
+  matcher: ["/admin/:path*", "/api/admin/:path*", "/lms/:path*", "/lms-v2/:path*", "/api/lms/:path*"],
 };

@@ -34,8 +34,10 @@ export default function CoachScreen({
   const [draft, setDraft] = useState(prefill ?? "");
   const [sending, setSending] = useState(false);
   const [left, setLeft] = useState(data.messagesLeft);
-  const [chipsHidden, setChipsHidden] = useState(false);
+  const [chipsHidden, setChipsHidden] = useState(data.messages.some((m) => m.role === "safety"));
   const [limitHit, setLimitHit] = useState(data.messagesLeft <= 0);
+  const [notice, setNotice] = useState<string | null>(null);
+  const ERR_NOTICE = "Something went wrong. Please refresh and try again.";
   const [fbOpen, setFbOpen] = useState<string | null>(null);
   const [fbReason, setFbReason] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -46,7 +48,8 @@ export default function CoachScreen({
   async function send(text: string, source: string) {
     const msg = text.trim();
     if (!msg || sending || limitHit || readOnly) return;
-    if (msg.length > 1000) { alert("Please keep it under 1000 characters."); return; }
+    if (msg.length > 1000) { setNotice("Please keep it under 1000 characters."); return; }
+    setNotice(null);
     setDraft("");
     setChipsHidden(true);
     setMessages((m) => [...m, { id: "tmp-" + Date.now(), role: "parent", content: msg, feedback: null }]);
@@ -60,13 +63,16 @@ export default function CoachScreen({
       if (res.status === 429) { setLimitHit(true); setMessages((m) => [...m, { id: "limit", role: "coach", content: LIMIT_MSG, feedback: null }]); return; }
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessages((m) => [...m, { id: "err-" + Date.now(), role: "coach", content: d.reply || d.error || "The Coach couldn't answer just now. Try again in a minute.", feedback: null }]);
+        // Any API error → a grey system notice, never a coach bubble; not stored; no limit used.
+        setNotice(ERR_NOTICE);
         return;
       }
-      setMessages((m) => [...m, { id: d.messageId ?? "r-" + Date.now(), role: d.role === "safety" ? "safety" : "coach", content: d.reply, feedback: null }]);
+      const isSafety = d.role === "safety";
+      setMessages((m) => [...m, { id: d.messageId ?? "r-" + Date.now(), role: isSafety ? "safety" : "coach", content: d.reply, feedback: null }]);
+      if (isSafety) setChipsHidden(true);
       if (typeof d.messagesLeft === "number") { setLeft(d.messagesLeft); if (d.messagesLeft <= 0) setLimitHit(true); }
     } catch {
-      setMessages((m) => [...m, { id: "err-" + Date.now(), role: "coach", content: "The Coach couldn't answer just now. Try again in a minute.", feedback: null }]);
+      setNotice(ERR_NOTICE);
     } finally { setSending(false); }
   }
 
@@ -80,6 +86,16 @@ export default function CoachScreen({
       body: JSON.stringify({ messageId, value, reason }),
     }).catch(() => {});
   }
+
+  // Hide a chip the parent's last message already covers.
+  const lastParent = [...messages].reverse().find((m) => m.role === "parent")?.content.toLowerCase() ?? "";
+  const chipAsked = (c: string) => {
+    const l = c.toLowerCase();
+    if (/refus/.test(l)) return /refus/.test(lastParent);
+    if (/missed/.test(l)) return /\bmiss/.test(lastParent);
+    if (/explain/.test(l)) return /explain/.test(lastParent) || (/tonight/.test(lastParent) && /step/.test(lastParent));
+    return false;
+  };
 
   const bubble = (m: Msg, i: number) => {
     if (m.role === "parent") {
@@ -120,13 +136,17 @@ export default function CoachScreen({
       <div ref={scrollRef} style={{ flex: 1, padding: "14px 16px 170px", display: "flex", flexDirection: "column", gap: 10, fontSize: 14.5, lineHeight: 1.5, overflowY: "auto" }}>
         {messages.map(bubble)}
         {sending && <div style={{ alignSelf: "flex-start", background: C.white, border: `1px solid ${C.border}`, borderRadius: "14px 14px 14px 4px", padding: "10px 14px", color: C.muted }}>…</div>}
-        {!chipsHidden && !limitHit && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
-            {CHIP_LABELS(data.pronoun).map((c) => (
-              <button key={c} disabled={readOnly} onClick={() => send(c, "chip")} style={{ border: `1px solid ${C.inputBorder}`, background: C.white, borderRadius: 999, padding: "7px 11px", fontSize: 13, fontWeight: 600, color: C.navy, cursor: readOnly ? "not-allowed" : "pointer" }}>{c}</button>
-            ))}
-          </div>
-        )}
+        {notice && <div style={{ alignSelf: "center", background: "#EEF1F5", color: C.text2, border: "1px solid #E0E4EA", borderRadius: 10, padding: "8px 12px", fontSize: 13, textAlign: "center", maxWidth: "92%" }}>{notice}</div>}
+        {!chipsHidden && !limitHit && (() => {
+          const chips = CHIP_LABELS(data.pronoun).filter((c) => !chipAsked(c));
+          return chips.length ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
+              {chips.map((c) => (
+                <button key={c} disabled={readOnly} onClick={() => send(c, "chip")} style={{ border: `1px solid ${C.inputBorder}`, background: C.white, borderRadius: 999, padding: "7px 11px", fontSize: 13, fontWeight: 600, color: C.navy, cursor: readOnly ? "not-allowed" : "pointer" }}>{c}</button>
+              ))}
+            </div>
+          ) : null;
+        })()}
       </div>
 
       <div style={{ background: C.white, borderTop: `1px solid ${C.border}`, padding: "10px 14px calc(14px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 8, position: "fixed", left: 0, right: 0, bottom: 0 }}>

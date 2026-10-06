@@ -24,7 +24,7 @@ export async function loadCoachPageData(ctx: LmsUserContext): Promise<CoachPageD
   if ((cntRows[0]?.c ?? 0) === 0 && !currentImpersonation()) {
     const isDay1 = coachCtx.week === 1 && coachCtx.day === 1;
     const step = coachCtx.tonightStep.replace(/[.\s]+$/, "");
-    const opening = `Hi ${coachCtx.parent}. Tonight's step is ${step}. ${isDay1 ? "Ask me anything before you try it." : "How did yesterday go?"}`;
+    const opening = `Hi ${coachCtx.parent}. Tonight's step: ${step}. ${isDay1 ? "Ask me anything before you try it." : "How did yesterday go?"}`;
     await sql`INSERT INTO coach_messages (user_id, role, content, source, week, day)
               VALUES (${ctx.userId}, 'coach', ${opening}, 'coach', ${coachCtx.week}, ${coachCtx.day})`;
   }
