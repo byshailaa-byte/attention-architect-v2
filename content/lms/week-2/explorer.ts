@@ -6,7 +6,7 @@ export const weekContent: LmsWeekContent = {
   weekTitle: "Changing the first small thing",
 
   weeklyReading: {
-    introShared: `Video-to-video, game-to-game — it looks like mindless drift, but watch closely and you'll usually find the same connecting-mind pattern that shows up everywhere else in {{child_name}}'s day, just moving faster. This week doesn't try to slow the drift down. It gives it the same lightweight home Week 1 built for tangents anywhere else — a way to note, not lose, without breaking the flow that makes screens feel good in the first place.`,
+    introShared: `Video-to-video, game-to-game — it looks like mindless drift, but watch closely and you'll usually find the same connecting mind that shows up everywhere else in {{child_name}}'s day, just moving faster. This week doesn't try to slow the drift down. It gives it the same lightweight home Week 1 built for tangents anywhere else — a way to note, not lose, without breaking the flow that makes screens feel good in the first place.`,
 
     moveCalibration: {
       "8-9":  `Keep the capture as simple as possible — a single sticky note near the screen, or just you jotting it down while {{child_pronoun_subj}} keeps watching. The goal is zero friction.`,
@@ -26,9 +26,9 @@ export const weekContent: LmsWeekContent = {
       day: 1,
       title: "Just watch.",
       content: {
-        "8-9":   "When {{child_name}} jumps video to video, is there a thread connecting them, or just pure drift? Just watch the pattern today — don't try to change it.",
-        "10-11": "Notice today: when {{child_name}} moves from one video or game to another, is there a thread connecting them, or is it pure drift? Just watch the pattern on screens specifically.",
-        "12-14": "Notice the thread — or lack of one — as {{child_name}} moves between videos or games. Just observe the pattern today. Don't act on it yet.",
+        "8-9":   "When {{child_name}} jumps video to video, is there a thread connecting them, or just pure drift? Just watch how it moves today — don't try to change it.",
+        "10-11": "Notice today: when {{child_name}} moves from one video or game to another, is there a thread connecting them, or is it pure drift? Just watch how it moves on screens specifically.",
+        "12-14": "Notice the thread — or lack of one — as {{child_name}} moves between videos or games. Just observe it today. Don't act on it yet.",
       },
       reflection: null,
     },
@@ -65,9 +65,9 @@ export const weekContent: LmsWeekContent = {
       day: 4,
       title: "Set a real end time, and let the notepad hold what's unfinished.",
       content: {
-        "8-9":   "Give the screen a real time edge today. Not on what {{child_pronoun_subj}} explores — only on how long.",
-        "10-11": "Set a real time boundary too. Not on what {{child_pronoun_subj}} explores — only on how long. A clear edge, same as any other domain.",
-        "12-14": "A real time boundary too. Discussed together — the same protected edge as any other domain in {{child_pronoun_poss}} day.",
+        "8-9":   "Give the screen a real time edge today. Not on what {{child_pronoun_subj}} explores — only on how long. Anything unfinished goes on the notepad for next time.",
+        "10-11": "Set a real time boundary too. Not on what {{child_pronoun_subj}} explores — only on how long. A clear edge, same as any other domain. Anything unfinished goes on the notepad for next time.",
+        "12-14": "A real time boundary too. Discussed together — the same protected edge as any other domain in {{child_pronoun_poss}} day. Whatever's unfinished goes in {{child_pronoun_poss}} capture system.",
       },
       reflection: {
         prompt: "How did today go?",

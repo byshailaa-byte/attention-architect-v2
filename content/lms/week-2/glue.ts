@@ -6,7 +6,7 @@ export const weekContent: LmsWeekContent = {
   weekTitle: "Changing the first small thing",
 
   weeklyReading: {
-    introShared: `For {{child_name}}, a screen often isn't really about the content — it's a way to disappear from a feeling that hasn't been addressed yet. This is the same connection-before-concentration pattern from Week 1, showing up in a new place: when the room feels tense and unresolved, screens become the exit. This week doesn't fight that exit by blocking it harder. It addresses what's actually driving the reach for it — real connection, offered before the tension gets a chance to send {{child_pronoun_obj}} looking for an escape.`,
+    introShared: `For {{child_name}}, a screen often isn't really about the content — it's a way to disappear from a feeling that hasn't been addressed yet. This is the same connection-before-concentration need from Week 1, showing up in a new place: when the room feels tense and unresolved, screens become the exit. This week doesn't fight that exit by blocking it harder. It addresses what's actually driving the reach for it — real connection, offered before the tension gets a chance to send {{child_pronoun_obj}} looking for an escape.`,
 
     moveCalibration: {
       "8-9":  `Keep the connection simple and physical — sit close, name the feeling plainly: "seems like today's been a lot — I'm here." Do this before any screen conversation happens.`,
@@ -26,8 +26,8 @@ export const weekContent: LmsWeekContent = {
       day: 1,
       title: "Just watch.",
       content: {
-        "8-9":   "Does {{child_name}} reach for a screen more on a tense day? Just notice the pattern today — don't act on it yet.",
-        "10-11": "Notice today: does {{child_name}} reach for a screen more on days when something's felt tense in the house? Just watch the pattern, don't act on it yet.",
+        "8-9":   "Does {{child_name}} reach for a screen more on a tense day? Just notice it today — don't act on it yet.",
+        "10-11": "Notice today: does {{child_name}} reach for a screen more on days when something's felt tense in the house? Just watch, don't act on it yet.",
         "12-14": "Notice whether tension in the house predicts more screen-reaching. Just observe today — don't try to intervene yet.",
       },
       reflection: null,

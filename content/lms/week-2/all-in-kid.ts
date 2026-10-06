@@ -34,7 +34,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 2,
-      title: "Protect a screen-based deep stretch the same way you would a book.",
+      title: "Protect one non-screen stretch the way gaming already is.",
       content: {
         "8-9":   "Pick 15 minutes today and protect it the same way gaming already gets protected — nobody interrupts, no check-ins. Same conditions, different domain.",
         "10-11": "Pick one non-screen stretch today and protect it exactly the way {{child_pronoun_poss}} gaming time already gets protected — no interruptions, no check-ins. Same conditions, different domain.",
@@ -63,11 +63,11 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 4,
-      title: "Don't interrupt it just because it's a screen.",
+      title: "Give screen time a clear end, agreed before it starts.",
       content: {
-        "8-9":   "Give the screen time a real edge too. A clear start and stop, held the same as anything else — not a punishment, just an edge.",
-        "10-11": "Set a real, respected boundary on the screen time too. Not a punishment — the same kind of clear, protected edge {{child_pronoun_poss}} other deep time now gets. A start and an end, held firmly, same as any other block.",
-        "12-14": "Set a real, mutual boundary on screens too. Discussed together, not announced — the same protected-edge treatment as anything else in {{child_pronoun_poss}} day.",
+        "8-9":   "Give screen time a real edge too. Agree the stop time before {{child_pronoun_subj}} starts, and give a five-minute heads-up — so {{child_pronoun_subj}} can surface, not get pulled out. Not a punishment, just an edge.",
+        "10-11": "Set a real, respected end time on screen time too. Not a punishment — the same clear edge {{child_pronoun_poss}} other deep time now gets. Agree the end before {{child_pronoun_subj}} starts, and give a five-minute heads-up so {{child_pronoun_subj}} can finish the moment instead of being yanked out.",
+        "12-14": "Set a real, mutual end time on screens too. Discussed together, not announced — agreed before {{child_pronoun_subj}} starts, with a heads-up near the end. The same protected-edge treatment as anything else in {{child_pronoun_poss}} day.",
       },
       reflection: {
         prompt: "How did today go?",

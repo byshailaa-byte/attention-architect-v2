@@ -9,7 +9,7 @@ export const weekContent: LmsWeekContent = {
     introShared: `Watch {{child_name}} inside a game and you'll notice something: nobody's correcting {{child_pronoun_poss}} approach. Nobody's saying "that's not how you're supposed to build that base" or "try it this way instead." Games are one of the only places in {{child_pronoun_poss}} day where {{child_pronoun_poss}} method is entirely {{child_pronoun_poss}} own, with zero adult correction — which may be exactly why they're so magnetic. This week doesn't compete with that freedom. It extends it — the same total hands-off respect, applied somewhere that matters more to you than a game score.`,
 
     moveCalibration: {
-      "8-9":  `Pick something small and let it be entirely {{child_pronoun_poss}} way — no "try it like this," even gently. Keep the task low-stakes so the freedom feels easy to give.`,
+      "8-9":  `Pick something small and let it be entirely {{child_pronoun_poss}} way — no "try it like this," even gently. Keep the task small so the freedom feels easy to give.`,
       "10-11": `Choose a slightly bigger task and go fully hands-off on the method — notice the urge to "just help" and resist it the same way you'd never correct {{child_pronoun_poss}} in-game strategy.`,
       "12-14": `Bring {{child_pronoun_obj}} a genuinely open-ended problem and ask what freedom {{child_pronoun_subj}}'d want to solve it — likely some version of "don't tell me how." Give exactly that, the same respect {{child_pronoun_poss}} game time already has.`,
     },
@@ -34,7 +34,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 2,
-      title: "Let them set up the screen task their own way.",
+      title: "Hand over one task as freely as their game.",
       content: {
         "8-9":   "Pick one thing today and let {{child_name}} do it completely {{child_pronoun_poss}} way — no \"try it like this,\" not even gently. Same hands-off as gaming.",
         "10-11": "Pick one task today and hand it over completely — no method correction, no \"try it like this,\" same hands-off respect {{child_pronoun_poss}} game time already gets by default.",
@@ -63,10 +63,10 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 4,
-      title: "Resist reorganising it into something that makes sense to you.",
+      title: "Give screen time a clear end, and keep the how theirs.",
       content: {
         "8-9":   "Give the screen a real time edge today. Just the when, not the how — the method freedom stays completely {{child_pronoun_poss}}.",
-        "10-11": "Set a real time boundary on the screen itself. Separate axis entirely — a clear start and end, held firmly. The method freedom stays total; only the *when* and *how long* get a real edge.",
+        "10-11": "Set a real time boundary on the screen itself. Separate axis entirely — a clear start and end, agreed in advance. The method freedom stays total; only the *when* and *how long* get a real edge.",
         "12-14": "A real time boundary, method freedom untouched. Discussed together — the *when* gets a real edge, the *how* stays entirely {{child_pronoun_poss}}.",
       },
       reflection: {
@@ -75,7 +75,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 5,
-      title: "Ask what they were going for before you comment on the result.",
+      title: "Say the method was theirs, same as in their game.",
       content: {
         "8-9":   "Tell {{child_name}}: *\"Nobody tells you how to play your game — I didn't tell you how to do that either.\"*",
         "10-11": "Tell {{child_name}}: *\"Nobody tells you how to play that game — and I didn't tell you how to do [the task] either. That's not an accident. That's how you actually build things.\"*",

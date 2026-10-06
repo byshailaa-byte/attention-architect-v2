@@ -6,7 +6,7 @@ export const weekContent: LmsWeekContent = {
   weekTitle: "Changing the first small thing",
 
   weeklyReading: {
-    introShared: `Screens are usually the single most fought-over rule in any house — which makes them the highest-value place to hand {{child_name}} real authority. If a Captain gets to genuinely help set the boundary here, in the domain with the most at stake, it proves the ownership from Week 1 wasn't just offered on easy, low-stakes tasks. This week doesn't loosen the limit. It changes who's holding the pen when it gets drawn.`,
+    introShared: `Screens are usually the single most fought-over rule in any house — which makes them the highest-value place to hand {{child_name}} real authority. If a Captain gets to genuinely help set the boundary here, in the domain that matters most to both of you, it proves the ownership from Week 1 wasn't just offered on easy, small tasks. This week doesn't loosen the limit. It changes who's holding the pen when it gets drawn.`,
 
     moveCalibration: {
       "8-9":  `Ask a simple, real question before announcing the rule: "how much time feels fair to you today?" Use {{child_pronoun_poss}} answer, or negotiate from it genuinely, rather than deciding first and asking after.`,
@@ -14,7 +14,7 @@ export const weekContent: LmsWeekContent = {
       "12-14": `Full collaborative negotiation, treated as a real discussion between two people, not a parent granting a concession. A teen Captain will know the difference instantly.`,
     },
 
-    moveOutroShared: `What makes this work is that screens are the domain with the most at stake — so real authority here reads as genuinely real, in a way a low-stakes chore never quite proves on its own.`,
+    moveOutroShared: `What makes this work is that screens are the domain that matters most — so real authority here reads as genuinely real, in a way a small chore never quite proves on its own.`,
 
     whatWorkingLooksLike: `A good week looks like {{child_name}} actually holding a boundary {{child_pronoun_subj}} helped set, without you having to enforce it. A "bad" week usually means the "negotiation" was decided beforehand and {{child_pronoun_poss}} input was heard but not used — which a Captain detects immediately.`,
 

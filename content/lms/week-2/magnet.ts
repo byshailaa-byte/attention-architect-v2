@@ -26,15 +26,15 @@ export const weekContent: LmsWeekContent = {
       day: 1,
       title: "Just watch.",
       content: {
-        "8-9":   "Does {{child_name}} reach for a screen more when alone? Just notice the pattern today — don't try to change it yet.",
-        "10-11": "Notice today: does {{child_name}} reach for a screen more when alone versus when someone's nearby? Just observe the pattern, don't intervene yet.",
+        "8-9":   "Does {{child_name}} reach for a screen more when alone? Just notice it today — don't try to change it yet.",
+        "10-11": "Notice today: does {{child_name}} reach for a screen more when alone versus when someone's nearby? Just observe, don't intervene yet.",
         "12-14": "Notice whether {{child_name}} reaches for a screen more when alone. Just observe — don't act on it yet.",
       },
       reflection: null,
     },
     {
       day: 2,
-      title: "Be in the room during screen time without monitoring it.",
+      title: "Sit nearby during one non-screen activity, without monitoring.",
       content: {
         "8-9":   "Be nearby during a non-screen activity today — doing your own thing, low-key. Just present. See if the pull toward a screen is any different.",
         "10-11": "Sit with {{child_pronoun_obj}} during one non-screen activity — genuinely present, doing your own thing nearby. See if the pull toward a screen is any different with company there.",
@@ -63,7 +63,7 @@ export const weekContent: LmsWeekContent = {
     },
     {
       day: 4,
-      title: "Resist the check-in that's really a check-up.",
+      title: "Give screen time a clear end, and stay close for it.",
       content: {
         "8-9":   "Give the screen a real time edge too. A clear limit, same as any other domain — presence doesn't replace the boundary, it just makes it less lonely to hold.",
         "10-11": "Set a real time boundary on screens too. A clear limit, same as any other domain — presence doesn't replace the boundary, it just makes the boundary less lonely to hold.",
