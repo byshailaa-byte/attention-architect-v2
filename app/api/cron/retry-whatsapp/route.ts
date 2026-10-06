@@ -4,8 +4,9 @@ import { sendWhatsAppReport, upsertWatiContactAfterSend } from "@/lib/whatsapp";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 import { sendOpsAlert } from "@/lib/alerts/notify";
 
-// Runs hourly via Vercel Cron. Retries released WhatsApp claims that haven't
-// hit the attempt ceiling. Logs exhausted sessions at error level for admin recovery.
+// Runs every 15 min via Vercel Cron. Retries recent (last 24h) sessions whose report just
+// became available or whose WhatsApp send failed, up to the attempt ceiling (5). Older backlog is
+// left to manual admin recovery. Logs exhausted sessions at error level for admin recovery.
 export const maxDuration = 60;
 
 const MAX_WA_ATTEMPTS = 5;
@@ -24,12 +25,13 @@ export async function GET(req: NextRequest) {
 
   const sql = getSql();
 
-  // Find sessions where:
+  // Find RECENT sessions (created in the last 24h) where:
   // - gate was submitted (parent_name IS NOT NULL)
   // - no send in progress and not yet sent
-  // - under the attempt ceiling
+  // - under the attempt ceiling (5)
   // - a published report exists (INNER JOIN) — never send before the report is there
-  // Covers both: in-process retries that failed AND claim-route crashes (attempts=0).
+  // Covers both: report that became available late AND a WhatsApp send that failed (attempts<5).
+  // Older backlog (>24h) is intentionally excluded — that goes through manual admin recovery.
   const candidates = await sql`
     SELECT a.session_id::text, a.child_name, a.parent_name, a.phone
     FROM assessments a
@@ -40,6 +42,7 @@ export async function GET(req: NextRequest) {
     WHERE a.whatsapp_send_claimed_at IS NULL
       AND a.whatsapp_report_sent_at   IS NULL
       AND a.whatsapp_send_attempts    < ${MAX_WA_ATTEMPTS}
+      AND a.created_at > NOW() - INTERVAL '24 hours'
       AND a.archetype IS NOT NULL
       AND a.phone IS NOT NULL
       AND a.parent_name IS NOT NULL
@@ -143,8 +146,9 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Email ops alert for genuinely RECENT failures only (created in the last 7 days), so the
-  // all-time backlog above doesn't cause a daily alert. Session ids only — no PII.
+  // Email ops alert for genuinely RECENT failures only. Now that the cron runs every 15 min,
+  // the window is tight (10–40 min old) so a given failure alerts at most ~twice, never the
+  // whole backlog. Session ids only — no PII.
   const recentNeverGenRows = await sql`
     SELECT a.session_id::text AS session_id
     FROM assessments a
@@ -152,7 +156,7 @@ export async function GET(req: NextRequest) {
       AND a.archetype IS NOT NULL
       AND a.phone IS NOT NULL
       AND a.created_at < NOW() - INTERVAL '10 minutes'
-      AND a.created_at > NOW() - INTERVAL '7 days'
+      AND a.created_at > NOW() - INTERVAL '40 minutes'
       AND NOT EXISTS (
         SELECT 1 FROM reports r
         WHERE r.assessment_id = a.id
