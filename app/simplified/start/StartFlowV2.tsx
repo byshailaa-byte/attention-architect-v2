@@ -155,10 +155,10 @@ export default function StartFlowV2() {
     return (
       <>
         <div style={{ minHeight: "100dvh", background: FLOW.cream, fontFamily: BODY, color: FLOW.ink }}>
-          <div style={{ background: FLOW.navy, borderRadius: "0 0 28px 28px", padding: "26px 22px 56px" }}>
+          <div style={{ background: FLOW.navy, borderRadius: "0 0 28px 28px", padding: "16px 22px 40px" }}>
             <div style={{ maxWidth: 440, margin: "0 auto" }}>
-              <div style={{ marginBottom: 16 }}><SegmentBar step={1} onNavy /></div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div style={{ marginBottom: 12 }}><SegmentBar step={1} onNavy /></div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <Wordmark onNavy />
                 <span style={{ background: "rgba(232,163,61,.18)", color: FLOW.goldSoft, border: "1px solid rgba(232,163,61,.4)", borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 700 }}>Free · {FLOW_TOTAL_MIN} min</span>
               </div>
@@ -168,14 +168,14 @@ export default function StartFlowV2() {
             </div>
           </div>
 
-          <div style={{ maxWidth: 440, margin: "0 auto", padding: "0 20px 36px", marginTop: -36 }}>
-            <p style={{ fontSize: 14, color: "#C9D6E6", lineHeight: 1.5, margin: "0 0 16px", textAlign: "left" }}>Tap one. The questions after this are shaped by it.</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ maxWidth: 440, margin: "0 auto", padding: "0 20px 16px", marginTop: -40 }}>
+            <p style={{ fontSize: 14, color: "#C9D6E6", lineHeight: 1.4, margin: "0 0 10px", textAlign: "left" }}>Tap one. The questions after this are shaped by it.</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {WORRIES.map((w) => {
                 const sel = worry === w.key;
                 return (
                   <button key={w.key} onClick={() => pickWorry(w.key)}
-                    style={{ position: "relative", background: sel ? FLOW.sel : "#fff", border: sel ? `2px solid ${FLOW.gold}` : "1px solid rgba(0,0,0,.04)", borderRadius: 18, padding: "18px 14px", minHeight: 104, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 12, textAlign: "left", boxShadow: "0 6px 18px rgba(30,58,95,.07)" }}>
+                    style={{ position: "relative", background: sel ? FLOW.sel : "#fff", border: sel ? `2px solid ${FLOW.gold}` : "1px solid rgba(0,0,0,.04)", borderRadius: 18, padding: "12px 13px", minHeight: 84, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 9, textAlign: "left", boxShadow: "0 6px 18px rgba(30,58,95,.07)" }}>
                     <IconChip worry={w} />
                     <span style={{ fontSize: 15, fontWeight: 600, color: FLOW.ink }}>{w.label}</span>
                     {sel && (
@@ -187,7 +187,7 @@ export default function StartFlowV2() {
                 );
               })}
             </div>
-            <p style={{ textAlign: "center", marginTop: 20, fontSize: 12.5, color: FLOW.dim }}>No sign-up · Private · For ages 8–14</p>
+            <p style={{ textAlign: "center", marginTop: 12, fontSize: 12.5, color: FLOW.dim }}>No sign-up · Private · For ages 8–14</p>
           </div>
         </div>
         {oobModal}
