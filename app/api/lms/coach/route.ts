@@ -54,8 +54,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "daily_limit" }, { status: 429 });
     }
 
-    // Need current week/day for storage even on the safety path.
-    const coachCtx = await buildCoachContext(ctx, source, outcome);
+    // Need current week/day for storage even on the safety path. The parent's message is passed so
+    // the reply language is decided in code from it (not left to the model).
+    const coachCtx = await buildCoachContext(ctx, source, outcome, message);
     const week = coachCtx.week, day = coachCtx.day;
 
     // ── SAFETY FIRST — no model call ──
@@ -88,7 +89,8 @@ export async function POST(req: NextRequest) {
     // Reply-quality guards (each fires at most once): too long (>90 words), a quoted sentence AND a
     // trailing question, or a banned method-drift phrase. Each regenerates with a targeted fix.
     const priorQuotes = coachCtx.history.filter((h) => h.role === "assistant").map((h) => primarySayThis(h.content)).filter((q): q is string => !!q);
-    await enforceReplyQuality(
+    const genStart = Date.now();
+    const { fired } = await enforceReplyQuality(
       result.text,
       async (correction) => {
         try {
@@ -105,7 +107,10 @@ export async function POST(req: NextRequest) {
       (m) => console.warn(`${m} (user ${userId.slice(0, 8)})`),
       priorQuotes,
       message,
+      coachCtx.language,
     );
+    const regenCount = Object.values(fired).reduce((a, b) => a + b, 0);
+    console.log(`[coach] model=${result.model} latency=${Date.now() - genStart}ms regens=${regenCount} (user ${userId.slice(0, 8)})`);
 
     await sql`INSERT INTO coach_messages (user_id, role, content, source, week, day)
               VALUES (${userId}, 'parent', ${message}, ${source}, ${week}, ${day})`;

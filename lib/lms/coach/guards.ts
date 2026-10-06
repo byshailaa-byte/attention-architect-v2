@@ -90,6 +90,25 @@ export function looksHindi(text: string): boolean {
   return (text.match(HINDI_MARKERS) ?? []).length >= 2;
 }
 
+// Distinctive Hindi/Hinglish function words for language DECISION (avoid English-ambiguous short
+// words like to/me/par). Used to classify the parent's message and to detect Hinglish leaking into
+// an English reply.
+const HINDI_FN = /\b(?:hai|hain|hoga|hogi|kya|kyun|nahi|nahin|karo|kariye|kijiye|karna|karni|karein|kaam|aaj|kal|phir|raha|rahi|rahe|lagta|lagti|uska|uski|usko|unko|woh|wo|yeh|ye|aap|aapko|aapka|aapki|apne|apna|kuch|theek|thik|accha|acha|mat|abhi|thoda|zyada|samay|waqt|matlab|bata|batao|batana|chahiye|samajh|samjha|band|shuru|dobara|inaam|khud|ki|ka|ke|ko|mein|usne|maine|hota|hoti|hote|kaise|bahut|agar|mana|kar|kare|karu|karun|karoge|karega|karegi|de|le|lo|diya|liya|ya|aur|toh|lekin|kyunki|bhi|hona|gaya|gayi|gaye|mila|saath|sath|baad|pehle|bina|bilkul|sirf|zaroor|wala|wali|wale|nakhre|ghoom)\b/gi;
+export function hindiMarkerCount(text: string): number {
+  return (text.match(HINDI_FN) ?? []).length;
+}
+export type Language = "en" | "hinglish" | "hi";
+// Decide the reply language from the parent's LATEST message, using recent parent messages only as a
+// tie-break when the latest is ambiguous. Devanagari → "hi"; ≥2 Hindi markers → "hinglish"; else "en".
+export function decideLanguage(latest: string, recent: string[] = []): Language {
+  if (hasDevanagari(latest)) return "hi";
+  if (hindiMarkerCount(latest) >= 2) return "hinglish";
+  const recentText = recent.join(" ");
+  if (hasDevanagari(recentText)) return "hi";
+  if (hindiMarkerCount(latest) >= 1 && hindiMarkerCount(recentText) >= 2) return "hinglish";
+  return "en";
+}
+
 export function wordCount(s: string): number {
   return (s || "").trim().split(/\s+/).filter(Boolean).length;
 }
@@ -145,7 +164,7 @@ export function groupsChild(text: string): boolean {
   return GROUP_RE.test(text) || TYPE_WORDS.test(text);
 }
 
-export type GuardFired = { long: number; question: number; banned: number; repeat: number; group: number; script: number; aap: number };
+export type GuardFired = { long: number; question: number; banned: number; repeat: number; group: number; script: number; aap: number; lang: number };
 
 // Run the reply guards. `regenerate(correction)` must produce a fresh reply built on the previous
 // one + the correction, returning its text ("" on failure keeps the current text). `priorQuotes`
@@ -158,9 +177,11 @@ export async function enforceReplyQuality(
   log: (m: string) => void = () => {},
   priorQuotes: string[] = [],
   parentMessage = "",
+  language?: Language,
 ): Promise<{ text: string; fired: GuardFired }> {
   let text = firstText;
-  const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0 };
+  const lang: Language = language ?? decideLanguage(parentMessage);
+  const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0 };
 
   if (wordCount(text) > 90) {
     fired.long++;
@@ -202,14 +223,12 @@ export async function enforceReplyQuality(
     const t = await regenerate("Don't name a child 'type' or group (no 'Live Wires', 'Inventors', 'kids like him'). Talk only about this one child, by name.");
     if (t) text = t;
   }
-  // Script: match the parent's script. Parent in Devanagari → reply must contain Devanagari.
-  // Parent in Roman (Hinglish/English) → reply must be Latin-only (no Devanagari/other scripts).
-  const parentDeva = hasDevanagari(parentMessage);
-  if (parentDeva) {
+  // Script matches the decided language: hi → Devanagari; en/hinglish → Latin only.
+  if (lang === "hi") {
     if (!hasDevanagari(text)) {
       fired.script++;
-      log(`[coach-guard] parent wrote Devanagari but reply had none — regenerating`);
-      const t = await regenerate("Reply fully in Devanagari (Hindi script), matching how the parent wrote.");
+      log(`[coach-guard] Hindi thread but reply has no Devanagari — regenerating`);
+      const t = await regenerate("Reply fully in Devanagari (Hindi script).");
       if (t) text = t;
     }
   } else {
@@ -221,11 +240,20 @@ export async function enforceReplyQuality(
       if (t) text = t;
     }
   }
-  // Respectful address + verb agreement: a Hindi/Hinglish reply must address the parent with "aap"
-  // forms — never tum/tu, never a tum-form verb aimed at the parent (karo/raho/ho/do…), and it must
-  // actually contain an aap form. Quoted parent→child lines may stay informal. Up to three attempts —
-  // forms like "mat bolo" / "kar rahe ho" are stubborn, so one pass isn't always enough.
-  for (let attempt = 0; attempt < 3 && looksHindi(text) && (usesTumTu(text) || usesTumVerb(text) || !aapForm(text)); attempt++) {
+  // English thread: the whole reply (including the sentence the parent says to the child) must be
+  // English. The model sometimes slips a Hinglish "say this" to an English-speaking parent.
+  for (let attempt = 0; lang === "en" && attempt < 2 && (hasDevanagari(text) || hindiMarkerCount(text) >= 2); attempt++) {
+    fired.lang++;
+    log(`[coach-guard] Hindi/Hinglish in an English reply — regenerating English-only`);
+    const t = await regenerate("Reply ONLY in English — including the exact sentence the parent says to the child. No Hindi or Hinglish words.");
+    if (!t) break;
+    text = t;
+  }
+  // Respectful address + verb agreement — ONLY for a Hindi/Hinglish thread. A Hinglish/Hindi reply
+  // must address the parent with "aap" forms — never tum/tu, never a tum-form verb aimed at the
+  // parent (karo/raho/ho/do…), and must contain an aap form. Quoted parent→child lines may stay
+  // informal. Up to three attempts — "mat bolo" / "kar rahe ho" are stubborn.
+  for (let attempt = 0; lang !== "en" && attempt < 3 && looksHindi(text) && (usesTumTu(text) || usesTumVerb(text) || !aapForm(text)); attempt++) {
     fired.aap++;
     log(`[coach-guard] parent not addressed in aap form — regenerating`);
     const t = await regenerate(`Address the parent ONLY in the respectful 'aap' form. Re-read your draft and fix EVERY verb aimed at the parent: any command ending in "-o" becomes "-iye" (bolo→boliye, karo→kariye, dekho→dekhiye, suno→suniye, socho→sochiye), raho→rahiye, do→dijiye, and "...ho"→"...hain" ("kar rahe ho"→"kar rahe hain"). Never tum/tu. The sentence the parent SAYS to the child (inside quotes) may stay informal.`);

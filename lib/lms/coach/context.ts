@@ -13,7 +13,7 @@ import { CONCERN_CARD_LABELS } from "@/lib/concerns";
 import { ENTITY } from "@/lib/entity";
 import type { LmsUserContext } from "@/lib/lms/user-context";
 import { buildSystemPrompt, coachPronoun, type PromptVars } from "./prompt";
-import { primarySayThis } from "./guards";
+import { primarySayThis, decideLanguage, type Language } from "./guards";
 import type { CoachTurn } from "./llm";
 
 export type CoachContext = {
@@ -26,6 +26,7 @@ export type CoachContext = {
   day: number;
   tonightStep: string;   // short, for the opening template
   dayText: string;       // tonight's step body, verbatim (for evals/consistency checks)
+  language: Language;    // decided in code from the parent's message (en | hinglish | hi)
   hasCalls: boolean;     // tier2 (plan + calls)
 };
 
@@ -50,6 +51,7 @@ export async function buildCoachContext(
   ctx: LmsUserContext,
   source: string,
   outcome?: string,
+  latestMessage = "",
 ): Promise<CoachContext> {
   const sql = getSql();
   const now = new Date();
@@ -107,6 +109,13 @@ export async function buildCoachContext(
     history.filter((h) => h.role === "assistant").map((h) => primarySayThis(h.content)).filter((q): q is string => !!q)
   )].slice(-6);
 
+  // Language is decided IN CODE from the parent's latest message (+ last 3 parent messages as a
+  // tie-break), never left to the model. Falls back to the most recent parent message on turns
+  // where no current message is passed (e.g. the opening template).
+  const recentParent = history.filter((h) => h.role === "user").map((h) => h.content).slice(-3);
+  const latest = latestMessage || recentParent[recentParent.length - 1] || "";
+  const language = decideLanguage(latest, recentParent);
+
   const vars: PromptVars = {
     parent, child: ctx.childName, age_band: ctx.ageBand, archetype: ctx.archetype,
     week, pronoun, support_email: ENTITY.supportEmail,
@@ -115,6 +124,7 @@ export async function buildCoachContext(
     day_body: dayText,
     week_goal: weekGoal,
     hard_part: hardPart,
+    language,
   };
 
   // Facts the model should know — appended to the system prompt. Report fields are present only
@@ -140,6 +150,6 @@ export async function buildCoachContext(
     child: ctx.childName,
     parent,
     supportEmail: ENTITY.supportEmail,
-    week, day, tonightStep, dayText, hasCalls,
+    week, day, tonightStep, dayText, language, hasCalls,
   };
 }

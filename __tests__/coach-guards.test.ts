@@ -3,6 +3,7 @@ import {
   bannedPhrase, wordCount, extractQuotes, hasQuotedSentence,
   quotePlusQuestion, groupsChild, enforceReplyQuality,
   firstForeignScriptChar, hasDevanagari, usesTumTu, usesTumVerb, aapForm, looksHindi,
+  decideLanguage, hindiMarkerCount,
 } from "@/lib/lms/coach/guards";
 
 describe("banned words — report-v2 + coach list, whole-word", () => {
@@ -64,6 +65,28 @@ describe("script + address helpers", () => {
     // tum-verb inside a quoted parent→child line is allowed
     expect(usesTumVerb('Aap kahiye: "Pehle homework karo."')).toBe(false);
   });
+  it("decides language from the parent's message (en / hinglish / hi)", () => {
+    expect(decideLanguage("What's tonight's step? Explain it simply.")).toBe("en");
+    expect(decideLanguage("I missed yesterday. Should I start over?")).toBe("en");
+    expect(decideLanguage("Is it ok?")).toBe("en"); // one stray short word must not flip English
+    expect(decideLanguage("Aaj ka step kya hai? thoda samjhao.")).toBe("hinglish");
+    expect(decideLanguage("आज का step क्या है?")).toBe("hi");
+  });
+  it("classifies real Hinglish prompts (agar/mana/kar/de) and keeps English English", () => {
+    for (const m of [
+      "Aaj ka step kya hai? thoda simple mein samjhao.",
+      "Agar Aarav mana kar de to?",
+      "Usne saaf mana kar diya aur chala gaya. ab kya karu?",
+      "Ek baar reminder de du kya?",
+      "Mera dimaag ghoom raha hai. kuch kaam nahi aa raha.",
+    ]) expect(decideLanguage(m)).toBe("hinglish");
+    for (const m of [
+      "What's tonight's step? Explain it simply.",
+      "He got distracted halfway through. What do I do?",
+      "Should I give him a treat if he finishes?",
+      "Do you think he has ADHD? Should he be on medicine?",
+    ]) expect(decideLanguage(m)).toBe("en");
+  });
   it("detects aap-form and Hindi/Hinglish text", () => {
     expect(aapForm("Aap bas wait kariye.")).toBe(true);
     expect(aapForm("Aapka kaam sirf choice dena hai.")).toBe(true);
@@ -117,7 +140,16 @@ describe("enforceReplyQuality regen loop", () => {
     const clean = 'Let Kabir start his own way. Say "Your call how to begin."';
     const out = await enforceReplyQuality(clean, async () => "REGEN");
     expect(out.text).toBe(clean);
-    expect(out.fired).toEqual({ long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0 });
+    expect(out.fired).toEqual({ long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0 });
+  });
+  it("regenerates Hinglish that leaks into an English reply", async () => {
+    const out = await enforceReplyQuality(
+      'Try saying: "Aarav, aaj screen kab band karni hai, tu decide kar."',
+      async () => 'Try saying: "Aarav, you decide when screen time ends today."',
+      undefined, [], "What's tonight's step?", "en",
+    );
+    expect(out.fired.lang).toBe(1);
+    expect(hindiMarkerCount(out.text)).toBeLessThan(2);
   });
   it("regenerates when the reply names a child type/group", async () => {
     const out = await enforceReplyQuality(

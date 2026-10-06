@@ -2,7 +2,7 @@
 // cheap call distils durable facts + a short summary. NEVER stores diagnoses, abuse/safety details,
 // or anything from safety-flagged messages (those are excluded from the input here).
 import { getSql } from "@/lib/db/client";
-import { callCoach } from "./llm";
+import { callCoach, COACH_MEMORY_MODEL } from "./llm";
 
 export type CoachRow = { role: string; content: string; safety_flag?: boolean };
 
@@ -50,7 +50,7 @@ export async function updateCoachMemory(userId: string): Promise<void> {
 
   let out: { facts: string[]; summary: string };
   try {
-    const res = await callCoach(EXTRACT_SYSTEM, [{ role: "user", content: convo }], 400);
+    const res = await callCoach(EXTRACT_SYSTEM, [{ role: "user", content: convo }], 400, COACH_MEMORY_MODEL);
     out = parseLoose(res.text);
   } catch (e) {
     console.error("[coach/memory] extraction failed:", (e as Error).message);
