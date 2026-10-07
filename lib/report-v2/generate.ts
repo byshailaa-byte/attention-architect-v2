@@ -53,6 +53,19 @@ function judgeReason(failed: string[]): string {
 }
 export type ReportCost = { model: string; calls: number; inputTokens: number; outputTokens: number; costPaise: number; outcome: "llm" | "fallback"; reason: string | null };
 
+// Deterministic format fix applied BEFORE validation (no LLM): prepend the required seenIt opener
+// when it's missing AND the rest reads as a strength (no obvious problem words). Otherwise leave it
+// for the seenIt repair call. Mirrors the validator's SEEN_IT_PREFIX / HARD_PART_RE.
+const SEEN_IT_PREFIX = "You’ve seen it yourself.";
+const HARD_PART_RE = /^The hard part isn’t [^.]+\. It’s [^.]+\.$/;
+const PROBLEM_WORDS = /\b(worr\w*|struggl\w*|can'?t|won'?t|fight\w*|remind\w*|quit\w*|distract\w*|refus\w*|nag\w*|avoid\w*|stuck|meltdown|tantrum|gives? up|problem|hard time)\b/i;
+function fixSeenItOpener(seenIt: string): string {
+  const s = (seenIt || "").trim();
+  if (!s || s.startsWith(SEEN_IT_PREFIX)) return seenIt;
+  if (PROBLEM_WORDS.test(s)) return seenIt; // not a clean strength sentence → let repairSeenIt handle it
+  return `${SEEN_IT_PREFIX} ${s}`;
+}
+
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
   if (!_client) {
@@ -246,6 +259,7 @@ MORE HARD RULES:
 - Each tonight step is ONE short sentence, TWO at most. whyParas[0]: ≤3 sentences AND ≤45 words. whyParas[1]: ≤2 sentences.
 - Never make the PARENT the cause of the problem. Do NOT write "you push", "every reminder you give", "because you…". Describe what happens for the child, not what the parent does wrong.
 - The switch AND tonight MUST take place at ${ctx.moment}, using our Week 1 principle there — NOT re-skinned homework advice.
+- switch.try IS our Week 1 core move above, put into the parent's exact words at ${ctx.moment}. It must BE that move — not a generic nudge ("keep going", "five more minutes", "you can do it"). If switch.try is not our core move, it is wrong.
 - switch.instead and switch.try are WORDS A PARENT SAYS, each wrapped in double quotes.${ctx.instinctMove ? ` switch.instead must be the parent's usual move above, said out loud.` : ""}
 - If switch.try offers a real choice, switch.after must be exactly: "The choice only works if it’s real."
 - NO abstract nouns: method, ownership, process, transition, thread, approach, autonomy, structure, engagement, belongs.
@@ -370,6 +384,18 @@ Current (wrong — it describes a problem): ${JSON.stringify(seenIt)}`;
   } catch { return { text: seenIt, usage: { inTok: 0, outTok: 0 } }; }
 }
 
+// Targeted hardPart repair: rewrite ONLY hardPart into the exact "The hard part isn’t X. It’s Y."
+// shape. Used when the validator flags hardPart's format. Counts toward the repair budget.
+async function repairHardPart(hardPart: string, ctx: Context): Promise<{ text: string; usage: Usage }> {
+  const prompt = `Rewrite this one line into EXACTLY this shape: "The hard part isn’t X. It’s Y." — two sentences. X = the wrong read of the worry (won't, can't, or the task itself). Y = the real reason, from the child's pattern. No other full stops inside X or Y. Plain words, each sentence ≤16 words, ≤165 chars total. For a parent of ${ctx.name}. Return ONLY the rewritten line.
+Current (wrong shape): ${JSON.stringify(hardPart)}`;
+  try {
+    const res = await getClient().messages.create({ model: MODEL, max_tokens: 120, messages: [{ role: "user", content: prompt }] });
+    const line = res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim().replace(/^["“]|["”]$/g, "").split("\n")[0].trim();
+    return { text: HARD_PART_RE.test(line) ? line : hardPart, usage: usageOf(res) };
+  } catch { return { text: hardPart, usage: { inTok: 0, outTok: 0 } }; }
+}
+
 export type GenerateResult = {
   content: ReportV2Content;
   attempts: number;       // full LLM generations (1 + full retries)
@@ -399,13 +425,28 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
   try {
     const first = await callLLM(buildPrompt(ctx)); acc(first.usage);
     let current = first.gen; attempts = 1;
+    current.seenIt = fixSeenItOpener(current.seenIt); // deterministic, no LLM
     current.tonight[2] = ctx.notice; // tonight's 3rd step is always the deterministic Notice check
-    // Budget: 2 repairs + 1 full retry.
+    // Budget: 4 repairs (length + targeted seenIt/hardPart format) + 1 full retry.
     for (;;) {
       const v = validateGenerated(current, vopts);
       if (!v.ok) {
         rejections.push(...v.errors);
-        if (isRepairable(v.errors) && repairs < 2) {
+        // Targeted FORMAT repairs first (one field each), counting toward the budget — these aren't
+        // length-only so repairFields can't touch them, but a dedicated rewrite fixes them cheaply.
+        if (v.errors.some((e) => e.startsWith("hardPart: must match")) && repairs < 4) {
+          repairs++;
+          console.log(`[report-v2] repair (hardPart format)`);
+          const rh = await repairHardPart(current.hardPart, ctx); acc(rh.usage); current.hardPart = rh.text;
+          continue;
+        }
+        if (v.errors.some((e) => e.startsWith("seenIt: must start")) && repairs < 4) {
+          repairs++;
+          console.log(`[report-v2] repair (seenIt format → strength moment)`);
+          const rs = await repairSeenIt(current.seenIt, ctx); acc(rs.usage); current.seenIt = rs.text;
+          continue;
+        }
+        if (isRepairable(v.errors) && repairs < 4) {
           repairs++;
           console.log(`[report-v2] repair (length-only): ${fieldsFromErrors(v.errors).join(", ")}`);
           const rp = await repairFields(current, v.errors, ctx); acc(rp.usage); current = rp.gen;
@@ -416,6 +457,7 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
           retries++; attempts++;
           console.log(`[report-v2] full retry: ${v.errors.join("; ")}`);
           const rt = await callLLM(buildPrompt(ctx, v.errors)); acc(rt.usage); current = rt.gen;
+          current.seenIt = fixSeenItOpener(current.seenIt);
           current.tonight[2] = ctx.notice;
           continue;
         }
@@ -432,7 +474,7 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
       if (j.verdict === "PASS") { g = current; source = "llm"; reason = null; break; }
       rejections.push(`judge: ${j.reason}`);
       // seenIt-only failure → cheap targeted repair of seenIt (strength moment), not a full retry.
-      if (j.failed.length === 1 && j.failed[0] === "seenIt" && repairs < 2) {
+      if (j.failed.length === 1 && j.failed[0] === "seenIt" && repairs < 4) {
         repairs++;
         console.log(`[report-v2] repair (seenIt strength moment)`);
         const rs = await repairSeenIt(current.seenIt, ctx); acc(rs.usage); current.seenIt = rs.text;
@@ -441,6 +483,7 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
       if (retries < 1) {
         retries++; attempts++;
         const jr = await callLLM(buildPrompt(ctx, [`Judge FAILED (${j.failed.join(", ")}): ${j.reason}`])); acc(jr.usage); current = jr.gen;
+        current.seenIt = fixSeenItOpener(current.seenIt);
         current.tonight[2] = ctx.notice;
         continue;
       }
