@@ -4,9 +4,10 @@ import { sendWhatsAppReport, upsertWatiContactAfterSend } from "@/lib/whatsapp";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 import { sendOpsAlert } from "@/lib/alerts/notify";
 
-// Runs every 15 min via Vercel Cron. Retries recent (last 24h) sessions whose report just
-// became available or whose WhatsApp send failed, up to the attempt ceiling (5). Older backlog is
-// left to manual admin recovery. Logs exhausted sessions at error level for admin recovery.
+// Runs once daily via Vercel Cron (safety net). The report send path (claim / claim-phone) now
+// retries in-request with backoff, so this cron only sweeps stragglers: recent (last 24h) sessions
+// whose report became available late or whose in-request sends all failed, up to the attempt
+// ceiling (5). Older backlog is left to manual admin recovery; exhausted sessions log at error level.
 export const maxDuration = 60;
 
 const MAX_WA_ATTEMPTS = 5;

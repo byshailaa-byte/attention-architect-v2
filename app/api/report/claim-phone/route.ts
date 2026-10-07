@@ -1,7 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
-import { sendWhatsAppReport, upsertWatiContactAfterSend } from "@/lib/whatsapp";
+import { sendWhatsAppReport, sendReportWithRetry, upsertWatiContactAfterSend } from "@/lib/whatsapp";
 import { sendCapiEvents } from "@/lib/meta/capi";
 import { metaMatchFromRequest, isInternalRequest } from "@/lib/meta/match";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
@@ -126,31 +126,27 @@ export async function POST(req: NextRequest) {
 
           if (waClaimRows.length > 0) {
             const wa = waClaimRows[0];
-            let sent = false;
-            for (let attempt = 0; attempt <= 1 && !sent; attempt++) {
-              if (attempt === 1) await new Promise((r) => setTimeout(r, 20_000));
-              try {
-                await sendWhatsAppReport({
-                  parentName: wa.parent_name ?? row.parent_name ?? "Parent",
-                  childName:  wa.child_name  ?? row.child_name  ?? CHILD_NAME_FALLBACK_MID,
-                  sessionId,
-                  rawPhone:   wa.phone       ?? normalizedPhone,
-                });
+            // Up to 3 in-request attempts (backoff 2s, 8s) before releasing for the daily cron.
+            await sendReportWithRetry({
+              send: () => sendWhatsAppReport({
+                parentName: wa.parent_name ?? row.parent_name ?? "Parent",
+                childName:  wa.child_name  ?? row.child_name  ?? CHILD_NAME_FALLBACK_MID,
+                sessionId,
+                rawPhone:   wa.phone       ?? normalizedPhone,
+              }),
+              onSent: async () => {
                 await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${sessionId}::uuid`;
-                sent = true;
                 // Send succeeded → upsert the WATI contact with purchased=no + attributes.
                 await upsertWatiContactAfterSend(sql, sessionId, wa.phone ?? normalizedPhone, wa.parent_name ?? row.parent_name ?? "Parent");
-              } catch (e: unknown) {
-                console.error(`[whatsapp] attempt ${attempt + 1} failed:`, (e as Error).message);
-              }
-            }
-            if (!sent) {
-              console.error("[whatsapp] in-process attempts exhausted — releasing for cron:", sessionId);
-              await sql`
-                UPDATE assessments SET whatsapp_send_claimed_at = NULL
-                WHERE session_id = ${sessionId}::uuid
-              `.catch((e: unknown) => console.error("[whatsapp] claim release failed:", (e as Error).message));
-            }
+              },
+              onFailed: async () => {
+                console.error("[whatsapp] in-process attempts exhausted — releasing for cron:", sessionId);
+                await sql`
+                  UPDATE assessments SET whatsapp_send_claimed_at = NULL
+                  WHERE session_id = ${sessionId}::uuid
+                `.catch((e: unknown) => console.error("[whatsapp] claim release failed:", (e as Error).message));
+              },
+            });
           }
         }
       } catch (e: unknown) {

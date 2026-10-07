@@ -86,6 +86,43 @@ export async function sendWhatsAppReport({
   }
 }
 
+// Backoff before retry #1 and retry #2 → 3 send attempts total (initial + 2 retries).
+export const REPORT_RETRY_BACKOFF_MS = [2000, 8000];
+
+// Send a report with in-request retries. Calls `send` up to backoff.length+1 times, waiting the
+// given backoff between failures; on the first success calls `onSent` once, and if every attempt
+// fails calls `onFailed` once. NEVER throws — returns the outcome so the request can continue and
+// the daily cron stays the safety net. `sleep` is injectable so tests don't actually wait.
+export async function sendReportWithRetry(opts: {
+  send: () => Promise<void>;
+  onSent: () => Promise<void>;
+  onFailed: () => Promise<void>;
+  backoffMs?: number[];
+  sleep?: (ms: number) => Promise<void>;
+}): Promise<"sent" | "failed"> {
+  const backoff = opts.backoffMs ?? REPORT_RETRY_BACKOFF_MS;
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const attempts = backoff.length + 1;
+
+  let sent = false;
+  for (let i = 0; i < attempts && !sent; i++) {
+    try {
+      await opts.send();
+      sent = true;
+    } catch (e: unknown) {
+      console.error(`[whatsapp] send attempt ${i + 1}/${attempts} failed:`, (e as Error).message);
+      if (i < attempts - 1) await sleep(backoff[i]);
+    }
+  }
+
+  if (sent) {
+    await opts.onSent();
+    return "sent";
+  }
+  await opts.onFailed();
+  return "failed";
+}
+
 // Normalises a child's name for the WATI `child_name` attribute. Single source of truth,
 // shared by the report-send upsert and the one-off backfill. Behaviour: trim; empty →
 // literal "your child" (never omitted, so the payload can't be rejected and templates read
