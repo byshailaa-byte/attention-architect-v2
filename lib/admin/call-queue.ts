@@ -98,6 +98,17 @@ export function classifyContact(c: QueueContact, now: Date): QueueItem | null {
   }
   if (streak >= 3) return null;
 
+  // After ANY logged call, the contact is excluded from B/C/D/E until either:
+  //   (a) its follow_up_at — handled above: on/after that day it surfaces in segment A; until
+  //       then (a future follow-up) it stays hidden; or
+  //   (b) the call's created_at + 2 days, when no follow_up_at was set (no_answer / busy).
+  // This keeps a just-called parent out of the queue so they aren't called twice in a day.
+  if (latest) {
+    if (followUpMs != null) return null;                 // future follow-up → wait for segment A
+    const lastCallMs = ms(latest.createdAt);
+    if (lastCallMs != null && nowMs < lastCallMs + 2 * DAY_MS) return null; // 2-day cooldown
+  }
+
   const mkItem = (segment: Segment, waitingSince: number, label = SEGMENT_LABEL[segment]): QueueItem =>
     ({ assessmentId: c.assessmentId, segment, label, waitingSince });
 
@@ -147,6 +158,20 @@ export function buildQueue(contacts: QueueContact[], now: Date): QueueItem[] {
     SEGMENT_ORDER[a.segment] - SEGMENT_ORDER[b.segment] || a.waitingSince - b.waitingSince,
   );
   return items;
+}
+
+// Outcomes that MUST carry a follow_up_at: logging interest or a callback without scheduling the
+// next call is how leads fall through the cracks, so both the API and the A2 form require a date.
+export const OUTCOMES_REQUIRING_FOLLOWUP: CallLogOutcome[] = ["interested", "callback"];
+export function followUpRequired(outcome: CallLogOutcome): boolean {
+  return OUTCOMES_REQUIRING_FOLLOWUP.includes(outcome);
+}
+// Shared validation for a logged call (used by POST /api/admin/calls and unit tests).
+export function validateCallLog(outcome: CallLogOutcome, followUpAt: string | null): { ok: true } | { ok: false; error: string } {
+  if (followUpRequired(outcome) && !followUpAt) {
+    return { ok: false, error: "follow_up_at is required for interested/callback" };
+  }
+  return { ok: true };
 }
 
 // Count per segment (A–E), for the A1 count tiles. Zero-filled.

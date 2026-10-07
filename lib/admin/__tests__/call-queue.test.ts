@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   classifyContact, buildQueue, segmentCounts, endOfTodayIST,
+  followUpRequired, validateCallLog,
   type QueueContact, type QueueCall,
 } from "@/lib/admin/call-queue";
 
@@ -76,12 +77,59 @@ describe("Removal rules", () => {
     ] });
     expect(classifyContact(c, NOW)).toBeNull();
   });
-  it("2 no_answer in a row is NOT yet removed", () => {
+  it("2 no_answer in a row (recent) is held in cooldown, not yet re-queued", () => {
     const c = contact({ reportSentAt: hoursAgo(5), calls: [
       call({ outcome: "no_answer", createdAt: daysAgo(1) }),
       call({ outcome: "no_answer", createdAt: daysAgo(2) }),
     ] });
-    expect(classifyContact(c, NOW)?.segment).toBe("B");
+    expect(classifyContact(c, NOW)).toBeNull();
+  });
+});
+
+describe("Re-queue cooldown — after any logged call", () => {
+  it("interested/callback require a follow-up date (predicate)", () => {
+    expect(followUpRequired("interested")).toBe(true);
+    expect(followUpRequired("callback")).toBe(true);
+    expect(followUpRequired("no_answer")).toBe(false);
+    expect(followUpRequired("not_interested")).toBe(false);
+  });
+
+  it("a called contact is hidden the SAME day (would be B, but just called)", () => {
+    const c = contact({ reportSentAt: hoursAgo(10), calls: [call({ outcome: "no_answer", createdAt: hoursAgo(1) })] });
+    expect(classifyContact(c, NOW)).toBeNull();
+  });
+
+  it("a future follow-up keeps the contact hidden until that day", () => {
+    const c = contact({ reportSentAt: hoursAgo(10), calls: [call({ outcome: "callback", followUpAt: daysAgo(-2), createdAt: hoursAgo(1) })] });
+    expect(classifyContact(c, NOW)).toBeNull();
+  });
+
+  it("reappears in segment A on the follow-up day", () => {
+    const c = contact({ reportSentAt: daysAgo(3), calls: [call({ outcome: "callback", followUpAt: hoursAgo(1), createdAt: daysAgo(1) })] });
+    expect(classifyContact(c, NOW)?.segment).toBe("A");
+  });
+
+  it("no_answer (no follow-up) reappears after 2 days", () => {
+    const base = { reportSentAt: daysAgo(5) };
+    // 1 day after the call → still in cooldown
+    expect(classifyContact(contact({ ...base, calls: [call({ outcome: "no_answer", createdAt: daysAgo(1) })] }), NOW)).toBeNull();
+    // 3 days after the call → back in the queue (report is 5 days old → segment C)
+    expect(classifyContact(contact({ ...base, calls: [call({ outcome: "no_answer", createdAt: daysAgo(3) })] }), NOW)?.segment).toBe("C");
+  });
+});
+
+describe("validateCallLog", () => {
+  it("rejects interested without a follow-up date", () => {
+    expect(validateCallLog("interested", null).ok).toBe(false);
+  });
+  it("rejects callback without a follow-up date", () => {
+    expect(validateCallLog("callback", null).ok).toBe(false);
+  });
+  it("accepts interested WITH a follow-up date", () => {
+    expect(validateCallLog("interested", "2026-10-08T11:00:00+05:30").ok).toBe(true);
+  });
+  it("accepts no_answer without a follow-up date", () => {
+    expect(validateCallLog("no_answer", null).ok).toBe(true);
   });
 });
 
@@ -113,8 +161,8 @@ describe("Segment D — tier2 plan calls", () => {
   });
   it("counts interested/callback calls → Plan call N of 3", () => {
     const c = contact({ paid: true, tier: "tier2", lmsLastActivityAt: hoursAgo(2), calls: [
-      call({ outcome: "interested", createdAt: daysAgo(4) }),
-      call({ outcome: "callback", createdAt: daysAgo(2) }),
+      call({ outcome: "interested", createdAt: daysAgo(5) }),
+      call({ outcome: "callback", createdAt: daysAgo(3) }),
     ] });
     expect(classifyContact(c, NOW)?.label).toBe("Plan call 3 of 3");
   });

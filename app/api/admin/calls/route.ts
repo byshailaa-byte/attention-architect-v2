@@ -9,7 +9,7 @@
 // "Call logging not enabled yet" instead of a 500.
 import { NextRequest, NextResponse } from "next/server";
 import { logCallForLead, CALL_LOG_OUTCOMES } from "@/lib/admin/crm/real";
-import type { CallLogOutcome } from "@/lib/admin/call-queue";
+import { validateCallLog, type CallLogOutcome } from "@/lib/admin/call-queue";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -48,6 +48,10 @@ export async function POST(req: NextRequest) {
       }
       followUpAt = t.toISOString();
     }
+
+    // interested / callback must schedule the next call.
+    const v = validateCallLog(outcome as CallLogOutcome, followUpAt);
+    if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
 
     const notes = typeof body.notes === "string" && body.notes.trim() ? body.notes.trim().slice(0, 4000) : null;
 

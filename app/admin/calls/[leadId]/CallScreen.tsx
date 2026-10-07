@@ -1,9 +1,9 @@
 "use client";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Lead, QueueTab } from "@/lib/admin/crm";
-import { telLink, waLink, maskPhone } from "@/lib/admin/crm";
-import type { CallLogOutcome } from "@/lib/admin/call-queue";
+import { telLink, waLink } from "@/lib/admin/crm";
+import { followUpRequired, type CallLogOutcome } from "@/lib/admin/call-queue";
 import { T, STAGE } from "../../crm-theme";
 import { Toaster, previewToast } from "../../PreviewUI";
 
@@ -30,6 +30,13 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
   const [followUp, setFollowUp] = useState(""); // YYYY-MM-DD or ""
   const [saving, setSaving] = useState(false);
 
+  // interested / callback must schedule the next call — default to tomorrow (11:00 IST applied at
+  // submit). Set in an effect (not useState init) to avoid an SSR/client hydration mismatch.
+  const mustFollowUp = followUpRequired(outcome);
+  useEffect(() => {
+    if (mustFollowUp && !followUp) setFollowUp(dateInDays(1));
+  }, [mustFollowUp, followUp]);
+
   const quick = useMemo(() => ({
     "First message": `Hi ${lead.parentName}, this is Shashank from Attention Architect. As promised, here's ${lead.childName}'s plan in short: …`,
     "Missed call": `Hi ${lead.parentName}, tried calling about ${lead.childName}'s plan — when's a good time today?`,
@@ -51,8 +58,9 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
 
   const saveNext = async () => {
     if (saving) return;
+    if (mustFollowUp && !followUp) { previewToast("Pick a follow-up date for interested/callback"); return; }
     setSaving(true);
-    const followUpAt = followUp ? `${followUp}T12:00:00+05:30` : null;
+    const followUpAt = followUp ? `${followUp}T11:00:00+05:30` : null; // 11:00 IST
     try {
       const res = await fetch("/api/admin/calls", {
         method: "POST",
@@ -124,13 +132,13 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
       <div style={sublabel}>Notes</div>
       <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="What was said, next step…" style={{ border: `1px solid ${T.inputBorder}`, borderRadius: 12, padding: "10px 12px", fontSize: 14, color: T.textRow, minHeight: 64, fontFamily: "inherit", resize: "vertical", background: T.card }} />
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: T.textRow }}>Next follow-up</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: T.textRow }}>Next follow-up{mustFollowUp ? <span style={{ color: T.warmText }}> · required</span> : ""}</span>
         <span style={chip(followUp === dateInDays(1))} onClick={() => setFollowUp(dateInDays(1))}>Tomorrow</span>
         <span style={chip(followUp === dateInDays(3))} onClick={() => setFollowUp(dateInDays(3))}>In 3 days</span>
-        <input type="date" value={followUp} onChange={(e) => setFollowUp(e.target.value)} style={{ border: `1px solid ${T.inputBorder}`, borderRadius: 10, padding: "7px 10px", fontSize: 13.5, color: T.navy, fontFamily: "inherit", background: T.card }} />
-        {followUp && <span style={{ fontSize: 13, color: T.text2, cursor: "pointer" }} onClick={() => setFollowUp("")}>clear</span>}
+        <input type="date" value={followUp} onChange={(e) => setFollowUp(e.target.value)} style={{ border: `1px solid ${mustFollowUp && !followUp ? T.warmText : T.inputBorder}`, borderRadius: 10, padding: "7px 10px", fontSize: 13.5, color: T.navy, fontFamily: "inherit", background: T.card }} />
+        {followUp && !mustFollowUp && <span style={{ fontSize: 13, color: T.text2, cursor: "pointer" }} onClick={() => setFollowUp("")}>clear</span>}
       </div>
-      <button onClick={saveNext} disabled={saving} style={{ background: T.amber, color: T.navy, border: "none", borderRadius: 12, padding: 12, fontWeight: 700, textAlign: "center", cursor: saving ? "default" : "pointer", fontSize: 14, opacity: saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save and next parent →"}</button>
+      <button onClick={saveNext} disabled={saving || (mustFollowUp && !followUp)} style={{ background: T.amber, color: T.navy, border: "none", borderRadius: 12, padding: 12, fontWeight: 700, textAlign: "center", cursor: saving || (mustFollowUp && !followUp) ? "default" : "pointer", fontSize: 14, opacity: saving || (mustFollowUp && !followUp) ? 0.6 : 1 }}>{saving ? "Saving…" : "Save and next parent →"}</button>
     </section>
   );
 
@@ -152,7 +160,7 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
         <Pills />
       </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <span style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{maskPhone(lead.phoneE164)}</span>
+        <span style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{lead.phoneE164}</span>
         <a href={telLink(lead.phoneE164)} style={{ background: T.navy, color: "#fff", borderRadius: 10, padding: "11px 18px", fontWeight: 700, textDecoration: "none" }}>Call</a>
         <button onClick={openWhatsApp} style={{ background: T.wa, color: T.waText, border: "none", borderRadius: 10, padding: "11px 18px", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>WhatsApp</button>
         <a href={`/report/${lead.reportId}`} target="_blank" rel="noopener noreferrer" style={{ background: T.card, border: `1px solid ${T.inputBorder}`, borderRadius: 10, padding: "11px 14px", fontWeight: 600, textDecoration: "none", color: T.text }}>Open report ↗</a>
@@ -177,7 +185,7 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
         <QuickWa />
         <Timeline />
         <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "10px 16px calc(10px + env(safe-area-inset-bottom))", background: T.page, borderTop: `1px solid ${T.cardBorder}` }}>
-          <button onClick={saveNext} disabled={saving} style={{ width: "100%", background: T.amber, color: T.navy, border: "none", borderRadius: 12, padding: 14, fontWeight: 700, cursor: saving ? "default" : "pointer", fontSize: 15, opacity: saving ? 0.6 : 1 }}>{saving ? "Saving…" : "Save and next parent →"}</button>
+          <button onClick={saveNext} disabled={saving || (mustFollowUp && !followUp)} style={{ width: "100%", background: T.amber, color: T.navy, border: "none", borderRadius: 12, padding: 14, fontWeight: 700, cursor: saving || (mustFollowUp && !followUp) ? "default" : "pointer", fontSize: 15, opacity: saving || (mustFollowUp && !followUp) ? 0.6 : 1 }}>{saving ? "Saving…" : "Save and next parent →"}</button>
         </div>
       </main>
       <Toaster />
