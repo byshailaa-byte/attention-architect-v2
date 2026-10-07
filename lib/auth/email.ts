@@ -74,6 +74,26 @@ export async function sendCoachSafetyAlert(parentFirstName: string, deepLink: st
 
 // ── Password reset ───────────────────────────────────────────────────────────
 
+// ── Report-generation health alert (internal) ─────────────────────────────────
+// Sent to ADMIN_ALERT_EMAIL when a day's report fallback rate breaches the threshold. Counts only —
+// never any session id or customer data.
+export async function sendReportHealthAlert(subject: string, body: string): Promise<{ sent: boolean; detail: string }> {
+  const to = process.env.ADMIN_ALERT_EMAIL;
+  if (!to) {
+    console.warn("[report-health] ADMIN_ALERT_EMAIL not set — alert not emailed");
+    return { sent: false, detail: "ADMIN_ALERT_EMAIL unset" };
+  }
+  const safe = (body || "").replace(/[<>]/g, "");
+  const html = `<p>${safe.replace(/\n/g, "<br/>")}</p>`;
+  try {
+    await resendSend({ from: FROM, to: [to], subject: `[Report health] ${subject}`, html, text: body });
+    return { sent: true, detail: process.env.RESEND_API_KEY ? "resend accepted" : "no RESEND_API_KEY (logged only)" };
+  } catch (e) {
+    console.error("[report-health] alert email failed:", (e as Error).message);
+    return { sent: false, detail: (e as Error).message };
+  }
+}
+
 function buildPasswordResetHtml(resetUrl: string): string {
   return `<!DOCTYPE html>
 <html lang="en">

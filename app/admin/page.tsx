@@ -12,6 +12,7 @@ import {
 } from "@/lib/engine/questions";
 import AdminDashboard from "./AdminDashboard";
 import ReportV2Funnel from "./ReportV2Funnel";
+import ReportGenHealth from "./ReportGenHealth";
 import type { AdminDashboardProps, DropOffRow, HandbookLead, WaFailureRow, NeverGeneratedRow, ScrollMilestone, QuestionCompletion } from "./AdminDashboard";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
@@ -609,6 +610,7 @@ export default async function AdminPage({
       neverGenerated={neverGenerated}
     />
       <ReportV2Funnel />
+      <div style={{ marginTop: 16 }}><ReportGenHealth /></div>
     </>
   );
 }
