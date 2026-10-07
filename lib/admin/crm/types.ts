@@ -149,6 +149,8 @@ export type Stats = {
   // nav badges:
   callsDue: number;
   needsReply: number;
+  // live calling queue: count per segment A–E (absent on fixture/preview data).
+  segments?: { A: number; B: number; C: number; D: number; E: number };
 };
 
 export type LogCallInput = {

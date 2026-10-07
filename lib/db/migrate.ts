@@ -1086,6 +1086,30 @@ async function migrate() {
     await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_52_report_generation_log') ON CONFLICT DO NOTHING`;
   }
 
+  // Phase 53 — admin calling log. One row per logged call from the A2 call screen. Keyed by
+  // assessment_id (the stable lead key — joins to identity, report, purchase and LMS). Drives
+  // the follow-up queue (segment A) and the per-lead call timeline. The queue and call screen
+  // render fine without this table (logging shows "Call logging not enabled yet") so the app
+  // never crashes on an environment where this phase hasn't run yet.
+  if (!applied.has("phase_53_call_log")) {
+    await sql`
+      CREATE TABLE IF NOT EXISTS call_log (
+        id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        assessment_id UUID NOT NULL,
+        segment       TEXT NOT NULL,
+        outcome       TEXT NOT NULL CHECK (outcome IN (
+                        'interested','callback','not_interested','purchased',
+                        'no_answer','busy','wrong_number','do_not_call')),
+        notes         TEXT,
+        follow_up_at  TIMESTAMPTZ,
+        called_by     TEXT NOT NULL,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_call_log_assessment ON call_log (assessment_id, created_at DESC)`;
+    await sql`INSERT INTO schema_migrations (phase) VALUES ('phase_53_call_log') ON CONFLICT DO NOTHING`;
+  }
+
   console.log("Migrations complete.");
 }
 

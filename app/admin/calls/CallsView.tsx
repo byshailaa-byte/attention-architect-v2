@@ -2,7 +2,7 @@
 import type { Lead, QueueTab, Stats } from "@/lib/admin/crm";
 import { telLink, waLink, worryLabel } from "@/lib/admin/crm";
 import { T, STAGE } from "../crm-theme";
-import { PreviewBanner, Toaster } from "../PreviewUI";
+import { Toaster } from "../PreviewUI";
 
 // WhatsApp glyph (compact action button on phones, where a "WA" label reads as a typo).
 function WaGlyph({ size = 18, fill = T.waText }: { size?: number; fill?: string }) {
@@ -16,6 +16,18 @@ function WaGlyph({ size = 18, fill = T.waText }: { size?: number; fill?: string 
 const TABS: { key: QueueTab; label: string; count?: number }[] = [];
 
 function tabList(stats: Stats): { key: QueueTab; label: string; count: number | null }[] {
+  const s = stats.segments;
+  if (s) {
+    // Live data: tabs are segment filters (see lib/admin/call-queue.ts).
+    return [
+      { key: "due_today", label: "All due", count: stats.callsDue },
+      { key: "callbacks", label: "Follow-ups", count: s.A },
+      { key: "read_report", label: "Report sent", count: s.B + s.C },
+      { key: "reached_plan", label: "Plan calls", count: s.D },
+      { key: "interested", label: "Interested", count: null },
+      { key: "done", label: "Done", count: null },
+    ];
+  }
   return [
     { key: "due_today", label: "Due today", count: stats.dueToday },
     { key: "replied", label: "Replied on WhatsApp", count: 2 },
@@ -55,9 +67,9 @@ export function CallsView({ stats, leads, tab }: { stats: Stats; leads: Lead[]; 
     >WhatsApp</button>
   );
 
+  const seg = stats.segments;
   return (
     <>
-      <PreviewBanner />
       {/* DESKTOP */}
       <main className="aa-calls-desktop" style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 18, minWidth: 0, color: T.text }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
@@ -69,11 +81,23 @@ export function CallsView({ stats, leads, tab }: { stats: Stats; leads: Lead[]; 
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 12 }}>
-          {tile(String(stats.dueToday), "Due today", T.warmText)}
-          {tile(String(stats.reachedPlanNotBought), "Reached the plan, not bought", T.navy)}
-          {tile(String(stats.readReportOnly), "Read the report only", T.navy)}
-          {tile(String(stats.callbacksThisWeek), "Callbacks this week", T.navy)}
-          {tile(`${stats.boughtThisMonth} / ${stats.calledThisMonth}`, "Bought / called this month", T.successText)}
+          {seg ? (
+            <>
+              {tile(String(seg.A), "Follow-up due today", T.warmText)}
+              {tile(String(seg.B), "New report, not bought", T.navy)}
+              {tile(String(seg.C), "Report ageing (2–14d)", T.navy)}
+              {tile(String(seg.D), "Plan calls (₹4,999)", T.navy)}
+              {tile(String(seg.E), "Paid but stuck", T.successText)}
+            </>
+          ) : (
+            <>
+              {tile(String(stats.dueToday), "Due today", T.warmText)}
+              {tile(String(stats.reachedPlanNotBought), "Reached the plan, not bought", T.navy)}
+              {tile(String(stats.readReportOnly), "Read the report only", T.navy)}
+              {tile(String(stats.callbacksThisWeek), "Callbacks this week", T.navy)}
+              {tile(`${stats.boughtThisMonth} / ${stats.calledThisMonth}`, "Bought / called this month", T.successText)}
+            </>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

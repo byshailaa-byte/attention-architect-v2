@@ -1,4 +1,4 @@
-import { getCrmSource } from "@/lib/admin/crm";
+import { getCallingSource } from "@/lib/admin/crm/real";
 import type { QueueTab } from "@/lib/admin/crm";
 import { nextLeadId } from "@/lib/admin/crm";
 import { CallScreen } from "./CallScreen";
@@ -13,7 +13,7 @@ export default async function CallLeadPage({ params, searchParams }: {
   const { leadId } = await params;
   const sp = await searchParams;
   const tab = (sp.tab as QueueTab) || "due_today";
-  const src = getCrmSource();
+  const src = getCallingSource();
   const [lead, queue] = await Promise.all([src.getLead(leadId), src.getQueue(tab)]);
   if (!lead) {
     return <main style={{ padding: 28, fontFamily: T.FONT_BODY, color: T.text }}><p>Lead not found.</p></main>;
