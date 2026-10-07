@@ -240,7 +240,7 @@ Write JSON ONLY, exactly these keys:
   "shortGood": "<one concrete strength of ${ctx.name}, a plain statement — NOT 'nothing is wrong'>",
   "shortWhy": "one line — why the ${ctx.worryLabel} happens, in plain concrete words",
   "shortFix": "one short instruction a parent can picture, then '5 minutes a day.'",
-  "whyParas": ["open with WHAT'S GOING ON in plain words (the mechanism + at least one of the 3 answers). AT MOST 3 sentences and 45 words. Do NOT start with 'You’ve seen it yourself.'", "the bold takeaway — AT MOST 2 sentences"],
+  "whyParas": ["open with WHAT'S GOING ON: the mechanism (WHY ${ctx.worryLabel} happens for ${ctx.name}) + at least one of the 3 answers. This cause MUST be the same thing the switch above fixes — our Week 1 move — NOT generic task-management. AT MOST 3 sentences and 45 words. Do NOT start with 'You’ve seen it yourself.'", "the bold takeaway — AT MOST 2 sentences"],
   "switch": { "instead": "what the parent really says today, IN QUOTES", "try": "the exact new words, said to ${ctx.name}, AT ${ctx.moment}, IN QUOTES", "after": "ONE short sentence on what the parent does next" },
   "tonight": ["step 1 — ONE short sentence (two at most), the Day 2 principle done AT ${ctx.moment}", "step 2 — another concrete step", "${ctx.notice}"]
 }
@@ -260,6 +260,7 @@ MORE HARD RULES:
 - Never make the PARENT the cause of the problem. Do NOT write "you push", "every reminder you give", "because you…". Describe what happens for the child, not what the parent does wrong.
 - The switch AND tonight MUST take place at ${ctx.moment}, using our Week 1 principle there — NOT re-skinned homework advice.
 - switch.try IS our Week 1 core move above, put into the parent's exact words at ${ctx.moment}. It must BE that move — not a generic nudge ("keep going", "five more minutes", "you can do it"). If switch.try is not our core move, it is wrong.
+- whyParas explain the SAME cause the switch fixes: the mechanism above, leading to our Week 1 move. NOT generic "needs a clear stop time / a next thing to do" task-management.
 - switch.instead and switch.try are WORDS A PARENT SAYS, each wrapped in double quotes.${ctx.instinctMove ? ` switch.instead must be the parent's usual move above, said out loud.` : ""}
 - If switch.try offers a real choice, switch.after must be exactly: "The choice only works if it’s real."
 - NO abstract nouns: method, ownership, process, transition, thread, approach, autonomy, structure, engagement, belongs.
@@ -324,12 +325,22 @@ function parseJson(text: string): ReportV2Generated {
 }
 
 async function callLLM(prompt: string): Promise<{ gen: ReportV2Generated; usage: Usage }> {
-  const res = await getClient().messages.create({
-    model: MODEL, max_tokens: 1024, system: WRITING_ENGINE_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: prompt }],
-  });
-  const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
-  return { gen: parseJson(text), usage: usageOf(res) };
+  // Retry the SAME call once on malformed JSON before it becomes an api_error fallback — the model
+  // occasionally returns truncated/invalid JSON. Usage accrues across both attempts.
+  let usage: Usage = { inTok: 0, outTok: 0 };
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await getClient().messages.create({
+      model: MODEL, max_tokens: 1024, system: WRITING_ENGINE_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const u = usageOf(res);
+    usage = { inTok: usage.inTok + u.inTok, outTok: usage.outTok + u.outTok };
+    const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+    try { return { gen: parseJson(text), usage }; }
+    catch (e) { lastErr = e; if (attempt === 0) console.log("[report-v2] malformed JSON — retrying the call once"); }
+  }
+  throw lastErr;
 }
 
 // Cheap targeted repair: shorten ONLY the failing fields to satisfy the exact rule each one
@@ -462,6 +473,7 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
           continue;
         }
         reason = isRepairable(v.errors) ? "repair_exhausted" : "validator";
+        if (reason === "validator") console.log(`[report-v2] FALLBACK (validator, non-repairable after budget): ${v.errors.join("; ")}`);
         break; // → fallback
       }
       const j = await judgeCoherence({
