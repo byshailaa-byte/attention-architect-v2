@@ -42,7 +42,7 @@ void TABS;
 
 const GRID = "26px 1.1fr 1.3fr 1.2fr 1fr 0.9fr 1fr 1.4fr 150px";
 
-export function CallsView({ stats, leads, tab }: { stats: Stats; leads: Lead[]; tab: QueueTab }) {
+export function CallsView({ stats, leads, tab, commit }: { stats: Stats; leads: Lead[]; tab: QueueTab; commit: string }) {
   const tabs = tabList(stats);
   const tile = (value: string, label: string, color: string) => (
     <div style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 14, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 2 }}>
@@ -171,6 +171,7 @@ export function CallsView({ stats, leads, tab }: { stats: Stats; leads: Lead[]; 
           );
         })}
       </main>
+      <div style={{ padding: "4px 28px 22px", fontSize: 12, color: T.muted }}>Source: live · {commit}</div>
       <Toaster />
       <style>{`@media (max-width:767px){.aa-calls-desktop{display:none!important}.aa-calls-mobile{display:flex!important}}`}</style>
     </>
