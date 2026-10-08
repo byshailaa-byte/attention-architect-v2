@@ -110,6 +110,10 @@ export function CallsView({ stats, leads, tab, commit }: { stats: Stats; leads: 
               }}>{t.label}{t.count != null ? ` · ${t.count}` : ""}</a>
             );
           })}
+          <a href="/admin/calls?view=contacts" style={{
+            padding: "7px 12px", borderRadius: 999, fontSize: 13.5, fontWeight: 600, textDecoration: "none",
+            background: T.card, color: T.navy, border: `1px dashed ${T.inputBorder}`,
+          }}>All contacts</a>
         </div>
 
         <section style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 16, overflow: "hidden" }}>
@@ -150,6 +154,7 @@ export function CallsView({ stats, leads, tab, commit }: { stats: Stats; leads: 
           {tabs.map((t) => (
             <a key={t.key} href={`/admin/calls?tab=${t.key}`} style={{ flex: "0 0 auto", padding: "7px 12px", borderRadius: 999, fontSize: 13.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", background: t.key === tab ? T.navy : T.card, color: t.key === tab ? "#fff" : T.navy, border: t.key === tab ? "none" : `1px solid ${T.inputBorder}` }}>{t.label}{t.count != null ? ` · ${t.count}` : ""}</a>
           ))}
+          <a href="/admin/calls?view=contacts" style={{ flex: "0 0 auto", padding: "7px 12px", borderRadius: 999, fontSize: 13.5, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap", background: T.card, color: T.navy, border: `1px dashed ${T.inputBorder}` }}>All contacts</a>
         </div>
         {leads.map((l) => {
           const st = STAGE[l.stage];

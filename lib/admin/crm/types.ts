@@ -55,6 +55,9 @@ export type Lead = {
   report: ReportSummary;
   timeline: TimelineEvent[];
   calls: CallLog[];
+  // All assessments this person (same phone) has done — present only when more than one, so the
+  // A2 detail screen can list them. The current one is flagged.
+  personAssessments?: { id: string; at: string; typeName: string; current: boolean }[];
 };
 
 export type MessageDirection = "in" | "out";

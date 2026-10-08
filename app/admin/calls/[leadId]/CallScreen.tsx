@@ -157,7 +157,7 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
       <div>
         <a href={`/admin/calls?tab=${tab}`} style={{ fontSize: 13, color: T.text2, textDecoration: "none" }}>← Calls · Due today</a>
         <h1 style={{ margin: "4px 0 0", fontFamily: T.FONT_HEAD, fontSize: 28, fontWeight: 600 }}>{lead.parentName}{lead.parentRelation ? ` · ${lead.parentRelation}` : ""}</h1>
-        <Pills />
+        {Pills()}
       </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <span style={{ fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{lead.phoneE164}</span>
@@ -168,22 +168,43 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
     </div>
   );
 
+  const OtherAssessments = () => {
+    const list = lead.personAssessments ?? [];
+    if (list.length <= 1) return null;
+    return (
+      <section style={panel}>
+        <div style={sectionLabel}>THIS PERSON’S ASSESSMENTS ({list.length})</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {list.map((a) => (
+            <a key={a.id} href={`/admin/calls/${a.id}?tab=${tab}`} style={{ fontSize: 13.5, textDecoration: "none", color: a.current ? T.navy : T.textRow, fontWeight: a.current ? 700 : 400 }}>
+              {a.at} · {a.typeName}{a.current ? " · (viewing)" : ""}
+            </a>
+          ))}
+        </div>
+      </section>
+    );
+  };
+
+  // These section builders are called as plain functions ({LogCall()} — NOT <LogCall/>). Rendering
+  // them as elements would make each a fresh component type every render, so React would remount
+  // the subtree — and the notes textarea / date input would lose focus after every keystroke.
   return (
     <>
       {/* DESKTOP */}
       <main className="aa-call-desktop" style={{ padding: "24px 28px", display: "grid", gridTemplateColumns: "minmax(0, 1fr) 420px", gap: 20, alignContent: "start", color: T.text }}>
-        <Header />
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}><TalkingPoints /><Timeline /></div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}><LogCall /><QuickWa /></div>
+        {Header()}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>{TalkingPoints()}{OtherAssessments()}{Timeline()}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>{LogCall()}{QuickWa()}</div>
       </main>
 
       {/* MOBILE */}
       <main className="aa-call-mobile" style={{ display: "none", padding: 16, flexDirection: "column", gap: 14, color: T.text, paddingBottom: 92 }}>
-        <Header />
-        <TalkingPoints />
-        <LogCall />
-        <QuickWa />
-        <Timeline />
+        {Header()}
+        {TalkingPoints()}
+        {LogCall()}
+        {QuickWa()}
+        {OtherAssessments()}
+        {Timeline()}
         <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "10px 16px calc(10px + env(safe-area-inset-bottom))", background: T.page, borderTop: `1px solid ${T.cardBorder}` }}>
           <button onClick={saveNext} disabled={saving || (mustFollowUp && !followUp)} style={{ width: "100%", background: T.amber, color: T.navy, border: "none", borderRadius: 12, padding: 14, fontWeight: 700, cursor: saving || (mustFollowUp && !followUp) ? "default" : "pointer", fontSize: 15, opacity: saving || (mustFollowUp && !followUp) ? 0.6 : 1 }}>{saving ? "Saving…" : "Save and next parent →"}</button>
         </div>

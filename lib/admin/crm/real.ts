@@ -367,6 +367,23 @@ export class RealCallingSource implements CrmSource {
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
       .map((c): CallLog => ({ id: `${row.id}:${c.created_at}`, at: stampLabel(iso(c.created_at)), outcome: mapOutcomeToUi(c.outcome) }));
 
+    // All assessments for this person (same phone, last-10-digit match) — listed on A2 when > 1.
+    if (row.phone) {
+      const others = (await sql`
+        SELECT a.id::text, a.created_at, a.archetype
+        FROM assessments a
+        WHERE NOT a.is_internal
+          AND length(regexp_replace(COALESCE(a.phone,''),'\\D','','g')) >= 10
+          AND right(regexp_replace(COALESCE(a.phone,''),'\\D','','g'),10) = right(regexp_replace(${row.phone},'\\D','','g'),10)
+        ORDER BY a.created_at DESC
+      `) as unknown as { id: string; created_at: unknown; archetype: string | null }[];
+      if (others.length > 1) {
+        lead.personAssessments = others.map((o) => ({
+          id: o.id, at: dayLabel(iso(o.created_at)), typeName: stripThe(o.archetype), current: o.id === row.id,
+        }));
+      }
+    }
+
     return lead;
   }
 
