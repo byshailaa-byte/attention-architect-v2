@@ -10,6 +10,7 @@ import { buildCardsCopy } from "@/lib/report-v2/cards-copy";
 import { strengthsFor } from "@/content/report-v2/archetype-extras";
 import type { Gender } from "@/lib/report/pronouns";
 import ReportV2Cards from "./ReportV2Cards";
+import ReportV2CardsV3 from "./ReportV2CardsV3";
 import PlanV2 from "./PlanV2";
 
 const CALENDLY = "https://calendly.com/attentionarchitect/attention-architect-discovery";
@@ -77,6 +78,24 @@ export default async function ReportV2({ session, card, plan }: { session: strin
 
   if (plan) {
     return <PlanV2 sessionId={session} content={effContent} goalKey={effGoalKey} ageBand={r.age_band ?? "10-11"} childName={r.child_name} gender={gender} goalOptions={goalOptions} calendlyUrl={CALENDLY} checkinEnabled={CHECKIN_ENABLED} parentName={r.parent_name ?? ""} email={r.email ?? ""} phone={r.phone ?? ""} />;
+  }
+
+  // New reports carry layout:"v3" → 5-card deck. Old reports (no marker) keep the 7-card deck.
+  if (content.layout === "v3") {
+    return (
+      <ReportV2CardsV3
+        sessionId={session}
+        content={effContent}
+        copy={cardsCopy}
+        strengths={strengths}
+        gender={gender}
+        childName={r.child_name ?? ""}
+        goalOptions={goalOptions}
+        initialCard={card ?? 1}
+        planHref={`?report=v2&plan=1`}
+        calendlyUrl={CALENDLY}
+      />
+    );
   }
 
   return (

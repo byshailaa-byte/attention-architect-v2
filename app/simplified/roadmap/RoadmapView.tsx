@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { TESTIMONIAL_POOL } from "@/lib/content/report-content";
 import { SHASHANK } from "@/lib/founders-data";
+import { SHOW_COMPARE_AT } from "@/lib/report-v2/flags";
 
 declare global {
   interface Window {
@@ -426,7 +427,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
                 <div style={{ background: GOLD, color: NAVY, fontSize: "8px", fontWeight: 700, letterSpacing: ".08em", padding: "3px 7px", borderRadius: 5, flexShrink: 0 }}>RECOMMENDED</div>
               </div>
               <div style={{ fontFamily: BF, fontWeight: 800, fontSize: 27, color: NAVY, lineHeight: 1, marginBottom: 4 }}>
-                ₹4,999&nbsp;<s style={{ fontSize: 13, fontWeight: 600, color: "#A6ADB8" }}>₹7,999</s>
+                ₹4,999{SHOW_COMPARE_AT && <>&nbsp;<s style={{ fontSize: 13, fontWeight: 600, color: "#A6ADB8" }}>₹7,999</s></>}
               </div>
               <div style={{ fontSize: "10.5px", color: DIM, marginBottom: 12 }}>One-time · 7-day guarantee</div>
               <ul style={{ listStyle: "none", margin: "0 0 14px", padding: 0 }}>
@@ -457,7 +458,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
             <div style={{ padding: "14px 16px" }}>
               <div style={{ fontSize: "12px", fontWeight: 600, color: DIM, marginBottom: 6 }}>Just the roadmap</div>
               <div style={{ fontFamily: BF, fontWeight: 800, fontSize: 27, color: NAVY, lineHeight: 1, marginBottom: 4 }}>
-                ₹2,999&nbsp;<s style={{ fontSize: 13, fontWeight: 600, color: "#A6ADB8" }}>₹4,999</s>
+                ₹2,999{SHOW_COMPARE_AT && <>&nbsp;<s style={{ fontSize: 13, fontWeight: 600, color: "#A6ADB8" }}>₹4,999</s></>}
               </div>
               <div style={{ fontSize: "10.5px", color: DIM, marginBottom: 12 }}>One-time · 7-day guarantee</div>
               <ul style={{ listStyle: "none", margin: "0 0 14px", padding: 0 }}>

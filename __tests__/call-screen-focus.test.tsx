@@ -54,7 +54,8 @@ describe("A2 saving + rendering notes", () => {
     await user.click(screen.getAllByText(/Save and next parent/)[0]);
 
     expect(fetchMock).toHaveBeenCalledWith("/api/admin/calls", expect.objectContaining({ method: "POST" }));
-    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const callArgs = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(callArgs[1].body as string);
     expect(body.notes).toBe("Ring after school tomorrow please");
     vi.unstubAllGlobals();
   });

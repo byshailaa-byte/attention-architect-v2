@@ -150,8 +150,8 @@ export default function ReportV2Cards(props: Props) {
         {card === 2 && (<>
           {eyebrow("Why this keeps happening")}
           <h1 style={{ fontFamily: HEAD, fontSize: 28, lineHeight: 1.2, margin: "0 0 18px", fontWeight: 500 }}>{copy.card2Headline}</h1>
-          <p style={{ fontSize: 18, lineHeight: 1.5, margin: "0 0 16px" }}>{c.whyParas[0]}</p>
-          <p style={{ fontSize: 18, lineHeight: 1.5, margin: "0 0 18px", fontWeight: 700 }}>{c.whyParas[1]}</p>
+          <p style={{ fontSize: 18, lineHeight: 1.5, margin: "0 0 16px" }}>{c.whyParas?.[0] ?? ""}</p>
+          <p style={{ fontSize: 18, lineHeight: 1.5, margin: "0 0 18px", fontWeight: 700 }}>{c.whyParas?.[1] ?? ""}</p>
           <div style={{ display: "inline-block", background: "rgba(47,158,110,.14)", color: "#1F6E4C", fontWeight: 700, fontSize: 14, padding: "8px 14px", borderRadius: 999 }}>
             Changing this takes 5 minutes a day.
           </div>

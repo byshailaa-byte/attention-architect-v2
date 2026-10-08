@@ -27,8 +27,8 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
   screens: [
     "Turns it off at the agreed time, calmly.",
     "Stops even when the next thing is tempting.",
-    "The handover works on an ordinary evening.",
-    "Back to calm stops after one that went wrong.",
+    "Screens go off calmly on a normal evening, not just good ones.",
+    "After a bad evening, the next stop is calm again.",
     "Screens go off even when you're not in the room.",
     "Manages their own screen time, mostly.",
   ],
@@ -49,7 +49,7 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Keeps going on their own, most of the time.",
   ],
   finish: [
-    "Gets going with the end already in sight.",
+    "Starts with a clear idea of what 'done' looks like.",
     "Stays with it through the dull middle.",
     "Finishes on an ordinary day, not just a fun one.",
     "Comes back to finish after stopping early.",

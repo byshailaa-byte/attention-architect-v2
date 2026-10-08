@@ -66,16 +66,25 @@ const CARD7_PILLS: Record<string, [string, string, string]> = {
   other:      ["Start now.", "Come back to it.", "Keep going."],
 };
 
-function makeFiller(name: string, gender: Gender) {
+// Pronoun/name token filler. Handles the lower-case tokens used across v1/v2 card copy, the
+// capitalised sentence-initial forms ({He}/{His}/{Him}/{Himself}), and the UPPER-CASE forms
+// ({HE}/{HIS}/{HIM}) that the v3 WHY_BOXES labels use. Also exported for the v3 report deck,
+// which reuses it verbatim so the two layouts fill pronouns identically.
+export function makeFiller(name: string, gender: Gender) {
   const nm = name.trim() ? displayChildName(name) : "Your child";
   const p = reportV2Pronouns(gender);
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const up = (s: string) => s.toUpperCase();
   const they = p.subj === "they";
   return (tmpl: string) => {
     const out = tmpl
       .replace(/\{Name\}/g, nm)
       .replace(/\{he\}’s/g, they ? "they’re" : `${p.subj}’s`)
+      // UPPER-CASE label forms (v3 WHY_BOXES). Do these before the capitalised/lower forms.
+      .replace(/\{HE\}/g, up(p.subj)).replace(/\{HIM\}/g, up(p.obj)).replace(/\{HIS\}/g, up(p.poss))
       .replace(/\{He\}/g, cap(p.subj)).replace(/\{They\}/g, cap(p.subj))
+      .replace(/\{His\}/g, cap(p.poss)).replace(/\{Him\}/g, cap(p.obj))
+      .replace(/\{Himself\}/g, cap(p.reflexive))
       .replace(/\{he\}/g, p.subj).replace(/\{they\}/g, p.subj)
       .replace(/\{him\}/g, p.obj).replace(/\{them\}/g, p.obj)
       .replace(/\{theirs\}/g, p.possPred)
@@ -85,7 +94,7 @@ function makeFiller(name: string, gender: Gender) {
   };
 }
 
-function typeName(archetype: string): string {
+export function typeName(archetype: string): string {
   return archetype.replace(/^The\s+/i, "").trim();
 }
 function pluralType(type: string): string {

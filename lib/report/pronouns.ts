@@ -57,6 +57,13 @@ const THEY_VERB: Record<string, string> = {
   comes: "come", turns: "turn", sends: "send", loses: "lose", dives: "dive", thinks: "think",
   likes: "like", resets: "reset", hates: "hate", wants: "want", finds: "find", finishes: "finish",
   catches: "catch", reads: "read", runs: "run", settles: "settle", locks: "lock", explores: "explore",
+  // report-v3 fixed copy (verbs following a they-subject in the new tables / seenIt / hardPart):
+  argues: "argue", sulks: "sulk", wanders: "wander", fades: "fade", cracks: "crack",
+  discovers: "discover", notices: "notice", sticks: "stick", enjoys: "enjoy", pulls: "pull",
+  chases: "chase", disappears: "disappear", lights: "light", includes: "include", cares: "care",
+  avoids: "avoid", drains: "drain", handles: "handle", connects: "connect", trusts: "trust",
+  drops: "drop", sits: "sit", walks: "walk", asks: "ask", says: "say", moves: "move",
+  recharges: "recharge",
 };
 export function pluralizeThey(text: string): string {
   return text.replace(/\b([Tt]hey)(\s+(?:often|really|completely|just|still|always|also|then|soon))?\s+([a-z’]+)\b/g,

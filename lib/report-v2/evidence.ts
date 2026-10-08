@@ -6,7 +6,7 @@
 import { displayChildName, buildPronounTokens, type Gender } from "@/lib/report/pronouns";
 import type { EvidenceItem } from "./types";
 
-export type AnsweredQuestion = { id: string; dimension: string; label: string };
+export type AnsweredQuestion = { id: string; dimension: string; label: string; value?: string };
 export type DimScore = { dimension: string; winning_votes: number };
 
 const LEAD_IN: Record<string, string> = {
@@ -53,5 +53,9 @@ export function selectEvidence(
     if (picked.length >= 3) break;
     if (!usedIds.has(a.id)) { picked.push(a); usedIds.add(a.id); }
   }
-  return picked.slice(0, 3).map((a) => ({ leadIn: leadFor(a.dimension), quote: a.label, dim: a.dimension }));
+  // qid + optionValue thread the pick's question id and chosen option value onto the item for
+  // v3's card-3 PLAIN_ANSWER lookup; leadIn/quote/dim stay for the v1/v2 consumers.
+  return picked.slice(0, 3).map((a) => ({
+    leadIn: leadFor(a.dimension), quote: a.label, dim: a.dimension, qid: a.id, optionValue: a.value,
+  }));
 }
