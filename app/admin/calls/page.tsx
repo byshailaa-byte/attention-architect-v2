@@ -7,7 +7,7 @@ import { T } from "../crm-theme";
 
 export const dynamic = "force-dynamic";
 
-const TABS: QueueTab[] = ["due_today", "replied", "reached_plan", "read_report", "callbacks", "interested", "done"];
+const TABS: QueueTab[] = ["due_today", "replied", "reached_plan", "read_report", "callbacks", "interested", "done", "scheduled"];
 // The running commit, surfaced in the footer so a stale/old deploy is obvious at a glance.
 const COMMIT = (process.env.VERCEL_GIT_COMMIT_SHA ?? "local").slice(0, 7);
 

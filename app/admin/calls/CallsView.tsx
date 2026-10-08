@@ -22,6 +22,7 @@ function tabList(stats: Stats): { key: QueueTab; label: string; count: number | 
     return [
       { key: "due_today", label: "All due", count: stats.callsDue },
       { key: "callbacks", label: "Follow-ups", count: s.A },
+      { key: "scheduled", label: "Scheduled", count: stats.scheduled ?? 0 },
       { key: "read_report", label: "Report sent", count: s.B + s.C },
       { key: "reached_plan", label: "Plan calls", count: s.D },
       { key: "interested", label: "Interested", count: null },

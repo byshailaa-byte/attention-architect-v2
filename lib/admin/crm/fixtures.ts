@@ -147,6 +147,7 @@ const QUEUE_ORDER: Record<QueueTab, string[]> = {
   callbacks: ["priya"],
   interested: ["anjali-ira", "anjali-aarav"],
   done: [],
+  scheduled: [],
 };
 
 // ── Conversations (WhatsApp inbox A3) ──────────────────────────────────────────

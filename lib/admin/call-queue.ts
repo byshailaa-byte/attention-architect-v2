@@ -180,3 +180,74 @@ export function segmentCounts(items: QueueItem[]): Record<Segment, number> {
   for (const it of items) counts[it.segment]++;
   return counts;
 }
+
+// ── Scheduled ────────────────────────────────────────────────────────────────
+// A contact is "Scheduled" when its latest (non-terminal) call set a follow_up_at in the FUTURE
+// (after end of today IST). These are intentionally held out of segments A–E by the cooldown; the
+// Scheduled tab surfaces them so a booked callback never vanishes. On its due day the same contact
+// flips into segment A (classifyContact).
+export type ScheduledItem = { assessmentId: string; followUpAt: number };
+
+export function scheduledFollowUpMs(c: QueueContact, now: Date): number | null {
+  const calls = [...c.calls].sort((a, b) => (ms(b.createdAt) ?? 0) - (ms(a.createdAt) ?? 0));
+  const latest = calls[0];
+  if (!latest || DEAD_OUTCOMES.has(latest.outcome)) return null;
+  const fu = ms(latest.followUpAt);
+  return fu != null && fu > endOfTodayIST(now) ? fu : null;
+}
+
+export function buildScheduled(contacts: QueueContact[], now: Date): ScheduledItem[] {
+  const out: ScheduledItem[] = [];
+  for (const c of contacts) {
+    const fu = scheduledFollowUpMs(c, now);
+    if (fu != null) out.push({ assessmentId: c.assessmentId, followUpAt: fu });
+  }
+  out.sort((a, b) => a.followUpAt - b.followUpAt); // soonest first
+  return out;
+}
+
+// ── Per-PERSON grouping ──────────────────────────────────────────────────────
+// The queue/cooldown/scheduled must work per PERSON, not per assessment: a parent called on
+// assessment X who later does assessment Y keeps their call history + cooldown. Group by
+// normalised phone (email fallback); the representative is the latest assessment, but paid / report
+// / LMS state and the call history are AGGREGATED across all of the person's assessments.
+export function personKey(phone: string | null, email: string | null): string | null {
+  const d = (phone ?? "").replace(/\D/g, "");
+  const norm = d.length === 10 ? "91" + d
+    : (d.length === 12 && d.startsWith("91")) ? d
+    : (d.length === 11 && d.startsWith("0")) ? "91" + d.slice(1)
+    : (d.length >= 10 ? d : null);
+  if (norm) return norm;
+  const e = (email ?? "").trim().toLowerCase();
+  return e ? "email:" + e : null;
+}
+
+export type PersonInput = QueueContact & { personKey: string; createdAt: string; tierRank?: number };
+
+// Collapse per-assessment inputs into one QueueContact per person.
+export function groupByPerson(items: PersonInput[]): QueueContact[] {
+  const groups = new Map<string, PersonInput[]>();
+  for (const it of items) {
+    const g = groups.get(it.personKey) ?? [];
+    g.push(it);
+    groups.set(it.personKey, g);
+  }
+  const out: QueueContact[] = [];
+  for (const group of groups.values()) {
+    group.sort((a, b) => (ms(b.createdAt) ?? 0) - (ms(a.createdAt) ?? 0)); // latest first
+    const rep = group[0];
+    const paidMember = [...group].sort((a, b) => (b.tierRank ?? 0) - (a.tierRank ?? 0)).find((g) => g.paid);
+    const maxIso = (sel: (x: PersonInput) => string | null) =>
+      group.map(sel).filter(Boolean).sort().slice(-1)[0] ?? null;
+    out.push({
+      assessmentId: rep.assessmentId,
+      reportSentAt: maxIso((x) => x.reportSentAt),
+      paid: group.some((g) => g.paid),
+      tier: paidMember?.tier ?? null,
+      lmsLastActivityAt: maxIso((x) => x.lmsLastActivityAt),
+      lmsFinished: group.some((g) => g.lmsFinished),
+      calls: group.flatMap((g) => g.calls),
+    });
+  }
+  return out;
+}

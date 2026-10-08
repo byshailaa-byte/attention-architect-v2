@@ -5,7 +5,7 @@ import type { Lead, QueueTab } from "@/lib/admin/crm";
 import { telLink, waLink } from "@/lib/admin/crm";
 import { followUpRequired, type CallLogOutcome } from "@/lib/admin/call-queue";
 import { T, STAGE } from "../../crm-theme";
-import { Toaster, previewToast } from "../../PreviewUI";
+import { Toaster } from "../../PreviewUI";
 
 // The eight call_log outcomes (lib/admin/call-queue.ts). Stored verbatim; drives the queue.
 const OUTCOMES: { k: CallLogOutcome; label: string }[] = [
@@ -29,6 +29,8 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
   const [note, setNote] = useState("");
   const [followUp, setFollowUp] = useState(""); // YYYY-MM-DD or ""
   const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null); // "Saved · Moved to Scheduled…"
+  const [error, setError] = useState<string | null>(null);        // visible save error (note kept)
 
   // interested / callback must schedule the next call — default to tomorrow (11:00 IST applied at
   // submit). Set in an effect (not useState init) to avoid an SSR/client hydration mismatch.
@@ -56,10 +58,27 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
 
   const openWhatsApp = () => { window.open(waLink(lead.phoneE164, waText), "_blank", "noopener"); };
 
+  // Where the contact goes after this call — shown to the operator so nothing feels lost.
+  const destinationMessage = (): string => {
+    const label = OUTCOMES.find((o) => o.k === outcome)?.label.toLowerCase() ?? outcome;
+    if (outcome === "not_interested" || outcome === "wrong_number" || outcome === "do_not_call") return `Removed from queue (${label})`;
+    if (outcome === "purchased") return "Marked purchased · in the plan queue";
+    if (followUp) {
+      const istToday = new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10);
+      const dt = new Date(`${followUp}T11:00:00+05:30`);
+      const ist = new Date(dt.getTime() + 5.5 * 3600_000);
+      const wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][ist.getUTCDay()];
+      const mo = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][ist.getUTCMonth()];
+      const when = `${wd} ${ist.getUTCDate()} ${mo}, 11:00`;
+      return followUp > istToday ? `Moved to Scheduled · ${when}` : `In Follow-up due · ${when}`;
+    }
+    return "Logged · back in the queue in 2 days"; // no_answer / busy cooldown
+  };
+
   const saveNext = async () => {
     if (saving) return;
-    if (mustFollowUp && !followUp) { previewToast("Pick a follow-up date for interested/callback"); return; }
-    setSaving(true);
+    if (mustFollowUp && !followUp) { setError("Pick a follow-up date for interested/callback"); return; }
+    setSaving(true); setError(null);
     const followUpAt = followUp ? `${followUp}T11:00:00+05:30` : null; // 11:00 IST
     try {
       const res = await fetch("/api/admin/calls", {
@@ -68,13 +87,18 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
         body: JSON.stringify({ leadId: lead.id, outcome, notes: note || undefined, followUpAt }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; enabled?: boolean };
-      if (res.ok && data.ok) previewToast("Call logged");
-      else if (res.ok && data.enabled === false) previewToast("Call logging not enabled yet");
-      else previewToast("Couldn't save the call");
+      if (res.ok && data.ok) {
+        // Success only: show where it went, then advance. Never navigate on failure.
+        setSavedMsg(`Saved · ${destinationMessage()}`);
+        setTimeout(() => router.push(nextId ? `/admin/calls/${nextId}?tab=${tab}` : `/admin/calls?tab=${tab}`), 1300);
+        return;
+      }
+      if (res.ok && (data as { enabled?: boolean }).enabled === false) setError("Call logging isn’t enabled yet — nothing was saved.");
+      else setError("Couldn’t save the call. Your note is kept — try again.");
     } catch {
-      previewToast("Couldn't save the call");
+      setError("Couldn’t save the call (network). Your note is kept — try again.");
     }
-    setTimeout(() => router.push(nextId ? `/admin/calls/${nextId}?tab=${tab}` : `/admin/calls?tab=${tab}`), 500);
+    setSaving(false); // failure → re-enable, keep the typed note
   };
 
   const Pills = () => (
@@ -126,6 +150,11 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
   const LogCall = () => (
     <section style={panel}>
       <div style={sectionLabel}>LOG THIS CALL</div>
+      {lead.lastNote && lead.lastNote !== "—" && (
+        <div style={{ fontSize: 13, color: T.textRow, background: T.chipFill, borderRadius: 10, padding: "8px 11px" }}>
+          <span style={{ color: T.text2, fontWeight: 600 }}>Last note: </span>{lead.lastNote}
+        </div>
+      )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {OUTCOMES.map((o) => <span key={o.k} style={chip(outcome === o.k)} onClick={() => setOutcome(o.k)}>{o.label}</span>)}
       </div>
@@ -139,6 +168,8 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
         {followUp && !mustFollowUp && <span style={{ fontSize: 13, color: T.text2, cursor: "pointer" }} onClick={() => setFollowUp("")}>clear</span>}
       </div>
       <button onClick={saveNext} disabled={saving || (mustFollowUp && !followUp)} style={{ background: T.amber, color: T.navy, border: "none", borderRadius: 12, padding: 12, fontWeight: 700, textAlign: "center", cursor: saving || (mustFollowUp && !followUp) ? "default" : "pointer", fontSize: 14, opacity: saving || (mustFollowUp && !followUp) ? 0.6 : 1 }}>{saving ? "Saving…" : "Save and next parent →"}</button>
+      {savedMsg && <div style={{ fontSize: 13, fontWeight: 600, color: T.successText, background: T.successBg, borderRadius: 10, padding: "9px 12px" }}>{savedMsg}</div>}
+      {error && <div style={{ fontSize: 13, fontWeight: 600, color: "#9B2C2C", background: "#FBEAEA", borderRadius: 10, padding: "9px 12px" }}>{error}</div>}
     </section>
   );
 

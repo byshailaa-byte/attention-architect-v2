@@ -68,16 +68,17 @@ const NORM = `CASE
   WHEN length(regexp_replace(a.phone,'\\D','','g'))=12 AND left(regexp_replace(a.phone,'\\D','','g'),2)='91' THEN regexp_replace(a.phone,'\\D','','g')
   ELSE NULL END`;
 
-async function fetchRaw(sql: ReturnType<typeof getSql>, withCalls: boolean): Promise<Raw[]> {
+// Builds the per-person CTE (keyed → latest → people). Filtering, sorting, COUNT and pagination
+// all happen in SQL against the `people` CTE (see getAllContacts), so no contact is ever dropped
+// by an in-memory bound regardless of how many people exist.
+function peopleCTE(withCalls: boolean): string {
   const callSel = withCalls
     ? `lc.outcome AS last_call_outcome, lc.created_at AS last_call_at, lc.follow_up_at AS last_follow_up,`
     : `NULL::text AS last_call_outcome, NULL::timestamptz AS last_call_at, NULL::timestamptz AS last_follow_up,`;
   const callJoin = withCalls
     ? `LEFT JOIN LATERAL (SELECT outcome, created_at, follow_up_at FROM call_log WHERE assessment_id=l.id ORDER BY created_at DESC LIMIT 1) lc ON true`
     : ``;
-  // One row per person (latest assessment), with purchase/lms/call rollups. Bounded; the view
-  // filters/sorts/paginates in JS (the person set is small — hundreds, low thousands at most).
-  const text = `
+  return `
     WITH keyed AS (
       SELECT a.*, COALESCE(${NORM}, 'email:'||lower(a.email)) AS person_key
       FROM assessments a
@@ -90,8 +91,9 @@ async function fetchRaw(sql: ReturnType<typeof getSql>, withCalls: boolean): Pro
       SELECT DISTINCT ON (person_key) *,
         (SELECT COUNT(*) FROM with_key k2 WHERE k2.person_key = with_key.person_key)::int AS person_count
       FROM with_key ORDER BY person_key, created_at DESC
-    )
-    SELECT l.id::text, regexp_replace(COALESCE(l.phone,''),'\\D','','g') AS phone_digits,
+    ),
+    people AS (
+    SELECT l.id::text AS id, regexp_replace(COALESCE(l.phone,''),'\\D','','g') AS phone_digits,
       l.parent_name, l.child_name, l.age_band, l.archetype, l.concerns,
       l.created_at, l.whatsapp_report_sent_at AS report_sent_at, l.person_count,
       p.tier AS paid_tier, p.amount_paise AS paid_amt, pend.tier AS pend_tier,
@@ -99,16 +101,22 @@ async function fetchRaw(sql: ReturnType<typeof getSql>, withCalls: boolean): Pro
       ${callSel}
       GREATEST(l.created_at, COALESCE(l.whatsapp_report_sent_at,'epoch'::timestamptz),
         COALESCE(p.created_at,'epoch'::timestamptz), COALESCE(lp.last_at,'epoch'::timestamptz)
-        ${withCalls ? `, COALESCE(lc.created_at,'epoch'::timestamptz)` : ``}) AS last_activity_at
+        ${withCalls ? `, COALESCE(lc.created_at,'epoch'::timestamptz)` : ``}) AS last_activity_at,
+      (p.tier IS NOT NULL) AS paid_flag,
+      COALESCE(p.tier, pend.tier) AS plan_tier,
+      CASE WHEN p.tier IS NOT NULL AND u.lms_version='v1' THEN 'v1'
+           WHEN p.tier IS NOT NULL AND lp.last_at IS NOT NULL THEN 'in_lms'
+           WHEN p.tier IS NOT NULL THEN 'paid'
+           WHEN pend.tier IS NOT NULL THEN 'checkout'
+           WHEN l.whatsapp_report_sent_at IS NOT NULL THEN 'report'
+           ELSE 'started' END AS stage_kind
     FROM latest l
     LEFT JOIN LATERAL (SELECT tier, amount_paise, created_at, user_id FROM purchases WHERE assessment_id=l.id AND status='paid' ORDER BY created_at DESC LIMIT 1) p ON true
     LEFT JOIN LATERAL (SELECT tier FROM purchases WHERE assessment_id=l.id AND status='pending' ORDER BY created_at DESC LIMIT 1) pend ON true
     LEFT JOIN LATERAL (SELECT MAX(week) max_week, MAX(day) max_day, MAX(completed_at) last_at FROM lms_progress WHERE assessment_id=l.id) lp ON true
     LEFT JOIN users u ON u.id = p.user_id
     ${callJoin}
-    ORDER BY last_activity_at DESC
-    LIMIT 5000`;
-  return (await sql.query(text)) as unknown as Raw[];
+    )`;
 }
 
 function toRow(r: Raw): ContactRow {
@@ -150,38 +158,48 @@ export type ContactsPage = { rows: ContactRow[]; total: number; totalAll: number
 
 export async function getAllContacts(opts: ContactsQuery): Promise<ContactsPage> {
   const sql = getSql();
-  let raw: Raw[]; let callsEnabled = true;
-  try { raw = await fetchRaw(sql, true); }
-  catch { callsEnabled = false; raw = await fetchRaw(sql, false); } // call_log not migrated here
-
-  let rows = raw.map(toRow);
-  const totalAll = rows.length;
-
-  const q = (opts.q ?? "").trim().toLowerCase();
-  const qDigits = q.replace(/\D/g, "");
-  if (q) {
-    // phone search needs the normalised phone; re-derive from raw by index
-    rows = rows.filter((row, i) => {
-      const nameHit = row.parentName.toLowerCase().includes(q) || row.childName.toLowerCase().includes(q);
-      if (nameHit) return true;
-      // phone digits live server-side only (never sent to the client row)
-      if (qDigits.length >= 4) return (raw[i].phone_digits ?? "").includes(qDigits);
-      return false;
-    });
-  }
-  if (opts.stage) rows = rows.filter((r) => r.stageKind === opts.stage);
-  if (opts.paid === "paid") rows = rows.filter((r) => r.stageKind === "paid" || r.stageKind === "in_lms" || r.stageKind === "v1");
-  if (opts.paid === "unpaid") rows = rows.filter((r) => !(r.stageKind === "paid" || r.stageKind === "in_lms" || r.stageKind === "v1"));
-  if (opts.plan) rows = rows.filter((r) => r.plan === planLabel(opts.plan!));
-  if (opts.flag === "never_called") rows = rows.filter((r) => r.lastCall === "—");
-  if (opts.flag === "checkout_started") rows = rows.filter((r) => r.stageKind === "checkout");
-  if (opts.from) rows = rows.filter((r) => r.lastActivityAt.slice(0, 10) >= opts.from!);
-  if (opts.to) rows = rows.filter((r) => r.lastActivityAt.slice(0, 10) <= opts.to!);
-
-  rows.sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt)); // newest first
-  const total = rows.length;
   const pageSize = Math.min(Math.max(opts.pageSize ?? 50, 10), 200);
   const page = Math.max(opts.page ?? 1, 1);
-  const start = (page - 1) * pageSize;
-  return { rows: rows.slice(start, start + pageSize), total, totalAll, page, pageSize, callsEnabled };
+
+  const run = async (withCalls: boolean) => {
+    const cte = peopleCTE(withCalls);
+    const conds: string[] = [];
+    const params: unknown[] = [];
+    const add = (v: unknown) => { params.push(v); return `$${params.length}`; };
+
+    const q = (opts.q ?? "").trim();
+    if (q) {
+      const like = add(`%${q}%`);
+      const qd = q.replace(/\D/g, "");
+      if (qd.length >= 4) conds.push(`(p.parent_name ILIKE ${like} OR p.child_name ILIKE ${like} OR p.phone_digits LIKE ${add(`%${qd}%`)})`);
+      else conds.push(`(p.parent_name ILIKE ${like} OR p.child_name ILIKE ${like})`);
+    }
+    if (opts.stage) conds.push(`p.stage_kind = ${add(opts.stage)}`);
+    if (opts.paid === "paid") conds.push(`p.paid_flag`);
+    if (opts.paid === "unpaid") conds.push(`NOT p.paid_flag`);
+    if (opts.plan) conds.push(`p.plan_tier = ${add(opts.plan)}`);
+    if (opts.flag === "never_called") conds.push(`p.last_call_outcome IS NULL`);
+    if (opts.flag === "checkout_started") conds.push(`p.stage_kind = 'checkout'`);
+    if (opts.from) conds.push(`(p.last_activity_at AT TIME ZONE 'Asia/Kolkata')::date >= ${add(opts.from)}::date`);
+    if (opts.to) conds.push(`(p.last_activity_at AT TIME ZONE 'Asia/Kolkata')::date <= ${add(opts.to)}::date`);
+    const where = conds.length ? "WHERE " + conds.join(" AND ") : "";
+
+    const lim = add(pageSize);
+    const off = add((page - 1) * pageSize);
+    // Page + a window COUNT of the filtered set (so pagination can't silently drop a match).
+    const pageRows = (await sql.query(
+      `${cte} SELECT p.*, COUNT(*) OVER()::int AS total_count FROM people p ${where} ORDER BY p.last_activity_at DESC NULLS LAST LIMIT ${lim} OFFSET ${off}`,
+      params,
+    )) as unknown as (Raw & { total_count: number })[];
+    const allRows = (await sql.query(`${cte} SELECT COUNT(*)::int AS n FROM people`)) as unknown as { n: number }[];
+    return { pageRows, totalAll: allRows[0]?.n ?? 0 };
+  };
+
+  let res: Awaited<ReturnType<typeof run>>;
+  let callsEnabled = true;
+  try { res = await run(true); }
+  catch { callsEnabled = false; res = await run(false); } // call_log not migrated here
+
+  const total = res.pageRows[0]?.total_count ?? 0;
+  return { rows: res.pageRows.map(toRow), total, totalAll: res.totalAll, page, pageSize, callsEnabled };
 }

@@ -40,3 +40,33 @@ describe("A2 notes field keeps focus while typing", () => {
     expect(document.activeElement).toBe(note);
   });
 });
+
+describe("A2 saving + rendering notes", () => {
+  it("submit after typing sends the full note in the POST body (guards stale closure)", async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true }) }) as unknown as Response);
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<CallScreen lead={lead} tab="due_today" nextId={null} />);
+
+    const note = screen.getAllByPlaceholderText("What was said, next step…")[0] as HTMLTextAreaElement;
+    await user.click(note);
+    await user.type(note, "Ring after school tomorrow please");
+    await user.click(screen.getAllByText(/Save and next parent/)[0]);
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/admin/calls", expect.objectContaining({ method: "POST" }));
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.notes).toBe("Ring after school tomorrow please");
+    vi.unstubAllGlobals();
+  });
+
+  it("renders a saved last note + the note in the call timeline", () => {
+    const withNote: Lead = {
+      ...lead,
+      lastNote: "Ring after school",
+      timeline: [{ at: "8 Oct 3:00 pm", text: 'You called · callback — “Ring after school”' }],
+    };
+    render(<CallScreen lead={withNote} tab="due_today" nextId={null} />);
+    expect(screen.getAllByText(/Last note:/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Ring after school/).length).toBeGreaterThan(0);
+  });
+});

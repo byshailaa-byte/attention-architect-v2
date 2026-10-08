@@ -140,7 +140,8 @@ export type Spend = {
 };
 
 export type QueueTab =
-  | "due_today" | "replied" | "reached_plan" | "read_report" | "callbacks" | "interested" | "done";
+  | "due_today" | "replied" | "reached_plan" | "read_report" | "callbacks" | "interested" | "done"
+  | "scheduled";
 
 export type Stats = {
   dueToday: number;
@@ -154,6 +155,8 @@ export type Stats = {
   needsReply: number;
   // live calling queue: count per segment A–E (absent on fixture/preview data).
   segments?: { A: number; B: number; C: number; D: number; E: number };
+  // future-dated follow-ups (Scheduled tab).
+  scheduled?: number;
 };
 
 export type LogCallInput = {

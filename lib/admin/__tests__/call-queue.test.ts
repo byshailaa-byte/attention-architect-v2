@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   classifyContact, buildQueue, segmentCounts, endOfTodayIST,
-  followUpRequired, validateCallLog,
-  type QueueContact, type QueueCall,
+  followUpRequired, validateCallLog, buildScheduled, groupByPerson, personKey,
+  type QueueContact, type QueueCall, type PersonInput,
 } from "@/lib/admin/call-queue";
 
 // 11:30 IST on 7 Oct 2026. End of today IST = 2026-10-07T18:29:59.999Z.
@@ -232,5 +232,44 @@ describe("buildQueue — priority + ordering", () => {
       contact({ assessmentId: "e", paid: true, tier: "tier1", lmsLastActivityAt: daysAgo(5) }),
     ], NOW);
     expect(segmentCounts(q)).toEqual({ A: 0, B: 1, C: 0, D: 0, E: 1 });
+  });
+});
+
+describe("Scheduled (future follow-ups)", () => {
+  it("a future callback is in Scheduled, not in segments A–E", () => {
+    const c = contact({ reportSentAt: daysAgo(3), calls: [call({ outcome: "callback", followUpAt: daysAgo(-3), createdAt: daysAgo(1) })] });
+    expect(buildScheduled([c], NOW).length).toBe(1);
+    expect(classifyContact(c, NOW)).toBeNull();
+  });
+  it("on the due day it flips into segment A and leaves Scheduled", () => {
+    const c = contact({ reportSentAt: daysAgo(3), calls: [call({ outcome: "callback", followUpAt: hoursAgo(1), createdAt: daysAgo(1) })] });
+    expect(classifyContact(c, NOW)?.segment).toBe("A");
+    expect(buildScheduled([c], NOW).length).toBe(0);
+  });
+  it("Scheduled is sorted soonest-first", () => {
+    const far = contact({ assessmentId: "far", calls: [call({ outcome: "callback", followUpAt: daysAgo(-10), createdAt: daysAgo(1) })] });
+    const soon = contact({ assessmentId: "soon", calls: [call({ outcome: "callback", followUpAt: daysAgo(-2), createdAt: daysAgo(1) })] });
+    expect(buildScheduled([far, soon], NOW).map((s) => s.assessmentId)).toEqual(["soon", "far"]);
+  });
+});
+
+describe("Per-PERSON (normalised phone)", () => {
+  it("personKey normalises different phone formats to the same key, email fallback", () => {
+    expect(personKey("9876543210", null)).toBe("919876543210");
+    expect(personKey("+91 98765 43210", null)).toBe("919876543210");
+    expect(personKey(null, "A@B.com")).toBe("email:a@b.com");
+  });
+  it("a call on an older assessment carries to the person's latest assessment (history + cooldown)", () => {
+    const base = { personKey: "919876543210", reportSentAt: daysAgo(2), paid: false, tier: null, lmsLastActivityAt: null, lmsFinished: false };
+    const older: PersonInput = { ...base, assessmentId: "X", createdAt: daysAgo(10),
+      calls: [call({ outcome: "callback", followUpAt: daysAgo(-2), createdAt: daysAgo(1) })] };
+    const newer: PersonInput = { ...base, assessmentId: "Y", createdAt: daysAgo(1), calls: [] };
+    const people = groupByPerson([newer, older]);
+    expect(people.length).toBe(1);
+    expect(people[0].assessmentId).toBe("Y");   // representative = latest assessment
+    expect(people[0].calls.length).toBe(1);     // older assessment's call carried over
+    // the carried future callback puts the PERSON in Scheduled (not a fresh/un-cooled contact)
+    expect(buildScheduled(people, NOW).length).toBe(1);
+    expect(buildQueue(people, NOW).some((i) => i.assessmentId === "Y")).toBe(false);
   });
 });

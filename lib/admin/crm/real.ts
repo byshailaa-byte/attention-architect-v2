@@ -14,8 +14,8 @@ import type {
   Lead, Stats, QueueTab, LogCallInput, ReportSummary, TimelineEvent, CallLog, LeadStage,
 } from "./types";
 import {
-  buildQueue, classifyContact, segmentCounts,
-  type QueueContact, type QueueCall, type CallLogOutcome, type Segment, type QueueItem,
+  buildQueue, classifyContact, segmentCounts, buildScheduled, groupByPerson, personKey,
+  type QueueContact, type QueueCall, type CallLogOutcome, type Segment, type QueueItem, type PersonInput,
 } from "@/lib/admin/call-queue";
 
 // ── Row shapes from the master candidate query ──────────────────────────────────
@@ -181,6 +181,24 @@ const SELECT_CANDIDATES = (sql: ReturnType<typeof getSql>) => sql`
   LIMIT 500
 `;
 
+// All callable assessments (no "report in 15d OR paid" filter — segment logic decides inclusion,
+// per PERSON). Bounded at 5000 so one slow person can't unbound the query.
+const SELECT_ALL_CALLABLE = (sql: ReturnType<typeof getSql>) => sql`
+  SELECT
+    a.id::text, a.session_id::text, a.parent_name, a.child_name, a.email, a.phone,
+    a.age_band, a.archetype, a.parent_pattern, a.concerns, a.report_v2_goal, a.created_at,
+    a.whatsapp_report_sent_at AS report_sent_at,
+    p.tier, p.amount_paise, p.created_at AS purchased_at,
+    lp.last_at AS lms_last_at, lp.max_week AS lms_max_week
+  FROM assessments a
+  LEFT JOIN LATERAL (SELECT tier, amount_paise, created_at FROM purchases WHERE assessment_id = a.id AND status = 'paid' ORDER BY created_at DESC LIMIT 1) p ON true
+  LEFT JOIN LATERAL (SELECT MAX(completed_at) AS last_at, MAX(week) AS max_week FROM lms_progress WHERE assessment_id = a.id) lp ON true
+  WHERE NOT a.is_internal AND a.phone IS NOT NULL AND a.archetype IS NOT NULL
+    AND (a.child_name IS NULL OR (a.child_name NOT ILIKE 'Test%' AND a.child_name NOT ILIKE 'Smoke%'))
+  ORDER BY a.created_at DESC
+  LIMIT 5000
+`;
+
 // Fetch all call_log rows for the given assessment ids, grouped. Returns an empty map (and a
 // `false` flag) if the table doesn't exist yet — the queue still renders, logging shows disabled.
 async function fetchCalls(sql: ReturnType<typeof getSql>, ids: string[]): Promise<{ map: Map<string, CallRow[]>; enabled: boolean }> {
@@ -202,8 +220,12 @@ async function fetchCalls(sql: ReturnType<typeof getSql>, ids: string[]): Promis
   }
 }
 
-function rowToListLead(row: CandidateRow, calls: CallRow[], item: QueueItem | null, now: Date): Lead {
-  const { status, followUpDue, followUpUrgent, lastNote } = deriveStatus(row, calls, item, now);
+function rowToListLead(row: CandidateRow, calls: CallRow[], item: QueueItem | null, now: Date, opts?: { scheduledAt?: number }): Lead {
+  const d = deriveStatus(row, calls, item, now);
+  const { status, lastNote } = d;
+  // Scheduled rows show the booked date + time (not "Today").
+  const followUpDue = opts?.scheduledAt != null ? stampLabel(new Date(opts.scheduledAt).toISOString()) : d.followUpDue;
+  const followUpUrgent = opts?.scheduledAt != null ? false : d.followUpUrgent;
   return {
     id: row.id,
     parentName: firstName(row.parent_name),
@@ -231,26 +253,59 @@ export class RealCallingSource implements CrmSource {
   private now: Date;
   constructor(now: Date = new Date()) { this.now = now; }
 
+  // Load the whole callable universe collapsed to ONE contact per PERSON (normalised phone, email
+  // fallback). paid/report/LMS state and call history are aggregated across all of a person's
+  // assessments, so the queue/cooldown/scheduled are per-person — see groupByPerson.
+  private async loadPersonData(): Promise<{
+    persons: QueueContact[];
+    render: Map<string, { row: CandidateRow; calls: CallRow[] }>; // keyed by representative assessment id
+    allCalls: CallRow[];
+    enabled: boolean;
+  }> {
+    const sql = getSql();
+    const rows = (await SELECT_ALL_CALLABLE(sql)) as unknown as CandidateRow[];
+    const { map, enabled } = await fetchCalls(sql, rows.map((r) => r.id));
+    const tierRank = (t: string | null) => (t === "tier2" ? 2 : t === "tier1" ? 1 : t ? 0.5 : 0);
+    const inputs: PersonInput[] = rows.map((r) => ({
+      ...toContact(r, map.get(r.id) ?? []),
+      personKey: personKey(r.phone, r.email) ?? `a:${r.id}`,
+      createdAt: iso(r.created_at)!,
+      tierRank: tierRank(r.tier),
+    }));
+    const persons = groupByPerson(inputs);
+    // Parallel grouping for rendering: representative row + the person's unioned CallRow[] (notes).
+    const byKey = new Map<string, CandidateRow[]>();
+    for (const r of rows) {
+      const k = personKey(r.phone, r.email) ?? `a:${r.id}`;
+      (byKey.get(k) ?? byKey.set(k, []).get(k)!).push(r);
+    }
+    const render = new Map<string, { row: CandidateRow; calls: CallRow[] }>();
+    const allCalls: CallRow[] = [];
+    for (const g of byKey.values()) {
+      g.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const calls = g.flatMap((x) => map.get(x.id) ?? []);
+      render.set(g[0].id, { row: g[0], calls });
+      allCalls.push(...calls);
+    }
+    return { persons, render, allCalls, enabled };
+  }
+
   // ── Calling half: real data ──────────────────────────────────────────────
   async getStats(): Promise<Stats> {
-    const sql = getSql();
-    const rows = (await SELECT_CANDIDATES(sql)) as unknown as CandidateRow[];
-    const ids = rows.map((r) => r.id);
-    const { map } = await fetchCalls(sql, ids);
-    const contacts = rows.map((r) => toContact(r, map.get(r.id) ?? []));
-    const items = buildQueue(contacts, this.now);
+    const { persons, render, allCalls } = await this.loadPersonData();
+    const items = buildQueue(persons, this.now);
     const seg = segmentCounts(items);
+    const scheduled = buildScheduled(persons, this.now);
 
     const monthAgo = this.now.getTime() - 30 * 24 * 3600_000;
     const weekAgo = this.now.getTime() - 7 * 24 * 3600_000;
-    const boughtThisMonth = rows.filter((r) => r.purchased_at && new Date(r.purchased_at).getTime() >= monthAgo).length;
+    let boughtThisMonth = 0;
+    for (const { row } of render.values()) if (row.purchased_at && new Date(row.purchased_at).getTime() >= monthAgo) boughtThisMonth++;
     let calledThisMonth = 0, callbacksThisWeek = 0;
-    for (const list of map.values()) {
-      for (const c of list) {
-        const t = new Date(c.created_at).getTime();
-        if (t >= monthAgo) calledThisMonth++;
-        if (c.outcome === "callback" && t >= weekAgo) callbacksThisWeek++;
-      }
+    for (const c of allCalls) {
+      const t = new Date(c.created_at).getTime();
+      if (t >= monthAgo) calledThisMonth++;
+      if (c.outcome === "callback" && t >= weekAgo) callbacksThisWeek++;
     }
     const fixtureStats = await this.fixtures.getStats(); // needsReply is a WhatsApp/A3 metric — keep fixture
     return {
@@ -263,19 +318,21 @@ export class RealCallingSource implements CrmSource {
       callsDue: items.length,
       needsReply: fixtureStats.needsReply,
       segments: seg,
+      scheduled: scheduled.length,
     };
   }
 
   async getQueue(tab: QueueTab): Promise<Lead[]> {
-    const sql = getSql();
-    const rows = (await SELECT_CANDIDATES(sql)) as unknown as CandidateRow[];
-    const byId = new Map(rows.map((r) => [r.id, r]));
-    const ids = rows.map((r) => r.id);
-    const { map } = await fetchCalls(sql, ids);
-    const contacts = rows.map((r) => toContact(r, map.get(r.id) ?? []));
-    const items = buildQueue(contacts, this.now);
-    const itemById = new Map(items.map((i) => [i.assessmentId, i]));
+    const { persons, render } = await this.loadPersonData();
 
+    if (tab === "scheduled") {
+      // Future-dated follow-ups, soonest first (held out of A–E by the cooldown until due).
+      return buildScheduled(persons, this.now)
+        .map((s) => { const r = render.get(s.assessmentId); return r ? rowToListLead(r.row, r.calls, null, this.now, { scheduledAt: s.followUpAt }) : null; })
+        .filter((l): l is Lead => l !== null);
+    }
+
+    const items = buildQueue(persons, this.now);
     const filtered = items.filter((it) => {
       switch (tab) {
         case "due_today": return true;                          // full priority queue
@@ -284,7 +341,7 @@ export class RealCallingSource implements CrmSource {
         case "read_report": return it.segment === "B" || it.segment === "C"; // report sent, not bought
         case "reached_plan": return it.segment === "D";         // plan calls (buyers)
         case "interested": {
-          const calls = map.get(it.assessmentId) ?? [];
+          const calls = render.get(it.assessmentId)?.calls ?? [];
           const latest = [...calls].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
           return latest?.outcome === "interested";
         }
@@ -293,7 +350,9 @@ export class RealCallingSource implements CrmSource {
       }
     });
 
-    return filtered.map((it) => rowToListLead(byId.get(it.assessmentId)!, map.get(it.assessmentId) ?? [], it, this.now));
+    return filtered
+      .map((it) => { const r = render.get(it.assessmentId); return r ? rowToListLead(r.row, r.calls, it, this.now) : null; })
+      .filter((l): l is Lead => l !== null);
   }
 
   async getLead(id: string): Promise<Lead | null> {
@@ -320,8 +379,23 @@ export class RealCallingSource implements CrmSource {
     const row = rows[0];
     if (!row) return null;
 
-    const { map } = await fetchCalls(sql, [row.id]);
-    const calls = map.get(row.id) ?? [];
+    // Per-PERSON call history: gather this person's assessments (same phone) + all their calls, so
+    // the cooldown, timeline, and "last note" reflect the person — not just the clicked assessment.
+    let personAssessments: { id: string; created_at: unknown; archetype: string | null }[] =
+      [{ id: row.id, created_at: row.created_at, archetype: row.archetype }];
+    if (row.phone) {
+      try {
+        personAssessments = (await sql`
+          SELECT a.id::text, a.created_at, a.archetype FROM assessments a
+          WHERE NOT a.is_internal
+            AND length(regexp_replace(COALESCE(a.phone,''),'\\D','','g')) >= 10
+            AND right(regexp_replace(COALESCE(a.phone,''),'\\D','','g'),10) = right(regexp_replace(${row.phone},'\\D','','g'),10)
+          ORDER BY a.created_at DESC
+        `) as unknown as { id: string; created_at: unknown; archetype: string | null }[];
+      } catch { /* keep just this assessment */ }
+    }
+    const { map } = await fetchCalls(sql, personAssessments.map((p) => p.id));
+    const calls = personAssessments.flatMap((p) => map.get(p.id) ?? []);
     const item = classifyContact(toContact(row, calls), this.now);
     const lead = rowToListLead(row, calls, item, this.now);
 
@@ -358,7 +432,10 @@ export class RealCallingSource implements CrmSource {
     push(iso(row.report_sent_at), "Report sent on WhatsApp");
     if (row.purchased_at) push(iso(row.purchased_at), `Bought the ${planLabel(row.tier)}`);
     if (row.lms_last_at) push(iso(row.lms_last_at), `Last LMS activity (week ${row.lms_max_week ?? 1})`);
-    for (const c of calls) push(iso(c.created_at), `You called · ${OUTCOME_UI[c.outcome].toLowerCase()}`);
+    for (const c of calls) {
+      const noteSuffix = c.notes?.trim() ? ` — “${c.notes.trim()}”` : "";
+      push(iso(c.created_at), `You called · ${OUTCOME_UI[c.outcome].toLowerCase()}${noteSuffix}`);
+    }
     events.sort((a, b) => a.ts - b.ts);
     lead.timeline = events.map((e) => e.ev);
 
@@ -367,21 +444,11 @@ export class RealCallingSource implements CrmSource {
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
       .map((c): CallLog => ({ id: `${row.id}:${c.created_at}`, at: stampLabel(iso(c.created_at)), outcome: mapOutcomeToUi(c.outcome) }));
 
-    // All assessments for this person (same phone, last-10-digit match) — listed on A2 when > 1.
-    if (row.phone) {
-      const others = (await sql`
-        SELECT a.id::text, a.created_at, a.archetype
-        FROM assessments a
-        WHERE NOT a.is_internal
-          AND length(regexp_replace(COALESCE(a.phone,''),'\\D','','g')) >= 10
-          AND right(regexp_replace(COALESCE(a.phone,''),'\\D','','g'),10) = right(regexp_replace(${row.phone},'\\D','','g'),10)
-        ORDER BY a.created_at DESC
-      `) as unknown as { id: string; created_at: unknown; archetype: string | null }[];
-      if (others.length > 1) {
-        lead.personAssessments = others.map((o) => ({
-          id: o.id, at: dayLabel(iso(o.created_at)), typeName: stripThe(o.archetype), current: o.id === row.id,
-        }));
-      }
+    // All assessments for this person (already fetched above) — listed on A2 when > 1.
+    if (personAssessments.length > 1) {
+      lead.personAssessments = personAssessments.map((o) => ({
+        id: o.id, at: dayLabel(iso(o.created_at)), typeName: stripThe(o.archetype), current: o.id === row.id,
+      }));
     }
 
     return lead;
