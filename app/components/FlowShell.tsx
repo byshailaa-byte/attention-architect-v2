@@ -98,8 +98,12 @@ const ScreenIcon    = (<svg {...ic}><rect x="7" y="3" width="10" height="18" rx=
 const PersonIcon    = (<svg {...ic}><circle cx="12" cy="8" r="3.5" /><path d="M5.5 20a6.5 6.5 0 0113 0" /></svg>);
 const SproutIcon    = (<svg {...ic}><path d="M12 20v-7" /><path d="M12 13C12 9 9 7 5 7c0 4 3 6 7 6z" /><path d="M12 11c0-3 2.5-4.5 6-4.5 0 3-2.5 4.5-6 4.5z" /></svg>);
 const ChecklistIcon = (<svg {...ic}><path d="M9 6h10M9 12h10M9 18h10" /><path d="M4 5.5l1.2 1.2L7 4.5" /><path d="M4.5 12h.01M4.5 18h.01" /></svg>);
+const DotsIcon      = (<svg {...ic}><circle cx="6" cy="12" r="1.3" /><circle cx="12" cy="12" r="1.3" /><circle cx="18" cy="12" r="1.3" /></svg>);
 
 export type Worry = { key: string; label: string; icon: ReactNode; tintBg: string; tintIcon: string; echo: string };
+// Visual + supportive-copy registry, keyed by the canonical worry key (unchanged downstream: report,
+// plan and Coach all read the key). The DISPLAY label per age comes from WORRIES_BY_AGE below; the
+// label here is a short generic fallback. echo is the "you're in the right place" reassurance line.
 export const WORRIES: Worry[] = [
   { key: "homework",   label: "Homework",   icon: BookIcon,      tintBg: "#E8EEF5", tintIcon: "#1E3A5F", echo: "Homework fights. You’re in the right place. The fight is usually not about the homework, and the next questions find what it’s really about." },
   { key: "reminders",  label: "Needs reminders", icon: TargetIcon, tintBg: "#EAF0EA", tintIcon: "#2F5D3A", echo: "Needs reminders. You’re in the right place. “Won’t” and “can’t” look identical from the outside, and the next questions tell them apart." },
@@ -107,7 +111,70 @@ export const WORRIES: Worry[] = [
   { key: "confidence", label: "Confidence", icon: PersonIcon,    tintBg: "#EFEAF5", tintIcon: "#4A3470", echo: "Low confidence. You’re in the right place. “I can’t” is often a decision made before trying, and the next questions show where it starts." },
   { key: "giveup",     label: "Gives up",   icon: SproutIcon,    tintBg: "#F8E9E2", tintIcon: "#8C3F22", echo: "Gives up quickly. You’re in the right place. Quitting fast is usually protecting something, and the next questions find what." },
   { key: "finish",     label: "Finishing",  icon: ChecklistIcon, tintBg: "#E3F0F0", tintIcon: "#1F5A5A", echo: "Never finishes. You’re in the right place. Starting and finishing use different wiring, and the next questions show which one slips." },
+  { key: "other",      label: "Something else", icon: DotsIcon,  tintBg: "#ECEAE4", tintIcon: "#5B6577", echo: "Something else. You’re in the right place. The questions still map how your child’s attention works and where it slips." },
 ];
+
+export function worryByKey(key: string | null | undefined): Worry {
+  return WORRIES.find((w) => w.key === key) ?? WORRIES[WORRIES.length - 1]; // default → "other"
+}
+
+// ── Age bands (C2) ────────────────────────────────────────────────────────────
+export const AGE_BANDS = ["8-9", "10-11", "12-14"] as const;
+export type AgeBandV2 = (typeof AGE_BANDS)[number];
+// Sub-label under each age number on the age screen.
+export const AGE_LABELS: Record<AgeBandV2, string> = {
+  "8-9":   "learning to start",
+  "10-11": "starting on their own",
+  "12-14": "planning their own time",
+};
+
+// ── Per-age worry lists (C2) ──────────────────────────────────────────────────
+// Each item's `key` maps to an existing canonical worry (report/plan/Coach unchanged); only the
+// DISPLAY label and ORDER are age-specific. Shown in the order below. "other" is always last.
+export const WORRIES_BY_AGE: Record<AgeBandV2, { key: string; label: string }[]> = {
+  "8-9": [
+    { key: "reminders",  label: "Needs reminding for everything" },
+    { key: "homework",   label: "Homework time is a fight" },
+    { key: "screens",    label: "Hard to get off screens" },
+    { key: "giveup",     label: "Gives up when it gets hard" },
+    { key: "confidence", label: "Says “I can’t” before trying" },
+    { key: "finish",     label: "Leaves things half done" },
+    { key: "other",      label: "Something else" },
+  ],
+  "10-11": [
+    { key: "homework",   label: "Homework turns into a fight" },
+    { key: "reminders",  label: "Won’t start without reminders" },
+    { key: "screens",    label: "Screens or gaming take over" },
+    { key: "finish",     label: "Rushes or leaves work half done" },
+    { key: "giveup",     label: "Gives up when it’s hard" },
+    { key: "confidence", label: "Doubts their own ability" },
+    { key: "other",      label: "Something else" },
+  ],
+  "12-14": [
+    { key: "screens",    label: "Phone or gaming takes over" },
+    { key: "reminders",  label: "Leaves studying to the last minute" },
+    { key: "homework",   label: "Doesn’t plan or keep up with schoolwork" },
+    { key: "finish",     label: "Starts things, doesn’t finish them" },
+    { key: "giveup",     label: "Shuts down when it gets hard" },
+    { key: "confidence", label: "Low confidence about studies" },
+    { key: "other",      label: "Something else" },
+  ],
+};
+
+// ── "How often?" (C2) — OPTIONAL. Stored keys + the exact card-1 phrase each maps to. ──
+export const FREQUENCY_OPTIONS: { key: string; label: string }[] = [
+  { key: "d1_2",  label: "1–2 days a week" },
+  { key: "d3_4",  label: "3–4 days" },
+  { key: "most",  label: "Most days" },
+  { key: "daily", label: "Every day" },
+];
+// Report card 1 renders "This happens <phrase>." ONLY when a frequency is set.
+export const FREQUENCY_CARD1_PHRASE: Record<string, string> = {
+  d1_2:  "1–2 days a week",
+  d3_4:  "3–4 days a week",
+  most:  "most days",
+  daily: "every day",
+};
 
 export function IconChip({ worry, size = 44 }: { worry: Worry; size?: number }) {
   return (

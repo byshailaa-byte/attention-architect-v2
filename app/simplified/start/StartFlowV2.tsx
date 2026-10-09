@@ -7,7 +7,10 @@ import { getFlowSid } from "@/lib/flow/session";
 import { isValidIndianMobile, childStepReady } from "@/lib/flow/validate";
 import { displayChildName } from "@/lib/report/pronouns";
 import ReportFooterLinks from "@/app/components/ReportFooterLinks";
-import { FLOW, HEAD, BODY, Wordmark, SegmentBar, BackLink, Screen, WORRIES, IconChip, FLOW_TOTAL_MIN } from "@/app/components/FlowShell";
+import {
+  FLOW, HEAD, BODY, Wordmark, SegmentBar, BackLink, Screen, IconChip, FLOW_TOTAL_MIN,
+  AGE_BANDS, AGE_LABELS, WORRIES_BY_AGE, FREQUENCY_OPTIONS, worryByKey, type AgeBandV2,
+} from "@/app/components/FlowShell";
 import { track } from "@/lib/analytics/track";
 
 const OOB_COPY: Record<"younger" | "older", { heading: string; body: string }> = {
@@ -21,16 +24,18 @@ const OOB_COPY: Record<"younger" | "older", { heading: string; body: string }> =
   },
 };
 
-type Step = 1 | 2 | 3;
+// C2 order: 1 age · 2 worry (+ optional "how often?") · 3 child · 4 intro.
+type Step = 1 | 2 | 3 | 4;
 
 export default function StartFlowV2() {
   const router = useRouter();
   const params = useSearchParams();
-  // Returning from the assessment (Back on Q1) lands on step 3 with the choices restored.
+  // Returning from the assessment (Back on Q1) lands on the intro (step 4) with the choices restored.
   const restored = !!(params.get("name") && params.get("age") && params.get("concerns"));
-  const [step, setStep]           = useState<Step>(restored ? 3 : 1);
-  const [worry, setWorry]         = useState<string | null>(params.get("concerns") || null);
+  const [step, setStep]           = useState<Step>(restored ? 4 : 1);
   const [age, setAge]             = useState<string | null>(params.get("age") || null);
+  const [worry, setWorry]         = useState<string | null>(params.get("concerns") || null);
+  const [frequency, setFrequency] = useState<string | null>(params.get("freq") || null);
   const [childName, setChildName] = useState(params.get("name") || "");
   const [gender, setGender]       = useState<string | null>(params.get("gender") || null);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -48,7 +53,7 @@ export default function StartFlowV2() {
     captureUtmOnce();
     const sid = getFlowSid();
     sidRef.current = sid;
-    if (restored) return; // restored to step 3 from the assessment — skip re-create/re-fire of landing
+    if (restored) return; // restored to the intro from the assessment — skip re-create/re-fire of landing
     fetch("/api/flow/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -58,23 +63,36 @@ export default function StartFlowV2() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fire once each time the age screen (step 2) is shown — to measure drop at the age step.
+  // Age is now the FIRST screen — fire start_age_view once it's shown (to measure drop at the age step).
   useEffect(() => {
-    if (step === 2 && sidRef.current) track("start_age_view", {}, sidRef.current);
+    if (step === 1 && sidRef.current) track("start_age_view", {}, sidRef.current);
   }, [step]);
 
-  const worryObj = worry ? WORRIES.find((w) => w.key === worry) ?? null : null;
+  // Intro screen impression (C5) — fire once each time the intro (step 4) is shown.
+  useEffect(() => {
+    if (step === 4 && sidRef.current) track("assessment_intro_view", { flow: "v2" }, sidRef.current);
+  }, [step]);
+
+  const ageBand: AgeBandV2 = (AGE_BANDS as readonly string[]).includes(age ?? "") ? (age as AgeBandV2) : "10-11";
+  const worryList = WORRIES_BY_AGE[ageBand];
+  const worryObj  = worry ? worryByKey(worry) : null;
   const kidName    = childName.trim() ? displayChildName(childName) : "your child";
   const kidNameCap = childName.trim() ? displayChildName(childName) : "Your child";
 
-  function pickWorry(key: string) {
-    setWorry(key);
-    track("start_worry", { worry: key }, sidRef.current);
-    setStep(2);
-  }
   function pickAge(val: string) {
     setAge(val);
     track("start_age", { age_band: val }, sidRef.current);
+    setStep(2);
+  }
+  function pickWorry(key: string) {
+    setWorry(key);
+    // Picking a new worry clears a stale frequency only when the worry actually changes.
+    if (key !== worry) setFrequency(null);
+  }
+  function continueFromWorry() {
+    if (!worry) return;
+    // start_worry carries BOTH the worry and the (optional) frequency — C5.
+    track("start_worry", { worry, frequency: frequency ?? null }, sidRef.current);
     setStep(3);
   }
   function openOob(band: "younger" | "older") {
@@ -100,15 +118,19 @@ export default function StartFlowV2() {
     } catch { setOobError("Something went wrong, please try again."); }
     finally { setOobSubmitting(false); }
   }
-  function submitChild() {
+  function continueFromChild() {
     if (!childStepReady(childName, gender)) return;
     track("start_child", { gender }, sidRef.current);
+    setStep(4);
+  }
+  function startAssessment() {
     const p = new URLSearchParams();
     p.set("flow", "v2");
     p.set("name", childName.trim());
     if (gender) p.set("gender", gender);
     if (age) p.set("age", age);
     if (worry) p.set("concerns", worry);
+    if (frequency) p.set("freq", frequency);
     p.set("variant", "simplified");
     router.push(`/assessment?${p.toString()}`);
   }
@@ -146,7 +168,7 @@ export default function StartFlowV2() {
     </div>
   ) : null;
 
-  // ── STEP 1 — WORRY (navy header + overlapping cards) ──────────────────────────
+  // ── STEP 1 — AGE (navy hero + bands below) ────────────────────────────────────
   if (step === 1) {
     return (
       <>
@@ -159,31 +181,29 @@ export default function StartFlowV2() {
                 <span style={{ background: "rgba(232,163,61,.18)", color: FLOW.goldSoft, border: "1px solid rgba(232,163,61,.4)", borderRadius: 999, padding: "5px 12px", fontSize: 12, fontWeight: 700 }}>Free · {FLOW_TOTAL_MIN} min</span>
               </div>
               <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 32, lineHeight: 1.2, color: "#fff", margin: 0 }}>
-                What&rsquo;s hardest with your child <span style={{ fontStyle: "italic", color: FLOW.goldSoft }}>right now</span>?
+                How old is your <span style={{ fontStyle: "italic", color: FLOW.goldSoft }}>child</span>?
               </h1>
+              <p style={{ fontSize: 14, color: "#C9D6E6", lineHeight: 1.45, margin: "10px 0 0" }}>What works at 9 backfires at 13, so we start here.</p>
             </div>
           </div>
 
-          <div style={{ maxWidth: 440, margin: "0 auto", padding: "0 20px 16px", marginTop: -40 }}>
-            <p style={{ fontSize: 14, color: "#C9D6E6", lineHeight: 1.4, margin: "0 0 10px", textAlign: "left" }}>Tap one. The questions after this are shaped by it.</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {WORRIES.map((w) => {
-                const sel = worry === w.key;
-                return (
-                  <button key={w.key} onClick={() => pickWorry(w.key)}
-                    style={{ position: "relative", background: sel ? FLOW.sel : "#fff", border: sel ? `2px solid ${FLOW.gold}` : "1px solid rgba(0,0,0,.04)", borderRadius: 18, padding: "12px 13px", minHeight: 84, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 9, textAlign: "left", boxShadow: "0 6px 18px rgba(30,58,95,.07)" }}>
-                    <IconChip worry={w} />
-                    <span style={{ fontSize: 15, fontWeight: 600, color: FLOW.ink }}>{w.label}</span>
-                    {sel && (
-                      <span aria-hidden="true" style={{ position: "absolute", top: 10, right: 10, width: 22, height: 22, borderRadius: "50%", background: FLOW.gold, display: "grid", placeItems: "center" }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+          <div style={{ maxWidth: 440, margin: "0 auto", padding: "0 20px 16px", marginTop: -24 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              {AGE_BANDS.map((band) => (
+                <button key={band} onClick={() => pickAge(band)}
+                  style={{ background: "#fff", border: age === band ? `2px solid ${FLOW.gold}` : `1px solid rgba(0,0,0,.04)`, borderRadius: 16, padding: "16px 4px", minHeight: 104, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, boxShadow: "0 6px 18px rgba(30,58,95,.07)" }}>
+                  <span style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 27, color: FLOW.navy, lineHeight: 1 }}>{band.replace("-", "–")}</span>
+                  <span style={{ fontSize: 11, color: FLOW.dim }}>years</span>
+                  <span style={{ fontSize: 11.5, color: FLOW.dim, lineHeight: 1.25, marginTop: 2, padding: "0 2px" }}>{AGE_LABELS[band]}</span>
+                </button>
+              ))}
             </div>
-            <p style={{ textAlign: "center", marginTop: 12, fontSize: 12.5, color: FLOW.dim }}>No sign-up · Private · For ages 8–14</p>
+            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+              {([["younger", "Younger than 8"], ["older", "15 or older"]] as const).map(([val, label]) => (
+                <button key={val} onClick={() => openOob(val)} style={{ flex: 1, minHeight: 44, background: "none", border: `1px solid ${FLOW.line}`, borderRadius: 12, padding: "10px 8px", fontSize: 12.5, color: FLOW.dim, cursor: "pointer", fontFamily: "inherit" }}>{label}</button>
+              ))}
+            </div>
+            <p style={{ textAlign: "center", marginTop: 14, fontSize: 12.5, color: FLOW.dim }}>No sign-up · Private · For ages 8–14</p>
           </div>
         </div>
         {oobModal}
@@ -192,7 +212,7 @@ export default function StartFlowV2() {
     );
   }
 
-  // ── STEP 2 — AGE ──────────────────────────────────────────────────────────────
+  // ── STEP 2 — WORRY (age-specific list) + optional "How often?" ────────────────
   if (step === 2) {
     return (
       <>
@@ -202,30 +222,56 @@ export default function StartFlowV2() {
           </div>
           <div style={{ marginBottom: 22 }}><SegmentBar step={2} /></div>
 
-          {worryObj && (
-            <div style={{ background: FLOW.navy, borderRadius: 16, padding: "16px 18px", marginBottom: 24, display: "flex", gap: 14, alignItems: "flex-start" }}>
-              <IconChip worry={worryObj} size={40} />
-              <p style={{ margin: 0, fontSize: 14, color: "#EAF1F8", lineHeight: 1.5 }}>{worryObj.echo}</p>
+          <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 32, lineHeight: 1.2, color: FLOW.ink, margin: "0 0 6px" }}>
+            What&rsquo;s hardest with your child <span style={{ fontStyle: "italic", color: FLOW.gold }}>right now</span>?
+          </h1>
+          <p style={{ fontSize: 14, color: FLOW.dim, lineHeight: 1.4, margin: "0 0 18px" }}>Tap one. The questions after this are shaped by it.</p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {worryList.map((w) => {
+              const sel = worry === w.key;
+              const reg = worryByKey(w.key);
+              return (
+                <button key={w.key} onClick={() => pickWorry(w.key)}
+                  style={{ position: "relative", background: sel ? FLOW.sel : "#fff", border: sel ? `2px solid ${FLOW.gold}` : "1px solid rgba(0,0,0,.04)", borderRadius: 18, padding: "12px 13px", minHeight: 92, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 9, textAlign: "left", boxShadow: "0 6px 18px rgba(30,58,95,.07)" }}>
+                  <IconChip worry={reg} />
+                  <span style={{ fontSize: 14.5, fontWeight: 600, color: FLOW.ink, lineHeight: 1.25 }}>{w.label}</span>
+                  {sel && (
+                    <span aria-hidden="true" style={{ position: "absolute", top: 10, right: 10, width: 22, height: 22, borderRadius: "50%", background: FLOW.gold, display: "grid", placeItems: "center" }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Optional "How often?" — appears once a worry is picked; Next works with or without it. */}
+          {worry && (
+            <div style={{ marginTop: 20 }}>
+              {worryObj && (
+                <div style={{ background: FLOW.navy, borderRadius: 14, padding: "14px 16px", marginBottom: 16, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <IconChip worry={worryObj} size={36} />
+                  <p style={{ margin: 0, fontSize: 13.5, color: "#EAF1F8", lineHeight: 1.5 }}>{worryObj.echo}</p>
+                </div>
+              )}
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: FLOW.ink, marginBottom: 9 }}>How often does this happen? <span style={{ fontWeight: 500, color: FLOW.dim }}>(optional)</span></div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {FREQUENCY_OPTIONS.map((opt) => {
+                  const sel = frequency === opt.key;
+                  return (
+                    <button key={opt.key} onClick={() => setFrequency(sel ? null : opt.key)}
+                      style={{ minHeight: 42, padding: "9px 14px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", borderRadius: 999, border: sel ? `2px solid ${FLOW.gold}` : `1px solid ${FLOW.line}`, background: sel ? FLOW.sel : "#fff", color: FLOW.ink }}>{opt.label}</button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 32, lineHeight: 1.2, color: FLOW.ink, margin: "0 0 8px" }}>How old is your child?</h1>
-          <p style={{ fontSize: 14, color: FLOW.dim, lineHeight: 1.5, margin: "0 0 22px" }}>What works at 9 backfires at 13, so this matters.</p>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-            {(["8-9", "10-11", "12-14"] as const).map((band) => (
-              <button key={band} onClick={() => pickAge(band)}
-                style={{ background: "#fff", border: `1px solid ${FLOW.line}`, borderRadius: 16, padding: "18px 4px", minHeight: 88, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, boxShadow: "0 4px 14px rgba(30,58,95,.05)" }}>
-                <span style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 28, color: FLOW.navy, lineHeight: 1 }}>{band.replace("-", "–")}</span>
-                <span style={{ fontSize: 12.5, color: FLOW.dim }}>years</span>
-              </button>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-            {([["younger", "Younger than 8"], ["older", "Older than 14"]] as const).map(([val, label]) => (
-              <button key={val} onClick={() => openOob(val)} style={{ flex: 1, minHeight: 44, background: "none", border: `1px solid ${FLOW.line}`, borderRadius: 12, padding: "10px 8px", fontSize: 12.5, color: FLOW.dim, cursor: "pointer", fontFamily: "inherit" }}>{label}</button>
-            ))}
-          </div>
+          <button onClick={continueFromWorry} disabled={!worry}
+            style={{ width: "100%", height: 54, marginTop: 22, background: worry ? FLOW.navy : FLOW.line, color: worry ? "#fff" : FLOW.dim, border: "none", borderRadius: 16, fontFamily: HEAD, fontWeight: 600, fontSize: 17, cursor: worry ? "pointer" : "not-allowed" }}>
+            {worry ? "Continue →" : "Pick what’s hardest to continue"}
+          </button>
         </Screen>
         {oobModal}
         <ReportFooterLinks />
@@ -233,41 +279,83 @@ export default function StartFlowV2() {
     );
   }
 
-  // ── STEP 3 — CHILD (white card) ───────────────────────────────────────────────
-  const canContinue = childStepReady(childName, gender);
+  // ── STEP 3 — CHILD (name + gender) ────────────────────────────────────────────
+  if (step === 3) {
+    const canContinue = childStepReady(childName, gender);
+    return (
+      <>
+        <Screen>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
+            <Wordmark /><BackLink onClick={() => setStep(2)} />
+          </div>
+          <div style={{ marginBottom: 22 }}><SegmentBar step={3} /></div>
+
+          <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 32, lineHeight: 1.2, color: FLOW.ink, margin: "0 0 8px" }}>Who are we thinking about?</h1>
+          <p style={{ fontSize: 14, color: FLOW.dim, lineHeight: 1.5, margin: "0 0 20px" }}>We&rsquo;ll use their name in the questions, so they feel like they&rsquo;re about your child — not a generic kid.</p>
+
+          <div style={{ background: "#fff", border: `1px solid ${FLOW.line}`, borderRadius: 20, padding: "22px 20px", boxShadow: "0 8px 22px rgba(30,58,95,.06)" }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: FLOW.ink, display: "block", marginBottom: 8 }}>Your child&rsquo;s first name</label>
+            <input ref={nameRef} type="text" autoComplete="off" placeholder="e.g. Arjun" value={childName}
+              onChange={(e) => setChildName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && canContinue) continueFromChild(); }}
+              style={{ width: "100%", height: 54, padding: "0 16px", fontSize: 18, border: `2px solid ${FLOW.line}`, borderRadius: 14, fontFamily: "inherit", marginBottom: 20, background: FLOW.cream, color: FLOW.ink, outline: "none", boxSizing: "border-box" }} />
+
+            <div style={{ fontSize: 13, fontWeight: 600, color: FLOW.ink, marginBottom: 9 }}>{kidNameCap} is a</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {([["boy", "Boy"], ["girl", "Girl"], ["prefer-not-to-say", "Prefer not to say"]] as const).map(([val, label]) => {
+                const sel = gender === val;
+                return (
+                  <button key={val} onClick={() => setGender(sel ? null : val)}
+                    style={{ flex: 1, minHeight: 50, padding: "10px 4px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", borderRadius: 12, border: sel ? `2px solid ${FLOW.gold}` : `1px solid ${FLOW.line}`, background: sel ? FLOW.sel : "#fff", color: FLOW.ink }}>{label}</button>
+                );
+              })}
+            </div>
+          </div>
+
+          <button onClick={continueFromChild} disabled={!canContinue}
+            style={{ width: "100%", height: 56, marginTop: 22, background: canContinue ? FLOW.navy : FLOW.line, color: canContinue ? "#fff" : FLOW.dim, border: "none", borderRadius: 16, fontFamily: HEAD, fontWeight: 600, fontSize: 17, cursor: canContinue ? "pointer" : "not-allowed" }}>
+            {canContinue ? "Continue →" : "Add a name and pick one to continue"}
+          </button>
+        </Screen>
+        <ReportFooterLinks />
+      </>
+    );
+  }
+
+  // ── STEP 4 — INTRO (what to expect, then start) ───────────────────────────────
+  const TILES: { big: string; small: string }[] = [
+    { big: "15", small: "quick questions" },
+    { big: `${FLOW_TOTAL_MIN} min`, small: "about" },
+    { big: "Free", small: "report on WhatsApp" },
+  ];
   return (
     <>
       <Screen>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-          <Wordmark /><BackLink onClick={() => setStep(2)} />
-        </div>
-        <div style={{ marginBottom: 22 }}><SegmentBar step={3} /></div>
-
-        <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 32, lineHeight: 1.2, color: FLOW.ink, margin: "0 0 8px" }}>Who are we thinking about?</h1>
-        <p style={{ fontSize: 14, color: FLOW.dim, lineHeight: 1.5, margin: "0 0 20px" }}>We&rsquo;ll use their name in the questions, so they feel like they&rsquo;re about your child — not a generic kid.</p>
-
-        <div style={{ background: "#fff", border: `1px solid ${FLOW.line}`, borderRadius: 20, padding: "22px 20px", boxShadow: "0 8px 22px rgba(30,58,95,.06)" }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: FLOW.ink, display: "block", marginBottom: 8 }}>Your child&rsquo;s first name</label>
-          <input ref={nameRef} type="text" autoComplete="off" placeholder="e.g. Arjun" value={childName}
-            onChange={(e) => setChildName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && canContinue) submitChild(); }}
-            style={{ width: "100%", height: 54, padding: "0 16px", fontSize: 18, border: `2px solid ${FLOW.line}`, borderRadius: 14, fontFamily: "inherit", marginBottom: 20, background: FLOW.cream, color: FLOW.ink, outline: "none", boxSizing: "border-box" }} />
-
-          <div style={{ fontSize: 13, fontWeight: 600, color: FLOW.ink, marginBottom: 9 }}>{kidNameCap} is a</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {([["boy", "Boy"], ["girl", "Girl"], ["prefer-not-to-say", "Prefer not to say"]] as const).map(([val, label]) => {
-              const sel = gender === val;
-              return (
-                <button key={val} onClick={() => setGender(sel ? null : val)}
-                  style={{ flex: 1, minHeight: 50, padding: "10px 4px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", borderRadius: 12, border: sel ? `2px solid ${FLOW.gold}` : `1px solid ${FLOW.line}`, background: sel ? FLOW.sel : "#fff", color: FLOW.ink }}>{label}</button>
-              );
-            })}
-          </div>
+          <Wordmark /><BackLink onClick={() => setStep(3)} />
         </div>
 
-        <button onClick={submitChild} disabled={!canContinue}
-          style={{ width: "100%", height: 56, marginTop: 22, background: canContinue ? FLOW.navy : FLOW.line, color: canContinue ? "#fff" : FLOW.dim, border: "none", borderRadius: 16, fontFamily: HEAD, fontWeight: 600, fontSize: 17, cursor: canContinue ? "pointer" : "not-allowed" }}>
-          {canContinue ? `Start ${kidName}’s questions →` : "Add a name and pick one to continue"}
+        <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 32, lineHeight: 1.2, color: FLOW.ink, margin: "0 0 8px" }}>
+          {kidNameCap}&rsquo;s questions are ready.
+        </h1>
+        <p style={{ fontSize: 14.5, color: FLOW.dim, lineHeight: 1.55, margin: "0 0 22px" }}>
+          There are no right answers — pick what happens most days. {kidNameCap}&rsquo;s name is in the questions so they feel like yours.
+        </p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 24 }}>
+          {TILES.map((t, i) => (
+            <div key={i} style={{ background: "#fff", border: `1px solid ${FLOW.line}`, borderRadius: 16, padding: "16px 8px", minHeight: 92, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, boxShadow: "0 4px 14px rgba(30,58,95,.05)", textAlign: "center" }}>
+              {t.small === "about" && <span style={{ fontSize: 11, color: FLOW.dim }}>{t.small}</span>}
+              <span style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 22, color: FLOW.navy, lineHeight: 1.05 }}>{t.big}</span>
+              {t.small !== "about" && <span style={{ fontSize: 11.5, color: FLOW.dim, lineHeight: 1.25 }}>{t.small}</span>}
+            </div>
+          ))}
+        </div>
+
+        <button onClick={startAssessment}
+          style={{ width: "100%", height: 56, background: FLOW.navy, color: "#fff", border: "none", borderRadius: 16, fontFamily: HEAD, fontWeight: 600, fontSize: 17, cursor: "pointer" }}>
+          Start {kidName}&rsquo;s questions →
         </button>
+        <p style={{ textAlign: "center", marginTop: 14, fontSize: 12.5, color: FLOW.dim }}>Private · No sign-up to start</p>
       </Screen>
       <ReportFooterLinks />
     </>

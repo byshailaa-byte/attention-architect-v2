@@ -11,18 +11,21 @@ export const dynamic = "force-dynamic";
 
 type SP = { [k: string]: string | string[] | undefined };
 
-// New v2 order: phone is captured at the CONTACT step (step 6), after details_view.
+// C2 v2 order: age → worry → child → intro, then the assessment. Phone is captured at the
+// CONTACT step (now a preview + form), after details_view. "Outside 8–14" (start_oob) is NOT a
+// funnel step — it's an off-ramp to the handbook, shown separately below and excluded from the maths.
 const STEPS: Array<{ key: string; label: string }> = [
-  { key: "landing_view",      label: "Landing" },
-  { key: "start_worry",       label: "1 · Worry" },
-  { key: "start_age",         label: "2 · Age" },
-  { key: "start_child",       label: "3 · Child" },
-  { key: "assessment_started",label: "Questions start" },
-  { key: "q_answered",        label: "    first question" },
-  { key: "halfway_view",      label: "Halfway" },
-  { key: "details_view",      label: "6 · Contact shown" },
-  { key: "details_submitted", label: "    contact submitted" },
-  { key: "phone_captured",    label: "    WhatsApp saved + sent" },
+  { key: "landing_view",         label: "Landing" },
+  { key: "start_age",            label: "1 · Age" },
+  { key: "start_worry",          label: "2 · Worry" },
+  { key: "start_child",          label: "3 · Child" },
+  { key: "assessment_intro_view",label: "4 · Intro" },
+  { key: "assessment_started",   label: "Questions start" },
+  { key: "q_answered",           label: "    first question" },
+  { key: "halfway_view",         label: "Halfway" },
+  { key: "details_view",         label: "Preview + contact shown" },
+  { key: "details_submitted",    label: "    contact submitted" },
+  { key: "phone_captured",       label: "    WhatsApp saved + sent" },
 ];
 
 function pick(sp: SP, k: string, fallback: string): string {
@@ -53,15 +56,18 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
            OR (${source} = 'meta'  AND f.utm->>'utm_source' = 'meta')
            OR (${source} = 'other' AND (f.utm->>'utm_source' IS DISTINCT FROM 'meta')))
       AND e.event_type IN (
-        'landing_view','start_worry','start_age','start_child','phone_captured',
-        'assessment_started','q_answered','halfway_view','details_view','details_submitted',
+        'landing_view','start_age','start_worry','start_child','assessment_intro_view','start_oob',
+        'phone_captured','assessment_started','q_answered','halfway_view','details_view','details_submitted',
         'report_view','simplified_report_view'
       )
     GROUP BY 1
   `) as unknown as { step: string; n: number }[];
 
   const counts = new Map(rows.map((r) => [r.step, r.n]));
-  const top = counts.get("landing_view") ?? counts.get("start_worry") ?? 0;
+  const top = counts.get("landing_view") ?? counts.get("start_age") ?? 0;
+  // Off-ramp, NOT part of the funnel: parents who chose an out-of-range age (<8 / 15+) and were
+  // sent to the handbook. Shown separately below; excluded from the drop-off maths above.
+  const outsideRange = counts.get("start_oob") ?? 0;
 
   // UTM breakdowns off the first-party assessments.utm_* columns (phase_56), last 30 days.
   // Internal/test leads excluded. Counts + utm values only — never phone/email/child_name.
@@ -170,6 +176,12 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
           })}
         </tbody>
       </table>
+
+      {/* Off-ramp — excluded from the drop-off maths above. */}
+      <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center", background: "#FBF6EE", border: "1px dashed #d9d4c7", borderRadius: 10, padding: "10px 14px", fontSize: 13.5 }}>
+        <span style={{ color: "#6b6756" }}>Outside 8–14 (chose &lt;8 / 15+ → handbook) · <em>not counted in the funnel</em></span>
+        <span style={{ fontWeight: 700 }}>{outsideRange}</span>
+      </div>
 
       <div style={{ marginTop: 36 }}>
         <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".1em", color: "#9a927c", marginBottom: 14 }}>UTM breakdowns (first-party)</div>

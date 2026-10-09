@@ -5,7 +5,7 @@
 // VERBATIM v3-copy.ts strings; tokens are filled here via the shared makeFiller. No WhatsApp
 // mentions anywhere. Navy cards: 1, 5. Cream cards: 2, 3, 4.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FLOW, HEAD, BODY } from "@/app/components/FlowShell";
+import { FLOW, HEAD, BODY, FREQUENCY_CARD1_PHRASE } from "@/app/components/FlowShell";
 import { CARD_TOTAL_V3 as TOTAL } from "@/lib/report-v2/cards-nav";
 import { makeFiller, typeName, type CardsCopy } from "@/lib/report-v2/cards-copy";
 import type { ReportV2Content } from "@/lib/report-v2/types";
@@ -52,6 +52,7 @@ type Props = {
   strengths: [string, string, string];
   gender: Gender;
   childName: string;
+  frequency?: string | null;       // C2 "how often?" key (d1_2/d3_4/most/daily) or null
   goalOptions: { key: string; text: string }[];
   initialCard: number;
   planHref: string;
@@ -59,7 +60,8 @@ type Props = {
 };
 
 export default function ReportV2CardsV3(props: Props) {
-  const { sessionId, content: c, copy, strengths, gender, childName, goalOptions, planHref, calendlyUrl } = props;
+  const { sessionId, content: c, copy, strengths, gender, childName, frequency, goalOptions, planHref, calendlyUrl } = props;
+  const frequencyPhrase = frequency ? (FREQUENCY_CARD1_PHRASE[frequency] ?? null) : null;
   const [card, setCard] = useState(clampV3(props.initialCard || 1));
   const [goal, setGoal] = useState(c.goal);
   const [sheet, setSheet] = useState(false);
@@ -167,7 +169,10 @@ export default function ReportV2CardsV3(props: Props) {
             <Rich text={f(INTRO_BOX)} />
           </div>
           {eyebrow(CARD1_EYEBROW)}
-          <h1 style={{ fontFamily: HEAD, fontSize: 30, lineHeight: 1.18, margin: "0 0 18px", fontWeight: 500 }}>{copy.card1Headline}</h1>
+          <h1 style={{ fontFamily: HEAD, fontSize: 30, lineHeight: 1.18, margin: frequencyPhrase ? "0 0 8px" : "0 0 18px", fontWeight: 500 }}>{copy.card1Headline}</h1>
+          {frequencyPhrase && (
+            <p style={{ fontSize: 15, lineHeight: 1.4, color: dim, margin: "0 0 18px" }}>This happens {frequencyPhrase}.</p>
+          )}
           <div style={{ background: "#fff", color: FLOW.ink, borderRadius: 14, padding: "18px 18px", boxShadow: "0 6px 20px rgba(0,0,0,.12)" }}>
             {miniLabel(CARD1_BOX_LABEL, FLOW.dim)}
             <div style={{ display: "flex", gap: 11, alignItems: "flex-start", marginBottom: 12 }}>

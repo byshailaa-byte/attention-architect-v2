@@ -29,10 +29,10 @@ export default async function ReportV2({ session, card, plan }: { session: strin
 
   const sql = getSql();
   const rows = (await sql`
-    SELECT child_name, child_gender, age_band, report_v2_goal, parent_name, email, phone
+    SELECT child_name, child_gender, age_band, report_v2_goal, parent_name, email, phone, worry_frequency
     FROM assessments WHERE session_id = ${session}::uuid LIMIT 1
-  `) as unknown as { child_name: string | null; child_gender: string | null; age_band: string | null; report_v2_goal: string | null; parent_name: string | null; email: string | null; phone: string | null }[];
-  const r = rows[0] ?? { child_name: null, child_gender: null, age_band: null, report_v2_goal: null, parent_name: null, email: null, phone: null };
+  `) as unknown as { child_name: string | null; child_gender: string | null; age_band: string | null; report_v2_goal: string | null; parent_name: string | null; email: string | null; phone: string | null; worry_frequency: string | null }[];
+  const r = rows[0] ?? { child_name: null, child_gender: null, age_band: null, report_v2_goal: null, parent_name: null, email: null, phone: null, worry_frequency: null };
   const gender = (r.child_gender ?? null) as Gender;
   const goalOptions = allGoals(r.child_name ?? "", gender);
   const strengths = strengthsFor(content.archetype);
@@ -89,6 +89,7 @@ export default async function ReportV2({ session, card, plan }: { session: strin
         strengths={strengths}
         gender={gender}
         childName={r.child_name ?? ""}
+        frequency={r.worry_frequency}
         goalOptions={goalOptions}
         initialCard={card ?? 1}
         planHref={`?report=v2&plan=1`}
