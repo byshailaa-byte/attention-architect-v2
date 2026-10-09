@@ -13,7 +13,7 @@ const COMMIT = (process.env.VERCEL_GIT_COMMIT_SHA ?? "local").slice(0, 7);
 
 type SP = {
   tab?: string; view?: string;
-  q?: string; stage?: string; paid?: string; plan?: string; flag?: string; from?: string; to?: string; page?: string;
+  q?: string; stage?: string; paid?: string; plan?: string; flag?: string; source?: string; from?: string; to?: string; page?: string;
 };
 
 export default async function CallsPage({ searchParams }: { searchParams: Promise<SP> }) {
@@ -23,7 +23,9 @@ export default async function CallsPage({ searchParams }: { searchParams: Promis
   if (sp.view === "contacts") {
     const query: ContactsQuery = {
       q: sp.q || undefined, stage: sp.stage || undefined, paid: sp.paid || undefined,
-      plan: sp.plan || undefined, flag: sp.flag || undefined, from: sp.from || undefined, to: sp.to || undefined,
+      plan: sp.plan || undefined, flag: sp.flag || undefined,
+      source: ["chatgpt", "meta", "direct"].includes(sp.source ?? "") ? sp.source : undefined,
+      from: sp.from || undefined, to: sp.to || undefined,
       page: sp.page ? Math.max(1, parseInt(sp.page, 10) || 1) : 1, pageSize: 50,
     };
     try {

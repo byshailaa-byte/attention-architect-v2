@@ -93,6 +93,9 @@ export default function StartFlowV2() {
       if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; setOobError(d.error || "Please enter a valid 10-digit mobile number"); return; }
       const d = await res.json().catch(() => ({})) as { wa_sent?: boolean };
       track("start_oob_submit", { choice: oobPopup }, sidRef.current);
+      // Handbook (out-of-range) lead — DB + GA4 + Meta CUSTOM only. NEVER generate_lead / Meta Lead
+      // / OpenAI lead_created, so handbook sign-ups don't train the ad platforms as paid-funnel leads.
+      track("handbook_lead", { age_band: oobPopup }, sidRef.current);
       setOobResult({ wa_sent: d.wa_sent ?? false });
     } catch { setOobError("Something went wrong, please try again."); }
     finally { setOobSubmitting(false); }
