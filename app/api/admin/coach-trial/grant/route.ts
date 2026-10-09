@@ -23,11 +23,11 @@ export async function POST(req: NextRequest) {
 
     const sql = getSql();
     const rows = (await sql`
-      SELECT id, child_name, email, phone, age_band, archetype, goal_key, concerns
+      SELECT id, child_name, email, phone, age_band, archetype, concerns
       FROM assessments WHERE session_id = ${sessionId}::uuid LIMIT 1
     `) as unknown as {
       id: string; child_name: string | null; email: string | null; phone: string | null;
-      age_band: string | null; archetype: string | null; goal_key: string | null; concerns: string[] | null;
+      age_band: string | null; archetype: string | null; concerns: string[] | null;
     }[];
     const a = rows[0];
     if (!a) return NextResponse.json({ error: "assessment not found" }, { status: 404 });
@@ -58,7 +58,11 @@ export async function POST(req: NextRequest) {
       userId = u[0].id;
     }
 
-    const worry = canonicalConcern(a.goal_key ?? a.concerns?.[0] ?? "other");
+    // Derive the trial worry EXACTLY as the report does (lib/report-v2/generate.ts keys card-4 on
+    // canonicalConcern(concerns[0]) and ignores the legacy goal_key/goal_skill slug). Using goal_key
+    // here collapsed non-concern slugs (e.g. "staying-with-it-1") to "other", so the onboarding goal
+    // line / baseline question mismatched the concern-driven Day-1 card. concerns[0] keeps them aligned.
+    const worry = canonicalConcern(a.concerns?.[0]);
     const started = new Date();
     const trial = await createTrial({
       userId, parentKey: pkey, sessionId, worry, archetype: a.archetype, ageBand: a.age_band,

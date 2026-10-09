@@ -16,6 +16,20 @@ type Sql = ReturnType<typeof getSql>;
 // blocked in that case. title = the report's real card-4 headline.
 export type TrialCard4 = { title: string; instead: string; say: string; after: string; steps: string[] };
 
+// The report's card-4 "say" line (switch.try) comes from the generated copy, which already wraps
+// the spoken words in quotes (straight or curly). The coach UI adds its OWN quotes around the say
+// line, so strip one layer of matching wrapping quotes here to avoid doubled quotes (""…"").
+export function stripWrappingQuotes(s: string): string {
+  const t = s.trim();
+  const pairs: [string, string][] = [
+    ['"', '"'], ["'", "'"], ["“", "”"], ["‘", "’"],
+  ];
+  for (const [open, close] of pairs) {
+    if (t.length >= 2 && t.startsWith(open) && t.endsWith(close)) return t.slice(1, -1).trim();
+  }
+  return t;
+}
+
 export async function readTrialCard4(sql: Sql, sessionId: string): Promise<TrialCard4 | null> {
   if (!sessionId) return null;
   const rows = (await sql`
@@ -26,7 +40,7 @@ export async function readTrialCard4(sql: Sql, sessionId: string): Promise<Trial
   `) as unknown as { instead: string | null; say: string | null; after: string | null; steps: string[] | null }[];
   const r = rows[0];
   if (!r || !r.instead || !r.say || !r.steps || r.steps.length < 3) return null;
-  return { title: CARD4_HEADLINE, instead: r.instead, say: r.say, after: r.after ?? "", steps: r.steps.slice(0, 3) };
+  return { title: CARD4_HEADLINE, instead: r.instead, say: stripWrappingQuotes(r.say), after: r.after ?? "", steps: r.steps.slice(0, 3) };
 }
 
 export type TrialDayCard = {
