@@ -43,6 +43,64 @@ export function reportV2Pronouns(gender: Gender): { subj: string; obj: string; p
   return { subj: "they", obj: "them", poss: "their", possPred: "theirs", reflexive: "themselves" };
 }
 
+// Explicit subject-verb agreement for the report-v3 fixed copy. he/she take the 3rd-person
+// SINGULAR form; singular "they" takes the PLURAL (base) form. The copy carries both forms as
+// explicit tokens — `{s:focuses|focus}` → "focuses" for he/she, "focus" for they — so no
+// after-the-fact verb munging (pluralizeThey) is needed for v3. isThey(gender) picks the fork.
+export function isThey(gender: Gender): boolean {
+  return reportV2Pronouns(gender).subj === "they";
+}
+
+// Shared token filler for report v2 + v3 fixed copy. Returns a function that fills ALL the
+// pronoun/name/agreement tokens for one child. The two layouts (cards-copy / fallbacks) share
+// this so they fill pronouns identically. Verbs are made explicit via {s:AAA|BBB}; no
+// after-the-fact pluralizeThey is applied here.
+//
+// Tokens:
+//   {Name}                              display name (or "Your child")
+//   {he} {him} {his}(determiner) {himself}   lower-case pronouns
+//   {He} {Him} {His}(determiner) {Himself} {They}   capitalised (sentence-initial)
+//   {HE} {HIM} {HIS}(determiner)         UPPER-CASE (WHY_BOXES labels)
+//   {hisown} / {HISOWN}                 STANDALONE possessive  his/hers/theirs · HIS/HERS/THEIRS
+//   {s:AAA|BBB} / {S:AAA|BBB}           verb/word agreement  AAA (he/she) | BBB (they)
+//   {is} {has} {'s} / {'S}              is·is·are / has·has·have / ’s·’s·’re / ’S·’S·’RE
+export function fillTokens(name: string, gender: Gender): (tmpl: string) => string {
+  const nm = name.trim() ? displayChildName(name) : CHILD_NAME_FALLBACK;
+  const p = reportV2Pronouns(gender);
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const up = (s: string) => s.toUpperCase();
+  const they = p.subj === "they";
+  // Determiner forms: his/her/their. Standalone possessive: his/hers/theirs (= possPred).
+  const det = p.poss;
+  const own = p.possPred;
+  return (tmpl: string) =>
+    tmpl
+      // explicit agreement pairs first (before anything that could sit inside AAA/BBB)
+      .replace(/\{s:([^|}]*)\|([^}]*)\}/g, (_m, a, b) => (they ? b : a))
+      .replace(/\{S:([^|}]*)\|([^}]*)\}/g, (_m, a, b) => (they ? b : a))
+      .replace(/\{Name\}/g, nm)
+      // contraction "is/has" after the subject: ’s / ’s / ’re
+      .replace(/\{'S\}/g, they ? "’RE" : "’S")
+      .replace(/\{'s\}/g, they ? "’re" : "’s")
+      .replace(/\{is\}/g, they ? "are" : "is")
+      .replace(/\{has\}/g, they ? "have" : "has")
+      .replace(/\{isn't\}/g, they ? "aren't" : "isn't")
+      .replace(/\{doesn't\}/g, they ? "don't" : "doesn't")
+      // standalone possessive  his / hers / theirs
+      .replace(/\{HISOWN\}/g, up(own))
+      .replace(/\{hisown\}/g, own)
+      // UPPER-CASE label forms (v3 WHY_BOXES). Do these before the capitalised/lower forms.
+      .replace(/\{HE\}/g, up(p.subj)).replace(/\{HIM\}/g, up(p.obj)).replace(/\{HIS\}/g, up(det))
+      .replace(/\{He\}/g, cap(p.subj)).replace(/\{They\}/g, cap(p.subj))
+      .replace(/\{His\}/g, cap(det)).replace(/\{Him\}/g, cap(p.obj))
+      .replace(/\{Himself\}/g, cap(p.reflexive))
+      .replace(/\{he\}/g, p.subj).replace(/\{they\}/g, p.subj)
+      .replace(/\{him\}/g, p.obj).replace(/\{them\}/g, p.obj)
+      .replace(/\{theirs\}/g, own)
+      .replace(/\{his\}/g, det).replace(/\{their\}/g, det)
+      .replace(/\{himself\}/g, p.reflexive).replace(/\{themselves\}/g, p.reflexive);
+}
+
 // Static report-v2 copy is authored with he/his tokens; when filled for the UNSET case ({they})
 // a 3rd-person-singular verb right after "they" reads wrong ("they stays"). This fixes the verb
 // to its base form (plural agreement) for the small, known verb set our copy uses. Scoped to a

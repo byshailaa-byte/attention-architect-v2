@@ -26,7 +26,7 @@ const HIDE_ON = [
   "/assessment",
   "/simplified/start",
   "/start",
-  "/report/generating",
+  "/report",          // hide on the report cards + plan page (overlaps the price CTA + sticky bar)
   "/lms",
   "/admin",
 ];

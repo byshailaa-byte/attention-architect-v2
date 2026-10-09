@@ -3,7 +3,7 @@ import * as C from "@/lib/report-v2/v3-copy";
 import { makeFiller } from "@/lib/report-v2/cards-copy";
 import { validateGenerated } from "@/lib/report-v2/validator";
 import type { ReportV2Generated } from "@/lib/report-v2/types";
-import type { Gender } from "@/lib/report/pronouns";
+import { articleFor, type Gender } from "@/lib/report/pronouns";
 
 // The banned list, verbatim from the redesign spec §7 (whole word, case-insensitive).
 const BANNED: string[] = [
@@ -22,7 +22,8 @@ function fillAll(text: string, gender: Gender, archetypeBare: string): string {
   let s = text.replace(/\{NEED\}/g, need).replace(/\{REASON\}/g, reason);
   const f = makeFiller("Aarav", gender);
   s = f(s);
-  s = s.replace(/\{Type\}/g, archetypeBare).replace(/\{band\}/g, "10-11")
+  s = s.replace(/\{article\}/g, articleFor(archetypeBare)) // hero chip article, computed at render
+       .replace(/\{Type\}/g, archetypeBare).replace(/\{band\}/g, "10-11")
        .replace(/\{NAME\}/g, "AARAV").replace(/\{Name\}/g, "Aarav");
   return s;
 }
@@ -125,5 +126,24 @@ describe("validator — new hardPart shape", () => {
   });
   it("rejects a single-sentence hardPart", () => {
     expect(hasErr(validGen({ hardPart: "Aarav isn't fighting the screen." }), /hardPart/i)).toBe(true);
+  });
+});
+
+describe("name/noun-subject verbs stay singular for unset gender", () => {
+  const f = makeFiller("Aarav", null); // unset → they-forms for pronouns only
+  it("REASON reads '{Name} <3rd-singular verb>' (not 'Aarav push/focus/stay')", () => {
+    const bad: string[] = [];
+    for (const [k, v] of Object.entries(C.REASON)) {
+      const s = "Aarav " + f(v);
+      if (!/^Aarav (pushes|focuses|steps|stays|locks)\b/.test(s)) bad.push(`${k}: ${s}`);
+    }
+    expect(bad).toEqual([]);
+  });
+  it("noun-subject WHY_BOXES verbs stay singular (drive switches / focus fades / …)", () => {
+    const joined = Object.values(C.WHY_BOXES).map((b) => f(b.redLine)).join(" | ");
+    // full bad phrase (base verb + next word) so the correct -s forms don't false-positive
+    for (const bad of ["drive switch off", "attention wander off", "focus fade.", "focus drop,"]) {
+      expect(joined.includes(bad)).toBe(false);
+    }
   });
 });

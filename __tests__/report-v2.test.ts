@@ -232,10 +232,11 @@ describe("validator (v3 shapes)", () => {
     expect(validateGenerated({ ...base, seenIt: "He focuses deeply on his own way." }).errors.some((e) => e.startsWith("seenIt"))).toBe(true);
   });
 
-  it("enforces the new hardPart shape ('<Name> isn't X. <He>'s Y.', each sentence ≤10 words)", () => {
+  it("enforces the new hardPart shape ('<Name> isn't X. <He>'s Y.', each sentence ≤12 words)", () => {
     expect(validateGenerated({ ...ok, hardPart: "The hard part isn’t X. It’s Y." }).errors.some((e) => e.startsWith("hardPart: must match"))).toBe(true);
+    // second sentence is 13 words → over the ≤12 cap
     const tooLong = "Aarav isn’t ignoring you at all today. He’s waiting a very long while to start on his own way now.";
-    expect(validateGenerated({ ...ok, hardPart: tooLong }).errors.some((e) => e.includes("10 words"))).toBe(true);
+    expect(validateGenerated({ ...ok, hardPart: tooLong }).errors.some((e) => e.startsWith("hardPart"))).toBe(true);
   });
 
   it("routes bargaining + length failures through the repair path, not full retry", () => {

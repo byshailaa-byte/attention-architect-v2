@@ -52,11 +52,11 @@ export const CARD1_BTN_SKIP = "Skip to the 6-week program";
 // WORRY_LINE (§26–33) — the "!" line, per worry.
 export const WORRY_LINE: Record<string, string> = {
   homework:   "When it's homework time, getting {him} to sit down turns into a fight.",
-  reminders:  "You have to remind {him} again and again before {he} starts.",
-  screens:    "When you say \"Screens off now\", {he} argues, sulks, or asks for five more minutes.",
-  confidence: "{He} says \"I can't\" or asks for help before trying the hard part.",
-  giveup:     "When the first try doesn't work, {he} stops and walks away.",
-  finish:     "{He} starts things well but leaves them halfway.",
+  reminders:  "You have to remind {him} again and again before {he} {s:starts|start}.",
+  screens:    "When you say \"Screens off now\", {he} {s:argues|argue}, {s:sulks|sulk}, or {s:asks|ask} for five more minutes.",
+  confidence: "{He} {s:says|say} \"I can't\" or {s:asks|ask} for help before trying the hard part.",
+  giveup:     "When the first try doesn't work, {he} {s:stops|stop} and {s:walks|walk} away.",
+  finish:     "{He} {s:starts|start} things well but {s:leaves|leave} them halfway.",
   other:      "Getting {him} to start and keep going takes a lot of pushing from you.",
 };
 
@@ -71,32 +71,32 @@ export const CARD2_BTN = "How do you know? →";
 export type WhyBox = { greenLabel: string; greenLine: string; redLabel: string; redLine: string };
 export const WHY_BOXES: Record<string, WhyBox> = {
   "Storm": {
-    greenLabel: "WHEN {HE} CHOOSES", greenLine: "{He}'s calm and focused.",
-    redLabel: "WHEN YOU DECIDE FOR {HIM}", redLine: "It feels like losing, so {he} pushes back.",
+    greenLabel: "WHEN {HE} {S:CHOOSES|CHOOSE}", greenLine: "{He}{'s} calm and focused.",
+    redLabel: "WHEN YOU DECIDE FOR {HIM}", redLine: "It feels like losing, so {he} {s:pushes|push} back.",
   },
   "Explorer": {
-    greenLabel: "WHEN {HE} CAN FOLLOW AN IDEA", greenLine: "{He} stays with the work longer.",
-    redLabel: "WHEN EVERY SIDE-IDEA IS STOPPED", redLine: "{He} drifts off completely.",
+    greenLabel: "WHEN {HE} CAN FOLLOW AN IDEA", greenLine: "{He} {s:stays|stay} with the work longer.",
+    redLabel: "WHEN EVERY SIDE-IDEA IS STOPPED", redLine: "{He} {s:drifts|drift} off completely.",
   },
   "Captain": {
-    greenLabel: "WHEN IT'S {HIS} TO RUN", greenLine: "{He} takes charge and finishes.",
-    redLabel: "WHEN {HE}'S HANDED INSTRUCTIONS", redLine: "{His} drive switches off.",
+    greenLabel: "WHEN IT'S {HISOWN} TO RUN", greenLine: "{He} {s:takes|take} charge and {s:finishes|finish}.",
+    redLabel: "WHEN {HE}{'S} HANDED INSTRUCTIONS", redLine: "{His} drive switches off.",
   },
   "Inventor": {
-    greenLabel: "WHEN {HE} DOES IT {HIS} WAY", greenLine: "{He} stays with it, even if it's messy.",
-    redLabel: "WHEN {HIS} WAY GETS CORRECTED", redLine: "{He} loses interest fast.",
+    greenLabel: "WHEN {HE} {S:DOES|DO} IT {HIS} WAY", greenLine: "{He} {s:stays|stay} with it, even if it's messy.",
+    redLabel: "WHEN {HIS} WAY GETS CORRECTED", redLine: "{He} {s:loses|lose} interest fast.",
   },
   "All-In Kid": {
-    greenLabel: "WHEN {HE} GETS TO GO DEEP", greenLine: "{He} focuses for a long time.",
-    redLabel: "WHEN {HE}'S PULLED OUT MIDWAY", redLine: "It's hard for {him} to get back in.",
+    greenLabel: "WHEN {HE} {S:GETS|GET} TO GO DEEP", greenLine: "{He} {s:focuses|focus} for a long time.",
+    redLabel: "WHEN {HE}{'S} PULLED OUT MIDWAY", redLine: "It's hard for {him} to get back in.",
   },
   "Live Wire": {
-    greenLabel: "WHEN SOMETHING IS HAPPENING NOW", greenLine: "{He} locks in.",
+    greenLabel: "WHEN SOMETHING IS HAPPENING NOW", greenLine: "{He} {s:locks|lock} in.",
     redLabel: "WHEN NOTHING IS HAPPENING", redLine: "{His} attention wanders off.",
   },
   "Magnet": {
-    greenLabel: "WHEN SOMEONE IS NEARBY", greenLine: "{He} stays with it longer.",
-    redLabel: "WHEN {HE}'S LEFT ALONE", redLine: "{His} focus fades.",
+    greenLabel: "WHEN SOMEONE IS NEARBY", greenLine: "{He} {s:stays|stay} with it longer.",
+    redLabel: "WHEN {HE}{'S} LEFT ALONE", redLine: "{His} focus fades.",
   },
   "Glue": {
     greenLabel: "WHEN HOME FEELS CALM", greenLine: "{He} can settle and focus.",
@@ -124,7 +124,7 @@ export const CARD3_BTN = "What can I do tonight? →";
 export const NEED: Record<string, string> = {
   "Storm":      "a real say",
   "Explorer":   "room to follow ideas",
-  "Captain":    "something that's truly {his} to run",
+  "Captain":    "something that's truly {hisown} to run",
   "Inventor":   "room to do things {his} own way",
   "All-In Kid": "time to go deep",
   "Live Wire":  "something happening right now",
@@ -138,10 +138,10 @@ export const NEED: Record<string, string> = {
 // never shown, so they have no entries.
 export const PLAIN_ANSWER: Record<string, Record<string, string>> = {
   "G1": {
-    "narrow-deep":        "{He} focuses best when {he} can go deep into one thing.",
-    "wide-shifting":      "{He} focuses best moving between a few related things.",
-    "social-anchored":    "{He} focuses best with people around, even quietly.",
-    "sensation-seeking":  "{He} focuses best on whatever feels exciting.",
+    "narrow-deep":        "{He} {s:focuses|focus} best when {he} can go deep into one thing.",
+    "wide-shifting":      "{He} {s:focuses|focus} best moving between a few related things.",
+    "social-anchored":    "{He} {s:focuses|focus} best with people around, even quietly.",
+    "sensation-seeking":  "{He} {s:focuses|focus} best on whatever feels exciting.",
   },
   "G2": {
     "novelty":   "A new idea in {his} head is what pulls {him} away first.",
@@ -150,10 +150,10 @@ export const PLAIN_ANSWER: Record<string, Record<string, string>> = {
     "social":    "People pull {him} away first, to connect or to escape tension.",
   },
   "D1.1": {
-    "narrow-deep":       "When {he}'s absorbed, {he} goes deeper and deeper into one thing.",
-    "wide-shifting":     "When {he}'s absorbed, {he} moves easily between 2 or 3 things.",
-    "social-anchored":   "When {he}'s absorbed, {he}'s usually doing something with others.",
-    "sensation-seeking": "When {he}'s absorbed, {he}'s chasing whatever feels most exciting.",
+    "narrow-deep":       "When {he}{'s} absorbed, {he} {s:goes|go} deeper and deeper into one thing.",
+    "wide-shifting":     "When {he}{'s} absorbed, {he} {s:moves|move} easily between 2 or 3 things.",
+    "social-anchored":   "When {he}{'s} absorbed, {he}{'s} usually doing something with others.",
+    "sensation-seeking": "When {he}{'s} absorbed, {he}{'s} chasing whatever feels most exciting.",
   },
   "D1.2": {
     "narrow-deep":       "With a big project, {he}'d disappear into it and lose track of time.",
@@ -162,58 +162,58 @@ export const PLAIN_ANSWER: Record<string, Record<string, string>> = {
     "sensation-seeking": "With a big project, {he}'d start if it felt exciting, then need a reason to continue.",
   },
   "D2.1": {
-    "mastery":  "{He} lights up when {he} cracks something really hard.",
-    "novelty":  "{He} lights up when {he} discovers something new.",
-    "social":   "{He} lights up when people notice {him} or include {him}.",
-    "autonomy": "{He} lights up when {he} is in charge of what {he} does.",
+    "mastery":  "{He} {s:lights|light} up when {he} {s:cracks|crack} something really hard.",
+    "novelty":  "{He} {s:lights|light} up when {he} {s:discovers|discover} something new.",
+    "social":   "{He} {s:lights|light} up when people notice {him} or include {him}.",
+    "autonomy": "{He} {s:lights|light} up when {he} {is} in charge of what {he} {s:does|do}.",
   },
   "D2.2": {
-    "mastery":  "After something hard, {he} cares most that {he} got better.",
-    "novelty":  "After something hard, {he} wants the next interesting thing.",
-    "social":   "After something hard, {he} wants someone to be proud of {him}.",
-    "autonomy": "After something hard, {he} cares most that {he} did it {his} way.",
+    "mastery":  "After something hard, {he} {s:cares|care} most that {he} got better.",
+    "novelty":  "After something hard, {he} {s:wants|want} the next interesting thing.",
+    "social":   "After something hard, {he} {s:wants|want} someone to be proud of {him}.",
+    "autonomy": "After something hard, {he} {s:cares|care} most that {he} did it {his} way.",
   },
   "D2.3": {
-    "mastery":  "{He} loses interest when things stop being challenging.",
-    "novelty":  "{He} loses interest when something newer comes along.",
-    "social":   "{He} loses interest when the people part changes.",
-    "autonomy": "{He} loses interest when {he} feels controlled.",
+    "mastery":  "{He} {s:loses|lose} interest when things stop being challenging.",
+    "novelty":  "{He} {s:loses|lose} interest when something newer comes along.",
+    "social":   "{He} {s:loses|lose} interest when the people part changes.",
+    "autonomy": "{He} {s:loses|lose} interest when {he} {s:feels|feel} controlled.",
   },
   "D2.confirm": {
-    "mastery":  "{He} sticks with things because {he} keeps getting better.",
-    "novelty":  "{He} sticks with things that stay fresh.",
-    "social":   "{He} sticks with things {he} does with people {he} cares about.",
-    "autonomy": "{He} sticks with things that feel like {his} own choice.",
+    "mastery":  "{He} {s:sticks|stick} with things because {he} {s:keeps|keep} getting better.",
+    "novelty":  "{He} {s:sticks|stick} with things that stay fresh.",
+    "social":   "{He} {s:sticks|stick} with things {he} {s:does|do} with people {he} {s:cares|care} about.",
+    "autonomy": "{He} {s:sticks|stick} with things that feel like {his} own choice.",
   },
   "D3.1": {
-    "avoid":            "When something is hard, {he} goes quiet and avoids it.",
-    "solo-push":        "When something is hard, {he} pushes through alone.",
-    "support-seek":     "When something is hard, {he} looks for someone to help.",
-    "emotional-derail": "When something is hard, {he} gets upset before even starting.",
+    "avoid":            "When something is hard, {he} {s:goes|go} quiet and {s:avoids|avoid} it.",
+    "solo-push":        "When something is hard, {he} {s:pushes|push} through alone.",
+    "support-seek":     "When something is hard, {he} {s:looks|look} for someone to help.",
+    "emotional-derail": "When something is hard, {he} {s:gets|get} upset before even starting.",
   },
   "D3.2": {
     "avoid":        "Hard things drain {him}.",
     "solo-push":    "Some hard things energise {him}, others don't.",
     "support-seek": "Hard things are easier for {him} with someone there.",
-    "energized":    "{He} enjoys a real challenge.",
+    "energized":    "{He} {s:enjoys|enjoy} a real challenge.",
   },
   "D3.3": {
-    "avoid":            "After a failure, {he} needs space before trying again.",
-    "solo-push":        "After a failure, {he} tries again on {his} own terms.",
-    "support-seek":     "After a failure, {he} needs someone to sit with {him}.",
-    "emotional-derail": "After a failure, {he} needs a reason to believe it's possible.",
+    "avoid":            "After a failure, {he} {s:needs|need} space before trying again.",
+    "solo-push":        "After a failure, {he} {s:tries|try} again on {his} own terms.",
+    "support-seek":     "After a failure, {he} {s:needs|need} someone to sit with {him}.",
+    "emotional-derail": "After a failure, {he} {s:needs|need} a reason to believe it's possible.",
   },
   "D3.confirm": {
-    "solo-push":    "{He} pushes through hard things alone.",
-    "support-seek": "{He} looks for help or company when things are hard.",
-    "avoid":        "{He} pulls back when things are hard.",
-    "energized":    "How {he} handles hard things depends on the day.",
+    "solo-push":    "{He} {s:pushes|push} through hard things alone.",
+    "support-seek": "{He} {s:looks|look} for help or company when things are hard.",
+    "avoid":        "{He} {s:pulls|pull} back when things are hard.",
+    "energized":    "How {he} {s:handles|handle} hard things depends on the day.",
   },
   "D5.1": {
     "boredom-avoidance": "Screens usually fill time when nothing else is pulling {him}.",
     "task-escape":       "Screens are often an escape from something harder.",
     "social":            "Screens give {him} time with friends {he} can't get otherwise.",
-    "genuine-interest":  "{He} is genuinely excited about a game or show.",
+    "genuine-interest":  "{He} {is} genuinely excited about a game or show.",
   },
   "D5.2": {
     "boredom-avoidance": "Screens give {him} quick, constant feedback.",
@@ -222,28 +222,28 @@ export const PLAIN_ANSWER: Record<string, Record<string, string>> = {
     "genuine-interest":  "Screens give {him} something new every time.",
   },
   "R1": {
-    "autonomous": "When interrupted, {he} goes back to the task on {his} own.",
-    "responsive": "When interrupted, {he} goes back after one reminder.",
-    "dependent":  "When interrupted, {he} needs help finding where {he} was.",
-    "stopped":    "When interrupted, {he} usually doesn't go back.",
+    "autonomous": "When interrupted, {he} {s:goes|go} back to the task on {his} own.",
+    "responsive": "When interrupted, {he} {s:goes|go} back after one reminder.",
+    "dependent":  "When interrupted, {he} {s:needs|need} help finding where {he} {s:was|were}.",
+    "stopped":    "When interrupted, {he} usually {doesn't} go back.",
   },
   "R2": {
-    "autonomous": "After a break, {he}'s back into it almost straight away.",
-    "responsive": "After a break, {he} takes a few minutes to get back in.",
-    "dependent":  "After a break, {he} takes a while to settle again.",
-    "stopped":    "After a break, {he} doesn't really get back into it.",
+    "autonomous": "After a break, {he}{'s} back into it almost straight away.",
+    "responsive": "After a break, {he} {s:takes|take} a few minutes to get back in.",
+    "dependent":  "After a break, {he} {s:takes|take} a while to settle again.",
+    "stopped":    "After a break, {he} {doesn't} really get back into it.",
   },
   "R3": {
     "autonomous": "Going back to a task is almost always {his} idea.",
     "responsive": "Going back to a task is sometimes {his} idea, sometimes yours.",
     "dependent":  "Going back to a task is usually your idea.",
-    "stopped":    "{He} only goes back to a task if you sit with {him}.",
+    "stopped":    "{He} only {s:goes|go} back to a task if you sit with {him}.",
   },
   "D6.1": {
-    "sensory-quiet":           "After a hard day, {he} needs quiet time alone.",
-    "social-connection":       "After a hard day, {he} needs time with people {he} trusts.",
-    "cognitive-displacement":  "After a hard day, {he} needs something absorbing.",
-    "autonomous-unstructured": "After a hard day, {he} needs control of {his} own time.",
+    "sensory-quiet":           "After a hard day, {he} {s:needs|need} quiet time alone.",
+    "social-connection":       "After a hard day, {he} {s:needs|need} time with people {he} {s:trusts|trust}.",
+    "cognitive-displacement":  "After a hard day, {he} {s:needs|need} something absorbing.",
+    "autonomous-unstructured": "After a hard day, {he} {s:needs|need} control of {his} own time.",
   },
   "D6.2": {
     "sensory-quiet":           "Noise and crowds drain {him} fastest.",
@@ -317,8 +317,10 @@ export const PLAN_STICKY_BTN = "Start now"; // scrolls to price
 export const PLAN_HERO_EYEBROW = "{NAME}'S 6-WEEK PLAN";
 export const PLAN_HERO_SUB =
   "A step-by-step plan for **you, the parent**. Made from your answers about {Name}. 5 minutes a day, on your phone.";
+// {article} is computed at the render site with articleFor({Type}) → "a Storm" / "an Explorer" /
+// "an All-In Kid" / "an Inventor" / "a Live Wire" / "a Magnet" / "a Glue" / "a Captain".
 export const PLAN_HERO_CHIPS: [string, string] = [
-  "Written for a {Type}, age {band}",
+  "Written for {article} {Type}, age {band}",
   "7-day full refund",
 ];
 export const PLAN_HERO_BTN = "Start {Name}'s plan · from ₹2,999"; // → #price
@@ -335,31 +337,31 @@ export type NowAfter = { now: [string, string, string]; after: [string, string, 
 export const NOW_AFTER: Record<string, NowAfter> = {
   homework: {
     now:   ["Homework starts with an argument.", "You sit beside {him} to keep {him} going.", "Evenings feel tense."],
-    after: ["{He} sits down with less pushing.", "You step back a little more each week.", "Calmer evenings."],
+    after: ["{He} {s:sits|sit} down with less pushing.", "You step back a little more each week.", "Calmer evenings."],
   },
   reminders: {
-    now:   ["You remind, then remind again.", "{He} starts only when you push.", "You feel like you're chasing {him}."],
-    after: ["One reminder, then fewer.", "{He} gets going on {his} own more days.", "You stop chasing."],
+    now:   ["You remind, then remind again.", "{He} {s:starts|start} only when you push.", "You feel like you're chasing {him}."],
+    after: ["One reminder, then fewer.", "{He} {s:gets|get} going on {his} own more days.", "You stop chasing."],
   },
   screens: {
-    now:   ["You say \"screens off\". {He} argues.", "You remind, again and again.", "Evenings end tense."],
-    after: ["{He} picks the stop time.", "You point to it. That's all.", "Fewer fights, fewer reminders."],
+    now:   ["You say \"screens off\". {He} {s:argues|argue}.", "You remind, again and again.", "Evenings end tense."],
+    after: ["{He} {s:picks|pick} the stop time.", "You point to it. That's all.", "Fewer fights, fewer reminders."],
   },
   confidence: {
-    now:   ["{He} says \"I can't\" before trying.", "{He} asks for help straight away.", "You end up doing it for {him}."],
-    after: ["{He} tries the first hard bit.", "{He} asks less and tries more.", "You watch instead of stepping in."],
+    now:   ["{He} {s:says|say} \"I can't\" before trying.", "{He} {s:asks|ask} for help straight away.", "You end up doing it for {him}."],
+    after: ["{He} {s:tries|try} the first hard bit.", "{He} {s:asks|ask} less and {s:tries|try} more.", "You watch instead of stepping in."],
   },
   giveup: {
-    now:   ["{He} stops after one try.", "A mistake ends the session.", "You coax {him} back."],
-    after: ["{He} has a second go.", "A mistake is not the end.", "{He} comes back on {his} own more often."],
+    now:   ["{He} {s:stops|stop} after one try.", "A mistake ends the session.", "You coax {him} back."],
+    after: ["{He} {s:has|have} a second go.", "A mistake is not the end.", "{He} {s:comes|come} back on {his} own more often."],
   },
   finish: {
-    now:   ["{He} starts well, stops halfway.", "Half-done things pile up.", "You push to get it finished."],
-    after: ["{He} gets through the dull middle.", "More things get finished.", "{He} sees things through with less help."],
+    now:   ["{He} {s:starts|start} well, {s:stops|stop} halfway.", "Half-done things pile up.", "You push to get it finished."],
+    after: ["{He} {s:gets|get} through the dull middle.", "More things get finished.", "{He} {s:sees|see} things through with less help."],
   },
   other: {
     now:   ["Getting started takes a push.", "Focus breaks easily.", "You do a lot of reminding."],
-    after: ["{He} starts with less pushing.", "{He} stays with it longer.", "You remind less."],
+    after: ["{He} {s:starts|start} with less pushing.", "{He} {s:stays|stay} with it longer.", "You remind less."],
   },
 };
 
@@ -374,9 +376,9 @@ export const PLAN_WHY_FITS_SMALL =
 export const REASON: Record<string, string> = {
   "Storm":      "pushes back when things are decided for {him}",
   "Explorer":   "focuses best when {he} can follow a related idea",
-  "Captain":    "steps up when something is truly {his} to run",
+  "Captain":    "steps up when something is truly {hisown} to run",
   "Inventor":   "stays with things when {he} can do them {his} own way",
-  "All-In Kid": "focuses deeply when {he} isn't pulled out midway",
+  "All-In Kid": "focuses deeply when {he} {isn't} pulled out midway",
   "Live Wire":  "locks in when something is happening right now",
   "Magnet":     "stays focused longer with someone nearby",
   "Glue":       "focuses when home feels calm and connected",

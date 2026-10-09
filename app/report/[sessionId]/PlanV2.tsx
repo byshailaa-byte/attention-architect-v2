@@ -18,7 +18,7 @@ import { fillLmsContent } from "@/lib/lms/render";
 import { WEEK_TITLES } from "@/lib/report/skills";
 import { weekOutcomesFor } from "@/content/report-v2/plan-outcomes";
 import { TESTIMONIAL_POOL } from "@/lib/content/report-content";
-import { displayChildName, reportV2Pronouns, pluralizeThey, type Gender } from "@/lib/report/pronouns";
+import { displayChildName, fillTokens, articleFor, type Gender } from "@/lib/report/pronouns";
 import type { AgeBand } from "@/content/types";
 import type { ReportV2Content } from "@/lib/report-v2/types";
 import { bareArchetype } from "@/lib/report-v2/v3-copy";
@@ -35,27 +35,12 @@ import {
 } from "@/lib/report-v2/v3-copy";
 import { PlanV3View, PlanV3StickyBar, PlanV3Pricing, PlanV3Faq, PlanV3Close } from "./PlanV3Interactive";
 
-// Server-side token filler (mirrors cards-copy makeFiller; the client island only needs {Name}).
+// Server-side token filler. Delegates pronoun/agreement tokens to the shared fillTokens (same as
+// cards-copy makeFiller), then fills the UPPER-CASE {NAME} slot the v3 plan hero/eyebrow use.
 function makeServerFiller(name: string, gender: Gender) {
+  const base = fillTokens(name, gender);
   const nm = name.trim() ? displayChildName(name) : "Your child";
-  const p = reportV2Pronouns(gender);
-  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-  const up = (s: string) => s.toUpperCase();
-  const they = p.subj === "they";
-  return (tmpl: string) => {
-    const out = tmpl
-      .replace(/\{NAME\}/g, up(nm)).replace(/\{Name\}/g, nm)
-      .replace(/\{he\}’s/g, they ? "they’re" : `${p.subj}’s`)
-      .replace(/\{HE\}/g, up(p.subj)).replace(/\{HIM\}/g, up(p.obj)).replace(/\{HIS\}/g, up(p.poss))
-      .replace(/\{He\}/g, cap(p.subj)).replace(/\{They\}/g, cap(p.subj))
-      .replace(/\{His\}/g, cap(p.poss)).replace(/\{Him\}/g, cap(p.obj)).replace(/\{Himself\}/g, cap(p.reflexive))
-      .replace(/\{he\}/g, p.subj).replace(/\{they\}/g, p.subj)
-      .replace(/\{him\}/g, p.obj).replace(/\{them\}/g, p.obj)
-      .replace(/\{theirs\}/g, p.possPred)
-      .replace(/\{his\}/g, p.poss).replace(/\{their\}/g, p.poss)
-      .replace(/\{himself\}/g, p.reflexive).replace(/\{themselves\}/g, p.reflexive);
-    return they ? pluralizeThey(out) : out;
-  };
+  return (tmpl: string) => base(tmpl.replace(/\{NAME\}/g, nm.toUpperCase()));
 }
 
 // Render **bold** inline (server-safe).
@@ -102,7 +87,7 @@ export default function PlanV2({ sessionId, content: c, goalKey, ageBand, childN
           <h1 style={{ fontFamily: HEAD, fontSize: 32, lineHeight: 1.18, fontWeight: 500, margin: "0 0 14px", color: "#fff" }}>{c.goal}</h1>
           <p style={{ fontSize: 16, lineHeight: 1.5, color: "#EAF1F8", margin: "0 0 18px" }}>{rich(f(PLAN_HERO_SUB), "sub")}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-            {[f(PLAN_HERO_CHIPS[0].replace(/\{Type\}/g, type).replace(/\{band\}/g, band)), PLAN_HERO_CHIPS[1]].map((p) => (
+            {[f(PLAN_HERO_CHIPS[0].replace(/\{article\}/g, articleFor(type)).replace(/\{Type\}/g, type).replace(/\{band\}/g, band)), PLAN_HERO_CHIPS[1]].map((p) => (
               <span key={p} style={{ fontSize: 13, fontWeight: 600, color: C.onNavy, background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,.35)", borderRadius: 999, padding: "6px 12px" }}>{p}</span>
             ))}
           </div>

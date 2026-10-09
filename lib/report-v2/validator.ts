@@ -8,16 +8,27 @@ import type { Gender } from "@/lib/report/pronouns";
 export type ValidationResult = { ok: boolean; errors: string[] };
 
 const MAX_SENTENCE_WORDS = 16;
+// seenIt is allowed a longer cap than the body prose (spec: ≤18 words).
+const SEEN_IT_MAX_WORDS = 18;
 
 // Exact-format rules for the two v3 card-1 voice fields.
-// seenIt: ONE sentence starting "When ", ≤16 words, no worry/problem words, never "You've seen".
-// hardPart: two sentences "<Name> isn't … . <He/She/They>…'s? … .", each sentence ≤10 words.
+// seenIt: ONE sentence starting "When ", ≤18 words, no worry/problem words, never "You've seen".
+// hardPart: TWO sentences, EACH ≤12 words, in one of two shapes:
+//   (a) "<Name> isn't X. <He/She/They>'s/'re/is Y."  — the child-name shape
+//   (b) "It isn't X. It's/It is Y."                  — the impersonal shape
+// Leading subject may be the child's name OR "It"; the second-sentence subject may be
+// He/She/They/It, with ’s / ’re / is.
 const SEEN_IT_START_RE = /^When\s+/i;
 const SEEN_IT_SEEN_RE = /you['’]?ve\s+seen/i;
 // Problem/worry words seenIt must NOT contain (it shows the child FOCUSING WELL, never the worry).
 const SEEN_IT_PROBLEM_RE = /\b(worr\w*|struggl\w*|can['’]?t|won['’]?t|fight\w*|argu\w*|sulk\w*|remind\w*|quit\w*|distract\w*|refus\w*|nag\w*|avoid\w*|stuck|meltdown|tantrum|gives?\s+up|problem|hard\s+time|drift\w*|halfway)\b/i;
-const HARD_PART_RE = /^[^.]+? isn[’']t [^.]+\. (He|She|They)[’'](s|re) [^.]+\.$/;
-const HARD_PART_SENTENCE_MAX_WORDS = 10;
+// First sentence subject: the child's NAME — one-to-three Capitalised words (e.g. "Aarav",
+// "Mary Jane") — OR the bare pronoun "It" OR the null-name fallback "Your child"/"your child".
+// This deliberately rejects the old impersonal opener "The hard part isn't …" (subject is
+// lower-cased "hard part", not a name/It/your-child).
+// Second sentence subject: He/She/They/It, followed by ’s/’re or the word "is".
+const HARD_PART_RE = /^(?:It|[Yy]our child|[A-Z][A-Za-z’'-]*(?:\s[A-Z][A-Za-z’'-]*){0,2}) isn[’']t [^.]+\. (?:(?:He|She|They|It)[’'](?:s|re)|(?:He|She|They|It) is) [^.]+\.$/;
+const HARD_PART_SENTENCE_MAX_WORDS = 12;
 
 const BANNED: { re: RegExp; label: string }[] = [
   // Approved-voice bans (rule 5).
@@ -132,18 +143,18 @@ export function validateGenerated(g: ReportV2Generated, opts?: { childName?: str
     else bans.push({ re: /\b(he|him|his|himself|she|her|hers|herself|themself)\b/i, label: "pronoun-leak (gendered / themself)" });
   }
 
-  const check = (text: string, cap: number, field: string, maxSentences?: number) => {
+  const check = (text: string, cap: number, field: string, maxSentences?: number, maxWords = MAX_SENTENCE_WORDS) => {
     if (text.length > cap) e.push(`${field}: over ${cap} chars (${text.length})`);
     for (const b of bans) if (b.re.test(text)) e.push(`${field}: ${b.label}`);
-    if (maxSentenceWords(text) > MAX_SENTENCE_WORDS) e.push(`${field}: sentence over ${MAX_SENTENCE_WORDS} words`);
+    if (maxSentenceWords(text) > maxWords) e.push(`${field}: sentence over ${maxWords} words`);
     if (maxSentences && sentences(text).length > maxSentences) e.push(`${field}: more than ${maxSentences} sentences`);
   };
 
   // The 16-word cap, the no-abstract-noun bans and the judge govern the short instruction
   // lines (tonight / switch.after); Flesch is no longer applied (v3 drops the prose paragraphs).
-  // Card 1 voice fields (v3 shapes).
+  // Card 1 voice fields (v3 shapes). seenIt gets the wider ≤18-word cap (spec AI §1).
   const seenIt = g.seenIt.trim();
-  check(g.seenIt, CAP.seenIt, "seenIt");
+  check(g.seenIt, CAP.seenIt, "seenIt", undefined, SEEN_IT_MAX_WORDS);
   if (!SEEN_IT_START_RE.test(seenIt)) e.push('seenIt: must start with "When "');
   if (sentences(g.seenIt).length > 1) e.push("seenIt: must be one sentence");
   if (SEEN_IT_SEEN_RE.test(g.seenIt)) e.push('seenIt: must not say "You\'ve seen"');
@@ -151,9 +162,9 @@ export function validateGenerated(g: ReportV2Generated, opts?: { childName?: str
 
   check(g.hardPart, CAP.hardPart, "hardPart");
   const hp = g.hardPart.trim();
-  if (!HARD_PART_RE.test(hp)) e.push('hardPart: must match "<Name> isn\'t X. <He/She/They>…\'s? Y."');
+  if (!HARD_PART_RE.test(hp)) e.push('hardPart: must match "<Name> isn\'t X. <He/She/They>…\'s? Y." OR "It isn\'t X. It\'s Y."');
   else {
-    // Each of the two sentences ≤10 words.
+    // Each of the two sentences ≤12 words.
     for (const s of sentences(hp)) {
       if (words(s).length > HARD_PART_SENTENCE_MAX_WORDS) {
         e.push(`hardPart: sentence over ${HARD_PART_SENTENCE_MAX_WORDS} words`);
