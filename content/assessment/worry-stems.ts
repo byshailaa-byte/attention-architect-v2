@@ -15,16 +15,21 @@ export type Worry = "reminders" | "homework" | "screens" | "giveup" | "confidenc
 const G2_ACTIVITY: Record<Exclude<Worry, "other">, string> = {
   homework:   "doing homework",
   reminders:  "doing what you asked",
-  screens:    "switching off the screen",
+  // Screens IS the worry — ask about the task screens pull away from, not the screen itself.
+  screens:    "doing homework or a chore",
   finish:     "finishing something",
   giveup:     "working on something hard",
   confidence: "doing schoolwork",
 };
 
+// "other" uses the same {Name}/{him} tokens as the rest (not the bank's generic "they").
+const OTHER_G2 = "What's the first thing that pulls {Name} away from something {he}'s supposed to be doing?";
+const OTHER_G1 = "When {Name} gets completely absorbed in something, what does it usually look like?";
+
 // G2 stem: "When {Name} is supposed to be <activity>, what pulls {him} away first?"
 export function g2Stem(worry: string): string {
   const w = worry as Worry;
-  if (w === "other" || !(w in G2_ACTIVITY)) return G2_ORIGINAL.replace(/\{name\}/g, "{Name}");
+  if (w === "other" || !(w in G2_ACTIVITY)) return OTHER_G2;
   return `When {Name} is supposed to be ${G2_ACTIVITY[w as Exclude<Worry, "other">]}, what pulls {him} away first?`;
 }
 
@@ -41,7 +46,7 @@ const G1_STEM: Record<Exclude<Worry, "other">, string> = {
 
 export function g1Stem(worry: string): string {
   const w = worry as Worry;
-  if (w === "other" || !(w in G1_STEM)) return G1_ORIGINAL.replace(/\{name\}/g, "{Name}");
+  if (w === "other" || !(w in G1_STEM)) return OTHER_G1;
   return G1_STEM[w as Exclude<Worry, "other">];
 }
 

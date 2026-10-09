@@ -10,6 +10,10 @@ export type AssessmentPart = { part: 1 | 2 | 3; label: string; questions: Questi
 
 const [G1, G2, G3] = GATEWAY_QUESTIONS;
 
+// Part 1 + Part 2 are FIXED for every parent (P1/P2 always). The first 8 questions are known
+// before any branch is computed; Part 3 is appended once G1 (Q3) is answered.
+export const FIXED_PREFIX: Question[] = [G2, D2_1, G1, D2_2, D2_3, G3, P1, P2];
+
 export const PART_LABELS: Record<1 | 2 | 3, string> = {
   1: "About {Name}'s day",
   2: "How you handle it",

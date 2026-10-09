@@ -3,11 +3,13 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { GATEWAY_QUESTIONS, Question } from "@/lib/engine/questions";
-import { buildQuestionSequence, GatewayAnswers } from "@/lib/engine/router";
+import { type GatewayAnswers } from "@/lib/engine/router";
+import { buildOrderedSequenceV3, FIXED_PREFIX, PART_LABELS, PART2_OPENER } from "@/lib/engine/order-v3";
+import { g1Stem, g2Stem } from "@/content/assessment/worry-stems";
 import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import { getFlowSid } from "@/lib/flow/session";
 import { isValidIndianMobile, contactReady } from "@/lib/flow/validate";
-import { displayChildName, CHILD_NAME_FALLBACK_MID, type Gender } from "@/lib/report/pronouns";
+import { displayChildName, fillTokens, CHILD_NAME_FALLBACK_MID, type Gender } from "@/lib/report/pronouns";
 import { HALFWAY_FIRST_READ, HALFWAY_FIRST_READ_FALLBACK, fillHalfwayLine } from "@/content/assessment/halfway-first-read";
 import { FLOW, HEAD, BODY, Wordmark, BackLink, Screen, QuestionProgress, minsLeft } from "@/app/components/FlowShell";
 import ThankYouV2 from "./ThankYouV2";
@@ -32,7 +34,10 @@ export default function AssessmentV2() {
   const gatePass = hasNameParam && VALID_AGE_BANDS.includes(ageParam ?? "") && concernsParam.split(",").filter(Boolean).length > 0;
 
   const [phase, setPhase]       = useState<Phase>("questions");
-  const [questions, setQuestions]   = useState<Question[]>(GATEWAY_QUESTIONS);
+  // v3: the first 8 questions (Part 1 + Part 2) are fixed for everyone; Part 3 is appended once
+  // G1 is answered (Q3). Part 3 is G3-independent (parent_instinct moved to Part 2), so it can be
+  // built from G1/G2 — see lib/engine/order-v3.ts.
+  const [questions, setQuestions]   = useState<Question[]>(FIXED_PREFIX);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers]       = useState<Record<string, string>>({});
   const [picked, setPicked]         = useState<string | null>(null);
@@ -58,14 +63,15 @@ export default function AssessmentV2() {
 
   const totalMax = useMemo(() => {
     const [g1, g2, g3] = GATEWAY_QUESTIONS;
-    let max = GATEWAY_QUESTIONS.length;
+    let max = FIXED_PREFIX.length;
     for (const a of g1.options) for (const b of g2.options) for (const c of g3.options) {
-      const len = buildQuestionSequence({ G1: a.value, G2: b.value, G3: c.value } as GatewayAnswers).length;
+      const len = buildOrderedSequenceV3({ G1: a.value, G2: b.value, G3: c.value } as GatewayAnswers).length;
       if (len > max) max = len;
     }
     return max;
   }, []);
-  const total = questions.length > 3 ? questions.length : totalMax;
+  // Exact path length once Part 3 is built (after Q3); an estimate for the first 3 questions.
+  const total = questions.length > FIXED_PREFIX.length ? questions.length : totalMax;
 
   const firedStart = useRef(false);
   useEffect(() => {
@@ -142,14 +148,15 @@ export default function AssessmentV2() {
     if (changed) track("answer_changed", { question_id: questionId }, sessionId);
 
     let seq = questions;
+    // After G1 (Q3) we know G1 + G2 → build Part 3 (G3-independent) and the full ordered sequence.
     if (currentIdx === 2) {
-      const g: GatewayAnswers = { G1: nextAnswers["G1"], G2: nextAnswers["G2"], G3: nextAnswers["G3"] };
-      seq = buildQuestionSequence(g);
+      const g: GatewayAnswers = { G1: nextAnswers["G1"], G2: nextAnswers["G2"], G3: nextAnswers["G3"] ?? "negotiator" };
+      seq = buildOrderedSequenceV3(g);
       setQuestions(seq);
     }
     const next = currentIdx + 1;
     if (next >= seq.length && currentIdx >= 2) { submitAssessment(nextAnswers, seq); return; }
-    if (seq.length > 3) {
+    if (seq.length > FIXED_PREFIX.length) {
       const halfwayAt = Math.ceil(seq.length / 2);
       if (!halfwayShown.current && next === halfwayAt) { showHalfway(nextAnswers, seq, next); return; }
     }
@@ -297,6 +304,14 @@ export default function AssessmentV2() {
   // ── QUESTIONS (step 4/5) ──────────────────────────────────────────────────────
   const q = questions[currentIdx];
   if (!q) return null;
+  const worry = concernsParam.split(",").filter(Boolean)[0] ?? "other";
+  const fillQ = fillTokens(childName, genderParam);
+  // Part 1 = first 5 (G2,D2.1,G1,D2.2,D2.3); Part 2 = next 3 (G3,P1,P2); Part 3 = the rest.
+  const partNo: 1 | 2 | 3 = currentIdx < 5 ? 1 : currentIdx < 8 ? 2 : 3;
+  // Only G1 and G2 get a worry-specific stem; all other questions keep their original text.
+  const qText = q.id === "G1" ? fillQ(g1Stem(worry))
+    : q.id === "G2" ? fillQ(g2Stem(worry))
+    : q.text.replace(/\{name\}/g, kidName);
   const pct = 10 + Math.round((currentIdx / Math.max(1, total)) * 78);
   return (
     <Screen>
@@ -309,11 +324,18 @@ export default function AssessmentV2() {
       </div>
       <div style={{ marginBottom: 20 }}><QuestionProgress pct={pct} minutesLeft={minsLeft(pct)} /></div>
 
+      <div style={{ fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: FLOW.dim, fontWeight: 700, marginBottom: 6 }}>
+        Part {partNo} of 3 · {fillQ(PART_LABELS[partNo])}
+      </div>
       <span style={{ display: "inline-block", background: "rgba(232,163,61,.14)", color: "#8A6322", border: "1px solid rgba(232,163,61,.4)", borderRadius: 999, padding: "5px 12px", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", marginBottom: 16 }}>
         QUESTION {currentIdx + 1} OF {total}
       </span>
+      {/* Part 2 opens with one reassuring line. */}
+      {currentIdx === 5 && (
+        <p style={{ fontSize: 14, color: FLOW.dim, lineHeight: 1.55, margin: "0 0 16px" }}>{fillQ(PART2_OPENER)}</p>
+      )}
       <h2 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 27, lineHeight: 1.3, marginBottom: 24, color: FLOW.ink }}>
-        {q.text.replace(/\{name\}/g, kidName)}
+        {qText}
       </h2>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {q.options.map((opt, i) => {
