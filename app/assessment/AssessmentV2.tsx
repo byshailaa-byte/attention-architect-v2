@@ -266,6 +266,11 @@ export default function AssessmentV2() {
     const previewFill = makeFiller(childName, genderParam);
     const worryKey = concernsParam.split(",").filter(Boolean)[0] ?? "other";
     const worryPhrase = PREVIEW_WORRY_PHRASE[worryKey] ?? PREVIEW_WORRY_PHRASE.other;
+    // "There's a clear reason for the <phrase>." reads naturally for the 6 concrete worries; "other"
+    // (phrase = "this") would give "for the this", so it drops the article.
+    const previewHeadline = worryKey === "other"
+      ? `${kidName} can focus. There’s a clear reason for it.`
+      : `${kidName} can focus. There’s a clear reason for the ${worryPhrase}.`;
     const why = archetype ? WHY_BOXES[bareArchetype(archetype)] : undefined;
     const greenLine = why ? previewFill(why.greenLine) : null;
     const greenLabel = why ? previewFill(why.greenLabel) : null;
@@ -287,7 +292,7 @@ export default function AssessmentV2() {
         <div style={{ background: FLOW.navy, borderRadius: 18, padding: "20px 20px", marginBottom: 18 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: FLOW.goldSoft, marginBottom: 10 }}>What we found</div>
           <p style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 21, lineHeight: 1.3, color: "#fff", margin: 0 }}>
-            {kidName} can focus. The {worryPhrase} has a clear reason.
+            {previewHeadline}
           </p>
           {greenLine && (
             <div style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.16)", borderRadius: 12, padding: "12px 14px", marginTop: 14 }}>
@@ -383,7 +388,7 @@ export default function AssessmentV2() {
         Part {partNo} of 3 · {fillQ(PART_LABELS[partNo])}
       </div>
       <span style={{ display: "inline-block", background: "rgba(232,163,61,.14)", color: "#8A6322", border: "1px solid rgba(232,163,61,.4)", borderRadius: 999, padding: "5px 12px", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", marginBottom: 16 }}>
-        QUESTION {currentIdx + 1} OF {total}
+        QUESTION {currentIdx + 1}
       </span>
       {/* Part 2 opens with one reassuring line. */}
       {currentIdx === 5 && (
