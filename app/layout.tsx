@@ -49,6 +49,8 @@ const figtree = localFont({
 
 const GA_ID     = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 const PIXEL_ID  = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+const OPENAI_PIXEL_ID = process.env.NEXT_PUBLIC_OPENAI_PIXEL_ID;
+const OPENAI_PIXEL_DEBUG = process.env.NEXT_PUBLIC_OPENAI_PIXEL_DEBUG === "true";
 
 export const metadata: Metadata = {
   title: "Attention Architect — Free Attention Assessment for Parents",
@@ -70,7 +72,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
         <WhatsAppWidget />
-        <AnalyticsLoader gaId={GA_ID} pixelId={PIXEL_ID} />
+        <AnalyticsLoader gaId={GA_ID} pixelId={PIXEL_ID} openaiPixelId={OPENAI_PIXEL_ID} openaiDebug={OPENAI_PIXEL_DEBUG} />
       </body>
     </html>
   );

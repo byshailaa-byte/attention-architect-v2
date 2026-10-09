@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Script from "next/script";
+import { consentAllowsAds } from "@/lib/analytics/catalog";
 
 // Defers GA4 and Meta Pixel until the first user interaction (touchstart,
 // mousedown, scroll, keydown) or 3 seconds — whichever comes first.
@@ -10,9 +11,13 @@ import Script from "next/script";
 export function AnalyticsLoader({
   gaId,
   pixelId,
+  openaiPixelId,
+  openaiDebug,
 }: {
   gaId: string | undefined;
   pixelId: string | undefined;
+  openaiPixelId?: string | undefined;
+  openaiDebug?: boolean;
 }) {
   const [ready, setReady] = useState(false);
 
@@ -109,6 +114,17 @@ export function AnalyticsLoader({
             />
           </noscript>
         </>
+      )}
+      {/* OpenAI (ChatGPT) ads pixel — once per page; skipped for internal traffic and when
+          consent disallows ads. debug comes from NEXT_PUBLIC_OPENAI_PIXEL_DEBUG. */}
+      {openaiPixelId && !internal && consentAllowsAds() && (
+        <Script
+          id="openai-pixel-init"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `!function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var j=d.createElement(s);j.async=1;j.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(j,f)}(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");oaiq("init",{pixelId:"${openaiPixelId}",debug:${openaiDebug ? "true" : "false"}});`,
+          }}
+        />
       )}
     </>
   );

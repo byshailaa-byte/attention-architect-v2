@@ -156,7 +156,8 @@ export async function POST(req: NextRequest) {
         worry_followup,
         worry_followup_other,
         pricing_variant,
-        utm
+        utm,
+        utm_source, utm_medium, utm_campaign, utm_content, utm_term
       ) VALUES (
         ${sessionId}::uuid,
         ${childName || null},
@@ -177,7 +178,12 @@ export async function POST(req: NextRequest) {
         ${worryFollowup ?? null},
         ${worryFollowupOtherValue},
         ${pricingVariant},
-        ${JSON.stringify(utmValue)}::jsonb
+        ${JSON.stringify(utmValue)}::jsonb,
+        ${(utmValue as Record<string, string> | null)?.utm_source ?? null},
+        ${(utmValue as Record<string, string> | null)?.utm_medium ?? null},
+        ${(utmValue as Record<string, string> | null)?.utm_campaign ?? null},
+        ${(utmValue as Record<string, string> | null)?.utm_content ?? null},
+        ${(utmValue as Record<string, string> | null)?.utm_term ?? null}
       )
     `;
 

@@ -63,6 +63,30 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
   const counts = new Map(rows.map((r) => [r.step, r.n]));
   const top = counts.get("landing_view") ?? counts.get("start_worry") ?? 0;
 
+  // UTM breakdowns off the first-party assessments.utm_* columns (phase_56), last 30 days.
+  // Internal/test leads excluded. Counts + utm values only — never phone/email/child_name.
+  const chatgptByTerm = (await sql`
+    SELECT COALESCE(NULLIF(btrim(utm_term), ''), '(none)') AS term, COUNT(*)::int AS n
+    FROM assessments
+    WHERE NOT is_internal
+      AND created_at >= now() - interval '30 days'
+      AND (utm_source ILIKE 'chatgpt' OR utm_source ILIKE 'openai')
+    GROUP BY 1
+    ORDER BY n DESC, term ASC
+    LIMIT 25
+  `) as unknown as { term: string; n: number }[];
+
+  const metaByContent = (await sql`
+    SELECT COALESCE(NULLIF(btrim(utm_content), ''), '(none)') AS content, COUNT(*)::int AS n
+    FROM assessments
+    WHERE NOT is_internal
+      AND created_at >= now() - interval '30 days'
+      AND lower(utm_source) = ANY(ARRAY['meta','facebook','fb','instagram','ig'])
+    GROUP BY 1
+    ORDER BY n DESC, content ASC
+    LIMIT 25
+  `) as unknown as { content: string; n: number }[];
+
   function href(next: Partial<{ days: string; device: string; source: string; flow: string }>) {
     const p = new URLSearchParams({ days, device, source, flow, ...next });
     return `/admin/start-flow?${p.toString()}`;
@@ -70,6 +94,32 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
 
   const seg = (label: string, active: boolean, to: string) => (
     <a href={to} style={{ padding: "6px 12px", borderRadius: 8, fontSize: 13, textDecoration: "none", marginRight: 8, border: "1px solid #d9d4c7", background: active ? "#14284D" : "#fff", color: active ? "#fff" : "#14284D", fontWeight: active ? 700 : 500 }}>{label}</a>
+  );
+
+  const breakdown = (title: string, colLabel: string, items: { key: string; n: number }[]) => (
+    <div style={{ flex: "1 1 320px", minWidth: 280 }}>
+      <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 2px" }}>{title}</h2>
+      <p style={{ fontSize: 11.5, color: "#9a927c", margin: "0 0 10px" }}>Last 30 days · internal excluded</p>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
+        <thead>
+          <tr style={{ textAlign: "left", borderBottom: "2px solid #14284D" }}>
+            <th style={{ padding: "7px 6px" }}>{colLabel}</th>
+            <th style={{ padding: "7px 6px", textAlign: "right" }}>Leads</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.length === 0 && (
+            <tr><td colSpan={2} style={{ padding: "10px 6px", color: "#9a927c" }}>No leads yet.</td></tr>
+          )}
+          {items.map((it) => (
+            <tr key={it.key} style={{ borderBottom: "1px solid #ece8da" }}>
+              <td style={{ padding: "7px 6px", wordBreak: "break-word" }}>{it.key}</td>
+              <td style={{ padding: "7px 6px", textAlign: "right", fontWeight: 700 }}>{it.n}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 
   let prev = 0;
@@ -120,6 +170,14 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
           })}
         </tbody>
       </table>
+
+      <div style={{ marginTop: 36 }}>
+        <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: ".1em", color: "#9a927c", marginBottom: 14 }}>UTM breakdowns (first-party)</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 32 }}>
+          {breakdown("ChatGPT leads by term", "utm_term", chatgptByTerm.map((r) => ({ key: r.term, n: r.n })))}
+          {breakdown("Meta leads by content", "utm_content", metaByContent.map((r) => ({ key: r.content, n: r.n })))}
+        </div>
+      </div>
     </div>
   );
 }

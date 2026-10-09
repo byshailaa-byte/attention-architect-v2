@@ -9,7 +9,8 @@
 // ════════════════════════════════════════════════════════════════════════════════
 import { getSql } from "@/lib/db/client";
 import { sendCapiEvents, type CapiUserData } from "@/lib/meta/capi";
-import { CATALOG, pickAdParams, consentAllowsAds, metaEventId } from "./catalog";
+import { CATALOG, OPENAI_SEND, pickAdParams, consentAllowsAds, metaEventId } from "./catalog";
+import { sendOpenAiConversion } from "./openai-capi";
 
 export type ServerTrackOpts = {
   sessionId?: string | null;
@@ -85,5 +86,16 @@ export async function trackServer(
     } catch (e) {
       console.warn(`[track.server] CAPI failed (${name}):`, (e as Error).message);
     }
+  }
+
+  // 3) OpenAI (ChatGPT) Conversions API — only the events we actively send (today: generate_lead).
+  // Shares the event_id with the browser pixel. Fire-and-forget (3s timeout inside); never blocks.
+  if (opts.sendCapi !== false && spec?.openaiEvent && OPENAI_SEND.has(name) && !opts.internal && consentAllowsAds()) {
+    await sendOpenAiConversion({
+      eventId: opts.eventId ?? metaEventId(name, { sessionId: opts.sessionId, params }) ?? `${name}:${opts.sessionId ?? ""}`,
+      openaiEvent: spec.openaiEvent,
+      sourceUrl: opts.eventSourceUrl ?? "",
+      timestampMs: Date.now(),
+    }).catch(() => { /* never blocks */ });
   }
 }

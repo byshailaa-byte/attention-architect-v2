@@ -23,6 +23,7 @@ export function ContactsView({ data, query }: { data: ContactsPage; query: Conta
     if (query.paid) sp.set("paid", query.paid);
     if (query.plan) sp.set("plan", query.plan);
     if (query.flag) sp.set("flag", query.flag);
+    if (query.source) sp.set("source", query.source);
     if (query.from) sp.set("from", query.from);
     if (query.to) sp.set("to", query.to);
     sp.set("page", String(p));
@@ -62,6 +63,9 @@ export function ContactsView({ data, query }: { data: ContactsPage; query: Conta
         </select>
         <select name="flag" defaultValue={query.flag ?? ""} style={sel} onChange={(e) => e.currentTarget.form?.requestSubmit()}>
           <option value="">All</option><option value="never_called">Never called</option><option value="checkout_started">Checkout started</option>
+        </select>
+        <select name="source" defaultValue={query.source ?? ""} style={sel} onChange={(e) => e.currentTarget.form?.requestSubmit()}>
+          <option value="">All sources</option><option value="chatgpt">ChatGPT</option><option value="meta">Meta</option><option value="direct">Direct</option>
         </select>
         <label style={{ fontSize: 12.5, color: T.text2 }}>Activity</label>
         <input type="date" name="from" defaultValue={query.from ?? ""} style={sel} onChange={(e) => e.currentTarget.form?.requestSubmit()} />

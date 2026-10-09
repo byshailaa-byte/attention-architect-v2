@@ -18,7 +18,13 @@ export type EventSpec = {
   metaStandard?: string; // ALSO send this Meta STANDARD event (Lead / InitiateCheckout / Purchase / ViewContent / Schedule / Subscribe)
   capi?: boolean;        // the standard event is also sent server-side via the Conversions API
   future?: boolean;      // registered now, not fired yet (forward declaration only)
+  openaiEvent?: string;  // ChatGPT (OpenAI) ads conversion name. Mapped for the key conversions;
+                         // only OPENAI_SEND events actually fire (today: generate_lead only).
 };
+
+// OpenAI conversions we ACTUALLY send right now (pixel + CAPI). The others are catalog-mapped
+// but NOT sent yet, per spec A2c.
+export const OPENAI_SEND = new Set<string>(["generate_lead"]);
 
 // Every event the app may emit. Events with no ga4/meta flag are funnel_events-table-only.
 // This object's keys are also the allow-list the /api/funnel/event route accepts.
@@ -27,18 +33,21 @@ export const CATALOG: Record<string, EventSpec> = {
   assessment_started:          { ga4: true, meta: true },
   assessment_complete:         { ga4: true, meta: true },
   assessment_dimension_complete: { ga4: true, meta: true }, // dimension param stays DB-only (stripped from ad platforms)
-  generate_lead:               { ga4: true, meta: true, metaStandard: "Lead", capi: true },
+  generate_lead:               { ga4: true, meta: true, metaStandard: "Lead", capi: true, openaiEvent: "lead_created" },
   view_item:                   { ga4: true, meta: true, metaStandard: "ViewContent" },
-  begin_checkout:              { ga4: true, meta: true, metaStandard: "InitiateCheckout", capi: true },
-  purchase:                    { ga4: true, meta: true, metaStandard: "Purchase", capi: true },
-  call_booked:                 { ga4: true, meta: true, metaStandard: "Schedule" }, // registered; fires when a Calendly booking is confirmed
+  begin_checkout:              { ga4: true, meta: true, metaStandard: "InitiateCheckout", capi: true, openaiEvent: "checkout_started" },
+  purchase:                    { ga4: true, meta: true, metaStandard: "Purchase", capi: true, openaiEvent: "order_created" },
+  call_booked:                 { ga4: true, meta: true, metaStandard: "Schedule", openaiEvent: "appointment_scheduled" }, // registered; fires when a Calendly booking is confirmed
+  // Handbook (out-of-range) sign-up — DB + GA4 + Meta CUSTOM only. NEVER a Meta Lead / generate_lead
+  // / OpenAI lead_created (so handbook leads don't train the ad platforms as paid-funnel leads).
+  handbook_lead:               { ga4: true, meta: true },
   report_view:                 { ga4: true }, // all 3 report types; carries {variant: v1|v2|simplified}
   report_gate_view:            { ga4: true, meta: true }, // retires the Pixel-only "ReportGateView"
   scroll_milestone:            { ga4: true },
   exit_intent_shown:           { ga4: true },
 
   // ── Future events — registered now, NOT fired yet ────────────────────────────────
-  trial_started:               { ga4: true, meta: true, future: true },
+  trial_started:               { ga4: true, meta: true, future: true, openaiEvent: "trial_started" },
   coach_message_sent:          { ga4: true, meta: true, future: true },
   day4_results_viewed:         { ga4: true, meta: true, future: true },
   program_week_completed:      { ga4: true, meta: true, future: true },

@@ -11,11 +11,12 @@
 "use client";
 
 import { fireGtag } from "@/lib/gtag";
-import { CATALOG, pickAdParams, consentAllowsAds, metaEventId } from "./catalog";
+import { CATALOG, OPENAI_SEND, pickAdParams, consentAllowsAds, metaEventId } from "./catalog";
 
 declare global {
   interface Window {
     fbq?: (...args: unknown[]) => void;
+    oaiq?: (...args: unknown[]) => void;
   }
 }
 
@@ -45,10 +46,14 @@ function metaPixelAdapter(
   }
 }
 
-// OpenAI / ChatGPT pixel — empty slot. Wire its real event names in here once we have the
-// pixel snippet; it does nothing today.
-function openaiAdapter(_name: string, _adParams: Record<string, unknown>): void {
-  /* no-op until the OpenAI pixel is provided */
+// OpenAI / ChatGPT pixel. Fires the mapped conversion via oaiq("measure", ...), sharing the
+// event_id with the server CAPI for dedup. Only OPENAI_SEND events are sent today (generate_lead).
+// No child data / no phone / email — lead_created carries only { type: "customer_action" }.
+function openaiAdapter(name: string, eventId: string | undefined): void {
+  const spec = CATALOG[name];
+  if (!spec?.openaiEvent || !OPENAI_SEND.has(name)) return;
+  if (typeof window === "undefined" || typeof window.oaiq !== "function") return;
+  window.oaiq("measure", spec.openaiEvent, { type: "customer_action" }, eventId ? { event_id: eventId } : undefined);
 }
 
 function postFunnelEvent(name: string, sessionId: string | null | undefined, params: Record<string, unknown>): void {
@@ -83,9 +88,10 @@ export function track(
   if (!consentAllowsAds() || isInternalClient()) return;
 
   const adParams = pickAdParams(params);
+  const eventId = metaEventId(name, { sessionId, params });
   if (spec.ga4) ga4Adapter(name, adParams);
-  if (spec.meta) metaPixelAdapter(name, adParams, spec.metaStandard, metaEventId(name, { sessionId, params }));
-  openaiAdapter(name, adParams);
+  if (spec.meta) metaPixelAdapter(name, adParams, spec.metaStandard, eventId);
+  openaiAdapter(name, eventId);
 }
 
 // Set the Meta Pixel external_id for advanced matching — HASHED (SHA-256 of the lowercased,

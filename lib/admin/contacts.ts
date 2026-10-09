@@ -32,6 +32,7 @@ export type ContactsQuery = {
   plan?: string;               // tier
   flag?: string;               // "never_called" | "checkout_started"
   from?: string; to?: string;  // last-activity date range (YYYY-MM-DD)
+  source?: string;             // traffic source: "chatgpt" | "meta" | "direct" (from assessments.utm_source)
   sort?: string;               // "activity" (default)
   page?: number;
   pageSize?: number;
@@ -94,7 +95,7 @@ function peopleCTE(withCalls: boolean): string {
     ),
     people AS (
     SELECT l.id::text AS id, regexp_replace(COALESCE(l.phone,''),'\\D','','g') AS phone_digits,
-      l.parent_name, l.child_name, l.age_band, l.archetype, l.concerns,
+      l.parent_name, l.child_name, l.age_band, l.archetype, l.concerns, l.utm_source,
       l.created_at, l.whatsapp_report_sent_at AS report_sent_at, l.person_count,
       p.tier AS paid_tier, p.amount_paise AS paid_amt, pend.tier AS pend_tier,
       u.lms_version, lp.max_week, lp.max_day, lp.last_at AS lms_last,
@@ -180,6 +181,9 @@ export async function getAllContacts(opts: ContactsQuery): Promise<ContactsPage>
     if (opts.plan) conds.push(`p.plan_tier = ${add(opts.plan)}`);
     if (opts.flag === "never_called") conds.push(`p.last_call_outcome IS NULL`);
     if (opts.flag === "checkout_started") conds.push(`p.stage_kind = 'checkout'`);
+    if (opts.source === "chatgpt") conds.push(`(p.utm_source ILIKE 'chatgpt' OR p.utm_source ILIKE 'openai')`);
+    if (opts.source === "meta") conds.push(`lower(p.utm_source) = ANY(ARRAY['meta','facebook','fb','instagram','ig'])`);
+    if (opts.source === "direct") conds.push(`(p.utm_source IS NULL OR btrim(p.utm_source) = '')`);
     if (opts.from) conds.push(`(p.last_activity_at AT TIME ZONE 'Asia/Kolkata')::date >= ${add(opts.from)}::date`);
     if (opts.to) conds.push(`(p.last_activity_at AT TIME ZONE 'Asia/Kolkata')::date <= ${add(opts.to)}::date`);
     const where = conds.length ? "WHERE " + conds.join(" AND ") : "";
