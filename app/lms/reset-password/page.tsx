@@ -33,7 +33,7 @@ function ResetPasswordForm() {
         setError((data as { error?: string }).error ?? "Reset failed. The link may have expired.");
         return;
       }
-      router.push("/lms");
+      router.push((data as { next?: string }).next ?? "/lms");
       router.refresh();
     } finally {
       setLoading(false);

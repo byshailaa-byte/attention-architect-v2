@@ -6,6 +6,7 @@ import { telLink, waLink } from "@/lib/admin/crm";
 import { followUpRequired, type CallLogOutcome } from "@/lib/admin/call-queue";
 import { T, STAGE } from "../../crm-theme";
 import { Toaster } from "../../PreviewUI";
+import { CoachTrialCard } from "./CoachTrialCard";
 
 // The eight call_log outcomes (lib/admin/call-queue.ts). Stored verbatim; drives the queue.
 const OUTCOMES: { k: CallLogOutcome; label: string }[] = [
@@ -225,7 +226,7 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
       <main className="aa-call-desktop" style={{ padding: "24px 28px", display: "grid", gridTemplateColumns: "minmax(0, 1fr) 420px", gap: 20, alignContent: "start", color: T.text }}>
         {Header()}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>{TalkingPoints()}{OtherAssessments()}{Timeline()}</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>{LogCall()}{QuickWa()}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>{LogCall()}<CoachTrialCard sessionId={lead.reportId} paid={lead.stage === "bought"} />{QuickWa()}</div>
       </main>
 
       {/* MOBILE */}
@@ -233,6 +234,7 @@ export function CallScreen({ lead, tab, nextId }: { lead: Lead; tab: QueueTab; n
         {Header()}
         {TalkingPoints()}
         {LogCall()}
+        <CoachTrialCard sessionId={lead.reportId} paid={lead.stage === "bought"} />
         {QuickWa()}
         {OtherAssessments()}
         {Timeline()}

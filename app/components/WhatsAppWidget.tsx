@@ -30,6 +30,7 @@ const HIDE_ON = [
   "/report",          // hide on the report cards + plan page (overlaps the price CTA + sticky bar)
   "/lms",
   "/admin",
+  "/coach",           // the Coach trial has its own chat; no floating support FAB over it
 ];
 
 // Revenue pages: raise the FAB so it clears the inline pricing CTA. /roadmap is
