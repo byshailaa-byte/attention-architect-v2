@@ -6,6 +6,8 @@ import {
 } from "@/lib/auth/password";
 import { createSessionToken, COOKIE_NAME, COOKIE_OPTIONS } from "@/lib/auth/session";
 import { assertBootGuards } from "@/lib/boot-guard";
+import { coachTrialEnabled } from "@/lib/coach-trial/flags";
+import { resolveCoachAccess } from "@/lib/coach-trial/access";
 
 assertBootGuards();
 
@@ -42,9 +44,18 @@ export async function POST(req: NextRequest) {
     await setUserPassword(userId, password);
     await consumeResetToken(tokenId);
 
-    // Log the user in after successful reset
+    // Log the user in after successful reset. Trial parents (active trial, no paid purchase) land
+    // straight in /coach; everyone else keeps the default /lms destination.
+    let next = "/lms";
+    try {
+      if (coachTrialEnabled()) {
+        const access = await resolveCoachAccess(userId);
+        if (access.role === "trial") next = "/coach";
+      }
+    } catch { /* default to /lms */ }
+
     const sessionToken = createSessionToken(userId);
-    const res = NextResponse.json({ ok: true });
+    const res = NextResponse.json({ ok: true, next });
     res.cookies.set(COOKIE_NAME, sessionToken, COOKIE_OPTIONS);
     return res;
   } catch (e) {
