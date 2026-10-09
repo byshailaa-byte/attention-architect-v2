@@ -147,3 +147,9 @@ describe("name/noun-subject verbs stay singular for unset gender", () => {
     }
   });
 });
+
+describe("card 3 closing count word", () => {
+  it("1 → 'Your answer shows it'", () => { expect(C.card3BoxClosing(1)).toContain("Your answer shows it"); expect(C.card3BoxClosing(1)).not.toContain("different answers"); });
+  it("2 → 'Two different answers'", () => { expect(C.card3BoxClosing(2)).toContain("Two different answers"); });
+  it("3 → 'Three different answers'", () => { expect(C.card3BoxClosing(3)).toContain("Three different answers"); });
+});

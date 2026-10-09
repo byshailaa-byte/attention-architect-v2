@@ -43,6 +43,7 @@ const BANNED: { re: RegExp; label: string }[] = [
   // Approved-voice bans (rule 5).
   { re: /\bfix(es)?\b/i,               label: "banned (fix/fixes)" },
   { re: /nothing\s+is\s+wrong/i,       label: "banned (nothing is wrong)" },
+  { re: /from\s+being\s+handed/i,      label: "banned-phrase (from being handed)" },
   // Rule 3 — never label the child. The type name appears ONLY on card 4.
   { re: /\b(types?|patterns?|traits?|profiles?)\b/i, label: "label-word (type/pattern/trait/profile)" },
   { re: /\b(may|might|could)\b/i,      label: "hedge (may/might/could)" },

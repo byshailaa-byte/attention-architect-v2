@@ -164,11 +164,12 @@ export function selectEvidence(
     const supportPool = childAnswers.filter((a) => isSupporting(a) && !isContradicting(a));
     const supportPicked: AnsweredQuestion[] = [];
     sweep(supportPool, supportPicked, new Set<string>(), 3);
-    if (supportPicked.length >= 2) {
-      // ≥3 → show 3, exactly 2 → show 2.
-      picked = supportPicked.slice(0, supportPicked.length >= 3 ? 3 : 2);
+    if (supportPicked.length >= 1) {
+      // Show ONLY supporting answers — 1, 2, or 3 — never neutral filler. Card 3's closing count
+      // word (Three/Two/"Your answer shows it") follows this length.
+      picked = supportPicked.slice(0, 3);
     } else {
-      // <2 supporting → fall back to top-dimension picks, dropping contradictors AND any
+      // 0 supporting → fall back to top-dimension picks, dropping contradictors AND any
       // foreign-signature answer (so card 3 never shows a value pointing to another archetype).
       const safePool = childAnswers.filter((a) => !isContradicting(a) && !isForeignSignature(a));
       const fb: AnsweredQuestion[] = [];

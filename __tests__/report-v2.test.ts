@@ -387,3 +387,11 @@ describe("evidence backfill never shows a foreign-archetype signal (ITEM 2 follo
     expect(picks).toContain("D1.1:narrow-deep");        // the supporting one is kept
   });
 });
+
+describe("validator — banned phrase 'from being handed'", () => {
+  it("rejects a hardPart containing 'from being handed'", () => {
+    const base = composeFallback("The Inventor", "reminders", "Aarav", boy);
+    const g = { ...base, hardPart: "Aarav isn't ignoring you. He's switched off from being handed instructions." } as ReportV2Generated;
+    expect(validateGenerated(g).errors.some((e) => /from being handed/i.test(e))).toBe(true);
+  });
+});

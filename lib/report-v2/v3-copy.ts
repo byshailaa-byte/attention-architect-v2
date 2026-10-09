@@ -117,9 +117,12 @@ export const CARD3_BOX_LABEL = "YOU TOLD US";
 // it; the {Count} token is filled from the count, the rest is filled by the pronoun filler.
 export const CARD3_BOX_CLOSING =
   "{Count} different answers. One clear message: {Name} needs {NEED}.";
+// When only ONE answer supports the conclusion, drop the "different answers" framing.
+export const CARD3_BOX_CLOSING_ONE =
+  "Your answer shows it: {Name} needs {NEED}.";
 export function card3BoxClosing(count: number): string {
-  const word = count === 2 ? "Two" : "Three";
-  return CARD3_BOX_CLOSING.replace("{Count}", word);
+  if (count <= 1) return CARD3_BOX_CLOSING_ONE;
+  return CARD3_BOX_CLOSING.replace("{Count}", count === 2 ? "Two" : "Three");
 }
 // Small note (§55). {Type} = archetype name without "The". The first ARCHETYPE_STRENGTHS line
 // is appended at the render site (strengthsFor(archetype)[0]).
