@@ -52,7 +52,7 @@ export const CATALOG: Record<string, EventSpec> = {
   day4_results_viewed:         { ga4: true, meta: true, future: true },
   program_week_completed:      { ga4: true, meta: true, future: true },
   subscription_started:        { ga4: true, meta: true, metaStandard: "Subscribe", capi: true, future: true },
-  assessment_intro_view:       { future: true }, // fires once the intro screen exists; DB-only
+  assessment_intro_view:       {}, // intro screen shown (C2); DB-only
 
   // ── Legacy landing GA4 micro-events (GA4-only, never written to the DB) ──────────
   // These parallel the DB-only landing_step_* events on the same action; preserved as-is so the

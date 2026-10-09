@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       concerns,
       worryFollowup,
       worryFollowupOther,
+      worryFrequency,
       variant,
       utm,
     } = body as {
@@ -55,9 +56,14 @@ export async function POST(req: NextRequest) {
       concerns?: string[];
       worryFollowup?: string | null;
       worryFollowupOther?: string | null;
+      worryFrequency?: string | null;
       variant?: string;
       utm?: Record<string, string>;
     };
+
+    // Optional "how often?" (C2). Only the four known keys are stored; anything else → null.
+    const VALID_FREQ = ["d1_2", "d3_4", "most", "daily"];
+    const worryFrequencyValue = worryFrequency && VALID_FREQ.includes(worryFrequency) ? worryFrequency : null;
 
     // Validate utm — must be a plain object if present, never user-controlled keys beyond the whitelist
     const utmValue: Record<string, string> = {};
@@ -155,6 +161,7 @@ export async function POST(req: NextRequest) {
         concerns,
         worry_followup,
         worry_followup_other,
+        worry_frequency,
         pricing_variant,
         utm,
         utm_source, utm_medium, utm_campaign, utm_content, utm_term
@@ -177,6 +184,7 @@ export async function POST(req: NextRequest) {
         ${concerns ?? []},
         ${worryFollowup ?? null},
         ${worryFollowupOtherValue},
+        ${worryFrequencyValue},
         ${pricingVariant},
         ${JSON.stringify(utmValue)}::jsonb,
         ${(utmValue as Record<string, string> | null)?.utm_source ?? null},

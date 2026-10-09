@@ -3,16 +3,26 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { GATEWAY_QUESTIONS, Question } from "@/lib/engine/questions";
-import { buildQuestionSequence, GatewayAnswers } from "@/lib/engine/router";
+import { type GatewayAnswers } from "@/lib/engine/router";
+import { buildOrderedSequenceV3, FIXED_PREFIX, PART_LABELS, PART2_OPENER } from "@/lib/engine/order-v3";
+import { g1Stem, g2Stem } from "@/content/assessment/worry-stems";
 import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import { getFlowSid } from "@/lib/flow/session";
 import { isValidIndianMobile, contactReady } from "@/lib/flow/validate";
-import { displayChildName, CHILD_NAME_FALLBACK_MID, type Gender } from "@/lib/report/pronouns";
+import { displayChildName, fillTokens, CHILD_NAME_FALLBACK_MID, type Gender } from "@/lib/report/pronouns";
 import { HALFWAY_FIRST_READ, HALFWAY_FIRST_READ_FALLBACK, fillHalfwayLine } from "@/content/assessment/halfway-first-read";
 import { FLOW, HEAD, BODY, Wordmark, BackLink, Screen, QuestionProgress, minsLeft } from "@/app/components/FlowShell";
+import { makeFiller } from "@/lib/report-v2/cards-copy";
+import { bareArchetype, WHY_BOXES } from "@/lib/report-v2/v3-copy";
 import ThankYouV2 from "./ThankYouV2";
 import SiteFooter from "@/app/components/SiteFooter";
 import { track, identifyPixel } from "@/lib/analytics/track";
+
+// C3 preview: how the worry reads in the "WHAT WE FOUND" headline, per canonical worry key.
+const PREVIEW_WORRY_PHRASE: Record<string, string> = {
+  homework: "homework fights", reminders: "reminders", screens: "screen fights",
+  giveup: "giving up", confidence: "“I can’t” moments", finish: "half-done work", other: "this",
+};
 
 const LETTERS = "ABCDEF";
 
@@ -27,12 +37,16 @@ export default function AssessmentV2() {
   const concernsParam = params.get("concerns") ?? "";
   const genderParam   = (params.get("gender") ?? null) as Gender;
   const variantParam  = params.get("variant") ?? "simplified";
+  const freqParam     = params.get("freq") || null; // optional "how often?" key (d1_2/d3_4/most/daily)
 
   const VALID_AGE_BANDS = ["8-9", "10-11", "12-14"];
   const gatePass = hasNameParam && VALID_AGE_BANDS.includes(ageParam ?? "") && concernsParam.split(",").filter(Boolean).length > 0;
 
   const [phase, setPhase]       = useState<Phase>("questions");
-  const [questions, setQuestions]   = useState<Question[]>(GATEWAY_QUESTIONS);
+  // v3: the first 8 questions (Part 1 + Part 2) are fixed for everyone; Part 3 is appended once
+  // G1 is answered (Q3). Part 3 is G3-independent (parent_instinct moved to Part 2), so it can be
+  // built from G1/G2 — see lib/engine/order-v3.ts.
+  const [questions, setQuestions]   = useState<Question[]>(FIXED_PREFIX);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers]       = useState<Record<string, string>>({});
   const [picked, setPicked]         = useState<string | null>(null);
@@ -58,14 +72,15 @@ export default function AssessmentV2() {
 
   const totalMax = useMemo(() => {
     const [g1, g2, g3] = GATEWAY_QUESTIONS;
-    let max = GATEWAY_QUESTIONS.length;
+    let max = FIXED_PREFIX.length;
     for (const a of g1.options) for (const b of g2.options) for (const c of g3.options) {
-      const len = buildQuestionSequence({ G1: a.value, G2: b.value, G3: c.value } as GatewayAnswers).length;
+      const len = buildOrderedSequenceV3({ G1: a.value, G2: b.value, G3: c.value } as GatewayAnswers).length;
       if (len > max) max = len;
     }
     return max;
   }, []);
-  const total = questions.length > 3 ? questions.length : totalMax;
+  // Exact path length once Part 3 is built (after Q3); an estimate for the first 3 questions.
+  const total = questions.length > FIXED_PREFIX.length ? questions.length : totalMax;
 
   const firedStart = useRef(false);
   useEffect(() => {
@@ -102,6 +117,7 @@ export default function AssessmentV2() {
           answers: finalAnswers,
           questionSequence: fullSeq.map((q) => ({ id: q.id, dimension: q.dimension })),
           concerns: concernsParam.split(",").filter(Boolean),
+          worryFrequency: freqParam,
           variant: variantParam, utm: getStoredUtm(),
         }),
       });
@@ -142,14 +158,15 @@ export default function AssessmentV2() {
     if (changed) track("answer_changed", { question_id: questionId }, sessionId);
 
     let seq = questions;
+    // After G1 (Q3) we know G1 + G2 → build Part 3 (G3-independent) and the full ordered sequence.
     if (currentIdx === 2) {
-      const g: GatewayAnswers = { G1: nextAnswers["G1"], G2: nextAnswers["G2"], G3: nextAnswers["G3"] };
-      seq = buildQuestionSequence(g);
+      const g: GatewayAnswers = { G1: nextAnswers["G1"], G2: nextAnswers["G2"], G3: nextAnswers["G3"] ?? "negotiator" };
+      seq = buildOrderedSequenceV3(g);
       setQuestions(seq);
     }
     const next = currentIdx + 1;
     if (next >= seq.length && currentIdx >= 2) { submitAssessment(nextAnswers, seq); return; }
-    if (seq.length > 3) {
+    if (seq.length > FIXED_PREFIX.length) {
       const halfwayAt = Math.ceil(seq.length / 2);
       if (!halfwayShown.current && next === halfwayAt) { showHalfway(nextAnswers, seq, next); return; }
     }
@@ -245,13 +262,63 @@ export default function AssessmentV2() {
   if (phase === "contact") {
     const ready = contactReady(phone, parentName, email) && !submitting;
     const emailTouched = email.length > 0;
+    // ── C3 preview (no LLM): archetype comes from the scorer via /api/assessment/submit. ──
+    const previewFill = makeFiller(childName, genderParam);
+    const worryKey = concernsParam.split(",").filter(Boolean)[0] ?? "other";
+    const worryPhrase = PREVIEW_WORRY_PHRASE[worryKey] ?? PREVIEW_WORRY_PHRASE.other;
+    // "There's a clear reason for the <phrase>." reads naturally for the 6 concrete worries; "other"
+    // (phrase = "this") would give "for the this", so it drops the article.
+    const previewHeadline = worryKey === "other"
+      ? `${kidName} can focus. There’s a clear reason for it.`
+      : `${kidName} can focus. There’s a clear reason for the ${worryPhrase}.`;
+    const why = archetype ? WHY_BOXES[bareArchetype(archetype)] : undefined;
+    const greenLine = why ? previewFill(why.greenLine) : null;
+    const greenLabel = why ? previewFill(why.greenLabel) : null;
+    const lockedItems = [
+      "The 3 answers that show it",
+      `One sentence to try with ${kidName} tonight`,
+      "What changes in 6 weeks",
+    ];
     return (
       <Screen>
-        <div style={{ marginBottom: 20 }}><Wordmark /></div>
+        <div style={{ marginBottom: 18 }}><Wordmark /></div>
+
+        {/* Preview header */}
+        <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 27, lineHeight: 1.2, color: FLOW.ink, margin: "0 0 16px" }}>
+          Done. Here&rsquo;s a first look at {kidName}&rsquo;s report.
+        </h1>
+
+        {/* WHAT WE FOUND — dark card */}
+        <div style={{ background: FLOW.navy, borderRadius: 18, padding: "20px 20px", marginBottom: 18 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".14em", textTransform: "uppercase", color: FLOW.goldSoft, marginBottom: 10 }}>What we found</div>
+          <p style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 21, lineHeight: 1.3, color: "#fff", margin: 0 }}>
+            {previewHeadline}
+          </p>
+          {greenLine && (
+            <div style={{ background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.16)", borderRadius: 12, padding: "12px 14px", marginTop: 14 }}>
+              {greenLabel && <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".1em", color: "#8FD3B0", textTransform: "uppercase", marginBottom: 6 }}>{greenLabel}</div>}
+              <p style={{ fontSize: 14.5, lineHeight: 1.5, color: "#EAF1F8", margin: 0 }}>{greenLine}</p>
+            </div>
+          )}
+        </div>
+
+        {/* IN THE FULL REPORT — 3 locked rows */}
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: FLOW.dim, marginBottom: 10 }}>In the full report</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 22 }}>
+          {lockedItems.map((it, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, background: "#fff", border: `1px solid ${FLOW.line}`, borderRadius: 12, padding: "13px 14px" }}>
+              <span aria-hidden="true" style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 8, background: FLOW.cream, display: "grid", placeItems: "center" }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke={FLOW.dim} strokeWidth="1.8" /><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke={FLOW.dim} strokeWidth="1.8" strokeLinecap="round" /></svg>
+              </span>
+              <span style={{ fontSize: 14.5, color: FLOW.ink, fontWeight: 500 }}>{it}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Name + WhatsApp form */}
         <div style={{ background: "#fff", border: `1px solid ${FLOW.line}`, borderRadius: 20, padding: "24px 20px", boxShadow: "0 8px 22px rgba(30,58,95,.06)" }}>
-          <span style={{ display: "inline-block", background: "#EAF0EA", color: "#2F5D3A", borderRadius: 999, padding: "5px 12px", fontSize: 11.5, fontWeight: 700, letterSpacing: ".04em", marginBottom: 14 }}>ALL {total} QUESTIONS DONE</span>
-          <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 27, lineHeight: 1.2, color: FLOW.ink, margin: "0 0 6px" }}>{kidName}&rsquo;s report is being written.</h1>
-          <p style={{ fontSize: 15, color: FLOW.dim, lineHeight: 1.5, margin: "0 0 22px" }}>Where should we send it?</p>
+          <h2 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 23, lineHeight: 1.2, color: FLOW.ink, margin: "0 0 6px" }}>Where should we send {kidName}&rsquo;s full report?</h2>
+          <p style={{ fontSize: 15, color: FLOW.dim, lineHeight: 1.5, margin: "0 0 22px" }}>It comes on WhatsApp in about a minute. Free.</p>
 
           {/* WhatsApp */}
           <label style={{ fontSize: 13, fontWeight: 600, color: FLOW.ink, display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
@@ -297,6 +364,14 @@ export default function AssessmentV2() {
   // ── QUESTIONS (step 4/5) ──────────────────────────────────────────────────────
   const q = questions[currentIdx];
   if (!q) return null;
+  const worry = concernsParam.split(",").filter(Boolean)[0] ?? "other";
+  const fillQ = fillTokens(childName, genderParam);
+  // Part 1 = first 5 (G2,D2.1,G1,D2.2,D2.3); Part 2 = next 3 (G3,P1,P2); Part 3 = the rest.
+  const partNo: 1 | 2 | 3 = currentIdx < 5 ? 1 : currentIdx < 8 ? 2 : 3;
+  // Only G1 and G2 get a worry-specific stem; all other questions keep their original text.
+  const qText = q.id === "G1" ? fillQ(g1Stem(worry))
+    : q.id === "G2" ? fillQ(g2Stem(worry))
+    : q.text.replace(/\{name\}/g, kidName);
   const pct = 10 + Math.round((currentIdx / Math.max(1, total)) * 78);
   return (
     <Screen>
@@ -309,11 +384,18 @@ export default function AssessmentV2() {
       </div>
       <div style={{ marginBottom: 20 }}><QuestionProgress pct={pct} minutesLeft={minsLeft(pct)} /></div>
 
+      <div style={{ fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: FLOW.dim, fontWeight: 700, marginBottom: 6 }}>
+        Part {partNo} of 3 · {fillQ(PART_LABELS[partNo])}
+      </div>
       <span style={{ display: "inline-block", background: "rgba(232,163,61,.14)", color: "#8A6322", border: "1px solid rgba(232,163,61,.4)", borderRadius: 999, padding: "5px 12px", fontSize: 11, fontWeight: 700, letterSpacing: ".06em", marginBottom: 16 }}>
-        QUESTION {currentIdx + 1} OF {total}
+        QUESTION {currentIdx + 1}
       </span>
+      {/* Part 2 opens with one reassuring line. */}
+      {currentIdx === 5 && (
+        <p style={{ fontSize: 14, color: FLOW.dim, lineHeight: 1.55, margin: "0 0 16px" }}>{fillQ(PART2_OPENER)}</p>
+      )}
       <h2 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 27, lineHeight: 1.3, marginBottom: 24, color: FLOW.ink }}>
-        {q.text.replace(/\{name\}/g, kidName)}
+        {qText}
       </h2>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {q.options.map((opt, i) => {
