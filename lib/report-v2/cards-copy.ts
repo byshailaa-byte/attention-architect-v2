@@ -2,7 +2,7 @@
 // server-built in ReportV2.tsx, then passed to the card deck. Pronoun-filled here so the client
 // never needs gender. The type NAME appears only on card 4 (rule 3). Card 7 depends on the
 // CHOSEN goal's worry, so it's built from the live goalKey, not the cached content.
-import { displayChildName, reportV2Pronouns, pluralizeThey, articleFor, type Gender } from "@/lib/report/pronouns";
+import { reportV2Pronouns, fillTokens, pluralizeThey, articleFor, type Gender } from "@/lib/report/pronouns";
 import { canonicalConcern } from "./goal-mapping";
 
 // ── card 1: worry line (second person, no quotes) ──────────────────────────────
@@ -19,7 +19,7 @@ const CARD1_HEADLINE: Record<string, string> = {
 // ── card 2: why-this-keeps-happening headline (per archetype) ──────────────────
 const CARD2_HEADLINE: Record<string, string> = {
   "The Storm":      "{Name} needs a real say in how things start.",
-  "The All-In Kid": "{Name} goes all in when nobody breaks the stretch.",
+  "The All-In Kid": "{Name} goes all in when nobody pulls {him} out midway.",
   "The Inventor":   "{Name} likes to decide how a thing gets done.",
   "The Explorer":   "{Name}’s mind keeps finding new things to chase.",
   "The Magnet":     "{Name} focuses best with someone nearby.",
@@ -66,26 +66,32 @@ const CARD7_PILLS: Record<string, [string, string, string]> = {
   other:      ["Start now.", "Come back to it.", "Keep going."],
 };
 
-function makeFiller(name: string, gender: Gender) {
-  const nm = name.trim() ? displayChildName(name) : "Your child";
-  const p = reportV2Pronouns(gender);
-  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-  const they = p.subj === "they";
+// Pronoun/name token filler. Handles the lower-case tokens used across v1/v2 card copy, the
+// capitalised sentence-initial forms ({He}/{His}/{Him}/{Himself}), the UPPER-CASE forms
+// ({HE}/{HIS}/{HIM}) that the v3 WHY_BOXES labels use, AND the EXPLICIT agreement tokens that
+// the v3 fixed copy uses to get singular-"they" right without any verb munging:
+//   {s:AAA|BBB} → AAA for he/she, BBB for they   (e.g. {s:focuses|focus})  · {S:…|…} uppercase
+//   {is}→is/is/are · {has}→has/has/have · {'s}→’s/’s/’re  (uppercase {'S}→’S/’S/’RE)
+//   {hisown}→his/hers/theirs standalone possessive (uppercase {HISOWN}→HIS/HERS/THEIRS)
+//   {his}/{HIS} stay the DETERMINER (his/her/their · HIS/HER/THEIR).
+// Also exported for the v3 report deck, which reuses it verbatim so the two layouts fill
+// pronouns identically. v3 copy no longer relies on pluralizeThey (verbs are explicit via {s:}).
+export function makeFiller(name: string, gender: Gender) {
+  return fillTokens(name, gender);
+}
+
+// Legacy v1/v2 CARD1..CARD7 copy still uses bare "{he} works" phrasing (no {s:} tokens), so it
+// still needs pluralizeThey to fix verb agreement for the unset case. v3 copy does NOT.
+function makeLegacyFiller(name: string, gender: Gender) {
+  const base = fillTokens(name, gender);
+  const they = reportV2Pronouns(gender).subj === "they";
   return (tmpl: string) => {
-    const out = tmpl
-      .replace(/\{Name\}/g, nm)
-      .replace(/\{he\}’s/g, they ? "they’re" : `${p.subj}’s`)
-      .replace(/\{He\}/g, cap(p.subj)).replace(/\{They\}/g, cap(p.subj))
-      .replace(/\{he\}/g, p.subj).replace(/\{they\}/g, p.subj)
-      .replace(/\{him\}/g, p.obj).replace(/\{them\}/g, p.obj)
-      .replace(/\{theirs\}/g, p.possPred)
-      .replace(/\{his\}/g, p.poss).replace(/\{their\}/g, p.poss)
-      .replace(/\{himself\}/g, p.reflexive).replace(/\{themselves\}/g, p.reflexive);
+    const out = base(tmpl);
     return they ? pluralizeThey(out) : out;
   };
 }
 
-function typeName(archetype: string): string {
+export function typeName(archetype: string): string {
   return archetype.replace(/^The\s+/i, "").trim();
 }
 function pluralType(type: string): string {
@@ -117,7 +123,7 @@ export function buildCardsCopy(args: {
   goalKey: string;                  // the CHOSEN goal's worry key (drives card 7 pills)
   evidence: { quote: string; dim?: string }[];
 }): CardsCopy {
-  const f = makeFiller(args.name, args.gender);
+  const f = makeLegacyFiller(args.name, args.gender);
   const p = reportV2Pronouns(args.gender);
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const they = p.subj === "they"; // plural verb agreement for unset

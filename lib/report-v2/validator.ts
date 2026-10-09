@@ -3,21 +3,47 @@
 // no hedges/clinical/comparative/parent-blame, the parent (not the child) did the answering,
 // quoted switch lines a parent would say, tonight steps ≤2 sentences, and length caps.
 import type { ReportV2Generated } from "./types";
-import type { Gender } from "@/lib/report/pronouns";
+import { agreementErrors, type Gender } from "@/lib/report/pronouns";
 
 export type ValidationResult = { ok: boolean; errors: string[] };
 
 const MAX_SENTENCE_WORDS = 16;
-const MIN_FLESCH = 70;
+// seenIt is allowed a longer cap than the body prose (spec: ≤18 words).
+const SEEN_IT_MAX_WORDS = 18;
 
-// Exact-format rules for the two new card-1 voice fields.
-const SEEN_IT_PREFIX = "You’ve seen it yourself.";
-const HARD_PART_RE = /^The hard part isn’t [^.]+\. It’s [^.]+\.$/;
+// Exact-format rules for the two v3 card-1 voice fields.
+// seenIt: ONE sentence starting "When ", ≤18 words, no worry/problem words, never "You've seen".
+// hardPart: TWO sentences, EACH ≤12 words, in one of three shapes:
+//   (a) "<Name> isn't X. <He/She/They>'s/'re/is Y."        — the child-name + copula shape
+//   (b) "It isn't X. It's/It is Y."                        — the impersonal copula shape
+//   (c) "<Name> isn't X. <thing> <verb> <him/her/them> …." — a cause-clause shape, e.g.
+//       "{Name} isn't ignoring you. Being told what to do switches {them} off." The second
+//       sentence names a cause acting ON the child; it MUST mention the child object pronoun
+//       (him/her/them). Subject-verb agreement on it is enforced separately by agreementErrors.
+// Leading subject may be the child's name OR "It".
+const SEEN_IT_START_RE = /^When\s+/i;
+const SEEN_IT_SEEN_RE = /you['’]?ve\s+seen/i;
+// Problem/worry words seenIt must NOT contain (it shows the child FOCUSING WELL, never the worry).
+const SEEN_IT_PROBLEM_RE = /\b(worr\w*|struggl\w*|can['’]?t|won['’]?t|fight\w*|argu\w*|sulk\w*|remind\w*|quit\w*|distract\w*|refus\w*|nag\w*|avoid\w*|stuck|meltdown|tantrum|gives?\s+up|problem|hard\s+time|drift\w*|halfway)\b/i;
+// First sentence subject: the child's NAME — one-to-three Capitalised words (e.g. "Aarav",
+// "Mary Jane") — OR the bare pronoun "It" OR the null-name fallback "Your child"/"your child".
+// This deliberately rejects the old impersonal opener "The hard part isn't …" (subject is
+// lower-cased "hard part", not a name/It/your-child).
+// Second sentence: EITHER the copula form (He/She/They/It + ’s/’re/is), OR a cause-clause that
+// names the child by object pronoun (him/her/them/themself) — shape (c).
+const HARD_PART_SUBJ = "(?:It|[Yy]our child|[A-Z][A-Za-z’'-]*(?:\\s[A-Z][A-Za-z’'-]*){0,2})";
+const HARD_PART_SECOND_COPULA = "(?:(?:He|She|They|It)['’](?:s|re)|(?:He|She|They|It) is) [^.]+";
+const HARD_PART_SECOND_CAUSE = "[A-Z][^.]*\\b(?:him|her|them|themself)\\b[^.]*";
+const HARD_PART_RE = new RegExp(
+  `^${HARD_PART_SUBJ} isn['’]t [^.]+\\. (?:${HARD_PART_SECOND_COPULA}|${HARD_PART_SECOND_CAUSE})\\.$`,
+);
+const HARD_PART_SENTENCE_MAX_WORDS = 12;
 
 const BANNED: { re: RegExp; label: string }[] = [
   // Approved-voice bans (rule 5).
   { re: /\bfix(es)?\b/i,               label: "banned (fix/fixes)" },
   { re: /nothing\s+is\s+wrong/i,       label: "banned (nothing is wrong)" },
+  { re: /from\s+being\s+handed/i,      label: "banned-phrase (from being handed)" },
   // Rule 3 — never label the child. The type name appears ONLY on card 4.
   { re: /\b(types?|patterns?|traits?|profiles?)\b/i, label: "label-word (type/pattern/trait/profile)" },
   { re: /\b(may|might|could)\b/i,      label: "hedge (may/might/could)" },
@@ -58,17 +84,25 @@ const BANNED: { re: RegExp; label: string }[] = [
   // No bargaining: the stop time is fixed; never trade the task for a reward.
   // (whole-word, case-insensitive; "earn" must not match "learn")
   { re: /\bworth\s+it\b/i,             label: "bargaining (worth it)" },
-  { re: /\bstakes?\b/i,                label: "bargaining (stake)" },
+  { re: /\bstakes?\b/i,                label: "bargaining (stake/stakes)" },
+  { re: /\bbet\b/i,                    label: "bargaining (bet)" },
   { re: /\brewards?\b/i,               label: "bargaining (reward)" },
   { re: /\btreats?\b/i,                label: "bargaining (treat)" },
   { re: /\bdeal\b/i,                   label: "bargaining (deal)" },
   { re: /\bearn(ed)?\b/i,              label: "bargaining (earn)" },
+  // spec §7 additions: never frame change as a threat, a showdown, or a test of the parent.
+  { re: /\bconsequences?\b/i,          label: "banned (consequence)" },
+  { re: /\bpunish\w*/i,                label: "banned (punish)" },
+  { re: /\bfirm\b/i,                   label: "banned (firm)" },
+  { re: /no\s+negotiation/i,           label: "banned (no negotiation)" },
+  { re: /no\s+debate/i,                label: "banned (no debate)" },
+  { re: /hold\s+the\s+line/i,          label: "banned (hold the line)" },
+  { re: /testing\s+you/i,              label: "banned (testing you)" },
 ];
 
 const CAP = {
   seenIt: 170, hardPart: 170,
-  shortGood: 110, shortWhy: 90, shortFix: 90,
-  whyPara: 320, instead: 72, try: 72, after: 150, tonight: 120,
+  instead: 72, try: 72, after: 150, tonight: 120,
 } as const;
 
 // switch.instead / switch.try must be WORDS A PARENT SAYS, wrapped in quotes.
@@ -119,42 +153,58 @@ export function validateGenerated(g: ReportV2Generated, opts?: { childName?: str
     else bans.push({ re: /\b(he|him|his|himself|she|her|hers|herself|themself)\b/i, label: "pronoun-leak (gendered / themself)" });
   }
 
-  const check = (text: string, cap: number, field: string, prose: boolean, maxSentences?: number) => {
+  const check = (text: string, cap: number, field: string, maxSentences?: number, maxWords = MAX_SENTENCE_WORDS) => {
     if (text.length > cap) e.push(`${field}: over ${cap} chars (${text.length})`);
     for (const b of bans) if (b.re.test(text)) e.push(`${field}: ${b.label}`);
-    if (maxSentenceWords(text) > MAX_SENTENCE_WORDS) e.push(`${field}: sentence over ${MAX_SENTENCE_WORDS} words`);
+    if (maxSentenceWords(text) > maxWords) e.push(`${field}: sentence over ${maxWords} words`);
     if (maxSentences && sentences(text).length > maxSentences) e.push(`${field}: more than ${maxSentences} sentences`);
-    if (prose && words(text).length >= 8) {
-      const f = fleschReadingEase(text);
-      if (f < MIN_FLESCH) e.push(`${field}: Flesch ${f.toFixed(0)} < ${MIN_FLESCH}`);
-    }
   };
 
-  // Flesch is gated ONLY on the prose paragraphs (whyParas). On short, concrete
-  // instructions (tonight / switch.after) the formula misreads plain words like
-  // "reminder"/"offer" — the gold-voice examples themselves score 61–66 there — so those
-  // are governed by the 16-word cap, the no-abstract-noun bans, and the judge instead.
-  // Card 1 voice fields.
-  check(g.seenIt, CAP.seenIt, "seenIt", false);
-  if (!g.seenIt.trim().startsWith(SEEN_IT_PREFIX)) e.push(`seenIt: must start with “${SEEN_IT_PREFIX}”`);
-  check(g.hardPart, CAP.hardPart, "hardPart", false);
-  if (!HARD_PART_RE.test(g.hardPart.trim())) e.push("hardPart: must match “The hard part isn’t X. It’s Y.”");
-  // "You’ve seen it yourself." belongs to card 1 (seenIt) ONLY — card 2 must not reuse it.
-  if (g.whyParas[0].trim().startsWith(SEEN_IT_PREFIX)) e.push(`whyParas[0]: must NOT start with “${SEEN_IT_PREFIX}”`);
+  // The 16-word cap, the no-abstract-noun bans and the judge govern the short instruction
+  // lines (tonight / switch.after); Flesch is no longer applied (v3 drops the prose paragraphs).
+  // Card 1 voice fields (v3 shapes). seenIt gets the wider ≤18-word cap (spec AI §1).
+  const seenIt = g.seenIt.trim();
+  check(g.seenIt, CAP.seenIt, "seenIt", undefined, SEEN_IT_MAX_WORDS);
+  if (!SEEN_IT_START_RE.test(seenIt)) e.push('seenIt: must start with "When "');
+  if (sentences(g.seenIt).length > 1) e.push("seenIt: must be one sentence");
+  if (SEEN_IT_SEEN_RE.test(g.seenIt)) e.push('seenIt: must not say "You\'ve seen"');
+  if (SEEN_IT_PROBLEM_RE.test(g.seenIt)) e.push("seenIt: must not mention the worry/problem");
 
-  check(g.shortGood, CAP.shortGood, "shortGood", false);
-  check(g.shortWhy,  CAP.shortWhy,  "shortWhy",  false);
-  check(g.shortFix,  CAP.shortFix,  "shortFix",  false);
-  // Card 2: para 1 ≤ 3 sentences AND ≤ 45 words; bold line ≤ 2 sentences.
-  check(g.whyParas[0], CAP.whyPara, "whyParas[0]", true, 3);
-  if (words(g.whyParas[0]).length > 45) e.push(`whyParas[0]: over 45 words (${words(g.whyParas[0]).length})`);
-  check(g.whyParas[1], CAP.whyPara, "whyParas[1]", true, 2);
-  check(g.switch.instead, CAP.instead, "switch.instead", false);
-  check(g.switch.try,     CAP.try,     "switch.try",     false);
-  check(g.switch.after,   CAP.after,   "switch.after",   false);
+  check(g.hardPart, CAP.hardPart, "hardPart");
+  const hp = g.hardPart.trim();
+  if (!HARD_PART_RE.test(hp)) e.push('hardPart: must match "<Name> isn\'t X. <He/She/They>…\'s? Y." OR "It isn\'t X. It\'s Y."');
+  else {
+    // Each of the two sentences ≤12 words.
+    for (const s of sentences(hp)) {
+      if (words(s).length > HARD_PART_SENTENCE_MAX_WORDS) {
+        e.push(`hardPart: sentence over ${HARD_PART_SENTENCE_MAX_WORDS} words`);
+        break;
+      }
+    }
+  }
+
+  check(g.switch.instead, CAP.instead, "switch.instead");
+  check(g.switch.try,     CAP.try,     "switch.try");
+  check(g.switch.after,   CAP.after,   "switch.after");
   if (!isQuotedLine(g.switch.instead)) e.push("switch.instead: must be a quoted line a parent says");
   if (!isQuotedLine(g.switch.try))     e.push("switch.try: must be a quoted line a parent says");
-  g.tonight.forEach((t, i) => check(t, CAP.tonight, `tonight[${i}]`, false, 2));
+  g.tonight.forEach((t, i) => check(t, CAP.tonight, `tonight[${i}]`, 2));
+
+  // Subject-verb agreement across EVERY AI-written field, using the child's real name. Catches
+  // "When Test settle…" (name is singular → needs -s) and "they focuses" (singular they → base
+  // verb). Runs the SHARED checker so the rule matches the fixed-copy grammar test exactly.
+  if (opts?.childName) {
+    const agree = (text: string, field: string) => {
+      for (const msg of agreementErrors(text, opts.childName!)) e.push(`${field}: agreement (${msg})`);
+    };
+    agree(g.seenIt, "seenIt");
+    agree(g.hardPart, "hardPart");
+    agree(g.switch.instead, "switch.instead");
+    agree(g.switch.try, "switch.try");
+    agree(g.switch.after, "switch.after");
+    g.tonight.forEach((t, i) => agree(t, `tonight[${i}]`));
+  }
+
   return { ok: e.length === 0, errors: e };
 }
 
