@@ -19,8 +19,10 @@ type TrialAdminView = {
 type StatusResponse = {
   enabled: boolean;
   paid: boolean;
+  reportReady: boolean;
   alreadyTrialed: boolean;
   trialId: string | null;
+  trialLink: string | null;
   view: TrialAdminView | null;
 };
 
@@ -54,6 +56,12 @@ export function CoachTrialCard({ sessionId, paid }: { sessionId: string; paid: b
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const copyLink = async (link: string) => {
+    try { await navigator.clipboard.writeText(link); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }
+    catch { window.prompt("Copy the trial link:", link); }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -73,6 +81,7 @@ export function CoachTrialCard({ sessionId, paid }: { sessionId: string; paid: b
     if (code === "already_paid") return "Already paid — no trial needed.";
     if (code === "already_trialed") return "This parent already had a trial.";
     if (code === "no_contact") return "No contact on file for this parent.";
+    if (code === "no_report") return "Report isn't ready yet — can't grant.";
     return "Something went wrong — try again.";
   };
 
@@ -149,8 +158,11 @@ export function CoachTrialCard({ sessionId, paid }: { sessionId: string; paid: b
 
   // ── No trial yet: offer to grant one. ─────────────────────────────────────
   if (!view) {
-    const blocked = paid || status.paid || status.alreadyTrialed;
-    const reason = (paid || status.paid) ? "Already paid" : status.alreadyTrialed ? "Already had a trial" : null;
+    const blocked = paid || status.paid || status.alreadyTrialed || !status.reportReady;
+    const reason = (paid || status.paid) ? "Already paid"
+      : status.alreadyTrialed ? "Already had a trial"
+      : !status.reportReady ? "Report not ready yet — can't grant"
+      : null;
     return (
       <section style={panel}>
         <div style={sectionLabel}>FREE 4-DAY QUICK START</div>
@@ -203,6 +215,15 @@ export function CoachTrialCard({ sessionId, paid }: { sessionId: string; paid: b
       </div>
       {view.flagged && (
         <div style={{ fontSize: 13, fontWeight: 700, color: T.dangerText }}>⚑ Flagged — review</div>
+      )}
+      {!ended && status.trialLink && (
+        <button
+          onClick={() => copyLink(status.trialLink as string)}
+          style={{ borderRadius: 10, padding: "9px 12px", fontWeight: 700, fontSize: 13.5, cursor: "pointer",
+            border: `1px solid ${T.inputBorder}`, background: T.card, color: T.navy }}
+        >
+          {copied ? "Link copied ✓" : "Copy trial link"}
+        </button>
       )}
       {!ended && (
         <div style={{ display: "flex", gap: 8 }}>

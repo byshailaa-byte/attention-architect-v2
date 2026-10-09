@@ -5,9 +5,29 @@
 import type { AgeBand } from "@/content/types";
 import type { Gender } from "@/lib/report/pronouns";
 import { getSql } from "@/lib/db/client";
-import { readCachedReportV2 } from "@/lib/report-v2/service";
 import { getLmsWeekContent, getDayCard } from "@/lib/lms/content";
 import { fillLmsContent } from "@/lib/lms/render";
+import { CARD4_HEADLINE } from "@/lib/report-v2/v3-copy";
+
+type Sql = ReturnType<typeof getSql>;
+
+// The report's card-4 "try tonight" step, read VERSION-AGNOSTICALLY (the fields exist in both the
+// v2 and v3 report shapes). Returns null when the report has no usable card-4 — the grant is
+// blocked in that case. title = the report's real card-4 headline.
+export type TrialCard4 = { title: string; instead: string; say: string; after: string; steps: string[] };
+
+export async function readTrialCard4(sql: Sql, sessionId: string): Promise<TrialCard4 | null> {
+  if (!sessionId) return null;
+  const rows = (await sql`
+    SELECT content->'switch'->>'instead' instead, content->'switch'->>'try' say,
+           content->'switch'->>'after' after,
+           (SELECT array_agg(x) FROM jsonb_array_elements_text(content->'tonight') x) steps
+    FROM report_v2_content WHERE session_id = ${sessionId}::uuid LIMIT 1
+  `) as unknown as { instead: string | null; say: string | null; after: string | null; steps: string[] | null }[];
+  const r = rows[0];
+  if (!r || !r.instead || !r.say || !r.steps || r.steps.length < 3) return null;
+  return { title: CARD4_HEADLINE, instead: r.instead, say: r.say, after: r.after ?? "", steps: r.steps.slice(0, 3) };
+}
 
 export type TrialDayCard = {
   trialDay: number;            // 1..4
@@ -36,24 +56,21 @@ export async function resolveTrialDays(opts: {
   const sql = getSql();
   const cards: TrialDayCard[] = [];
 
-  // Day 1 — from the cached report.
-  const report = await readCachedReportV2(sql, opts.sessionId).catch(() => null);
+  // Day 1 — the parent's real report card-4 (grant is blocked when this is null, so a real trial
+  // always has it; the fallback card is defensive only).
+  const card4 = await readTrialCard4(sql, opts.sessionId).catch(() => null);
   const reportHref = `/report/${opts.sessionId}?report=v2&card=4`;
-  if (report) {
-    cards.push({
-      trialDay: 1, lmsDay: null, source: "report",
-      title: "Tonight's step",
-      instead: report.switch.instead, say: report.switch.try, after: report.switch.after,
-      steps: [...report.tonight], fullHref: reportHref,
-    });
-  } else {
-    // No cached report yet (shouldn't happen for a real lead) — a minimal placeholder.
-    cards.push({
-      trialDay: 1, lmsDay: null, source: "report", title: "Tonight's step",
-      say: "Tonight, try one small thing from your report and notice what happens.",
-      steps: [], fullHref: reportHref,
-    });
-  }
+  cards.push(card4
+    ? {
+        trialDay: 1, lmsDay: null, source: "report",
+        title: card4.title, instead: card4.instead, say: card4.say, after: card4.after,
+        steps: card4.steps, fullHref: reportHref,
+      }
+    : {
+        trialDay: 1, lmsDay: null, source: "report", title: CARD4_HEADLINE,
+        say: "Try one small change to how tonight starts, and notice what happens.",
+        steps: [], fullHref: reportHref,
+      });
 
   // Days 2–4 — from LMS Week 1.
   const week = getLmsWeekContent(opts.archetype, 1, opts.ageBand);

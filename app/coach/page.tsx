@@ -9,7 +9,7 @@ import { resolveCoachAccess } from "@/lib/coach-trial/access";
 import { resolveTrialDays } from "@/lib/coach-trial/content";
 import { TRIAL_DAILY_LIMIT } from "@/lib/coach-trial/limits";
 import {
-  introBubble, HOW_IT_WORKS, baselineQuestion, baselineConfirm,
+  introBubble, HOW_IT_WORKS, baselineQuestion,
   COMMIT_QUESTION, COMMIT_CHIPS, COMMIT_DONE, STEP_CARD_EYEBROW, READ_FULL_STEP,
 } from "@/lib/coach-trial/onboarding";
 import CoachClient from "./CoachClient";
@@ -79,7 +79,6 @@ export default async function CoachPage() {
       howItWorks={HOW_IT_WORKS}
       baselineQuestion={fill(bq.question)}
       baselineChips={bq.chips}
-      confirmTemplate={baselineConfirm("{v}")}
       commitQuestion={COMMIT_QUESTION}
       commitChips={COMMIT_CHIPS}
       commitDone={COMMIT_DONE}

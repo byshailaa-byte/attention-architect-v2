@@ -55,7 +55,8 @@ describe("A2 saving + rendering notes", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/admin/calls", expect.objectContaining({ method: "POST" }));
     // The CoachTrialCard also fetches its status on mount, so locate the calls POST (not index 0).
-    const callArgs = fetchMock.mock.calls.find((c) => c[0] === "/api/admin/calls") as unknown as [string, RequestInit];
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
+    const callArgs = calls.find((c) => c[0] === "/api/admin/calls")!;
     const body = JSON.parse(callArgs[1].body as string);
     expect(body.notes).toBe("Ring after school tomorrow please");
     vi.unstubAllGlobals();

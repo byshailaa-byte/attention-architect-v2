@@ -4,9 +4,10 @@ import { assertBootGuards } from "@/lib/boot-guard";
 import { coachTrialEnabled } from "@/lib/coach-trial/flags";
 import { parentKey } from "@/lib/coach-trial/parent-key";
 import { createTrial, dayUnlockAt } from "@/lib/coach-trial/trial";
+import { readTrialCard4 } from "@/lib/coach-trial/content";
 import { canonicalConcern } from "@/lib/report-v2/goal-mapping";
 import { upsertUserByEmail, createResetToken } from "@/lib/auth/password";
-import { sendPasswordResetEmail } from "@/lib/auth/email";
+import { sendCoachTrialInvite } from "@/lib/auth/email";
 import { trackServer } from "@/lib/analytics/track.server";
 
 assertBootGuards();
@@ -38,6 +39,10 @@ export async function POST(req: NextRequest) {
     const pkey = parentKey(a.phone, a.email);
     if (!pkey) return NextResponse.json({ error: "no_contact" }, { status: 400 });
 
+    // Day 1 is the parent's report card-4 — block the grant if the report has no usable card-4.
+    const card4 = await readTrialCard4(sql, sessionId);
+    if (!card4) return NextResponse.json({ error: "no_report" }, { status: 409 });
+
     // Already had a trial? (unique parent_key). Report cleanly without creating a second.
     const existing = (await sql`SELECT id FROM coach_trials WHERE parent_key = ${pkey} LIMIT 1`) as unknown as { id: string }[];
     if (existing.length > 0) return NextResponse.json({ error: "already_trialed" }, { status: 409 });
@@ -67,7 +72,7 @@ export async function POST(req: NextRequest) {
       try {
         const base = process.env.NEXT_PUBLIC_BASE_URL ?? "https://attentionparents.thehumandecision.in";
         const raw = await createResetToken(userId);
-        await sendPasswordResetEmail(a.email.trim().toLowerCase(), `${base}/lms/reset-password?token=${raw}`);
+        await sendCoachTrialInvite(a.email.trim().toLowerCase(), a.child_name ?? "", `${base}/lms/reset-password?token=${raw}`);
         emailed = true;
       } catch (e) { console.warn("[coach-trial/grant] email failed:", (e as Error).message); }
     }

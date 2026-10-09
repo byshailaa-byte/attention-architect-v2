@@ -161,6 +161,65 @@ export async function sendPasswordResetEmail(
   });
 }
 
+// ── Coach free-trial invite ──────────────────────────────────────────────────
+function buildCoachTrialInviteHtml(startUrl: string, childName: string): string {
+  const who = childName ? ` with ${childName}` : "";
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Your 4-day Quick Start is ready</title></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Georgia,serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 0">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0"
+        style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08)">
+        <tr>
+          <td style="background:#1E3A5F;padding:28px 40px">
+            <p style="margin:0;font-size:13px;color:#CFE0F2;letter-spacing:0.1em;text-transform:uppercase">Attention Architect</p>
+            <h1 style="margin:6px 0 0;font-size:22px;font-weight:normal;color:#ffffff">Your 4-day Quick Start is ready</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px;color:#1a1a1a;font-size:15px;line-height:1.6">
+            <p style="margin:0 0 20px">For the next 4 days, your Attention Coach will help you${who} with one small step a day — about 5 minutes each evening. Tap below to set a password and start.</p>
+            <table cellpadding="0" cellspacing="0" style="margin:0 0 28px">
+              <tr>
+                <td style="background:#E8A33D;border-radius:6px;padding:14px 28px">
+                  <a href="${startUrl}"
+                    style="color:#1a1a1a;font-size:15px;font-family:Georgia,serif;text-decoration:none;font-weight:bold">
+                    Start the Quick Start &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0;font-size:13px;color:#555">If you weren&rsquo;t expecting this, you can ignore this email.</p>
+          </td>
+        </tr>
+        ${footerHtml("you're receiving this because your 4-day Quick Start was set up for you.")}
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendCoachTrialInvite(to: string, childName: string, startUrl: string): Promise<void> {
+  await resendSend({
+    from: FROM,
+    to: [to],
+    subject: "Your 4-day Quick Start is ready",
+    html: buildCoachTrialInviteHtml(startUrl, childName),
+    text: [
+      "Your 4-day Quick Start is ready.",
+      "",
+      `For the next 4 days, your Attention Coach helps you${childName ? ` with ${childName}` : ""} — one small step a day, about 5 minutes each evening.`,
+      "",
+      "Start here (set a password and go):",
+      startUrl,
+      footerText("you're receiving this because your 4-day Quick Start was set up for you."),
+    ].join("\n"),
+  });
+}
+
 // ── Purchase receipt ─────────────────────────────────────────────────────────
 
 const TIER_LABEL: Record<string, string> = {

@@ -5,6 +5,8 @@
 // invent parent-facing sentences — only tiny UI labels ("Send", "Day N"). Design system mirrors
 // FlowShell / PlanV2: cream ground, navy ink, gold accent, Newsreader headings, Figtree body.
 import { useEffect, useRef, useState } from "react";
+import { baselineConfirm } from "@/lib/coach-trial/onboarding";
+import { splitBold } from "@/lib/coach-trial/markdown";
 
 const C = {
   cream: "#FBF6EE", navy: "#1E3A5F", navyLt: "#2C4A70", gold: "#E8A33D", goldSoft: "#F2C77E",
@@ -22,7 +24,7 @@ type Props = {
   childName: string; trialDay: number; endsAt: string; messagesLeft: number;
   onboardingDone: boolean; worry: string;
   intro: string; howItWorks: string[];
-  baselineQuestion: string; baselineChips: Chip[]; confirmTemplate: string; // confirmTemplate contains "{v}"
+  baselineQuestion: string; baselineChips: Chip[];
   commitQuestion: string; commitChips: Chip[]; commitDone: string;
   stepEyebrow: string; readFullLabel: string;
   days: TrialDayCard[]; // 4 cards, index 0 = trial day 1
@@ -40,10 +42,11 @@ type MessageErr = { error: string; reply?: string; messagesLeft?: number };
 
 export default function CoachClient(props: Props) {
   const {
-    childName, trialDay, onboardingDone, intro, howItWorks,
-    baselineQuestion, baselineChips, confirmTemplate, commitQuestion, commitChips, commitDone,
+    childName, trialDay, onboardingDone, worry, intro, howItWorks,
+    baselineQuestion, baselineChips, commitQuestion, commitChips, commitDone,
     stepEyebrow, readFullLabel, days,
   } = props;
+  void childName;
 
   const todayCard = days[Math.min(Math.max(trialDay, 1), days.length) - 1] ?? days[0];
 
@@ -110,7 +113,7 @@ export default function CoachClient(props: Props) {
     } catch {
       /* non-blocking: the confirm bubble + flow still proceed */
     }
-    const confirm = confirmTemplate.replace("{v}", chip.label);
+    const confirm = baselineConfirm(worry, chip.value, chip.label);
     // d) today's step card, then e) the commit question + chips.
     revealSequentially([
       { kind: "coach", text: confirm },
@@ -246,6 +249,13 @@ export default function CoachClient(props: Props) {
   );
 }
 
+// Render **bold** only — safe markdown (no HTML, no other tags), via the shared splitBold helper.
+function renderBold(text: string): React.ReactNode[] {
+  return splitBold(text).map((p, i) =>
+    p.bold ? <strong key={i} style={{ fontWeight: 700 }}>{p.text}</strong> : <span key={i}>{p.text}</span>,
+  );
+}
+
 // ── A transcript row: coach bubble (left/white), parent bubble (right/gold), or step card ──
 function BubbleRow({ bubble, stepEyebrow, readFullLabel }: { bubble: Bubble; stepEyebrow: string; readFullLabel: string }) {
   if (bubble.kind === "card") return <StepCard day={bubble.day} stepEyebrow={stepEyebrow} readFullLabel={readFullLabel} />;
@@ -264,7 +274,7 @@ function BubbleRow({ bubble, stepEyebrow, readFullLabel }: { bubble: Bubble; ste
           whiteSpace: "pre-wrap",
         }}
       >
-        {bubble.text}
+        {isParent ? bubble.text : renderBold(bubble.text)}
       </div>
     </div>
   );
@@ -325,15 +335,19 @@ function StepCard({ day, stepEyebrow, readFullLabel }: { day: TrialDayCard; step
         day.body && <p style={{ fontSize: 15.5, lineHeight: 1.55, color: C.ink, margin: "0 0 12px", whiteSpace: "pre-wrap" }}>{day.body}</p>
       )}
 
-      <a
-        href={day.fullHref}
-        style={{
-          display: "inline-block", fontSize: 14, fontWeight: 700, color: C.navy,
-          textDecoration: "underline", textDecorationColor: C.gold, textUnderlineOffset: 3,
-        }}
-      >
-        {readFullLabel}
-      </a>
+      {/* "Read the full step" only on Day 1 (the report) — trial users can't open the paid LMS
+          library, so Days 2–4 show the inline step text only. */}
+      {day.source === "report" && (
+        <a
+          href={day.fullHref}
+          style={{
+            display: "inline-block", fontSize: 14, fontWeight: 700, color: C.navy,
+            textDecoration: "underline", textDecorationColor: C.gold, textUnderlineOffset: 3,
+          }}
+        >
+          {readFullLabel}
+        </a>
+      )}
     </div>
   );
 }

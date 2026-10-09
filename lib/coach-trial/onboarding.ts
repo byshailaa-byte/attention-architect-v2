@@ -39,10 +39,9 @@ export function introBubble(worry: string): string {
   return `Hi, I'm your Attention Coach. For the next 4 days I'll help you with one thing: ${worryGoalLine(worry)}.`;
 }
 
-// (b) How it works — fixed, split into short bubbles by the UI.
+// (b) How it works — the intro line + bullets in ONE bubble, then the reassurance as its own.
 export const HOW_IT_WORKS: string[] = [
-  "Here's how it works:",
-  "• One small step a day, about 5 minutes.\n• Each evening you tap one number for me.\n• On Day 4 we look at what changed, together.",
+  "Here's how it works:\n• One small step a day, about 5 minutes.\n• Each evening you tap one number for me.\n• On Day 4 we look at what changed, together.",
   "Day 1 might feel messy. That's normal.",
 ];
 
@@ -91,8 +90,24 @@ export function baselineQuestion(worry: string): Baseline {
   return BASELINE[canonicalWorry(worry)];
 }
 
-export function baselineConfirm(value: string): string {
-  return `Got it: ${value} on a usual day. That's our starting point.`;
+// Baseline confirm with the unit per worry: "3 reminders", "10–20 minutes", "2 times", "half done".
+// value = the chip value, label = the chip's display label (used for the minute ranges).
+export function baselineUnit(worry: string, value: string, label: string): string {
+  const w = canonicalWorry(worry);
+  const plural = (n: string, word: string) => `${n} ${word}${n === "1" ? "" : "s"}`;
+  switch (w) {
+    case "reminders":
+    case "screens":   return plural(value, "reminder");
+    case "homework":  return label.replace(/\bmin\b/i, "minutes");
+    case "confidence":
+    case "giveup":
+    case "other":     return plural(value, "time");
+    case "finish":    return value === "none" ? "nothing done" : value === "all" ? "all done" : `${value} done`;
+  }
+}
+
+export function baselineConfirm(worry: string, value: string, label: string): string {
+  return `Got it: ${baselineUnit(worry, value, label)} on a usual day. That's our starting point.`;
 }
 
 // (d) Today's step card chrome (the step content comes from resolveTrialDays).
@@ -115,7 +130,8 @@ export function allOnboardingTemplates(): string[] {
   for (const w of WORRIES) {
     out.push(introBubble(w));
     out.push(BASELINE[w].question);
+    out.push(baselineConfirm(w, "3", "10–20 min"));
   }
-  out.push(...HOW_IT_WORKS, baselineConfirm("3"), COMMIT_QUESTION, COMMIT_DONE, STEP_CARD_EYEBROW, READ_FULL_STEP);
+  out.push(...HOW_IT_WORKS, COMMIT_QUESTION, COMMIT_DONE, STEP_CARD_EYEBROW, READ_FULL_STEP);
   return out;
 }
