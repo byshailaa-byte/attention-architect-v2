@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import * as C from "@/lib/report-v2/v3-copy";
 import { makeFiller } from "@/lib/report-v2/cards-copy";
 import { composeFallback, archetypeDesc } from "@/content/report-v2/fallbacks";
-import { articleFor, agreementErrors, type Gender } from "@/lib/report/pronouns";
+import { articleFor, agreementErrors, fillTokens, type Gender } from "@/lib/report/pronouns";
+import { WEEK_OUTCOMES } from "@/content/report-v2/plan-outcomes";
 
 // ────────────────────────────────────────────────────────────────────────────
 // GOAL: the UNSET-gender ("they") render of every v3 fixed string + every
@@ -150,6 +151,67 @@ describe("report-v3 grammar — singular they reads with plural verbs (every str
     expect(agreementErrors("They're calm", "Aarav")).toEqual([]);
     expect(agreementErrors("When Test settles into one thing", "Test")).toEqual([]);
     expect(agreementErrors("Test goes to the task", "Test")).toEqual([]);
+  });
+
+  // The plan page's week-by-week outcomes (WEEK_OUTCOMES) must agree with the child's gender —
+  // a boy report must read "him/his/himself", a girl "her/herself", unset singular-they — never
+  // leak a raw {token} or a mismatched plural pronoun. Rendered the same way PlanV2 does
+  // (fillTokens / makeServerFiller).
+  describe("plan week outcomes agree with gender (every WEEK_OUTCOMES line × 3 genders)", () => {
+    const fill = (g: Gender) => fillTokens("Aarav", g);
+    const ALL_LINES = Object.entries(WEEK_OUTCOMES).flatMap(([worry, lines]) =>
+      lines.map((text, i) => ({ worry, week: i + 1, text })),
+    );
+
+    it("collected all 7 worries × 6 weeks", () => {
+      expect(ALL_LINES.length).toBe(42);
+    });
+
+    it("no leftover {tokens}, any gender", () => {
+      const leftovers: string[] = [];
+      for (const { label, g } of GENDERS)
+        for (const { worry, week, text } of ALL_LINES) {
+          const out = fill(g)(text);
+          if (/\{[^}]*\}|\{s:|\|\}/.test(out)) leftovers.push(`${worry} wk${week} [${label}] → ${out}`);
+        }
+      expect(leftovers).toEqual([]);
+    });
+
+    it("shared agreementErrors() finds no fault, any gender", () => {
+      const hits: string[] = [];
+      for (const { g } of GENDERS)
+        for (const { worry, week, text } of ALL_LINES) {
+          const out = fill(g)(text);
+          const errs = agreementErrors(out, "Aarav");
+          if (errs.length) hits.push(`${worry} wk${week} → ${errs.join("; ")}: ${out}`);
+        }
+      expect(hits).toEqual([]);
+    });
+
+    it("boy render uses him/his/himself — never them/their/themselves/they/her", () => {
+      const hits: string[] = [];
+      for (const { worry, week, text } of ALL_LINES) {
+        const out = fill("boy")(text);
+        if (/\b(them|their|themselves|themself|they|her|herself)\b/i.test(out)) hits.push(`${worry} wk${week} → ${out}`);
+      }
+      expect(hits).toEqual([]);
+    });
+
+    it("girl render uses her/herself — never them/their/themselves/they/him/his", () => {
+      const hits: string[] = [];
+      for (const { worry, week, text } of ALL_LINES) {
+        const out = fill("girl")(text);
+        if (/\b(them|their|themselves|themself|they|him|his|himself)\b/i.test(out)) hits.push(`${worry} wk${week} → ${out}`);
+      }
+      expect(hits).toEqual([]);
+    });
+
+    it("the two known boy-report bugs are fixed (homework wk2 'him', wk6 'his … himself')", () => {
+      expect(fill("boy")(WEEK_OUTCOMES.homework[1])).toBe("Stays with it when something pulls him away.");
+      expect(fill("boy")(WEEK_OUTCOMES.homework[5])).toBe("Runs his homework routine himself.");
+      expect(fill("girl")(WEEK_OUTCOMES.homework[5])).toBe("Runs her homework routine herself.");
+      expect(fill(null)(WEEK_OUTCOMES.homework[5])).toBe("Runs their homework routine themselves.");
+    });
   });
 
   it("hero chip uses the right article per type", () => {

@@ -2,6 +2,11 @@
 // per week, mapped onto the 6 WEEK_TITLES (lib/report/skills.ts). Gold voice, concrete,
 // outcome-first. NO "homework" unless the worry itself is homework.
 //
+// Pronouns use the shared single-brace agreement tokens ({them}/{their}/{themselves}) so a boy
+// report reads "him/his/himself", a girl "her/herself", unset singular-they. Both render sites
+// MUST fill them: PlanV2 via makeServerFiller (fillTokens), the Coach via fillTokens in
+// lib/lms/coach/context.ts (fillLmsContent only handles the {{double-brace}} set).
+//
 // Week order (titles): 1 Getting started · 2 Changing the first small thing ·
 // 3 Staying with it on an ordinary day · 4 Coming back after a slip ·
 // 5 Doing it without you in the room · 6 Running it themselves.
@@ -14,15 +19,15 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Begins on a normal day, not just a good one.",
     "Starts again after a day it didn't happen.",
     "Starts without a reminder, even when you're not in the room.",
-    "Gets going on their own, most days.",
+    "Gets going on {their} own, most days.",
   ],
   homework: [
     "Sits down to homework without the fight.",
-    "Stays with it when something pulls them away.",
+    "Stays with it when something pulls {them} away.",
     "Gets through homework on a normal evening.",
     "Picks it back up after a rough night.",
     "Starts homework calmly, even when you're not in the room.",
-    "Runs their homework routine themselves.",
+    "Runs {their} homework routine {themselves}.",
   ],
   screens: [
     "Turns it off at the agreed time, calmly.",
@@ -30,7 +35,7 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Screens go off calmly on a normal evening, not just good ones.",
     "After a bad evening, the next stop is calm again.",
     "Screens go off even when you're not in the room.",
-    "Manages their own screen time, mostly.",
+    "Manages {their} own screen time, mostly.",
   ],
   confidence: [
     "Tries the first hard bit before asking.",
@@ -38,7 +43,7 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Has a go on an ordinary day, not just an easy one.",
     "Tries again after one that didn't work.",
     "Tries the hard part before calling you in.",
-    "Backs themselves to try first, most times.",
+    "Backs {themselves} to try first, most times.",
   ],
   giveup: [
     "Has a second go after the first try fails.",
@@ -46,7 +51,7 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Keeps going on a normal day.",
     "Comes back the day after a big flop.",
     "Keeps going after a mistake, even with you out of the room.",
-    "Keeps going on their own, most of the time.",
+    "Keeps going on {their} own, most of the time.",
   ],
   finish: [
     "Starts with a clear idea of what 'done' looks like.",
@@ -54,15 +59,15 @@ export const WEEK_OUTCOMES: Record<string, [string, string, string, string, stri
     "Finishes on an ordinary day, not just a fun one.",
     "Comes back to finish after stopping early.",
     "Finishes the task with you out of the room.",
-    "Sees things through on their own, mostly.",
+    "Sees things through on {their} own, mostly.",
   ],
   other: [
     "Gets started without the usual push.",
-    "Stays with it when something pulls them away.",
+    "Stays with it when something pulls {them} away.",
     "Starts and keeps going on a normal day.",
     "Gets back on track after an off day.",
     "Keeps the habit going when you're not watching.",
-    "Starts and finishes on their own, most days.",
+    "Starts and finishes on {their} own, most days.",
   ],
 };
 

@@ -150,7 +150,7 @@ export default function PlanV2({ sessionId, content: c, goalKey, ageBand, childN
               <div style={{ width: 30, height: 30, borderRadius: 9, background: C.sel, border: `1.5px solid ${C.gold}`, color: C.navy, fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{w}</div>
               <div>
                 <div style={{ fontFamily: HEAD, fontSize: 17, color: C.navy, lineHeight: 1.3 }}>{WEEK_TITLES[w]}</div>
-                <div style={{ fontSize: 15, color: C.dim, marginTop: 3, lineHeight: 1.45 }}>{outcomes[w - 1]}</div>
+                <div style={{ fontSize: 15, color: C.dim, marginTop: 3, lineHeight: 1.45 }}>{f(outcomes[w - 1])}</div>
               </div>
             </div>
           ))}

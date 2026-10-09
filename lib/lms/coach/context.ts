@@ -8,6 +8,7 @@ import { weekOutcomesFor } from "@/content/report-v2/plan-outcomes";
 import { getUserProgress, isWeekUnlocked } from "@/lib/lms/progress";
 import { getLmsWeekContent, getDayCard } from "@/lib/lms/content";
 import { fillLmsContent } from "@/lib/lms/render";
+import { fillTokens } from "@/lib/report/pronouns";
 import { WEEK_TITLES } from "@/lib/report/skills";
 import { CONCERN_CARD_LABELS } from "@/lib/concerns";
 import { ENTITY } from "@/lib/entity";
@@ -82,7 +83,10 @@ export async function buildCoachContext(
   const doneDays = [1, 2, 3, 4, 5].filter((d) => prog.completedDays.has(d));
 
   // This week's title + the "what changes this week" aim line (mapped from the worry).
-  const weekAim = weekOutcomesFor(concernKey)[Math.min(Math.max(week, 1), 6) - 1] ?? "";
+  // WEEK_OUTCOMES carry agreement tokens ({them}/{their}/{themselves}); fillLmsContent only
+  // handles the {{double-brace}} set, so resolve these via the shared single-brace fillTokens.
+  const weekAimRaw = weekOutcomesFor(concernKey)[Math.min(Math.max(week, 1), 6) - 1] ?? "";
+  const weekAim = fillTokens(ctx.childName, ctx.childGender)(weekAimRaw);
   const weekGoal = `${WEEK_TITLES[week] ?? ""}${weekAim ? ` — ${weekAim}` : ""}`;
   // The hard part: prefer the cached report; fall back to the deterministic report-v2 fallback
   // so the method section is always grounded (test users have no cached report).
