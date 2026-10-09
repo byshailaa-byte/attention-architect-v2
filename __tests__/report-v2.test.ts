@@ -112,6 +112,50 @@ describe("deterministic evidence selection", () => {
     const ev = selectEvidence(answered, rankDimensions(dims), "Aarav", boy);
     expect(ev[0].leadIn).toContain("Aarav");
   });
+
+  // ITEM 2: evidence must BACK the archetype's need and never contradict it.
+  describe("archetype-aware selection (card 3 backs the conclusion)", () => {
+    // All-In Kid = narrow-deep × mastery, need "time to go deep". A SOCIAL driver answer and a
+    // NOVELTY competition answer point to OTHER needs — they must be dropped as contradictors.
+    const allInAnswers: AnsweredQuestion[] = [
+      { id: "G1", dimension: "attention_shape", label: "deep", value: "narrow-deep" },        // supports
+      { id: "D2.1", dimension: "reward_driver", label: "cracks hard things", value: "mastery" }, // supports
+      { id: "R1", dimension: "recovery_response", label: "on their own", value: "autonomous" }, // supports
+      { id: "D2.2", dimension: "reward_driver", label: "people proud", value: "social" },       // CONTRADICTS (social driver)
+      { id: "D1.1", dimension: "attention_shape", label: "with others", value: "social-anchored" }, // CONTRADICTS (shape)
+    ];
+    const dimRank = ["reward_driver", "attention_shape", "recovery_response"];
+
+    it("prefers supporting answers and NEVER shows a contradicting one", () => {
+      const ev = selectEvidence(allInAnswers, dimRank, "Aarav", boy, "The All-In Kid");
+      const picks = ev.map((e) => `${e.qid}:${e.optionValue}`);
+      expect(picks).toContain("G1:narrow-deep");
+      expect(picks).toContain("D2.1:mastery");
+      expect(picks).toContain("R1:autonomous");
+      expect(picks).not.toContain("D2.2:social");
+      expect(picks).not.toContain("D1.1:social-anchored");
+      expect(ev).toHaveLength(3);
+    });
+
+    it("shows exactly 2 when only 2 supporting answers exist", () => {
+      const two = allInAnswers.filter((a) => a.id !== "R1"); // leaves 2 supporting + 2 contradicting
+      const ev = selectEvidence(two, dimRank, "Aarav", boy, "The All-In Kid");
+      expect(ev).toHaveLength(2);
+      expect(ev.every((e) => e.optionValue !== "social" && e.optionValue !== "social-anchored")).toBe(true);
+    });
+
+    it("falls back to top-dimension picks (minus contradictors) when <2 supporting", () => {
+      // Only one supporting answer; the rest are neutral (recharge) — never a contradictor.
+      const fewSupport: AnsweredQuestion[] = [
+        { id: "G1", dimension: "attention_shape", label: "deep", value: "narrow-deep" }, // supports
+        { id: "D6.1", dimension: "recharge_type", label: "quiet", value: "sensory-quiet" }, // neutral
+        { id: "D2.2", dimension: "reward_driver", label: "people proud", value: "social" }, // CONTRADICTS
+      ];
+      const ev = selectEvidence(fewSupport, ["attention_shape", "recharge_type", "reward_driver"], "Aarav", boy, "The All-In Kid");
+      expect(ev.map((e) => `${e.qid}:${e.optionValue}`)).not.toContain("D2.2:social");
+      expect(ev.length).toBeGreaterThanOrEqual(1);
+    });
+  });
 });
 
 describe("validator (v3 shapes)", () => {
@@ -239,6 +283,31 @@ describe("validator (v3 shapes)", () => {
     expect(validateGenerated({ ...ok, hardPart: tooLong }).errors.some((e) => e.startsWith("hardPart"))).toBe(true);
   });
 
+  it("flags subject-verb agreement in AI fields (name singular; singular-they base verb)", () => {
+    // (b) child name + base/plural verb — name is singular, verb must take -s.
+    const nameBase = validateGenerated(
+      { ...composeFallback("The All-In Kid", "reminders", "Test", boy), seenIt: "When Test settle into one thing, he stays with it." },
+      { childName: "Test", gender: boy },
+    );
+    expect(nameBase.errors.some((e) => e.startsWith("seenIt: agreement"))).toBe(true);
+    const nameBase2 = validateGenerated(
+      { ...composeFallback("The All-In Kid", "reminders", "Aarav", boy), seenIt: "When Aarav go to the task, he stays with it." },
+      { childName: "Aarav", gender: boy },
+    );
+    expect(nameBase2.errors.some((e) => e.startsWith("seenIt: agreement"))).toBe(true);
+    // (a) "they" + 3rd-singular verb — singular they takes the base verb.
+    const theySing = validateGenerated(
+      { ...composeFallback("The All-In Kid", "reminders", "Aarav", null), hardPart: "Aarav isn’t lazy. They focuses best when left alone." },
+      { childName: "Aarav", gender: null },
+    );
+    expect(theySing.errors.some((e) => e.includes("agreement"))).toBe(true);
+    // clean fallback copy carries NO agreement error (checker matches the fixed-copy grammar).
+    expect(
+      validateGenerated(composeFallback("The All-In Kid", "reminders", "Aarav", null), { childName: "Aarav", gender: null })
+        .errors.some((e) => e.includes("agreement")),
+    ).toBe(false);
+  });
+
   it("routes bargaining + length failures through the repair path, not full retry", () => {
     expect(isRepairable(["switch.try: bargaining (stake/stakes)"])).toBe(true);
     expect(isRepairable(["tonight[0]: sentence over 16 words", "tonight[0]: bargaining (reward)"])).toBe(true);
@@ -300,5 +369,21 @@ describe("static fallbacks (archetype × worry)", () => {
     for (const a of ARCHETYPES) for (const w of WORRIES) {
       expect(composeFallback(a, w, "Aarav", boy).tonight[2].startsWith("Notice:")).toBe(true);
     }
+  });
+});
+
+describe("evidence backfill never shows a foreign-archetype signal (ITEM 2 follow-up)", () => {
+  it("All-In Kid with <2 supporting answers excludes a G2 'novelty' answer from backfill", () => {
+    const answers: AnsweredQuestion[] = [
+      { id: "D1.1", dimension: "attention_shape", label: "goes deep", value: "narrow-deep" },     // 1 supporting
+      { id: "G2", dimension: "attention_competition", label: "a new idea pulls them away", value: "novelty" }, // foreign signal → must be dropped
+      { id: "D5.1", dimension: "screen_pull", label: "screens fill empty time", value: "boredom-avoidance" },  // neutral → ok
+      { id: "D6.1", dimension: "recharge_type", label: "quiet time alone", value: "sensory-quiet" },           // neutral → ok
+    ];
+    const rank = ["attention_shape", "attention_competition", "screen_pull", "recharge_type"];
+    const ev = selectEvidence(answers, rank, "Aarav", boy, "The All-In Kid");
+    const picks = ev.map((e) => `${e.qid}:${e.optionValue}`);
+    expect(picks).not.toContain("G2:novelty");          // the flagged contradicting answer
+    expect(picks).toContain("D1.1:narrow-deep");        // the supporting one is kept
   });
 });

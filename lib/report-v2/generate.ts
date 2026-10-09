@@ -54,13 +54,17 @@ function judgeReason(failed: string[]): string {
 }
 export type ReportCost = { model: string; calls: number; inputTokens: number; outputTokens: number; costPaise: number; outcome: "llm" | "fallback"; reason: string | null };
 
-// v3 hardPart shape — two sentences, each ≤12 words, in EITHER shape:
+// v3 hardPart shape — two sentences, each ≤12 words, in one of three shapes (mirrors the
+// validator's HARD_PART_RE exactly):
 //   (a) "{Name} isn't <wrong read>. {He}'s/'re/is <real reason>."
 //   (b) "It isn't <wrong read>. It's/It is <real reason>."
-// The real reason matches WHY_BOXES[archetype] red line. Mirrors the validator's HARD_PART_RE:
-// first subject = a Capitalised name (1-3 words), "It", or the null-name "your child"; second
-// subject = He/She/They/It + ’s/’re/is.
-const HARD_PART_RE = /^(?:It|[Yy]our child|[A-Z][A-Za-z’'-]*(?:\s[A-Z][A-Za-z’'-]*){0,2}) isn[’']t [^.]+\. (?:(?:He|She|They|It)[’'](?:s|re)|(?:He|She|They|It) is) [^.]+\.$/;
+//   (c) "{Name} isn't <wrong read>. <thing> <verb> {him/her/them} …." (cause-clause)
+const HARD_PART_SUBJ = "(?:It|[Yy]our child|[A-Z][A-Za-z’'-]*(?:\\s[A-Z][A-Za-z’'-]*){0,2})";
+const HARD_PART_SECOND_COPULA = "(?:(?:He|She|They|It)['’](?:s|re)|(?:He|She|They|It) is) [^.]+";
+const HARD_PART_SECOND_CAUSE = "[A-Z][^.]*\\b(?:him|her|them|themself)\\b[^.]*";
+const HARD_PART_RE = new RegExp(
+  `^${HARD_PART_SUBJ} isn['’]t [^.]+\\. (?:${HARD_PART_SECOND_COPULA}|${HARD_PART_SECOND_CAUSE})\\.$`,
+);
 
 // Two GOLD hardPart examples PER ARCHETYPE (bare key), in the exact v3 shape and ≤12 words a
 // sentence, each consistent with that archetype's WHY_BOXES red line (the "real reason"). Fed
@@ -78,9 +82,11 @@ const HARD_PART_EXAMPLES: Record<string, [string, string]> = {
     "Aarav isn’t being lazy. He’s wandering off with nowhere to park an idea.",
   ],
   // Captain red line: "{His} drive switches off."
+  // ex[1] is a GOLD example of the shape (c) cause-clause ("<thing> switches {him} off") — so the
+  // model can produce "{Name} isn't ignoring you. Being told what to do switches {him} off."
   "Captain": [
     "Aarav isn’t ignoring you. He’s switched off from being handed instructions.",
-    "Aarav isn’t refusing. He’s lost his drive now it isn’t his to run.",
+    "Aarav isn’t ignoring you. Being told what to do switches him off.",
   ],
   // Inventor red line: "{He} loses interest fast."
   "Inventor": [
@@ -254,7 +260,7 @@ function buildContext(a: AssessmentInput): Context {
   const headline = headlineForConcern(concern, a.childName ?? "", gender);
   const goal = a.v2Goal?.trim() ? a.v2Goal.trim() : goalForConcern(concern, a.childName ?? "", gender);
   const program = programFor(archetype, a.ageBand, a.childName ?? "", gender);
-  const evidence = selectEvidence(answeredFromAssessment(a), rankDimensions(dimScores(a)), a.childName ?? "", gender);
+  const evidence = selectEvidence(answeredFromAssessment(a), rankDimensions(dimScores(a)), a.childName ?? "", gender, archetype);
   const moveTmpl = a.parentPattern ? INSTINCT_MOVE[a.parentPattern] ?? null : null;
   const instinctMove = moveTmpl ? fillTokens(moveTmpl, name, gender) : null;
   const bareArch = bareArchetype(archetype);
@@ -307,7 +313,11 @@ GOLD 3 — Magnet · homework · girl (name Meera):
 seenIt: "With someone beside her, Meera can work for a long stretch."
 hardPart: "Meera isn't dodging the homework. She's dodging an empty room."
 switch: instead "Go do your homework in your room. Call me if you're stuck." / try "I've got some work too. Shall we both sit at the table?" / after "Then do your own thing. Don't check her work."
-tonight: ["Sit at the table with something of your own: bills, a book, anything.", "Don't help and don't check. Just be there.", "Notice how long she keeps going."]`;
+tonight: ["Sit at the table with something of your own: bills, a book, anything.", "Don't help and don't check. Just be there.", "Notice how long she keeps going."]
+
+GOLD 4 — Captain · reminders · boy (name Ishaan) — shows the CAUSE-CLAUSE hardPart shape:
+hardPart: "Ishaan isn't ignoring you. Being told what to do switches him off."
+(The second sentence names the CAUSE acting on the child — a thing that switches him off — instead of "He's …". Use this shape when the real reason is a cause, not a state.)`;
 
 function buildPrompt(ctx: Context, priorFeedback?: string[]): string {
   const p = ctx.program;
@@ -358,6 +368,7 @@ VOICE RULES (rejected otherwise):
 5. Never blame the parent. Never bargain. Never promise an outcome. Never imply the parent–child relationship, or something being "off between you", is the problem. BANNED: fix, fixes, "nothing is wrong".
 6. PRONOUNS: use ONLY ${pronounRule(ctx.gender)}.
 7. EVERY sentence 16 words or fewer. One idea each.
+8. The child's name is ALWAYS grammatically singular — write "When ${ctx.name} settles…", "${ctx.name} starts…" (the verb takes -s), whatever the child's gender.
 
 MORE HARD RULES:
 - Each tonight step is ONE short sentence, TWO at most.
@@ -674,6 +685,10 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
           current.tonight[2] = ctx.notice;
           continue;
         }
+        // Non-repairable content errors (abstract/clinical/comparative/quote AND subject-verb
+        // AGREEMENT — e.g. "seenIt: agreement (…)") are NEVER silently accepted or line-repaired:
+        // they take the ONE full retry, with every failing point (including the exact agreement
+        // message) named back to the model, then fall back to the hand-written copy.
         if (retries < 1) {
           retries++; attempts++;
           console.log(`[report-v2] full retry: ${v.errors.join("; ")}`);

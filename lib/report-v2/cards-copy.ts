@@ -19,7 +19,7 @@ const CARD1_HEADLINE: Record<string, string> = {
 // ── card 2: why-this-keeps-happening headline (per archetype) ──────────────────
 const CARD2_HEADLINE: Record<string, string> = {
   "The Storm":      "{Name} needs a real say in how things start.",
-  "The All-In Kid": "{Name} goes all in when nobody breaks the stretch.",
+  "The All-In Kid": "{Name} goes all in when nobody pulls {him} out midway.",
   "The Inventor":   "{Name} likes to decide how a thing gets done.",
   "The Explorer":   "{Name}’s mind keeps finding new things to chase.",
   "The Magnet":     "{Name} focuses best with someone nearby.",

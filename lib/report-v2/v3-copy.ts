@@ -111,9 +111,16 @@ export const WHY_BOXES: Record<string, WhyBox> = {
 export const CARD3_EYEBROW = "HOW WE KNOW";
 export const CARD3_HEADLINE = "It's in your own answers.";
 export const CARD3_BOX_LABEL = "YOU TOLD US";
-// Box closing (§54), bold. {NEED} = NEED[archetype] filled.
+// Box closing (§54), bold. {NEED} = NEED[archetype] filled. The leading count word MUST match
+// the number of evidence answers actually rendered on the card — "Three" when 3 are shown,
+// "Two" when 2 are shown (see evidence.ts selection rule). Call card3BoxClosing(count) to build
+// it; the {Count} token is filled from the count, the rest is filled by the pronoun filler.
 export const CARD3_BOX_CLOSING =
-  "Three different answers. One clear message: {Name} needs {NEED}.";
+  "{Count} different answers. One clear message: {Name} needs {NEED}.";
+export function card3BoxClosing(count: number): string {
+  const word = count === 2 ? "Two" : "Three";
+  return CARD3_BOX_CLOSING.replace("{Count}", word);
+}
 // Small note (§55). {Type} = archetype name without "The". The first ARCHETYPE_STRENGTHS line
 // is appended at the render site (strengthsFor(archetype)[0]).
 export const CARD3_NOTE =

@@ -54,36 +54,42 @@ type ArchMeta = { seenIt: string; hardY: string };
 // archetype. Each is a concrete, everyday moment of the child FOCUSING WELL ("When {Name} …,
 // {he} …"), drawn from the archetype's strengths, ≤18 words, using the explicit agreement tokens.
 const ARCH_META: Record<string, ArchMeta> = {
+  // NOTE on verb agreement: where the SUBJECT is {Name} (always grammatically singular), the verb
+  // is hard-coded 3rd-singular ("Aarav picks", never the {s:…|…} fork — that fork is only for a
+  // {he}/they SUBJECT). Likewise a singular noun subject ("a real challenge lands"). This keeps
+  // the unset ("they") render correct: "When Aarav picks the plan, they throw real energy at it."
   "The Storm": {
-    seenIt: "When {Name} {s:picks|pick} the plan, {he} {s:throws|throw} real energy at it.",
+    seenIt: "When {Name} picks the plan, {he} {s:throws|throw} real energy at it.",
     hardY: "{He}{'s} fighting being told, not the task.",
   },
   "The All-In Kid": {
-    seenIt: "When {Name} {s:settles|settle} into one thing, {he} {s:stays|stay} with it for ages.",
+    seenIt: "When {Name} settles into one thing, {he} {s:stays|stay} with it for ages.",
     hardY: "{He}{'s} finding it hard to get back in.",
   },
   "The Inventor": {
-    seenIt: "When {Name} {s:builds|build} something {his} own way, {he} {s:keeps|keep} at the hard parts.",
+    seenIt: "When {Name} builds something {his} own way, {he} {s:keeps|keep} at the hard parts.",
     hardY: "{He}{'s} losing interest when {his} way gets corrected.",
   },
   "The Explorer": {
-    seenIt: "When one thing sparks another, {Name} {s:connects|connect} the ideas fast.",
+    seenIt: "When one thing sparks another, {Name} connects the ideas fast.",
     hardY: "{He}{'s} drifting off when every side-idea is stopped.",
   },
   "The Magnet": {
-    seenIt: "When you {s:sit|sit} at the table too, {Name} {s:tries|try} that bit harder.",
+    seenIt: "When you sit at the table too, {Name} tries that bit harder.",
     hardY: "{He}{'s} losing focus when left alone.",
   },
   "The Glue": {
-    seenIt: "When the people around {him} {s:feel|feel} okay, {Name} {s:gets|get} on with it.",
+    seenIt: "When the people around {him} feel okay, {Name} gets on with it.",
     hardY: "{He}{'s} thrown off when there’s tension.",
   },
   "The Captain": {
-    seenIt: "When {Name} {s:runs|run} the call, {he} {s:pushes|push} hard to get it done.",
-    hardY: "{He}{'s} switching off when handed instructions.",
+    seenIt: "When {Name} runs the call, {he} {s:pushes|push} hard to get it done.",
+    // Shape (c) cause-clause (ITEM 3b): "<thing> switches {them} off." Subject is the gerund
+    // "Being told what to do" (singular) → "switches" stays singular for every gender.
+    hardY: "Being told what to do switches {him} off.",
   },
   "The Live Wire": {
-    seenIt: "When a real challenge {s:lands|land}, {Name} {s:gives|give} it everything {he} {has}.",
+    seenIt: "When a real challenge lands, {Name} gives it everything {he} {has}.",
     hardY: "{He}{'s} drifting when nothing is happening.",
   },
 };

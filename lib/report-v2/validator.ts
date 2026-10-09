@@ -3,7 +3,7 @@
 // no hedges/clinical/comparative/parent-blame, the parent (not the child) did the answering,
 // quoted switch lines a parent would say, tonight steps ≤2 sentences, and length caps.
 import type { ReportV2Generated } from "./types";
-import type { Gender } from "@/lib/report/pronouns";
+import { agreementErrors, type Gender } from "@/lib/report/pronouns";
 
 export type ValidationResult = { ok: boolean; errors: string[] };
 
@@ -13,11 +13,14 @@ const SEEN_IT_MAX_WORDS = 18;
 
 // Exact-format rules for the two v3 card-1 voice fields.
 // seenIt: ONE sentence starting "When ", ≤18 words, no worry/problem words, never "You've seen".
-// hardPart: TWO sentences, EACH ≤12 words, in one of two shapes:
-//   (a) "<Name> isn't X. <He/She/They>'s/'re/is Y."  — the child-name shape
-//   (b) "It isn't X. It's/It is Y."                  — the impersonal shape
-// Leading subject may be the child's name OR "It"; the second-sentence subject may be
-// He/She/They/It, with ’s / ’re / is.
+// hardPart: TWO sentences, EACH ≤12 words, in one of three shapes:
+//   (a) "<Name> isn't X. <He/She/They>'s/'re/is Y."        — the child-name + copula shape
+//   (b) "It isn't X. It's/It is Y."                        — the impersonal copula shape
+//   (c) "<Name> isn't X. <thing> <verb> <him/her/them> …." — a cause-clause shape, e.g.
+//       "{Name} isn't ignoring you. Being told what to do switches {them} off." The second
+//       sentence names a cause acting ON the child; it MUST mention the child object pronoun
+//       (him/her/them). Subject-verb agreement on it is enforced separately by agreementErrors.
+// Leading subject may be the child's name OR "It".
 const SEEN_IT_START_RE = /^When\s+/i;
 const SEEN_IT_SEEN_RE = /you['’]?ve\s+seen/i;
 // Problem/worry words seenIt must NOT contain (it shows the child FOCUSING WELL, never the worry).
@@ -26,8 +29,14 @@ const SEEN_IT_PROBLEM_RE = /\b(worr\w*|struggl\w*|can['’]?t|won['’]?t|fight\
 // "Mary Jane") — OR the bare pronoun "It" OR the null-name fallback "Your child"/"your child".
 // This deliberately rejects the old impersonal opener "The hard part isn't …" (subject is
 // lower-cased "hard part", not a name/It/your-child).
-// Second sentence subject: He/She/They/It, followed by ’s/’re or the word "is".
-const HARD_PART_RE = /^(?:It|[Yy]our child|[A-Z][A-Za-z’'-]*(?:\s[A-Z][A-Za-z’'-]*){0,2}) isn[’']t [^.]+\. (?:(?:He|She|They|It)[’'](?:s|re)|(?:He|She|They|It) is) [^.]+\.$/;
+// Second sentence: EITHER the copula form (He/She/They/It + ’s/’re/is), OR a cause-clause that
+// names the child by object pronoun (him/her/them/themself) — shape (c).
+const HARD_PART_SUBJ = "(?:It|[Yy]our child|[A-Z][A-Za-z’'-]*(?:\\s[A-Z][A-Za-z’'-]*){0,2})";
+const HARD_PART_SECOND_COPULA = "(?:(?:He|She|They|It)['’](?:s|re)|(?:He|She|They|It) is) [^.]+";
+const HARD_PART_SECOND_CAUSE = "[A-Z][^.]*\\b(?:him|her|them|themself)\\b[^.]*";
+const HARD_PART_RE = new RegExp(
+  `^${HARD_PART_SUBJ} isn['’]t [^.]+\\. (?:${HARD_PART_SECOND_COPULA}|${HARD_PART_SECOND_CAUSE})\\.$`,
+);
 const HARD_PART_SENTENCE_MAX_WORDS = 12;
 
 const BANNED: { re: RegExp; label: string }[] = [
@@ -179,6 +188,22 @@ export function validateGenerated(g: ReportV2Generated, opts?: { childName?: str
   if (!isQuotedLine(g.switch.instead)) e.push("switch.instead: must be a quoted line a parent says");
   if (!isQuotedLine(g.switch.try))     e.push("switch.try: must be a quoted line a parent says");
   g.tonight.forEach((t, i) => check(t, CAP.tonight, `tonight[${i}]`, 2));
+
+  // Subject-verb agreement across EVERY AI-written field, using the child's real name. Catches
+  // "When Test settle…" (name is singular → needs -s) and "they focuses" (singular they → base
+  // verb). Runs the SHARED checker so the rule matches the fixed-copy grammar test exactly.
+  if (opts?.childName) {
+    const agree = (text: string, field: string) => {
+      for (const msg of agreementErrors(text, opts.childName!)) e.push(`${field}: agreement (${msg})`);
+    };
+    agree(g.seenIt, "seenIt");
+    agree(g.hardPart, "hardPart");
+    agree(g.switch.instead, "switch.instead");
+    agree(g.switch.try, "switch.try");
+    agree(g.switch.after, "switch.after");
+    g.tonight.forEach((t, i) => agree(t, `tonight[${i}]`));
+  }
+
   return { ok: e.length === 0, errors: e };
 }
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as C from "@/lib/report-v2/v3-copy";
 import { makeFiller } from "@/lib/report-v2/cards-copy";
 import { composeFallback, archetypeDesc } from "@/content/report-v2/fallbacks";
-import { articleFor, type Gender } from "@/lib/report/pronouns";
+import { articleFor, agreementErrors, type Gender } from "@/lib/report/pronouns";
 
 // ────────────────────────────────────────────────────────────────────────────
 // GOAL: the UNSET-gender ("they") render of every v3 fixed string + every
@@ -26,7 +26,7 @@ const BARES = C.BARE_ARCHETYPES as readonly string[];
 function fillCopy(text: string, gender: Gender, bare: string): string {
   const need = C.NEED[bare] ?? "";
   const reason = C.REASON[bare] ?? "";
-  let s = text.replace(/\{NEED\}/g, need).replace(/\{REASON\}/g, reason);
+  let s = text.replace(/\{NEED\}/g, need).replace(/\{REASON\}/g, reason).replace(/\{Count\}/g, "Three");
   const f = makeFiller("Aarav", gender);
   s = f(s);
   s = s.replace(/\{article\}/g, articleFor(bare)).replace(/\{Type\}/g, bare)
@@ -123,6 +123,33 @@ describe("report-v3 grammar — singular they reads with plural verbs (every str
         if (m) leftovers.push(`${path} [${label}] → ${m[0]}: ${text}`);
       }
     expect(leftovers).toEqual([]);
+  });
+
+  // The SHARED agreement checker (lib/report/pronouns.ts agreementErrors) must find nothing in
+  // the fixed copy's unset-gender render — the same function the validator runs over AI fields.
+  it("shared agreementErrors() finds no agreement fault in the unset render", () => {
+    const hits: string[] = [];
+    for (const { path, text } of renderedFor(null)) {
+      const errs = agreementErrors(text, "Aarav");
+      if (errs.length) hits.push(`${path} → ${errs.join("; ")}: ${text}`);
+    }
+    expect(hits).toEqual([]);
+  });
+
+  it("shared agreementErrors() flags the exact AI mistakes it must catch", () => {
+    // (a) "they" + 3rd-singular verb
+    expect(agreementErrors("they focuses best", "Aarav").length).toBeGreaterThan(0);
+    expect(agreementErrors("they is calm", "Aarav").length).toBeGreaterThan(0);
+    expect(agreementErrors("they has a go", "Aarav").length).toBeGreaterThan(0);
+    // (b) child name + base/plural verb (should be 3rd-singular)
+    expect(agreementErrors("When Test settle into one thing", "Test").length).toBeGreaterThan(0);
+    expect(agreementErrors("Test go to the task", "Test").length).toBeGreaterThan(0);
+    // correct forms pass clean
+    expect(agreementErrors("they focus best", "Aarav")).toEqual([]);
+    expect(agreementErrors("they are calm", "Aarav")).toEqual([]);
+    expect(agreementErrors("They're calm", "Aarav")).toEqual([]);
+    expect(agreementErrors("When Test settles into one thing", "Test")).toEqual([]);
+    expect(agreementErrors("Test goes to the task", "Test")).toEqual([]);
   });
 
   it("hero chip uses the right article per type", () => {

@@ -115,6 +115,7 @@ const THEY_VERB: Record<string, string> = {
   comes: "come", turns: "turn", sends: "send", loses: "lose", dives: "dive", thinks: "think",
   likes: "like", resets: "reset", hates: "hate", wants: "want", finds: "find", finishes: "finish",
   catches: "catch", reads: "read", runs: "run", settles: "settle", locks: "lock", explores: "explore",
+  focuses: "focus", builds: "build", gives: "give", leaves: "leave", tries: "try",
   // report-v3 fixed copy (verbs following a they-subject in the new tables / seenIt / hardPart):
   argues: "argue", sulks: "sulk", wanders: "wander", fades: "fade", cracks: "crack",
   discovers: "discover", notices: "notice", sticks: "stick", enjoys: "enjoy", pulls: "pull",
@@ -126,6 +127,49 @@ const THEY_VERB: Record<string, string> = {
 export function pluralizeThey(text: string): string {
   return text.replace(/\b([Tt]hey)(\s+(?:often|really|completely|just|still|always|also|then|soon))?\s+([a-z’]+)\b/g,
     (m, they, adv, verb) => (THEY_VERB[verb] ? `${they}${adv || ""} ${THEY_VERB[verb]}` : m));
+}
+
+// ── Subject-verb agreement checker for AI-written report fields ─────────────────
+// A reusable, exported checker that flags the two agreement mistakes the AI makes in v3:
+//   (a) "they" + a 3rd-person-SINGULAR verb (the next word is a KEY of THEY_VERB, e.g.
+//       "they focuses", "they goes", "they is") — singular "they" must take the base/plural.
+//   (b) the child's NAME + a BASE/plural verb (the next word is a VALUE of THEY_VERB, i.e. a
+//       form that should be 3rd-singular) — the name is ALWAYS grammatically singular, so
+//       "When Test settle…" / "Test go…" are wrong; it must be "settles" / "goes".
+// "they's"/"They're"/"they are" are fine (handled by the THEY_VERB key set, which has no bare
+// "s"-contraction); "they is"/"they has" ARE flagged because is/has are KEYS of THEY_VERB.
+// Reuses THEY_VERB so the verb set matches the fixed copy exactly.
+//
+// Both checks are scoped to the subject + an optional short adverb + the immediately following
+// word, so an unrelated later noun ("they start the game" — "game" isn't a verb) never trips.
+const THEY_VERB_BASES = new Set(Object.values(THEY_VERB));
+const ADVERB = "(?:often|really|completely|just|still|always|also|then|soon)";
+export function agreementErrors(text: string, childName: string): string[] {
+  const errs: string[] = [];
+  // (a) they + 3rd-singular verb → wrong. Match "they [adv] <word>"; flag if <word> is a KEY.
+  const theyRe = new RegExp(`\\bthey\\s+(?:${ADVERB}\\s+)?([A-Za-z’']+)\\b`, "gi");
+  for (const m of text.matchAll(theyRe)) {
+    const verb = m[1].toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(THEY_VERB, verb)) {
+      errs.push(`"they ${m[1]}" should be "they ${THEY_VERB[verb]}" (singular they takes the base verb)`);
+    }
+  }
+  // (b) the child's name + a base/plural verb → wrong (the name is singular, needs -s). BUT skip
+  // causative/imperative frames ("let/make/have/help/watch {Name} pick") where the bare
+  // infinitive is correct English — the name is the OBJECT there, not the subject.
+  const nm = childName.trim();
+  if (nm) {
+    const esc = nm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const nameRe = new RegExp(`\\b${esc}\\s+(?:${ADVERB}\\s+)?([A-Za-z’']+)\\b`, "g");
+    for (const m of text.matchAll(nameRe)) {
+      const verb = m[1].toLowerCase();
+      if (!THEY_VERB_BASES.has(verb)) continue;
+      const before = text.slice(0, m.index).trimEnd();
+      if (/\b(let|lets|make|makes|made|have|has|had|help|helps|watch|watches)$/i.test(before)) continue;
+      errs.push(`"${nm} ${m[1]}" should use the singular verb (the child's name is always singular)`);
+    }
+  }
+  return errs;
 }
 
 export function resolveChildPronoun(gender: Gender, form: PronounForm): string {

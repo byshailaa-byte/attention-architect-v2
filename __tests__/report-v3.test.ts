@@ -19,7 +19,7 @@ function fillAll(text: string, gender: Gender, archetypeBare: string): string {
   // {NEED} / {REASON} are composed from the archetype tables by the card at render time.
   const need = C.NEED[archetypeBare] ?? C.NEED["The " + archetypeBare] ?? "";
   const reason = C.REASON[archetypeBare] ?? C.REASON["The " + archetypeBare] ?? "";
-  let s = text.replace(/\{NEED\}/g, need).replace(/\{REASON\}/g, reason);
+  let s = text.replace(/\{NEED\}/g, need).replace(/\{REASON\}/g, reason).replace(/\{Count\}/g, "Three");
   const f = makeFiller("Aarav", gender);
   s = f(s);
   s = s.replace(/\{article\}/g, articleFor(archetypeBare)) // hero chip article, computed at render

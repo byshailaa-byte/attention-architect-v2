@@ -14,7 +14,7 @@ import {
   CARD1_PROGRESS, CARD_READ_TIME, INTRO_BOX, CARD1_EYEBROW, CARD1_BOX_LABEL, CARD1_BOX_CLOSING,
   CARD1_UNDER_BOX, CARD1_BTN_WHY, CARD1_BTN_SKIP, WORRY_LINE,
   CARD2_EYEBROW, CARD2_BTN, WHY_BOXES, bareArchetype,
-  CARD3_EYEBROW, CARD3_HEADLINE, CARD3_BOX_LABEL, CARD3_BOX_CLOSING, CARD3_NOTE, CARD3_BTN, NEED, PLAIN_ANSWER,
+  CARD3_EYEBROW, CARD3_HEADLINE, CARD3_BOX_LABEL, card3BoxClosing, CARD3_NOTE, CARD3_BTN, NEED, PLAIN_ANSWER,
   CARD4_EYEBROW, CARD4_HEADLINE, CARD4_INSTEAD_LABEL, CARD4_SAY_LABEL, CARD4_HOW_LABEL, CARD4_UNDER, CARD4_BTN,
   CARD5_EYEBROW, CARD5_HEADLINE, CARD5_SUB, CARD5_HOW_LABEL, HOW_IT_WORKS_STEPS, HOW_IT_WORKS_COACH,
   CARD5_GOAL_LABEL, CARD5_GOAL_SMALL, CARD5_BTN_PLAN, CARD5_BTN_CALL, CARD5_PICK_ANOTHER,
@@ -138,12 +138,14 @@ export default function ReportV2CardsV3(props: Props) {
   );
 
   const why = WHY_BOXES[bare];
-  // Card 3: the 3 evidence picks → PLAIN_ANSWER[qid][optionValue], falling back to the stored quote.
+  // Card 3: the evidence picks → PLAIN_ANSWER[qid][optionValue], falling back to the stored
+  // quote. evidence.ts already returns the supporting-and-non-contradicting set (2 or 3 items);
+  // the closing count word ("Three"/"Two") follows that length so copy and evidence agree.
   const youToldUs = c.evidence.slice(0, 3).map((e) => {
     const tmpl = e.qid && e.optionValue ? PLAIN_ANSWER[e.qid]?.[e.optionValue] : undefined;
     return tmpl ? f(tmpl) : e.quote;
   });
-  const needLine = f(CARD3_BOX_CLOSING.replace("{NEED}", NEED[bare] ?? "what fits {him}"));
+  const needLine = f(card3BoxClosing(youToldUs.length).replace("{NEED}", NEED[bare] ?? "what fits {him}"));
 
   return (
     <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
