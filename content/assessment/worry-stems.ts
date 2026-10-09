@@ -22,9 +22,9 @@ const G2_ACTIVITY: Record<Exclude<Worry, "other">, string> = {
   confidence: "doing schoolwork",
 };
 
-// "other" uses the same {Name}/{him} tokens as the rest (not the bank's generic "they").
-const OTHER_G2 = "What's the first thing that pulls {Name} away from something {he}'s supposed to be doing?";
-const OTHER_G1 = "When {Name} gets completely absorbed in something, what does it usually look like?";
+// "other" G2 uses {Name} + the {he}{'s} agreement contraction → he's / she's / they're (NOT the
+// broken "they's", and not the bank's generic "they").
+const OTHER_G2 = "What's the first thing that pulls {Name} away from something {he}{'s} supposed to be doing?";
 
 // G2 stem: "When {Name} is supposed to be <activity>, what pulls {him} away first?"
 export function g2Stem(worry: string): string {
@@ -33,21 +33,9 @@ export function g2Stem(worry: string): string {
   return `When {Name} is supposed to be ${G2_ACTIVITY[w as Exclude<Worry, "other">]}, what pulls {him} away first?`;
 }
 
-// G1 stem — same contrastive style: acknowledge the worry, then ask what GENUINE absorption looks
-// like (the options describe the focus shape). Worry-specific framing per key.
-const G1_STEM: Record<Exclude<Worry, "other">, string> = {
-  homework:   "Homework may be a battle — but when {Name} really gets into something, what does it look like?",
-  reminders:  "{Name} may need reminding — but when something truly grabs {him}, what does that focus look like?",
-  screens:    "Screens aside, when {Name} gets completely absorbed in something, what does it look like?",
-  finish:     "{Name} may leave things unfinished — but when {he}'s genuinely absorbed, what does it look like?",
-  giveup:     "Hard things may stop {him} — but when {Name} is deep in something {he} loves, what does it look like?",
-  confidence: "{Name} may doubt {himself} on schoolwork — but when {he}'s absorbed in something, what does it look like?",
-};
-
-export function g1Stem(worry: string): string {
-  const w = worry as Worry;
-  if (w === "other" || !(w in G1_STEM)) return OTHER_G1;
-  return G1_STEM[w as Exclude<Worry, "other">];
+// G1 keeps its ORIGINAL wording for EVERY worry — only G2 is worry-specific (per review).
+export function g1Stem(_worry: string): string {
+  return G1_ORIGINAL.replace(/\{name\}/g, "{Name}");
 }
 
 export const ALL_WORRIES: Worry[] = ["reminders", "homework", "screens", "giveup", "confidence", "finish", "other"];
