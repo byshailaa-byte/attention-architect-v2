@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
+import { trackServer } from "@/lib/analytics/track.server";
 import { normalizePhone } from "@/lib/phone";
 
 // Step 4 of the v2 flow: save the WhatsApp number against the flow session IMMEDIATELY
@@ -56,10 +57,7 @@ export async function POST(req: NextRequest) {
       ON CONFLICT (phone) DO UPDATE SET last_seen_at = now()
     `;
     // phone_captured fires when the contact step (step 6) is submitted.
-    await sql`
-      INSERT INTO funnel_events (event_type, session_id, metadata)
-      VALUES ('phone_captured', ${sessionId}::uuid, '{}'::jsonb)
-    `;
+    await trackServer("phone_captured", {}, { sessionId });
     // The assessment row already exists by step 6 — propagate the internal flag so an
     // operator's test completion is excluded from the main funnels too.
     if (isInternal) {

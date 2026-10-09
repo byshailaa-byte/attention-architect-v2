@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { track } from "@/lib/analytics/track";
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
 declare global {
   interface Window {
     Razorpay: new (options: Record<string, unknown>) => { open(): void };
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
   }
 }
 
@@ -20,30 +19,6 @@ type Props = {
   phone: string;
   hasPurchase?: boolean;
 };
-
-function fireGtag(event: string, params?: Record<string, unknown>) {
-  if (typeof window !== "undefined" && typeof window.gtag === "function") {
-    window.gtag("event", event, params ?? {});
-  }
-}
-
-function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>, eventId?: string) {
-  if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    if (eventId) {
-      window.fbq(type, event, params ?? {}, { eventID: eventId });
-    } else {
-      window.fbq(type, event, params ?? {});
-    }
-  }
-}
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
 
 export default function StickyCta({ sessionId, childName, parentName, email, phone, hasPurchase }: Props) {
   if (hasPurchase) return null;
@@ -75,14 +50,11 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
     setTimeout(() => { openedRef.current = false; }, 3000);
 
     const value = 2999;
-    const initiateEventId = `${sessionId}:initiate_checkout:tier1`;
-    fireEvent("begin_checkout", sessionId, { tier: "tier1", value, source: "sticky_cta" });
-    fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: "tier1", price: value }] });
-    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: "tier1" }, initiateEventId);
+    track("begin_checkout", { tier: "tier1", value, currency: "INR", content_name: "tier1", source: "sticky_cta" }, sessionId);
     fetch("/api/meta/initiate-checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, tier: "tier1", eventId: initiateEventId }),
+      body: JSON.stringify({ sessionId, tier: "tier1", eventId: `checkout:${sessionId}` }),
     }).catch(() => {});
 
     if (!document.querySelector('script[src*="checkout.razorpay"]')) {
@@ -105,7 +77,7 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
     const { orderId, amount, currency, keyId } = await res.json();
     const tier = "tier1";
     const source = "sticky_cta";
-    fireEvent("checkout_modal_opened", sessionId, { tier, value, source });
+    track("checkout_modal_opened", { tier, value, source }, sessionId);
     new window.Razorpay({
       key: keyId,
       amount,
@@ -117,13 +89,11 @@ export default function StickyCta({ sessionId, childName, parentName, email, pho
       theme: { color: "#F6C63D" },
       modal: {
         ondismiss: () => {
-          fireEvent("checkout_modal_dismissed", sessionId, { tier, value, source });
+          track("checkout_modal_dismissed", { tier, value, source }, sessionId);
         },
       },
       handler: function (response: { razorpay_payment_id: string }) {
-        const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
-        fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR" });
-        fireFbq("track", "Purchase", { value, currency: "INR", content_name: "tier1" }, purchaseEventId);
+        track("purchase", { tier: "tier1", value, currency: "INR", content_name: "tier1", razorpay_payment_id: response.razorpay_payment_id }, sessionId, { db: false });
         window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
       },
     }).open();

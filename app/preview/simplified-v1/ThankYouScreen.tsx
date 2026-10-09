@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { track } from "@/lib/analytics/track";
 
 export const NAVY = "#14284D";
 export const GOLD = "#F5A623";
@@ -43,11 +44,7 @@ export default function ThankYouScreen({
   useEffect(() => {
     if (firedView.current) return;
     firedView.current = true;
-    fetch("/api/funnel/event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_type: "thankyou_screen_view", session_id: sessionId, metadata: { variant: "simplified" } }),
-    }).catch(() => {});
+    track("thankyou_screen_view", { variant: "simplified" }, sessionId);
   }, [sessionId]);
 
   const [correcting, setCorrecting]     = useState(false);

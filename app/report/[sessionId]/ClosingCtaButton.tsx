@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import { track } from "@/lib/analytics/track";
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
 declare global {
   interface Window {
     Razorpay: new (options: Record<string, unknown>) => { open(): void };
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
   }
 }
 
@@ -19,30 +18,6 @@ type Props = {
   email: string;
   phone: string;
 };
-
-function fireGtag(event: string, params?: Record<string, unknown>) {
-  if (typeof window !== "undefined" && typeof window.gtag === "function") {
-    window.gtag("event", event, params ?? {});
-  }
-}
-
-function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>, eventId?: string) {
-  if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    if (eventId) {
-      window.fbq(type, event, params ?? {}, { eventID: eventId });
-    } else {
-      window.fbq(type, event, params ?? {});
-    }
-  }
-}
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
 
 export default function ClosingCtaButton({ sessionId, childName, parentName, email, phone }: Props) {
   useEffect(() => {
@@ -56,14 +31,13 @@ export default function ClosingCtaButton({ sessionId, childName, parentName, ema
 
   async function open() {
     const value = 2999;
-    const initiateEventId = `${sessionId}:initiate_checkout:tier1`;
-    fireEvent("begin_checkout", sessionId, { tier: "tier1", value, source: "closing_cta" });
-    fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: "tier1", price: value }] });
-    fireFbq("track", "InitiateCheckout", { value, currency: "INR", content_name: "tier1" }, initiateEventId);
+    // DB (full) + GA4 begin_checkout + Pixel custom begin_checkout + Pixel InitiateCheckout
+    // (eventID checkout:${sessionId}, shared with the CAPI call below for dedup).
+    track("begin_checkout", { tier: "tier1", value, currency: "INR", content_name: "tier1", source: "closing_cta" }, sessionId);
     fetch("/api/meta/initiate-checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, tier: "tier1", eventId: initiateEventId }),
+      body: JSON.stringify({ sessionId, tier: "tier1", eventId: `checkout:${sessionId}` }),
     }).catch(() => {});
 
     const res = await fetch("/api/checkout/order", {
@@ -83,7 +57,7 @@ export default function ClosingCtaButton({ sessionId, childName, parentName, ema
     }
     const tier = "tier1";
     const source = "closing_cta";
-    fireEvent("checkout_modal_opened", sessionId, { tier, value, source });
+    track("checkout_modal_opened", { tier, value, source }, sessionId);
     new window.Razorpay({
       key: keyId,
       amount,
@@ -95,13 +69,13 @@ export default function ClosingCtaButton({ sessionId, childName, parentName, ema
       theme: { color: "#F6C63D" },
       modal: {
         ondismiss: () => {
-          fireEvent("checkout_modal_dismissed", sessionId, { tier, value, source });
+          track("checkout_modal_dismissed", { tier, value, source }, sessionId);
         },
       },
       handler: function (response: { razorpay_payment_id: string }) {
-        const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
-        fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR", items: [{ item_id: "tier1", price: value }] });
-        fireFbq("track", "Purchase", { value, currency: "INR", content_name: "tier1" }, purchaseEventId);
+        // GA4 purchase + Pixel custom purchase + Pixel Purchase (eventID purchase:${pid}, shared
+        // with the server CAPI Purchase). DB row is written server-side, so db:false.
+        track("purchase", { tier: "tier1", value, currency: "INR", content_name: "tier1", razorpay_payment_id: response.razorpay_payment_id }, sessionId, { db: false });
         window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
       },
     }).open();

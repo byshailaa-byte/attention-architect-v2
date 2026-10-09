@@ -5,16 +5,9 @@
 import { useEffect } from "react";
 import Script from "next/script";
 import { FLOW, HEAD, BODY } from "@/app/components/FlowShell";
-import { fireGtag } from "@/lib/gtag";
+import { track } from "@/lib/analytics/track";
 
 type RazorpayCtor = new (o: Record<string, unknown>) => { open(): void };
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
 
 const CHECK = "✓";
 const TIERS = [
@@ -30,8 +23,8 @@ const TIERS = [
 
 export function PlanView({ sessionId }: { sessionId: string }) {
   useEffect(() => {
-    fireEvent("plan_v2_view", sessionId);
-    fireEvent("day1_preview_view", sessionId);
+    track("plan_v2_view", {}, sessionId);
+    track("day1_preview_view", {}, sessionId);
   }, [sessionId]);
   return null;
 }
@@ -45,8 +38,14 @@ export function PlanPricing({ sessionId, calendlyUrl, childName, parentName = ""
   if (phone) prefill.contact = phone;
 
   async function openCheckout(tier: "tier1" | "tier2", value: number) {
-    fireEvent("plan_cta_click", sessionId, { tier, value });
-    fireEvent("begin_checkout", sessionId, { tier, value, source: "plan_v2" });
+    track("plan_cta_click", { tier, value }, sessionId);
+    // DB + GA4 begin_checkout + Pixel custom + Pixel InitiateCheckout (eventID checkout:${sessionId});
+    // the POST fires the shared-id CAPI InitiateCheckout.
+    track("begin_checkout", { tier, value, currency: "INR", content_name: tier, source: "plan_v2" }, sessionId);
+    fetch("/api/meta/initiate-checkout", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, tier, eventId: `checkout:${sessionId}` }),
+    }).catch(() => {});
     try {
       const res = await fetch("/api/checkout/order", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -61,15 +60,12 @@ export function PlanPricing({ sessionId, calendlyUrl, childName, parentName = ""
         name: "Attention Architect", description: TIERS.find((t) => t.tier === tier)?.title,
         prefill,
         handler: (response: { razorpay_payment_id: string }) => {
-          const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
-          fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR", items: [{ item_id: tier, price: value }] });
-          const fbq = (window as unknown as { fbq?: (...a: unknown[]) => void }).fbq;
-          if (typeof fbq === "function") fbq("track", "Purchase", { value, currency: "INR", content_name: tier }, { eventID: purchaseEventId });
+          track("purchase", { tier, value, currency: "INR", content_name: tier, razorpay_payment_id: response.razorpay_payment_id }, sessionId, { db: false });
           window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
         },
-        modal: { ondismiss: () => fireEvent("checkout_modal_dismissed", sessionId, { tier, value, source: "plan_v2" }) },
+        modal: { ondismiss: () => track("checkout_modal_dismissed", { tier, value, source: "plan_v2" }, sessionId) },
       }).open();
-      fireEvent("checkout_modal_opened", sessionId, { tier, value, source: "plan_v2" });
+      track("checkout_modal_opened", { tier, value, source: "plan_v2" }, sessionId);
     } catch { alert("Could not start checkout. Please try again."); }
   }
 
@@ -115,7 +111,7 @@ export function PlanCallCard({ sessionId, calendlyUrl }: { sessionId: string; ca
     <div style={{ background: "#fff", border: `1.5px solid ${FLOW.line}`, borderRadius: 16, padding: "22px 20px", textAlign: "center", fontFamily: BODY }}>
       <div style={{ fontFamily: HEAD, fontSize: 20, marginBottom: 6, color: FLOW.navy }}>Not sure yet?</div>
       <p style={{ fontSize: 15, color: FLOW.dim, margin: "0 0 16px", lineHeight: 1.5 }}>Talk it through with us first. No pressure.</p>
-      <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" onClick={() => fireEvent("call_click", sessionId, { where: "plan" })}
+      <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" onClick={() => track("call_click", { where: "plan" }, sessionId)}
         style={{ display: "inline-block", minHeight: 48, lineHeight: "48px", padding: "0 22px", borderRadius: 13, border: `1.5px solid ${FLOW.navy}`, color: FLOW.navy, fontWeight: 700, fontSize: 15, textDecoration: "none" }}>
         Book a free 15-min call
       </a>

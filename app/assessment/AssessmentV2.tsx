@@ -12,24 +12,9 @@ import { HALFWAY_FIRST_READ, HALFWAY_FIRST_READ_FALLBACK, fillHalfwayLine } from
 import { FLOW, HEAD, BODY, Wordmark, BackLink, Screen, QuestionProgress, minsLeft } from "@/app/components/FlowShell";
 import ThankYouV2 from "./ThankYouV2";
 import SiteFooter from "@/app/components/SiteFooter";
+import { track, identifyPixel } from "@/lib/analytics/track";
 
 const LETTERS = "ABCDEF";
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
-function fireGtag(event: string, params?: Record<string, unknown>) {
-  if (typeof window !== "undefined" && typeof window.gtag === "function") window.gtag("event", event, params ?? {});
-}
-function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>, eventId?: string) {
-  if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    if (eventId) window.fbq(type, event, params ?? {}, { eventID: eventId });
-    else window.fbq(type, event, params ?? {});
-  }
-}
 
 type Phase = "questions" | "halfway" | "contact" | "thankyou";
 
@@ -88,12 +73,23 @@ export default function AssessmentV2() {
     captureUtmOnce();
     if (!firedStart.current) {
       firedStart.current = true;
-      fireEvent("assessment_started", sessionId, { flow: "v2" });
-      fireGtag("assessment_started", { session_id: sessionId });
-      fireFbq("trackCustom", "AssessmentStarted");
+      // DB + GA4 + Pixel(custom) under one name. (Retired the Pixel-only "AssessmentStarted".)
+      track("assessment_started", { flow: "v2" }, sessionId);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Per-question impression (for the next drop-off analysis). Fire once per (index, question).
+  const lastViewRef = useRef<string>("");
+  useEffect(() => {
+    if (phase !== "questions") return;
+    const q = questions[currentIdx];
+    if (!q) return;
+    const key = `${currentIdx}:${q.id}`;
+    if (lastViewRef.current === key) return;
+    lastViewRef.current = key;
+    track("question_view", { question_id: q.id, index: currentIdx }, sessionId);
+  }, [currentIdx, phase, questions, sessionId]);
 
   async function submitAssessment(finalAnswers: Record<string, string>, fullSeq: Question[]) {
     setSubmitting(true);
@@ -112,10 +108,11 @@ export default function AssessmentV2() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Submit failed");
       setArchetype(data.archetype ?? "");
-      fireGtag("assessment_complete", { archetype: data.archetype });
-      fireFbq("trackCustom", "AssessmentComplete", { archetype: data.archetype });
+      // GA4 + Pixel(custom) only (DB row is written server-side in /api/assessment/submit).
+      // archetype is NOT passed to ad platforms — the allow-list would strip it anyway.
+      track("assessment_complete", {}, sessionId, { db: false });
       setSubmitting(false);
-      fireEvent("details_view", sessionId, { flow: "v2" });
+      track("details_view", { flow: "v2" }, sessionId);
       setPhase("contact");
     } catch (e) { setSubmitting(false); setError((e as Error).message); }
   }
@@ -125,7 +122,7 @@ export default function AssessmentV2() {
     pendingIdxRef.current = nextIdx;
     setHalfwayLine(fillHalfwayLine(HALFWAY_FIRST_READ_FALLBACK, genderParam, kidName));
     setPhase("halfway");
-    fireEvent("halfway_view", sessionId, { flow: "v2" });
+    track("halfway_view", { flow: "v2" }, sessionId);
     try {
       const res = await fetch("/api/flow/partial-archetype", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -138,9 +135,11 @@ export default function AssessmentV2() {
   }
 
   function handleAnswer(questionId: string, value: string) {
+    const changed = answers[questionId] !== undefined && answers[questionId] !== value;
     const nextAnswers = { ...answers, [questionId]: value };
     setAnswers(nextAnswers);
-    fireEvent("q_answered", sessionId, { question_id: questionId, index: currentIdx });
+    track("q_answered", { question_id: questionId, index: currentIdx }, sessionId);
+    if (changed) track("answer_changed", { question_id: questionId }, sessionId);
 
     let seq = questions;
     if (currentIdx === 2) {
@@ -168,7 +167,7 @@ export default function AssessmentV2() {
     if (!isValidIndianMobile(phone)) { setPhoneErr("Enter a valid 10-digit mobile number"); return; }
     if (!contactReady(phone, parentName, email)) return;
     setPhoneErr(null); setError(null); setSubmitting(true);
-    fireEvent("details_submitted", sessionId, { flow: "v2" });
+    track("details_submitted", { flow: "v2" }, sessionId);
     try {
       // Save phone on the session + wa_contacts(first_source='assessment') + phone_captured.
       const pr = await fetch("/api/flow/phone", {
@@ -183,15 +182,12 @@ export default function AssessmentV2() {
         body: JSON.stringify({ sessionId, parentName: parentName.trim(), email: email.trim(), phone, variant: variantParam }),
       });
       if (!cr.ok) { const d = await cr.json().catch(() => ({})); throw new Error((d as { error?: string }).error ?? "Something went wrong"); }
-      fireGtag("generate_lead");
-      // Set external_id (raw session id) as pixel advanced matching so the browser Lead carries
-      // the same external_id the CAPI Lead sends (both hash to SHA-256 of the session id). The
-      // shared eventID below dedups browser + server into one Lead.
-      const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
-      if (pixelId && typeof window !== "undefined" && typeof window.fbq === "function") {
-        window.fbq("init", pixelId, { external_id: sessionId });
-      }
-      fireFbq("track", "Lead", {}, `lead:${sessionId}`);
+      // Set HASHED external_id (SHA-256 of the session id) for Pixel advanced matching, matching
+      // how CAPI hashes it server-side — then fire the lead. GA4 generate_lead + Pixel custom
+      // generate_lead + Pixel standard Lead (eventID lead:${sessionId}, shared with CAPI). The DB
+      // generate_lead row is written server-side in /api/report/claim, so db:false here.
+      await identifyPixel(sessionId);
+      track("generate_lead", {}, sessionId, { db: false });
       setSubmitting(false);
       setPhase("thankyou");
     } catch (e) { setError((e as Error).message); setSubmitting(false); }

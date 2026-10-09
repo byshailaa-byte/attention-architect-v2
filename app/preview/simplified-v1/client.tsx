@@ -13,19 +13,13 @@ import {
 } from "@/lib/report/snapshot-content";
 import { barSegments } from "@/lib/report/snapshot";
 import ReportFooterLinks from "@/app/components/ReportFooterLinks";
+import { track } from "@/lib/analytics/track";
 
 // Fire roadmap_cta_click before navigating. keepalive so the beacon survives the page
 // change; never awaited, never throws. Skipped without a session (the event requires one).
 function fireRoadmapCta(sessionId: string | null, position: "hero" | "mid" | "closing") {
   if (!sessionId) return;
-  try {
-    fetch("/api/funnel/event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_type: "roadmap_cta_click", session_id: sessionId, metadata: { position } }),
-      keepalive: true,
-    }).catch(() => {});
-  } catch { /* ignore */ }
+  track("roadmap_cta_click", { position }, sessionId);
 }
 
 export type SimplifiedReportData = {

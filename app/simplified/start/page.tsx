@@ -4,19 +4,11 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { captureUtmOnce } from "@/lib/utm";
-import { fireGtag } from "@/lib/gtag";
+import { track } from "@/lib/analytics/track";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 import ReportFooterLinks from "@/app/components/ReportFooterLinks";
 import { resolveFlowVariant } from "@/lib/flow/session";
 import StartFlowV2 from "./StartFlowV2";
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
 
 const BG    = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 const NAVY  = "#14284D";
@@ -137,14 +129,14 @@ function StartV1() {
 
   function selectAge(val: string) {
     setAge(val);
-    fireGtag("age_selected", { age_band: val });
-    fireEvent("landing_step_age", getLandSid(), { age_band: val });
+    track("age_selected", { age_band: val }, getLandSid(), { db: false });
+    track("landing_step_age", { age_band: val }, getLandSid());
   }
 
   function selectConcern(key: string) {
     setConcern(key);
-    fireGtag("concern_selected", { concern: key });
-    fireEvent("landing_step_concern", getLandSid(), { concern: key });
+    track("concern_selected", { concern: key }, getLandSid(), { db: false });
+    track("landing_step_concern", { concern: key }, getLandSid());
   }
 
   function openOobPopup(band: "younger" | "older") {
@@ -154,7 +146,7 @@ function StartV1() {
     setOobSubmitting(false);
     setOobResult(null);
     setOobError(null);
-    fireGtag("age_out_of_band", { age_band: band });
+    track("age_out_of_band", { age_band: band }, getLandSid(), { db: false });
   }
 
   // Mirror of the server's acceptance: strip +91 / 91 / spaces, then require
@@ -199,12 +191,12 @@ function StartV1() {
 
   function goToAssessment(followup: string, followupOther?: string) {
     const isSomethingElse = followup === "Something else";
-    fireGtag("follow_up_selected", { concern: concern ?? "", answer: followup });
-    fireEvent("landing_step_followup", getLandSid(), {
+    track("follow_up_selected", { concern: concern ?? "", answer: followup }, getLandSid(), { db: false });
+    track("landing_step_followup", {
       concern: concern ?? "",
       answer: followup,
       ...(isSomethingElse ? { something_else: true } : {}),
-    });
+    }, getLandSid());
     const p = new URLSearchParams();
     p.set("name", childName.trim());
     if (gender) p.set("gender", gender);

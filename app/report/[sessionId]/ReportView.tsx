@@ -155,7 +155,7 @@ export default function ReportView({ assessment: a }: { assessment: AssessmentRo
 
   return (
     <main style={{ background: "var(--ink)", fontFamily: "var(--font-instrument), 'Instrument Sans', sans-serif" }}>
-      <ReportViewTracker archetype={a.archetype} />
+      <ReportViewTracker variant="v1" />
       <ExitIntentPopup sessionId={a.session_id} />
 
       {/* ── §1 RECOGNITION ────────────────────────────────────────────── */}

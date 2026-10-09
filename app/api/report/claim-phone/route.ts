@@ -2,8 +2,8 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { sendWhatsAppReport, sendReportWithRetry, upsertWatiContactAfterSend } from "@/lib/whatsapp";
-import { sendCapiEvents } from "@/lib/meta/capi";
 import { metaMatchFromRequest, isInternalRequest } from "@/lib/meta/match";
+import { trackServer } from "@/lib/analytics/track.server";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
 assertBootGuards();
@@ -53,10 +53,9 @@ export async function POST(req: NextRequest) {
     const internal = isInternalRequest(req) || row.is_internal === true;
     const match = metaMatchFromRequest(req, { fbclid: row.fbclid });
 
-    await sql`
-      INSERT INTO funnel_events (event_type, session_id, metadata)
-      VALUES ('generate_lead', ${sessionId}::uuid, '{"lead_capture_method":"phone_only"}'::jsonb)
-    `.catch((e: unknown) => console.warn("[funnel] generate_lead (phone_only):", (e as Error).message));
+    await trackServer("generate_lead", { lead_capture_method: "phone_only" }, {
+      sessionId, dedup: "lead-session", sendCapi: false,
+    });
 
     const autoGenUrl = new URL("/api/internal/report/auto-generate", req.nextUrl.origin).toString();
     const internalSecret = process.env.INTERNAL_API_SECRET ?? "";
@@ -153,29 +152,15 @@ export async function POST(req: NextRequest) {
         console.warn("[whatsapp] claim-phone:", (e as Error).message);
       }
 
-      // CAPI Lead — phone only, same event_id as control arm for dedup.
-      // Skipped entirely for internal traffic so our test runs never reach Meta.
-      if (!internal) {
-        try {
-          await sendCapiEvents([{
-            event_name: "Lead",
-            event_time: Math.floor(Date.now() / 1000),
-            event_id: `lead:${sessionId}`,
-            event_source_url: `${baseUrl}/report/${sessionId}`,
-            action_source: "website",
-            userData: {
-              phone: normalizedPhone,
-              externalId: sessionId,
-              fbp: match.fbp,
-              fbc: match.fbc,
-              clientIp: match.clientIp,
-              clientUserAgent: match.clientUserAgent,
-            },
-          }]);
-        } catch (e: unknown) {
-          console.warn("[capi] lead (phone_only):", (e as Error).message);
-        }
-      }
+      // CAPI Lead — phone only, same event_id (lead:${sessionId}) as the control arm for dedup.
+      await trackServer("generate_lead", {}, {
+        sessionId, internal, dbInsert: false,
+        eventSourceUrl: `${baseUrl}/report/${sessionId}`,
+        capiUserData: {
+          phone: normalizedPhone, externalId: sessionId,
+          fbp: match.fbp, fbc: match.fbc, clientIp: match.clientIp, clientUserAgent: match.clientUserAgent,
+        },
+      });
     });
 
     return NextResponse.json({ ok: true });

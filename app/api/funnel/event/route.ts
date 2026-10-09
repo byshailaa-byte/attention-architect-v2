@@ -1,56 +1,14 @@
 import { assertBootGuards } from "@/lib/boot-guard";
 import { getSql } from "@/lib/db/client";
+import { CATALOG } from "@/lib/analytics/catalog";
 
 assertBootGuards();
 
-const ALLOWED = new Set([
-  "assessment_started",
-  "assessment_question_complete",
-  "assessment_dimension_complete",
-  "report_gate_view",
-  "generating_page_view",
-  "view_item",
-  "pricing_section_viewed",
-  "begin_checkout",
-  "checkout_modal_opened",
-  "checkout_modal_dismissed",
-  "exit_intent_shown",
-  "landing_step_age",
-  "landing_step_concern",
-  "landing_step_followup",
-  "pricing_variant_assigned",
-  "phone_capture_shown",
-  "teaser_shown",
-  "paywall_shown",
-  "thankyou_screen_view",
-  "founder_call_requested",
-  "roadmap_cta_click",
-  "whatsapp_click",
-  // v2 start-flow (?flow=v2) step events — kept in sync with the phase_44/phase_49 DB CHECK.
-  "landing_view",
-  "start_worry",
-  "start_age",
-  "start_age_view",
-  "start_oob",
-  "start_oob_submit",
-  "start_child",
-  "start_phone",
-  "phone_captured",
-  "q_answered",
-  "halfway_view",
-  "details_view",
-  "details_submitted",
-  // Report/Plan v2 (?report=v2) — kept in sync with the phase_46 DB CHECK.
-  "report_v2_view",
-  "report_section_view",
-  "report_card_view",
-  "report_skip_to_plan",
-  "goal_changed",
-  "plan_v2_view",
-  "plan_cta_click",
-  "call_click",
-  "day1_preview_view",
-]);
+// The accepted event names ARE the analytics catalog keys — one source of truth. Adding an
+// event to lib/analytics/catalog.ts allows it here; removing it (e.g. the retired
+// founder_call_requested / report_section_view / pricing_variant_assigned) rejects it.
+// Must stay a subset of the funnel_events_event_type_check DB CHECK (see migrations/phase_54).
+const ALLOWED = new Set(Object.keys(CATALOG));
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

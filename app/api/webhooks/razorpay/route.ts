@@ -4,7 +4,7 @@ import { verifyWebhookSignature } from "@/lib/razorpay/client";
 import { capturePayment, setWatiPurchasedAttributes } from "@/lib/razorpay/capture";
 import { sendPurchaseReceipt } from "@/lib/auth/email";
 import { assertBootGuards } from "@/lib/boot-guard";
-import { sendCapiEvents } from "@/lib/meta/capi";
+import { trackServer } from "@/lib/analytics/track.server";
 
 assertBootGuards();
 
@@ -112,34 +112,21 @@ export async function POST(req: NextRequest) {
 
           // Internal traffic: never reaches Meta. The webhook is server-to-server (no cookie),
           // so we gate on the is_internal flag stamped at phone capture.
-          if (row.is_internal === true) {
-            console.log(`[capi] skipping Purchase for internal session ${row.session_id}`);
-          } else {
-          await sendCapiEvents([{
-            event_name: "Purchase",
-            event_time: Math.floor(Date.now() / 1000),
-            event_id: `purchase:${razorpayPaymentId}`,
-            event_source_url: `${baseUrl}/report/${row.session_id}`,
-            action_source: "website",
-            userData: { email: row.email, phone: row.phone, externalId: row.session_id },
-            custom_data: {
-              value: row.amount_paise / 100,
-              currency: "INR",
-              content_name: row.tier,
-              content_ids: [row.tier],
-              content_type: "product",
-              num_items: 1,
-            },
-          }]);
-          }
-          await sql`
-            INSERT INTO funnel_events (event_type, session_id, metadata)
-            VALUES ('purchase', ${row.session_id}::uuid, ${JSON.stringify({
-              tier: row.tier,
-              value: row.amount_paise / 100,
-              razorpay_payment_id: razorpayPaymentId,
-            })}::jsonb)
-          `.catch((e: unknown) => console.warn("[funnel] purchase event:", (e as Error).message));
+          // purchase DB row (deduped per razorpay payment id) + CAPI Purchase (shared event_id).
+          // No fbp/fbc/ip/ua — a server-to-server webhook has no browser cookies.
+          await trackServer("purchase", {
+            tier: row.tier,
+            value: row.amount_paise / 100,
+            currency: "INR",
+            content_name: row.tier,
+            razorpay_payment_id: razorpayPaymentId,
+          }, {
+            sessionId: row.session_id,
+            internal: row.is_internal === true,
+            dedup: "purchase-pid",
+            eventSourceUrl: `${baseUrl}/report/${row.session_id}`,
+            capiUserData: { email: row.email, phone: row.phone, externalId: row.session_id },
+          });
         } catch (e: unknown) {
           console.warn("[capi] purchase:", (e as Error).message);
         }

@@ -10,6 +10,7 @@
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { track } from "@/lib/analytics/track";
 
 // Kept verbatim from the source.
 const PHONE = "919993374923";
@@ -150,14 +151,7 @@ export function WhatsAppWidget() {
               onClick={() => {
                 // funnel_events.session_id is NOT NULL — skip the event when no session resolves.
                 if (!session) return;
-                try {
-                  fetch("/api/funnel/event", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ event_type: "whatsapp_click", session_id: session, metadata: { path: pathname } }),
-                    keepalive: true,
-                  }).catch(() => {});
-                } catch { /* ignore */ }
+                track("whatsapp_click", { path: pathname }, session);
               }}
             >
               Chat on WhatsApp

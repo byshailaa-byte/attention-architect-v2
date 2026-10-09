@@ -1,13 +1,13 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
-import { sendCapiEvents } from "@/lib/meta/capi";
+import { trackServer } from "@/lib/analytics/track.server";
 import { metaMatchFromRequest, isInternalRequest } from "@/lib/meta/match";
 import { assertBootGuards } from "@/lib/boot-guard";
 
 assertBootGuards();
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TIER_VALUE: Record<string, number> = { module1: 499, full: 999, topup: 500 };
+const TIER_VALUE: Record<string, number> = { tier1: 2999, tier2: 4999, module1: 499, full: 999, topup: 500 };
 
 export async function POST(req: NextRequest) {
   let sessionId: string, tier: string, eventId: string;
@@ -41,14 +41,20 @@ export async function POST(req: NextRequest) {
       ` as unknown as { email: string | null; phone: string | null; is_internal: boolean | null; fbclid: string | null }[];
 
       const row = rows[0];
-      if (row?.is_internal === true) return; // marked internal after the cookie check
-      await sendCapiEvents([{
-        event_name: "InitiateCheckout",
-        event_time: Math.floor(Date.now() / 1000),
-        event_id: eventId,
-        event_source_url: `${baseUrl}/report/${sessionId}`,
-        action_source: "website",
-        userData: {
+      // CAPI InitiateCheckout only (the client already wrote the DB row + fired the Pixel event).
+      // event_id matches the client Pixel (checkout:${sessionId}) for dedup.
+      await trackServer("begin_checkout", {
+        tier,
+        value: TIER_VALUE[tier] ?? 999,
+        currency: "INR",
+        content_name: tier,
+      }, {
+        sessionId,
+        internal: row?.is_internal === true,
+        dbInsert: false,
+        eventId,
+        eventSourceUrl: `${baseUrl}/report/${sessionId}`,
+        capiUserData: {
           email: row?.email,
           phone: row?.phone,
           externalId: sessionId,
@@ -57,12 +63,7 @@ export async function POST(req: NextRequest) {
           clientIp: match.clientIp,
           clientUserAgent: match.clientUserAgent,
         },
-        custom_data: {
-          value: TIER_VALUE[tier] ?? 999,
-          currency: "INR",
-          content_name: tier,
-        },
-      }]);
+      });
     } catch (e: unknown) {
       console.warn("[capi/initiate-checkout]", (e as Error).message);
     }

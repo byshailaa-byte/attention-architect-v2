@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
-  }
-}
+import { track } from "@/lib/analytics/track";
 
 export default function ExitIntentPopup({ sessionId }: { sessionId: string }) {
   const [visible, setVisible] = useState(false);
@@ -18,18 +12,7 @@ export default function ExitIntentPopup({ sessionId }: { sessionId: string }) {
     fired.current = true;
     setVisible(true);
 
-    fetch("/api/funnel/event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_type: "exit_intent_shown", session_id: sessionId, metadata: {} }),
-    }).catch(() => {});
-
-    if (typeof window.gtag === "function") {
-      window.gtag("event", "exit_intent_shown");
-    }
-    if (typeof window.fbq === "function") {
-      window.fbq("trackCustom", "ExitIntentShown");
-    }
+    track("exit_intent_shown", {}, sessionId);
   }
 
   useEffect(() => {

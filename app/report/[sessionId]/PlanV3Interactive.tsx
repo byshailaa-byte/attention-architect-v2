@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import Script from "next/script";
 import { HEAD, BODY } from "@/app/components/FlowShell";
-import { fireGtag } from "@/lib/gtag";
+import { track } from "@/lib/analytics/track";
 import { SHOW_COMPARE_AT } from "@/lib/report-v2/flags";
 import {
   PLAN_STICKY_LABEL, PLAN_STICKY_BTN,
@@ -26,13 +26,6 @@ const GREEN = "#2F9E6E";
 
 type RazorpayCtor = new (o: Record<string, unknown>) => { open(): void };
 
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
-
 // Minimal {Name}-only filler (pronouns are already resolved server-side in the strings passed
 // as props; the price copy only carries {Name}). Kept tiny on purpose.
 function fillName(tmpl: string, name: string) {
@@ -41,8 +34,8 @@ function fillName(tmpl: string, name: string) {
 
 export function PlanV3View({ sessionId }: { sessionId: string }) {
   useEffect(() => {
-    fireEvent("plan_v2_view", sessionId, { layout: "v3" });
-    fireEvent("day1_preview_view", sessionId, { layout: "v3" });
+    track("plan_v2_view", { layout: "v3" }, sessionId);
+    track("day1_preview_view", { layout: "v3" }, sessionId);
   }, [sessionId]);
   return null;
 }
@@ -114,8 +107,12 @@ export function PlanV3Pricing({ sessionId, childName, parentName = "", email = "
   const titleFor = (tier: "tier1" | "tier2") => tier === "tier2" ? fillName(PRICE_TIER2.title, childName) : PRICE_TIER1.title;
 
   async function openCheckout(tier: "tier1" | "tier2", value: number) {
-    fireEvent("plan_cta_click", sessionId, { tier, value });
-    fireEvent("begin_checkout", sessionId, { tier, value, source: "plan_v2" });
+    track("plan_cta_click", { tier, value }, sessionId);
+    track("begin_checkout", { tier, value, currency: "INR", content_name: tier, source: "plan_v2" }, sessionId);
+    fetch("/api/meta/initiate-checkout", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, tier, eventId: `checkout:${sessionId}` }),
+    }).catch(() => {});
     try {
       const res = await fetch("/api/checkout/order", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -130,15 +127,12 @@ export function PlanV3Pricing({ sessionId, childName, parentName = "", email = "
         name: "Attention Architect", description: titleFor(tier),
         prefill,
         handler: (response: { razorpay_payment_id: string }) => {
-          const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
-          fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR", items: [{ item_id: tier, price: value }] });
-          const fbq = (window as unknown as { fbq?: (...a: unknown[]) => void }).fbq;
-          if (typeof fbq === "function") fbq("track", "Purchase", { value, currency: "INR", content_name: tier }, { eventID: purchaseEventId });
+          track("purchase", { tier, value, currency: "INR", content_name: tier, razorpay_payment_id: response.razorpay_payment_id }, sessionId, { db: false });
           window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
         },
-        modal: { ondismiss: () => fireEvent("checkout_modal_dismissed", sessionId, { tier, value, source: "plan_v2" }) },
+        modal: { ondismiss: () => track("checkout_modal_dismissed", { tier, value, source: "plan_v2" }, sessionId) },
       }).open();
-      fireEvent("checkout_modal_opened", sessionId, { tier, value, source: "plan_v2" });
+      track("checkout_modal_opened", { tier, value, source: "plan_v2" }, sessionId);
     } catch { alert("Could not start checkout. Please try again."); }
   }
 
@@ -206,7 +200,7 @@ export function PlanV3Close({ sessionId, calendlyUrl, childName, headline, btnPl
     <div style={{ fontFamily: BODY, textAlign: "center" }}>
       <h2 style={{ fontFamily: HEAD, fontSize: 26, lineHeight: 1.2, fontWeight: 500, color: C.navy, margin: "0 0 20px" }}>{headline}</h2>
       <button onClick={scrollToPrice} style={{ width: "100%", maxWidth: 360, minHeight: 50, borderRadius: 13, border: "none", cursor: "pointer", fontFamily: BODY, fontWeight: 700, fontSize: 16, background: C.gold, color: "#1a1a1a", margin: "0 auto 12px", display: "block" }}>{fillName(btnPlan, childName)}</button>
-      <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" onClick={() => fireEvent("call_click", sessionId, { where: "plan" })}
+      <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" onClick={() => track("call_click", { where: "plan" }, sessionId)}
         style={{ display: "inline-block", fontSize: 15, fontWeight: 700, color: C.navy, textDecoration: "underline" }}>
         {btnCall}
       </a>

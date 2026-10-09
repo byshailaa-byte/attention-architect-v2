@@ -4,6 +4,7 @@ import { blockIfAdminView } from "@/lib/lms/admin-view-guard";
 import { storeReflection, getActiveAssessmentId } from "@/lib/lms/progress";
 import { checkUnlocked } from "@/lib/lms/unlock-gate";
 import { getSql } from "@/lib/db/client";
+import { trackServer } from "@/lib/analytics/track.server";
 import type { ReflectionOutcome } from "@/content/types";
 import { assertBootGuards } from "@/lib/boot-guard";
 
@@ -50,10 +51,7 @@ export async function POST(req: NextRequest) {
       `.then((rows) => {
         const row = (rows as unknown as { session_id: string }[])[0];
         if (!row?.session_id) return;
-        return sql`
-          INSERT INTO funnel_events (event_type, session_id, metadata)
-          VALUES ('lms_reflection_submitted', ${row.session_id}::uuid, ${JSON.stringify({ week, day, outcome })}::jsonb)
-        `;
+        return trackServer("lms_reflection_submitted", { week, day, outcome }, { sessionId: row.session_id });
       }).catch((e: unknown) => console.warn("[funnel] lms_reflection_submitted:", (e as Error).message));
     }
 

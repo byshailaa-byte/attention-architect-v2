@@ -2,12 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { PlanPricing } from "./PlanInteractive";
+import { track } from "@/lib/analytics/track";
 
 declare global {
   interface Window {
     Razorpay: new (options: Record<string, unknown>) => { open(): void };
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
   }
 }
 
@@ -19,30 +18,6 @@ type Props = {
   email: string;
   phone: string;
 };
-
-function fireGtag(event: string, params?: Record<string, unknown>) {
-  if (typeof window !== "undefined" && typeof window.gtag === "function") {
-    window.gtag("event", event, params ?? {});
-  }
-}
-
-function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>, eventId?: string) {
-  if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    if (eventId) {
-      window.fbq(type, event, params ?? {}, { eventID: eventId });
-    } else {
-      window.fbq(type, event, params ?? {});
-    }
-  }
-}
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
 
 export default function PriceCards({ sessionId, childName, parentName, email, phone }: Props) {
   const firedViewItem = useRef(false);
@@ -60,14 +35,9 @@ export default function PriceCards({ sessionId, childName, parentName, email, ph
   useEffect(() => {
     if (firedViewItem.current) return;
     firedViewItem.current = true;
-    fireEvent("view_item", sessionId, { tiers: ["tier1", "tier2"] });
-    fireGtag("view_item", {
-      items: [
-        { item_id: "tier1", item_name: "Week 1 Guide", price: 2999, currency: "INR" },
-        { item_id: "tier2", item_name: "Full 6-Week Journey", price: 4999, currency: "INR" },
-      ],
-    });
-    fireFbq("track", "ViewContent", { content_ids: ["tier1", "tier2"], content_type: "product", currency: "INR" });
+    // DB keeps the full {tiers}; GA4 + Pixel(custom view_item) + Pixel ViewContent get only the
+    // allow-listed params (currency). content_ids/items are dropped by default-deny.
+    track("view_item", { tiers: ["tier1", "tier2"], currency: "INR" }, sessionId);
   }, [sessionId]);
 
   // Fires once when the pricing card is ≥50% visible in the viewport — distinct from
@@ -77,7 +47,7 @@ export default function PriceCards({ sessionId, childName, parentName, email, ph
     const obs = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting && !firedPricingView.current) {
         firedPricingView.current = true;
-        fireEvent("pricing_section_viewed", sessionId);
+        track("pricing_section_viewed", {}, sessionId);
         obs.disconnect();
       }
     }, { threshold: 0.5 });

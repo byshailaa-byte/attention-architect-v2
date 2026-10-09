@@ -4,27 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import { TESTIMONIAL_POOL } from "@/lib/content/report-content";
 import { SHASHANK } from "@/lib/founders-data";
 import { SHOW_COMPARE_AT } from "@/lib/report-v2/flags";
+import { track } from "@/lib/analytics/track";
 
 declare global {
   interface Window {
     Razorpay: new (options: Record<string, unknown>) => { open(): void };
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
   }
-}
-
-function fireGtag(event: string, params?: Record<string, unknown>) {
-  if (typeof window !== "undefined" && typeof window.gtag === "function") {
-    window.gtag("event", event, params ?? {});
-  }
-}
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
 }
 
 const NAVY   = "#14284D";
@@ -144,7 +129,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
     const obs = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting && !firedViewItem.current) {
         firedViewItem.current = true;
-        fireEvent("view_item", sessionId, { tiers: ["tier1", "tier2"] });
+        track("view_item", { tiers: ["tier1", "tier2"], currency: "INR" }, sessionId);
         obs.disconnect();
       }
     }, { threshold: 0.4 });
@@ -157,8 +142,11 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
     const label = tier === "tier1" ? "Roadmap" : `Roadmap + three sessions with ${SHASHANK.name}`;
     const value = tier === "tier1" ? 2999 : 4999;
     setCheckoutLoading(true);
-    fireEvent("begin_checkout", sessionId, { tier, value, source: "roadmap" });
-    fireGtag("begin_checkout", { value, currency: "INR", items: [{ item_id: tier, price: value }] });
+    track("begin_checkout", { tier, value, currency: "INR", content_name: tier, source: "roadmap" }, sessionId);
+    fetch("/api/meta/initiate-checkout", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId, tier, eventId: `checkout:${sessionId}` }),
+    }).catch(() => {});
     try {
       const res = await fetch("/api/checkout/order", {
         method: "POST",
@@ -175,7 +163,7 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
         alert("Payment system still loading. Please try again in a moment.");
         return;
       }
-      fireEvent("checkout_modal_opened", sessionId, { tier, value, source: "roadmap" });
+      track("checkout_modal_opened", { tier, value, source: "roadmap" }, sessionId);
       new window.Razorpay({
         key: keyId,
         amount,
@@ -187,13 +175,11 @@ export default function RoadmapView({ childName: c, archetype, parentPattern = "
         theme: { color: "#F5A623" },
         modal: {
           ondismiss: () => {
-            fireEvent("checkout_modal_dismissed", sessionId, { tier, value, source: "roadmap" });
+            track("checkout_modal_dismissed", { tier, value, source: "roadmap" }, sessionId);
           },
         },
         handler: function (response: { razorpay_payment_id: string }) {
-          const purchaseEventId = `purchase:${response.razorpay_payment_id}`;
-          fireGtag("purchase", { transaction_id: response.razorpay_payment_id, value, currency: "INR", items: [{ item_id: tier, price: value }] });
-          if (typeof window.fbq === "function") window.fbq("track", "Purchase", { value, currency: "INR", content_name: tier }, { eventID: purchaseEventId });
+          track("purchase", { tier, value, currency: "INR", content_name: tier, razorpay_payment_id: response.razorpay_payment_id }, sessionId, { db: false });
           window.location.href = `/checkout/success?session=${encodeURIComponent(sessionId)}`;
         },
       }).open();

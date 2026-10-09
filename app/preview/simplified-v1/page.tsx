@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { getSql } from "@/lib/db/client";
+import { trackServer } from "@/lib/analytics/track.server";
 import {
   PATTERN_LINE, MEANING, FRICTION_POINTS, TONIGHT_SAY, TONIGHT_WATCH,
   INSTINCT_LINE, NOW_LINES, THEN_LINES, TESTIMONIAL_POOL,
@@ -185,10 +186,8 @@ export async function SimplifiedReportBody({
   // so the analytics write never adds a round-trip to TTFB. Reaches here only when:
   // session valid, parent_name set, published report exists.
   after(async () => {
-    await sql`
-      INSERT INTO funnel_events (event_type, session_id, metadata)
-      VALUES ('simplified_report_view', ${session}::uuid, '{"variant":"simplified"}'::jsonb)
-    `.catch((e: unknown) => console.warn("[funnel] simplified_report_view:", (e as Error).message));
+    // Unified report_view with variant (old simplified_report_view name stays in history).
+    await trackServer("report_view", { variant: "simplified" }, { sessionId: session });
   });
 
   const data: SimplifiedReportData = {

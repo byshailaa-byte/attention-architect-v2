@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import ThankYouScreen, { NAVY, GOLD, TEAL, BG_F, normalizePhone, isValidPhone, isValidEmail } from "./ThankYouScreen";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
-  }
-}
+import { track, identifyPixel } from "@/lib/analytics/track";
 
 export default function SimplifiedGate({
   sessionId,
@@ -56,11 +50,8 @@ export default function SimplifiedGate({
         const d = await res.json().catch(() => ({}));
         throw new Error((d as { error?: string }).error ?? "Something went wrong");
       }
-      if (typeof window !== "undefined") {
-        if (typeof window.gtag === "function") window.gtag("event", "generate_lead");
-        if (typeof window.fbq === "function")
-          window.fbq("track", "Lead", {}, { eventID: `lead:${sessionId}` });
-      }
+      await identifyPixel(sessionId);
+      track("generate_lead", { variant: "simplified" }, sessionId, { db: false });
       setSubmittedPhone(normalized);
       setSubmitted(true);
     } catch (err) {

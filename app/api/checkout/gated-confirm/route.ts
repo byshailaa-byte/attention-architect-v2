@@ -3,7 +3,7 @@ import { getSql } from "@/lib/db/client";
 import { verifyPaymentSignature } from "@/lib/razorpay/client";
 import { capturePayment, setWatiPurchasedAttributes } from "@/lib/razorpay/capture";
 import { assertBootGuards } from "@/lib/boot-guard";
-import { sendCapiEvents } from "@/lib/meta/capi";
+import { trackServer } from "@/lib/analytics/track.server";
 import { metaMatchFromRequest, isInternalRequest } from "@/lib/meta/match";
 import { sendPurchaseReceipt } from "@/lib/auth/email";
 
@@ -83,15 +83,22 @@ export async function POST(req: NextRequest) {
           // Purchase confirmed → stop the WATI drip for this buyer (purchased=yes + tier).
           await setWatiPurchasedAttributes(row.phone, row.tier);
 
-          // Internal traffic: never reaches Meta.
-          if (!internalReq && row.is_internal !== true) {
-          await sendCapiEvents([{
-            event_name: "Purchase",
-            event_time: Math.floor(Date.now() / 1000),
-            event_id: `purchase:${razorpayPaymentId}`,
-            event_source_url: `${baseUrl}/report/${row.session_id}`,
-            action_source: "website",
-            userData: {
+          // purchase DB row (deduped per razorpay payment id) + CAPI Purchase (event_id
+          // purchase:${razorpayPaymentId}, shared with the client Pixel). Internal traffic
+          // writes the DB row but never reaches Meta.
+          await trackServer("purchase", {
+            tier: row.tier,
+            value: row.amount_paise / 100,
+            currency: "INR",
+            content_name: row.tier,
+            razorpay_payment_id: razorpayPaymentId,
+            variant: "gated",
+          }, {
+            sessionId: row.session_id,
+            internal: internalReq || row.is_internal === true,
+            dedup: "purchase-pid",
+            eventSourceUrl: `${baseUrl}/report/${row.session_id}`,
+            capiUserData: {
               email: row.email,
               phone: row.phone,
               externalId: row.session_id,
@@ -100,28 +107,7 @@ export async function POST(req: NextRequest) {
               clientIp: match.clientIp,
               clientUserAgent: match.clientUserAgent,
             },
-            custom_data: {
-              value: row.amount_paise / 100,
-              currency: "INR",
-              content_name: row.tier,
-              content_ids: [row.tier],
-              content_type: "product",
-              num_items: 1,
-            },
-          }]);
-          }
-
-          await sql`
-            INSERT INTO funnel_events (event_type, session_id, metadata)
-            VALUES ('purchase', ${row.session_id}::uuid, ${JSON.stringify({
-              tier: row.tier,
-              value: row.amount_paise / 100,
-              razorpay_payment_id: razorpayPaymentId,
-              variant: "gated",
-            })}::jsonb)
-          `.catch((e: unknown) =>
-            console.warn("[funnel] purchase event (gated):", (e as Error).message),
-          );
+          });
 
           // Send receipt email with set-password link if we have an email address.
           // gated-confirm wins the capturePayment race so the webhook gets "duplicate"

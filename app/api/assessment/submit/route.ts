@@ -1,5 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
+import { trackServer } from "@/lib/analytics/track.server";
 import { tallyDimension, scoreAssessment, Dimensions } from "@/lib/engine/scorer";
 import { VALID_ANSWER_VALUES } from "@/lib/engine/questions";
 import { buildHdg } from "@/lib/graph/hdg";
@@ -180,11 +181,9 @@ export async function POST(req: NextRequest) {
       )
     `;
 
-    // Awaited — fire-and-forget caused 22% event loss and multi-minute delays
-    await sql`
-      INSERT INTO funnel_events (event_type, session_id, metadata)
-      VALUES ('assessment_complete', ${sessionId}::uuid, ${JSON.stringify({ archetype: scoring.archetype })}::jsonb)
-    `.catch((e: unknown) => console.warn("[funnel] assessment_complete:", (e as Error).message));
+    // Awaited — fire-and-forget caused 22% event loss and multi-minute delays. (archetype stays
+    // in the DB metadata only; it is never forwarded to an ad platform.)
+    await trackServer("assessment_complete", { archetype: scoring.archetype }, { sessionId });
 
     // v2 flow: inherit the unified session's internal flag so internal/operator testers are
     // excluded from the main revenue/completion funnels too, not just the Start-flow table.

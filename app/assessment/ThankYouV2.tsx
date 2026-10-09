@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { normalizePhone, maskPhone } from "@/lib/phone";
 import { getFlowSid } from "@/lib/flow/session";
 import { FLOW, HEAD, BODY, Wordmark, ModuleIcon } from "@/app/components/FlowShell";
+import { track } from "@/lib/analytics/track";
 
 type Preview = {
   ok: boolean;
@@ -37,11 +38,7 @@ export default function ThankYouV2({
     if (firedView.current) return;
     firedView.current = true;
     const sessionId = getFlowSid();
-    fetch("/api/funnel/event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_type: "thankyou_screen_view", session_id: sessionId, metadata: { variant: "v2" } }),
-    }).catch(() => {});
+    track("thankyou_screen_view", { variant: "v2" }, sessionId);
   }, []);
 
   useEffect(() => {

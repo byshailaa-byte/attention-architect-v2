@@ -2,13 +2,7 @@
 
 import { useState } from "react";
 import { useReadOnly, READ_ONLY_TOOLTIP } from "@/components/lms/ReadOnlyContext";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
-  }
-}
+import { track } from "@/lib/analytics/track";
 
 export default function WeekendCompleteButton({
   week,
@@ -38,12 +32,7 @@ export default function WeekendCompleteButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ week, day: 0 }),
       });
-      if (typeof window.gtag === "function") {
-        window.gtag("event", "lms_day_complete", { week, day: 0 });
-      }
-      if (typeof window.fbq === "function") {
-        window.fbq("trackCustom", "LmsDayComplete", { week, day: 0 });
-      }
+      track("lms_day_complete", { week, day: 0 }, null, { db: false });
       setDone(true);
       onCompleted?.();
     } finally {

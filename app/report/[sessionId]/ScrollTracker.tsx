@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
-  }
-}
+import { track } from "@/lib/analytics/track";
 
 export default function ScrollTracker({ sessionId }: { sessionId: string }) {
   const fired = useRef(new Set<number>());
@@ -26,12 +20,7 @@ export default function ScrollTracker({ sessionId }: { sessionId: string }) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ session_id: sessionId, page: "report", depth }),
           }).catch(() => {});
-          if (typeof window.gtag === "function") {
-            window.gtag("event", "scroll_milestone", { page: "report", depth });
-          }
-          if (typeof window.fbq === "function") {
-            window.fbq("trackCustom", "ScrollMilestone", { page: "report", depth });
-          }
+          track("scroll_milestone", { page: "report", depth }, sessionId, { db: false });
         }
       }
     }

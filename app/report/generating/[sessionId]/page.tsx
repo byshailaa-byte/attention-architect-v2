@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ENTITY } from "@/lib/entity";
+import { track } from "@/lib/analytics/track";
 
 const COLORS = {
   default: {
@@ -112,11 +113,7 @@ function GeneratingScreen() {
 
   useEffect(() => {
     if (!sessionId) return;
-    fetch("/api/funnel/event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_type: "generating_page_view", session_id: sessionId, metadata: {} }),
-    }).catch(() => {});
+    track("generating_page_view", {}, sessionId);
   }, [sessionId]);
 
   // Rotate messages every 18s with a brief fade

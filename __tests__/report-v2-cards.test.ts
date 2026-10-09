@@ -51,7 +51,9 @@ describe("POST /api/report/goal-v2 — goal sheet saves to report_v2_goal", () =
     const res = await POST(req({ sessionId: SID, goal: "Mia starts on her own, the first time.", goalKey: "reminders" }));
     expect(res.status).toBe(200);
     expect(calls.some((c) => /UPDATE assessments SET report_v2_goal/.test(c.text))).toBe(true);
-    expect(calls.some((c) => /funnel_events/.test(c.text) && /goal_changed/.test(c.text))).toBe(true);
+    // goal_changed now flows through trackServer, which binds the event name as a parameter
+    // (not inline SQL text), so assert on the captured values.
+    expect(calls.some((c) => /funnel_events/.test(c.text) && c.values.includes("goal_changed"))).toBe(true);
   });
 
   it("rejects an invalid sessionId", async () => {

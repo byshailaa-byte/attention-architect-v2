@@ -17,6 +17,7 @@ import { skillForArchetype, weekForSkill } from "@/lib/report/skills";
 import { goalsBySkill, bridgeConcernFor } from "@/content/goals";
 import { CHILD_NAME_FALLBACK } from "@/lib/report/pronouns";
 import type { Gender } from "@/lib/report/pronouns";
+import { track } from "@/lib/analytics/track";
 
 // ── palette (goal-picker-v2.html) ──────────────────────────────────────────────
 const NAVY = "#14284D";
@@ -253,14 +254,7 @@ export function GoalSectionSimplified({
                 onClick={() => {
                   // Fire roadmap_cta_click before navigating. keepalive so the beacon
                   // survives the page change; never awaited, never throws.
-                  try {
-                    fetch("/api/funnel/event", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ event_type: "roadmap_cta_click", session_id: sessionId, metadata: { position: "goal" } }),
-                      keepalive: true,
-                    }).catch(() => {});
-                  } catch { /* ignore */ }
+                  track("roadmap_cta_click", { position: "goal" }, sessionId);
                   router.push(`/roadmap?session=${sessionId}`);
                 }}
                 style={{ display: "block", width: "100%", background: `linear-gradient(135deg,${GOLD_LT},${GOLD})`, color: NAVY, borderRadius: 12, padding: 15, font: `800 15.5px/1 ${BF}`, marginTop: 16, border: "none", cursor: "pointer", textAlign: "center", boxShadow: "0 6px 18px rgba(245,166,35,.32)" }}

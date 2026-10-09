@@ -4,6 +4,7 @@ import { blockIfAdminView } from "@/lib/lms/admin-view-guard";
 import { markDayComplete, getActiveAssessmentId } from "@/lib/lms/progress";
 import { checkUnlocked } from "@/lib/lms/unlock-gate";
 import { getSql } from "@/lib/db/client";
+import { trackServer } from "@/lib/analytics/track.server";
 import { assertBootGuards } from "@/lib/boot-guard";
 
 assertBootGuards();
@@ -39,10 +40,7 @@ export async function POST(req: NextRequest) {
       `.then((rows) => {
         const row = (rows as unknown as { session_id: string }[])[0];
         if (!row?.session_id) return;
-        return sql`
-          INSERT INTO funnel_events (event_type, session_id, metadata)
-          VALUES ('lms_day_complete', ${row.session_id}::uuid, ${JSON.stringify({ week, day })}::jsonb)
-        `;
+        return trackServer("lms_day_complete", { week, day }, { sessionId: row.session_id });
       }).catch((e: unknown) => console.warn("[funnel] lms_day_complete:", (e as Error).message));
     }
 

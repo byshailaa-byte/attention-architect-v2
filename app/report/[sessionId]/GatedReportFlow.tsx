@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { PlanPricing } from "./PlanInteractive";
+import { track, identifyPixel } from "@/lib/analytics/track";
 
 declare global {
   interface Window {
     Razorpay: new (options: Record<string, unknown>) => { open(): void };
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
   }
 }
 
@@ -20,35 +19,6 @@ type Props = {
   teaserText: string | null;
   childName: string;
 };
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
-
-function fireGtag(event: string, params?: Record<string, unknown>) {
-  if (typeof window !== "undefined" && typeof window.gtag === "function") {
-    window.gtag("event", event, params ?? {});
-  }
-}
-
-function fireFbq(
-  type: "track" | "trackCustom",
-  event: string,
-  params?: Record<string, unknown>,
-  eventId?: string,
-) {
-  if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    if (eventId) {
-      window.fbq(type, event, params ?? {}, { eventID: eventId });
-    } else {
-      window.fbq(type, event, params ?? {});
-    }
-  }
-}
 
 function normalizePhone(raw: string): string {
   let s = raw.replace(/[\s\-.()+]/g, "");
@@ -80,7 +50,7 @@ function PhoneScreen({
   useEffect(() => {
     if (fired.current) return;
     fired.current = true;
-    fireEvent("phone_capture_shown", sessionId);
+    track("phone_capture_shown", {}, sessionId);
   }, [sessionId]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -102,8 +72,8 @@ function PhoneScreen({
         const d = await res.json().catch(() => ({}));
         throw new Error((d as { error?: string }).error ?? "Something went wrong");
       }
-      fireGtag("generate_lead");
-      fireFbq("track", "Lead", {}, `lead:${sessionId}`);
+      await identifyPixel(sessionId);
+      track("generate_lead", { lead_capture_method: "phone_only" }, sessionId, { db: false });
       onSuccess(normalizePhone(phone));
     } catch (err) {
       setError((err as Error).message);
@@ -203,7 +173,7 @@ function TeaserScreen({
   useEffect(() => {
     if (fired.current) return;
     fired.current = true;
-    fireEvent("teaser_shown", sessionId);
+    track("teaser_shown", {}, sessionId);
   }, [sessionId]);
 
   return (
@@ -277,7 +247,7 @@ function PaywallScreen({
   useEffect(() => {
     if (fired.current) return;
     fired.current = true;
-    fireEvent("paywall_shown", sessionId, { variant: "gated" });
+    track("paywall_shown", { variant: "gated" }, sessionId);
   }, [sessionId]);
 
   return (

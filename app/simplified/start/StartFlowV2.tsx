@@ -8,14 +8,7 @@ import { isValidIndianMobile, childStepReady } from "@/lib/flow/validate";
 import { displayChildName } from "@/lib/report/pronouns";
 import ReportFooterLinks from "@/app/components/ReportFooterLinks";
 import { FLOW, HEAD, BODY, Wordmark, SegmentBar, BackLink, Screen, WORRIES, IconChip, FLOW_TOTAL_MIN } from "@/app/components/FlowShell";
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
+import { track } from "@/lib/analytics/track";
 
 const OOB_COPY: Record<"younger" | "older", { heading: string; body: string }> = {
   younger: {
@@ -61,13 +54,13 @@ export default function StartFlowV2() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: sid, flow: "v2", utm: getStoredUtm() }),
     }).catch(() => {});
-    fireEvent("landing_view", sid, { flow: "v2" });
+    track("landing_view", { flow: "v2" }, sid);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fire once each time the age screen (step 2) is shown — to measure drop at the age step.
   useEffect(() => {
-    if (step === 2 && sidRef.current) fireEvent("start_age_view", sidRef.current);
+    if (step === 2 && sidRef.current) track("start_age_view", {}, sidRef.current);
   }, [step]);
 
   const worryObj = worry ? WORRIES.find((w) => w.key === worry) ?? null : null;
@@ -76,16 +69,16 @@ export default function StartFlowV2() {
 
   function pickWorry(key: string) {
     setWorry(key);
-    fireEvent("start_worry", sidRef.current, { worry: key });
+    track("start_worry", { worry: key }, sidRef.current);
     setStep(2);
   }
   function pickAge(val: string) {
     setAge(val);
-    fireEvent("start_age", sidRef.current, { age_band: val });
+    track("start_age", { age_band: val }, sidRef.current);
     setStep(3);
   }
   function openOob(band: "younger" | "older") {
-    fireEvent("start_oob", sidRef.current, { choice: band });
+    track("start_oob", { choice: band }, sidRef.current);
     setOobPopup(band); setOobName(""); setOobPhone(""); setOobSubmitting(false); setOobResult(null); setOobError(null);
   }
   async function submitOobPopup() {
@@ -99,14 +92,14 @@ export default function StartFlowV2() {
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})) as { error?: string }; setOobError(d.error || "Please enter a valid 10-digit mobile number"); return; }
       const d = await res.json().catch(() => ({})) as { wa_sent?: boolean };
-      fireEvent("start_oob_submit", sidRef.current, { choice: oobPopup });
+      track("start_oob_submit", { choice: oobPopup }, sidRef.current);
       setOobResult({ wa_sent: d.wa_sent ?? false });
     } catch { setOobError("Something went wrong, please try again."); }
     finally { setOobSubmitting(false); }
   }
   function submitChild() {
     if (!childStepReady(childName, gender)) return;
-    fireEvent("start_child", sidRef.current, { gender });
+    track("start_child", { gender }, sidRef.current);
     const p = new URLSearchParams();
     p.set("flow", "v2");
     p.set("name", childName.trim());

@@ -8,15 +8,9 @@ import { FLOW, HEAD, BODY } from "@/app/components/FlowShell";
 import { CARD_TOTAL as TOTAL, clampCard } from "@/lib/report-v2/cards-nav";
 import type { ReportV2Content } from "@/lib/report-v2/types";
 import type { CardsCopy } from "@/lib/report-v2/cards-copy";
+import { track } from "@/lib/analytics/track";
 
 const GREEN = "#2F9E6E";
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
 
 type Props = {
   sessionId: string;
@@ -40,7 +34,7 @@ export default function ReportV2Cards(props: Props) {
 
   // URL + analytics on every card change (covers buttons, swipe, and browser Back).
   useEffect(() => {
-    fireEvent("report_card_view", sessionId, { card });
+    track("report_card_view", { card }, sessionId);
   }, [card, sessionId]);
 
   const nav = useCallback((n: number, push = true) => {
@@ -67,12 +61,12 @@ export default function ReportV2Cards(props: Props) {
   }, []);
 
   const goPlan = (skip: boolean) => {
-    if (skip) fireEvent("report_skip_to_plan", sessionId, { from: card });
+    if (skip) track("report_skip_to_plan", { from: card }, sessionId);
     window.location.assign(planHref);
   };
   const saveGoal = async (opt: { key: string; text: string }) => {
     setGoal(opt.text); setSheet(false);
-    fireEvent("goal_changed", sessionId, { goalKey: opt.key });
+    track("goal_changed", { goalKey: opt.key }, sessionId);
     // Awaited so the choice is committed before the parent can navigate to the plan — the plan
     // reads report_v2_goal live, so a pending write must not race the server render.
     await fetch("/api/report/goal-v2", {
@@ -261,7 +255,7 @@ export default function ReportV2Cards(props: Props) {
         {card === 6 && <Btn label="Where this goes →" onClick={() => nav(7)} />}
         {card === 7 && (<>
           <Btn label={`See ${c.childName}’s six-week plan →`} onClick={() => goPlan(false)} />
-          <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" onClick={() => fireEvent("call_click", sessionId, { where: "cards" })}
+          <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" onClick={() => track("call_click", { where: "cards" }, sessionId)}
             style={{ textAlign: "center", minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 13, border: "1.5px solid rgba(255,255,255,.4)", color: "#fff", fontWeight: 700, fontSize: 15, textDecoration: "none" }}>
             Talk to us first (15 min, free)
           </a>

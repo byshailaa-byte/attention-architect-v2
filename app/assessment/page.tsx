@@ -10,37 +10,7 @@ import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 import ThankYouScreen from "@/app/preview/simplified-v1/ThankYouScreen";
 import AssessmentV2 from "./AssessmentV2";
 import { resolveFlowVariant } from "@/lib/flow/session";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
-  }
-}
-
-function fireGtag(event: string, params?: Record<string, unknown>) {
-  if (typeof window !== "undefined" && typeof window.gtag === "function") {
-    window.gtag("event", event, params ?? {});
-  }
-}
-
-function fireFbq(type: "track" | "trackCustom", event: string, params?: Record<string, unknown>, eventId?: string) {
-  if (typeof window !== "undefined" && typeof window.fbq === "function") {
-    if (eventId) {
-      window.fbq(type, event, params ?? {}, { eventID: eventId });
-    } else {
-      window.fbq(type, event, params ?? {});
-    }
-  }
-}
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
+import { track, identifyPixel } from "@/lib/analytics/track";
 
 function isValidEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
@@ -164,9 +134,7 @@ function AssessmentForm() {
   useEffect(() => {
     if (phase === "questions" && !firedStart.current) {
       firedStart.current = true;
-      fireEvent("assessment_started", sessionId);
-      fireGtag("assessment_started", { session_id: sessionId });
-      fireFbq("trackCustom", "AssessmentStarted");
+      track("assessment_started", {}, sessionId);
     }
   }, [phase, sessionId]);
 
@@ -187,15 +155,15 @@ function AssessmentForm() {
   function fireDimensionComplete(dimension: string) {
     if (firedDimensions.current.has(dimension)) return;
     firedDimensions.current.add(dimension);
-    fireEvent("assessment_dimension_complete", sessionId, { dimension });
-    fireGtag("assessment_dimension_complete", { dimension });
-    fireFbq("trackCustom", "AssessmentDimensionComplete", { dimension });
+    // DB gets {dimension}; GA4 + Pixel(custom) get the name only — dimension is stripped by the
+    // ad allow-list (dimension stays DB-only). Retired the Pixel-only "AssessmentDimensionComplete".
+    track("assessment_dimension_complete", { dimension }, sessionId);
   }
 
   function handleAnswer(questionId: string, value: string) {
     const nextAnswers = { ...answers, [questionId]: value };
     setAnswers(nextAnswers);
-    fireEvent("assessment_question_complete", sessionId, { question_id: questionId, question_idx: currentIdx });
+    track("assessment_question_complete", { question_id: questionId, question_idx: currentIdx }, sessionId);
     const next = currentIdx + 1;
 
     if (currentIdx === 2) {
@@ -271,8 +239,8 @@ function AssessmentForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Submit failed");
       setScoringResult({ archetype: data.archetype, parent_pattern: data.parent_pattern });
-      fireGtag("assessment_complete", { archetype: data.archetype });
-      fireFbq("trackCustom", "AssessmentComplete", { archetype: data.archetype });
+      // GA4 + Pixel(custom) only (DB row written server-side). archetype not sent to ad platforms.
+      track("assessment_complete", {}, sessionId, { db: false });
       setSubmitting(false);
       if (variantParam === "simplified") {
         // Simplified variant: show contact gate immediately (generation already started
@@ -312,8 +280,8 @@ function AssessmentForm() {
         const d = await res.json().catch(() => ({}));
         throw new Error((d as { error?: string }).error ?? "Something went wrong");
       }
-      fireGtag("generate_lead");
-      fireFbq("track", "Lead", {}, `lead:${sessionId}`);
+      await identifyPixel(sessionId);
+      track("generate_lead", {}, sessionId, { db: false });
       setSubmittedPhone(normalizePhone(phone));
       setSubmitting(false);
       setPhase("simplified-thankyou");
@@ -348,8 +316,8 @@ function AssessmentForm() {
         const d = await res.json().catch(() => ({}));
         throw new Error((d as { error?: string }).error ?? "Something went wrong");
       }
-      fireGtag("generate_lead");
-      fireFbq("track", "Lead", {}, `lead:${sessionId}`);
+      await identifyPixel(sessionId);
+      track("generate_lead", {}, sessionId, { db: false });
       router.push(`/report/generating/${sessionId}?name=${encodeURIComponent(childName || "")}&archetype=${encodeURIComponent(scoringResult?.archetype || "")}`);
     } catch (e) {
       setError((e as Error).message);

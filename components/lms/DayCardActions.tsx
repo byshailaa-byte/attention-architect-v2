@@ -4,13 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ReflectionOutcome } from "@/content/types";
 import { useReadOnly, READ_ONLY_TOOLTIP } from "@/components/lms/ReadOnlyContext";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
-  }
-}
+import { track } from "@/lib/analytics/track";
 
 type Props = {
   week: number;
@@ -66,12 +60,7 @@ export default function DayCardActions({
         setStep("idle");
         return;
       }
-      if (typeof window.gtag === "function") {
-        window.gtag("event", "lms_day_complete", { week, day });
-      }
-      if (typeof window.fbq === "function") {
-        window.fbq("trackCustom", "LmsDayComplete", { week, day });
-      }
+      track("lms_day_complete", { week, day }, null, { db: false });
       if (reflectionPrompt) {
         setStep("reflecting");
       } else {
@@ -93,12 +82,7 @@ export default function DayCardActions({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ week, day, outcome, note: note || null }),
       });
-      if (typeof window.gtag === "function") {
-        window.gtag("event", "lms_reflection_submitted", { week, day, outcome });
-      }
-      if (typeof window.fbq === "function") {
-        window.fbq("trackCustom", "LmsReflectionSubmitted", { week, day, outcome });
-      }
+      track("lms_reflection_submitted", { week, day, outcome }, null, { db: false });
       setStep("done");
     } catch {
       setStep("reflecting");

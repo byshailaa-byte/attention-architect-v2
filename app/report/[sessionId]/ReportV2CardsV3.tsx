@@ -20,15 +20,10 @@ import {
   CARD5_GOAL_LABEL, CARD5_GOAL_SMALL, CARD5_BTN_PLAN, CARD5_BTN_CALL, CARD5_PICK_ANOTHER,
 } from "@/lib/report-v2/v3-copy";
 
+import { track } from "@/lib/analytics/track";
+
 const GREEN = "#2F9E6E";
 const RED = "#C2543B";
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
 
 // Minimal **bold** markdown → React nodes. Only ** is used in the v3 copy.
 function Rich({ text }: { text: string }) {
@@ -75,7 +70,7 @@ export default function ReportV2CardsV3(props: Props) {
   const type = typeName(c.archetype);
 
   useEffect(() => {
-    fireEvent("report_card_view", sessionId, { card, layout: "v3" });
+    track("report_card_view", { card, layout: "v3" }, sessionId);
   }, [card, sessionId]);
 
   const nav = useCallback((n: number, push = true) => {
@@ -98,12 +93,12 @@ export default function ReportV2CardsV3(props: Props) {
   }, []);
 
   const goPlan = (skip: boolean) => {
-    if (skip) fireEvent("report_skip_to_plan", sessionId, { from: card });
+    if (skip) track("report_skip_to_plan", { from: card }, sessionId);
     window.location.assign(planHref);
   };
   const saveGoal = async (opt: { key: string; text: string }) => {
     setGoal(opt.text); setSheet(false);
-    fireEvent("goal_changed", sessionId, { goalKey: opt.key });
+    track("goal_changed", { goalKey: opt.key }, sessionId);
     await fetch("/api/report/goal-v2", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId, goal: opt.text, goalKey: opt.key }),
@@ -284,7 +279,7 @@ export default function ReportV2CardsV3(props: Props) {
         {card === 4 && <Btn label={CARD4_BTN} onClick={() => nav(5)} />}
         {card === 5 && (<>
           <Btn label={f(CARD5_BTN_PLAN)} onClick={() => goPlan(false)} />
-          <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" onClick={() => fireEvent("call_click", sessionId, { where: "cards" })}
+          <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" onClick={() => track("call_click", { where: "cards" }, sessionId)}
             style={{ textAlign: "center", minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 13, border: "1.5px solid rgba(255,255,255,.4)", color: "#fff", fontWeight: 700, fontSize: 15, textDecoration: "none" }}>
             {CARD5_BTN_CALL}
           </a>

@@ -3,6 +3,7 @@
 // generator and the Plan v2 header. Keeps the default v1 report untouched.
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
+import { trackServer } from "@/lib/analytics/track.server";
 import { CONCERN_GOAL, CONCERN_ALIAS } from "@/lib/report-v2/goal-mapping";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -41,10 +42,7 @@ export async function POST(req: NextRequest) {
 
     // Regenerating cached content isn't needed — the Plan header reads the goal live, and the
     // cards already hold the chosen goal client-side. Fire-and-forget the funnel event here too.
-    await sql`
-      INSERT INTO funnel_events (event_type, session_id, metadata)
-      VALUES ('goal_changed', ${sessionId}::uuid, ${JSON.stringify({ goalKey: goalKey ?? null })}::jsonb)
-    `.catch(() => {});
+    await trackServer("goal_changed", { goalKey: goalKey ?? null }, { sessionId });
 
     return NextResponse.json({ ok: true });
   } catch (e) {

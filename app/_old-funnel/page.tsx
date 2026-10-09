@@ -4,27 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import SiteFooter from "@/app/components/SiteFooter";
 import { CONCERN_CARD_LABELS } from "@/lib/concerns";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
-  }
-}
-
-function fireGtag(event: string, params?: Record<string, string | number>) {
-  if (typeof window !== "undefined" && typeof window.gtag === "function") {
-    window.gtag("event", event, params ?? {});
-  }
-}
-
-function fireEvent(eventType: string, sessionId: string, metadata?: Record<string, unknown>) {
-  fetch("/api/funnel/event", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: eventType, session_id: sessionId, metadata: metadata ?? {} }),
-  }).catch(() => {});
-}
+import { track } from "@/lib/analytics/track";
 
 const BG = "var(--font-bricolage), 'Bricolage Grotesque', sans-serif";
 
@@ -230,8 +210,7 @@ export default function LandingPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ session_id: landSid.current, page: "landing", depth: d }),
           }).catch(() => {});
-          fireGtag("scroll_milestone", { page: "landing", depth: d });
-          if (typeof window.fbq === "function") window.fbq("trackCustom", "ScrollMilestone", { page: "landing", depth: d });
+          track("scroll_milestone", { page: "landing", depth: d }, landSid.current, { db: false });
         }
       }
     }
@@ -250,7 +229,7 @@ export default function LandingPage() {
         const name = (e.target as HTMLElement).dataset.section;
         if (e.isIntersecting && name && !seen.has(name)) {
           seen.add(name);
-          fireGtag("section_view", { section: name });
+          track("section_view", { section: name }, null, { db: false });
         }
       });
     }, { threshold: 0.4 });
@@ -275,8 +254,8 @@ export default function LandingPage() {
 
   function selectAge(a: string) {
     setAge(a);
-    fireGtag("age_selected", { age_band: a });
-    fireEvent("landing_step_age", landSid.current, { age_band: a });
+    track("age_selected", { age_band: a }, landSid.current, { db: false });
+    track("landing_step_age", { age_band: a }, landSid.current);
   }
 
   function openOobPopup(band: "younger" | "older") {
@@ -285,7 +264,7 @@ export default function LandingPage() {
     setOobPhone("");
     setOobSubmitting(false);
     setOobResult(null);
-    fireGtag("age_out_of_band", { age_band: band });
+    track("age_out_of_band", { age_band: band }, landSid.current, { db: false });
   }
 
   async function submitOobPopup() {
@@ -308,20 +287,20 @@ export default function LandingPage() {
 
   function selectConcern(c: string) {
     setConcern(c);
-    fireGtag("concern_selected", { concern: c });
-    fireEvent("landing_step_concern", landSid.current, { concern: c });
+    track("concern_selected", { concern: c }, landSid.current, { db: false });
+    track("landing_step_concern", { concern: c }, landSid.current);
   }
 
   function goToStep2() {
     if (!age || !concern) return;
     setStage("step2");
-    fireGtag("cta_click", { location: "step1" });
+    track("cta_click", { location: "step1" }, landSid.current, { db: false });
   }
 
   function selectFollowUp(opt: FollowUpOption) {
     setFollowUp(opt);
-    fireGtag("follow_up_selected", { concern: concern ?? "", answer: opt.echo });
-    fireEvent("landing_step_followup", landSid.current, { concern: concern ?? "", answer: opt.echo });
+    track("follow_up_selected", { concern: concern ?? "", answer: opt.echo }, landSid.current, { db: false });
+    track("landing_step_followup", { concern: concern ?? "", answer: opt.echo }, landSid.current);
     setTimeout(() => setStage("reveal"), 250);
   }
 
@@ -340,7 +319,7 @@ export default function LandingPage() {
   }
 
   function handleCtaClick(location: string) {
-    fireGtag("cta_click", { location });
+    track("cta_click", { location }, landSid.current, { db: false });
     router.push(buildCtaUrl());
   }
 

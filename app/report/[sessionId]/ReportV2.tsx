@@ -4,6 +4,7 @@
 // with a background generate for next time.
 import { after } from "next/server";
 import { getSql } from "@/lib/db/client";
+import { trackServer } from "@/lib/analytics/track.server";
 import { viewReportV2, generateAndStoreReportV2 } from "@/lib/report-v2/service";
 import { allGoals, CONCERN_GOAL, CONCERN_ALIAS, canonicalConcern, goalForConcern } from "@/lib/report-v2/goal-mapping";
 import { buildCardsCopy } from "@/lib/report-v2/cards-copy";
@@ -70,10 +71,8 @@ export default async function ReportV2({ session, card, plan }: { session: strin
 
   after(async () => {
     await generateAndStoreReportV2(session).catch((e: unknown) => console.warn("[report-v2] bg generate:", (e as Error).message));
-    await sql`
-      INSERT INTO funnel_events (event_type, session_id, metadata)
-      VALUES ('report_v2_view', ${session}::uuid, ${JSON.stringify({ archetype: content.archetype, source: content.source })}::jsonb)
-    `.catch((e: unknown) => console.warn("[funnel] report_v2_view:", (e as Error).message));
+    // Unified report_view with variant (old report_v2_view name stays in history; admin reads both).
+    await trackServer("report_view", { variant: "v2", archetype: content.archetype, source: content.source }, { sessionId: session });
   });
 
   if (plan) {

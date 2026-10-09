@@ -2,8 +2,8 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { sendWhatsAppReport, sendReportWithRetry, upsertWatiContactAfterSend } from "@/lib/whatsapp";
-import { sendCapiEvents } from "@/lib/meta/capi";
 import { metaMatchFromRequest, isInternalRequest } from "@/lib/meta/match";
+import { trackServer } from "@/lib/analytics/track.server";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 
 assertBootGuards();
@@ -69,12 +69,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // Awaited — fire-and-forget caused event loss, same pattern as assessment_complete bug
-    const leadMetadata = JSON.stringify(variant ? { variant } : {});
-    await sql`
-      INSERT INTO funnel_events (event_type, session_id, metadata)
-      VALUES ('generate_lead', ${sessionId}::uuid, ${leadMetadata}::jsonb)
-    `.catch((e: unknown) => console.warn("[funnel] generate_lead:", (e as Error).message));
+    // generate_lead DB row — deduped to at most one per session (CAPI fired separately in after()).
+    await trackServer("generate_lead", variant ? { variant } : {}, {
+      sessionId, dedup: "lead-session", sendCapi: false,
+    });
 
     // Single after() block: generate report first, then send WhatsApp once it's ready.
     // Previously two concurrent after() calls caused a race — WhatsApp fired ~1s after claim
@@ -176,30 +174,16 @@ export async function POST(req: NextRequest) {
       }
       } // end else (report published)
 
-      // CAPI Lead — event_id matches client-side fbq call: `lead:${sessionId}` (dedup).
-      // Skipped entirely for internal traffic so our test runs never reach Meta.
-      if (!internal) {
-        try {
-          await sendCapiEvents([{
-            event_name: "Lead",
-            event_time: Math.floor(Date.now() / 1000),
-            event_id: `lead:${sessionId}`,
-            event_source_url: `${baseUrl}/report/${sessionId}`,
-            action_source: "website",
-            userData: {
-              email: email.trim(),
-              phone: effPhone,
-              externalId: sessionId,
-              fbp: match.fbp,
-              fbc: match.fbc,
-              clientIp: match.clientIp,
-              clientUserAgent: match.clientUserAgent,
-            },
-          }]);
-        } catch (e: unknown) {
-          console.warn("[capi] lead:", (e as Error).message);
-        }
-      }
+      // CAPI Lead — event_id matches the client Pixel call (lead:${sessionId}) for dedup.
+      // trackServer skips the DB row here (already written above) and the send when internal.
+      await trackServer("generate_lead", {}, {
+        sessionId, internal, dbInsert: false,
+        eventSourceUrl: `${baseUrl}/report/${sessionId}`,
+        capiUserData: {
+          email: email.trim(), phone: effPhone, externalId: sessionId,
+          fbp: match.fbp, fbc: match.fbc, clientIp: match.clientIp, clientUserAgent: match.clientUserAgent,
+        },
+      });
     });
 
     return NextResponse.json({ ok: true });

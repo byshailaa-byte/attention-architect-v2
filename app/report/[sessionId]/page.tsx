@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { getSql } from "@/lib/db/client";
+import { trackServer } from "@/lib/analytics/track.server";
 import { SimplifiedReportBody } from "@/app/preview/simplified-v1/page";
 import ReportGate from "./ReportGate";
 import GatedReportFlow from "./GatedReportFlow";
@@ -164,10 +165,7 @@ export default async function ReportPage({
   } else {
     // Control arm (or pre-migration session with no variant): existing parent_name gate
     if (!row.parent_name) {
-      await sql`
-        INSERT INTO funnel_events (event_type, session_id, metadata)
-        VALUES ('report_gate_view', ${sessionId}::uuid, '{}'::jsonb)
-      `.catch((e: unknown) => console.warn("[funnel] report_gate_view:", (e as Error).message));
+      await trackServer("report_gate_view", {}, { sessionId });
 
       return (
         <>
@@ -219,10 +217,7 @@ export default async function ReportPage({
   if (nr !== null) {
     // Analytics write moved OFF the render path via after() — never adds to TTFB.
     after(async () => {
-      await sql`
-        INSERT INTO funnel_events (event_type, session_id, metadata)
-        VALUES ('report_view', ${sessionId}::uuid, ${JSON.stringify({ archetype: row.archetype })}::jsonb)
-      `.catch((e: unknown) => console.warn("[funnel] report_view:", (e as Error).message));
+      await trackServer("report_view", { variant: "v1", archetype: row.archetype }, { sessionId });
     });
 
     const gender = (row.child_gender ?? null) as Gender;

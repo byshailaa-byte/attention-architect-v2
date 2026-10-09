@@ -2,13 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-    fbq?: (...args: unknown[]) => void;
-  }
-}
+import { track, identifyPixel } from "@/lib/analytics/track";
 
 function normalizePhone(raw: string): string {
   // Strip +91 / 91 prefix, spaces, dashes, dots
@@ -30,13 +24,9 @@ export default function ReportGate({ sessionId }: { sessionId: string }) {
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && typeof window.gtag === "function") {
-      window.gtag("event", "report_gate_view");
-    }
-    if (typeof window !== "undefined" && typeof window.fbq === "function") {
-      window.fbq("trackCustom", "ReportGateView");
-    }
-  }, []);
+    // GA4 + Pixel(custom report_gate_view). DB row is written server-side. Retired "ReportGateView".
+    track("report_gate_view", {}, sessionId, { db: false });
+  }, [sessionId]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,13 +54,9 @@ export default function ReportGate({ sessionId }: { sessionId: string }) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error ?? "Something went wrong");
       }
-      if (typeof window !== "undefined" && typeof window.gtag === "function") {
-        window.gtag("event", "generate_lead");
-      }
-      // event_id matches server-side CAPI Lead call in /api/report/claim
-      if (typeof window !== "undefined" && typeof window.fbq === "function") {
-        window.fbq("track", "Lead", {}, { eventID: `lead:${sessionId}` });
-      }
+      // GA4 generate_lead + Pixel Lead (eventID lead:${sessionId}, shared with CAPI). DB written server-side.
+      await identifyPixel(sessionId);
+      track("generate_lead", {}, sessionId, { db: false });
       router.refresh();
     } catch (err) {
       setError((err as Error).message);
