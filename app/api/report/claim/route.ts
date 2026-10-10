@@ -1,7 +1,8 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
-import { sendWhatsAppReport, sendReportWithRetry, upsertWatiContactAfterSend } from "@/lib/whatsapp";
+import { normalizePhone } from "@/lib/whatsapp";
+import { enqueueWhatsApp } from "@/lib/whatsapp/outbox";
 import { metaMatchFromRequest, isInternalRequest } from "@/lib/meta/match";
 import { trackServer } from "@/lib/analytics/track.server";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
@@ -148,29 +149,24 @@ export async function POST(req: NextRequest) {
 
       if (waClaimRows.length > 0) {
         const row = waClaimRows[0];
-        // Up to 3 in-request attempts (backoff 2s, 8s) before releasing for the daily cron.
-        await sendReportWithRetry({
-          send: () => sendWhatsAppReport({
-            parentName: row.parent_name ?? parentName.trim(),
-            childName:  row.child_name  ?? CHILD_NAME_FALLBACK_MID,
-            sessionId,
-            rawPhone:   row.phone ?? effPhone,
-          }),
-          onSent: async () => {
-            await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${sessionId}::uuid`;
-            // Send succeeded → upsert the WATI contact with purchased=no + attributes.
-            // Never throws; a failed upsert is logged loudly and does not undo the send.
-            await upsertWatiContactAfterSend(sql, sessionId, row.phone ?? effPhone, row.parent_name ?? parentName.trim());
-          },
-          onFailed: async () => {
-            // All in-process attempts exhausted — release claim for the daily cron safety net.
-            console.error("[whatsapp] in-process attempts exhausted — releasing for cron:", sessionId);
-            await sql`
-              UPDATE assessments SET whatsapp_send_claimed_at = NULL
-              WHERE session_id = ${sessionId}::uuid
-            `.catch((e: unknown) => console.error("[whatsapp] claim release failed:", (e as Error).message));
-          },
-        });
+        // Outbox-first: write the report to whatsapp_outbox (dedup by session). WATI is no longer
+        // called. With WHATSAPP_PROVIDER=none it stays 'queued' (the thank-you "Open report" button
+        // covers delivery); with =cloud it sends immediately. Queued/failed → release the claim so
+        // the daily cron drains it later; never lost.
+        const toPhone = normalizePhone(row.phone ?? effPhone);
+        const q = toPhone
+          ? await enqueueWhatsApp({
+              kind: "report", toPhone, template: "send_assessment_new",
+              params: { parentName: row.parent_name ?? parentName.trim(), childName: row.child_name ?? CHILD_NAME_FALLBACK_MID, sessionId },
+              ref: sessionId,
+            }).catch((e: unknown) => { console.error("[whatsapp] enqueue failed:", (e as Error).message); return null; })
+          : null;
+        if (q?.status === "sent") {
+          await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${sessionId}::uuid`;
+        } else {
+          await sql`UPDATE assessments SET whatsapp_send_claimed_at = NULL WHERE session_id = ${sessionId}::uuid`
+            .catch((e: unknown) => console.error("[whatsapp] claim release failed:", (e as Error).message));
+        }
       }
       } // end else (report published)
 

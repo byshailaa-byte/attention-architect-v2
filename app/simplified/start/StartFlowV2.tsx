@@ -189,9 +189,10 @@ export default function StartFlowV2() {
             <div style={{ width: 48, height: 48, margin: "0 auto 16px", borderRadius: "50%", background: FLOW.sel, display: "grid", placeItems: "center" }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke={FLOW.gold} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </div>
-            <div style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 20, color: FLOW.ink, marginBottom: 10 }}>{oobResult.wa_sent ? "Handbook sent to your WhatsApp." : "You’re on the list."}</div>
-            <p style={{ fontSize: 14, color: FLOW.dim, lineHeight: 1.6 }}>{oobResult.wa_sent ? "Check your WhatsApp — the link is on its way." : "Check WhatsApp — your Attention Handbook is on its way. It usually arrives within a minute."}</p>
-            <button onClick={() => setOobPopup(null)} style={{ marginTop: 20, background: "none", border: `1.5px solid ${FLOW.line}`, borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 600, color: FLOW.dim, cursor: "pointer", fontFamily: "inherit" }}>Close</button>
+            <div style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 20, color: FLOW.ink, marginBottom: 10 }}>Your Attention Handbook is ready.</div>
+            <p style={{ fontSize: 14, color: FLOW.dim, lineHeight: 1.6 }}>Open it right here. We&rsquo;ll also send it to your WhatsApp.</p>
+            <a href="/handbook" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: 50, marginTop: 16, background: FLOW.navy, color: "#fff", borderRadius: 12, fontWeight: 700, fontSize: 15, textDecoration: "none", fontFamily: "inherit" }}>Download the handbook &rarr;</a>
+            <button onClick={() => setOobPopup(null)} style={{ marginTop: 12, background: "none", border: `1.5px solid ${FLOW.line}`, borderRadius: 10, padding: "10px 22px", fontSize: 13.5, fontWeight: 600, color: FLOW.dim, cursor: "pointer", fontFamily: "inherit" }}>Close</button>
           </div>
         )}
       </div>
@@ -359,7 +360,7 @@ export default function StartFlowV2() {
   const TILES: { big: string; small: string }[] = [
     { big: "15–17", small: "questions" },
     { big: `${FLOW_TOTAL_MIN} min`, small: "about" },
-    { big: "Free", small: "report on WhatsApp" },
+    { big: "Free", small: "on screen & WhatsApp" },
   ];
   const startHref = ASSESSMENT_URL;
   return (

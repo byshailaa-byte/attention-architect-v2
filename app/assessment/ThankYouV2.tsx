@@ -31,6 +31,8 @@ export default function ThankYouV2({
   const parentFirst = (parentName.trim().split(/\s+/)[0]) || "there";
   const masked = maskPhone(normalizePhone(phone));
   const [preview, setPreview] = useState<Preview | null>(null);
+  // Always give the parent the report ON SCREEN — never dependent on a WhatsApp send succeeding.
+  const [reportHref, setReportHref] = useState<string | null>(null);
 
   // Thank-you screen view — same event name + payload shape as the v1 ThankYouScreen.
   const firedView = useRef(false);
@@ -38,6 +40,7 @@ export default function ThankYouV2({
     if (firedView.current) return;
     firedView.current = true;
     const sessionId = getFlowSid();
+    setReportHref(sessionId ? `/report/${sessionId}?report=v2` : null);
     track("thankyou_screen_view", { variant: "v2" }, sessionId);
   }, []);
 
@@ -62,11 +65,16 @@ export default function ThankYouV2({
           </div>
           <h1 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 30, lineHeight: 1.2, color: "#fff", margin: "0 0 10px" }}>Thank you, {parentFirst}.</h1>
           <p style={{ fontSize: 15, color: "#D6E0EC", lineHeight: 1.55, margin: "0 0 16px" }}>
-            {kid}&rsquo;s report is on its way to your WhatsApp. It usually arrives within a minute.
+            {kid}&rsquo;s report is ready. Open it right here — we&rsquo;ll also send it to your WhatsApp.
           </p>
+          {reportHref && (
+            <a href={reportHref} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", maxWidth: 360, height: 54, background: FLOW.gold, color: "#1a1a1a", borderRadius: 14, fontFamily: HEAD, fontWeight: 700, fontSize: 17, textDecoration: "none", marginBottom: 14 }}>
+              Open {kid}&rsquo;s report &rarr;
+            </a>
+          )}
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.16)", borderRadius: 999, padding: "7px 14px", fontSize: 13, color: "#EAF1F8" }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.5 11.5a7.5 7.5 0 0 1-10.9 6.7L4 20l1.3-4.4A7.5 7.5 0 1 1 20.5 11.5z" stroke={FLOW.goldSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            Sent to {masked}
+            Also going to {masked} on WhatsApp
           </span>
         </div>
       </div>
