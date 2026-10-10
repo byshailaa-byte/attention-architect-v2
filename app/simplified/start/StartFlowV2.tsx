@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import { getFlowSid } from "@/lib/flow/session";
@@ -38,6 +38,8 @@ export default function StartFlowV2() {
   const [frequency, setFrequency] = useState<string | null>(params.get("freq") || null);
   const [childName, setChildName] = useState(params.get("name") || "");
   const [gender, setGender]       = useState<string | null>(params.get("gender") || null);
+  const [navigating, setNavigating] = useState(false); // intro "Start" loading state (never a silent button)
+  const navLockRef = useRef(false);                     // synchronous one-tap guard (state is too late for a fast double tap)
   const nameRef = useRef<HTMLInputElement>(null);
 
   // OOB handbook popup — backend (handbook-lead / handbook_send) UNCHANGED. Flow stops here.
@@ -123,7 +125,7 @@ export default function StartFlowV2() {
     track("start_child", { gender }, sidRef.current);
     setStep(4);
   }
-  function startAssessment() {
+  function buildAssessmentUrl(): string {
     const p = new URLSearchParams();
     p.set("flow", "v2");
     p.set("name", childName.trim());
@@ -132,7 +134,20 @@ export default function StartFlowV2() {
     if (worry) p.set("concerns", worry);
     if (frequency) p.set("freq", frequency);
     p.set("variant", "simplified");
-    router.push(`/assessment?${p.toString()}`);
+    return `/assessment?${p.toString()}`;
+  }
+  // The intro "Start" control is a real <a href> (see step 4), so it navigates even before hydration
+  // and does a reliable navigation inside in-app browsers. When hydrated we intercept for a smooth
+  // SPA push AND flip a loading state, so a slow (4G / WebView) navigation is never a silent button.
+  // Missing age/worry/name → route back to that step (never stuck); a second tap is ignored.
+  function handleStart(e?: ReactMouseEvent) {
+    if (!age)                               { e?.preventDefault(); setStep(1); return; }
+    if (!worry)                             { e?.preventDefault(); setStep(2); return; }
+    if (!childStepReady(childName, gender)) { e?.preventDefault(); setStep(3); return; }
+    if (navLockRef.current)                 { e?.preventDefault(); return; } // ignore the 2nd+ tap synchronously
+    navLockRef.current = true;
+    setNavigating(true);
+    if (e) { e.preventDefault(); router.push(buildAssessmentUrl()); }
   }
 
   // ── OOB modal (handbook) ───────────────────────────────────────────────────
@@ -323,14 +338,16 @@ export default function StartFlowV2() {
 
   // ── STEP 4 — INTRO (what to expect, then start) ───────────────────────────────
   const TILES: { big: string; small: string }[] = [
-    { big: "15", small: "quick questions" },
+    { big: "15–17", small: "questions" },
     { big: `${FLOW_TOTAL_MIN} min`, small: "about" },
     { big: "Free", small: "report on WhatsApp" },
   ];
+  const startHref = buildAssessmentUrl();
   return (
     <>
+      <style>{`@keyframes aa-spin{to{transform:rotate(360deg)}}`}</style>
       <Screen>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
           <Wordmark /><BackLink onClick={() => setStep(3)} />
         </div>
 
@@ -338,7 +355,7 @@ export default function StartFlowV2() {
           {kidNameCap}&rsquo;s questions are ready.
         </h1>
         <p style={{ fontSize: 14.5, color: FLOW.dim, lineHeight: 1.55, margin: "0 0 22px" }}>
-          There are no right answers — pick what happens most days. {kidNameCap}&rsquo;s name is in the questions so they feel like yours.
+          There are no right answers — pick what happens most days. We use {kidNameCap}&rsquo;s name in the questions.
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 24 }}>
@@ -351,10 +368,20 @@ export default function StartFlowV2() {
           ))}
         </div>
 
-        <button onClick={startAssessment}
-          style={{ width: "100%", height: 56, background: FLOW.navy, color: "#fff", border: "none", borderRadius: 16, fontFamily: HEAD, fontWeight: 600, fontSize: 17, cursor: "pointer" }}>
-          Start {kidName}&rsquo;s questions →
-        </button>
+        {/* Real <a href> so the first tap always navigates — even before hydration and inside in-app
+            browsers. When hydrated, handleStart intercepts for an SPA push + a loading state so a slow
+            4G/WebView navigation never looks dead. aria-disabled + the guard ignore a double tap. */}
+        <a href={startHref} onClick={handleStart} aria-disabled={navigating}
+          style={{ width: "100%", height: 56, boxSizing: "border-box", background: FLOW.navy, color: "#fff", border: "none", borderRadius: 16, fontFamily: HEAD, fontWeight: 600, fontSize: 17, cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, opacity: navigating ? 0.9 : 1 }}>
+          {navigating ? (
+            <>
+              <span aria-hidden="true" style={{ width: 18, height: 18, border: "2.5px solid rgba(255,255,255,.4)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "aa-spin .7s linear infinite" }} />
+              Starting&hellip;
+            </>
+          ) : (
+            <>Start {kidName}&rsquo;s questions &rarr;</>
+          )}
+        </a>
         <p style={{ textAlign: "center", marginTop: 14, fontSize: 12.5, color: FLOW.dim }}>Private · No sign-up to start</p>
       </Screen>
       <ReportFooterLinks />
