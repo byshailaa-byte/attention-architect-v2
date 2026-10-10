@@ -8,6 +8,7 @@ import { buildOrderedSequenceV3, FIXED_PREFIX, PART_LABELS, PART2_OPENER } from 
 import { g1Stem, g2Stem } from "@/content/assessment/worry-stems";
 import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import { getFlowSid } from "@/lib/flow/session";
+import { loadStartState, type StartState } from "@/lib/flow/start-state";
 import { isValidIndianMobile, contactReady } from "@/lib/flow/validate";
 import { displayChildName, fillTokens, CHILD_NAME_FALLBACK_MID, type Gender } from "@/lib/report/pronouns";
 import { HALFWAY_FIRST_READ, HALFWAY_FIRST_READ_FALLBACK, fillHalfwayLine } from "@/content/assessment/halfway-first-read";
@@ -31,16 +32,14 @@ type Phase = "questions" | "halfway" | "contact" | "thankyou";
 export default function AssessmentV2() {
   const router = useRouter();
   const params = useSearchParams();
-  const nameParam     = params.get("name") ?? "";
-  const hasNameParam  = params.has("name");
-  const ageParam      = params.get("age") as "8-9" | "10-11" | "12-14" | null;
-  const concernsParam = params.get("concerns") ?? "";
-  const genderParam   = (params.get("gender") ?? null) as Gender;
   const variantParam  = params.get("variant") ?? "simplified";
-  const freqParam     = params.get("freq") || null; // optional "how often?" key (d1_2/d3_4/most/daily)
 
   const VALID_AGE_BANDS = ["8-9", "10-11", "12-14"];
-  const gatePass = hasNameParam && VALID_AGE_BANDS.includes(ageParam ?? "") && concernsParam.split(",").filter(Boolean).length > 0;
+
+  // Start selections come from sessionStorage, NOT the URL (keeping the child's name/age/worry out of
+  // GA4 page_location and the Meta Pixel). Loaded on mount; render is gated on `ready` below.
+  const [start, setStart] = useState<StartState | null>(null);
+  const [ready, setReady] = useState(false);
 
   const [phase, setPhase]       = useState<Phase>("questions");
   // v3: the first 8 questions (Part 1 + Part 2) are fixed for everyone; Part 3 is appended once
@@ -50,8 +49,12 @@ export default function AssessmentV2() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers]       = useState<Record<string, string>>({});
   const [picked, setPicked]         = useState<string | null>(null);
-  const [childName] = useState(nameParam);
-  const ageBand: "8-9" | "10-11" | "12-14" = ageParam && VALID_AGE_BANDS.includes(ageParam) ? ageParam : "10-11";
+
+  const childName     = start?.name ?? "";
+  const genderParam   = (start?.gender ?? null) as Gender;
+  const concernsParam = start?.worry ?? "";
+  const freqParam     = start?.frequency ?? null; // optional "how often?" key (d1_2/d3_4/most/daily)
+  const ageBand: "8-9" | "10-11" | "12-14" = start && VALID_AGE_BANDS.includes(start.age ?? "") ? (start.age as "8-9" | "10-11" | "12-14") : "10-11";
 
   const [sessionId] = useState(() => getFlowSid());
   const [halfwayLine, setHalfwayLine] = useState<string>("");
@@ -84,7 +87,13 @@ export default function AssessmentV2() {
 
   const firedStart = useRef(false);
   useEffect(() => {
-    if (!gatePass) { router.replace("/simplified/start?flow=v2"); return; }
+    // Load the start selections from sessionStorage. If they're missing/incomplete (e.g. the URL was
+    // opened directly, or storage was cleared), send the parent back to the start flow.
+    const s = loadStartState();
+    const ok = !!(s && s.name.trim() && VALID_AGE_BANDS.includes(s.age ?? "") && s.worry);
+    if (!ok) { router.replace("/simplified/start?flow=v2"); return; }
+    setStart(s);
+    setReady(true);
     captureUtmOnce();
     if (!firedStart.current) {
       firedStart.current = true;
@@ -216,7 +225,7 @@ export default function AssessmentV2() {
   if (error && phase !== "contact") {
     return <Screen><div style={{ color: "#c0392b", fontSize: 15 }}>Error: {error}</div></Screen>;
   }
-  if (!gatePass) return null;
+  if (!ready || !start) return <Screen><p style={{ color: FLOW.dim, fontSize: 16 }}>Loading&hellip;</p></Screen>;
 
   // ── THANK-YOU ────────────────────────────────────────────────────────────────
   if (phase === "thankyou") {
@@ -379,7 +388,7 @@ export default function AssessmentV2() {
         <Wordmark />
         <BackLink onClick={() => {
           if (currentIdx > 0) setCurrentIdx(currentIdx - 1);
-          else router.push(`/simplified/start?${params.toString()}`); // back from Q1 → step 3, choices restored
+          else router.push("/simplified/start?flow=v2"); // back from Q1 → start flow restores the intro from sessionStorage
         }} />
       </div>
       <div style={{ marginBottom: 20 }}><QuestionProgress pct={pct} minutesLeft={minsLeft(pct)} /></div>

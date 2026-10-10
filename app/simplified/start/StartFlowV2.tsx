@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect, type MouseEvent as ReactMouseEvent } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import { getFlowSid } from "@/lib/flow/session";
+import { loadStartState, saveStartState } from "@/lib/flow/start-state";
 import { isValidIndianMobile, childStepReady } from "@/lib/flow/validate";
 import { displayChildName } from "@/lib/report/pronouns";
 import ReportFooterLinks from "@/app/components/ReportFooterLinks";
@@ -29,15 +30,15 @@ type Step = 1 | 2 | 3 | 4;
 
 export default function StartFlowV2() {
   const router = useRouter();
-  const params = useSearchParams();
-  // Returning from the assessment (Back on Q1) lands on the intro (step 4) with the choices restored.
-  const restored = !!(params.get("name") && params.get("age") && params.get("concerns"));
-  const [step, setStep]           = useState<Step>(restored ? 4 : 1);
-  const [age, setAge]             = useState<string | null>(params.get("age") || null);
-  const [worry, setWorry]         = useState<string | null>(params.get("concerns") || null);
-  const [frequency, setFrequency] = useState<string | null>(params.get("freq") || null);
-  const [childName, setChildName] = useState(params.get("name") || "");
-  const [gender, setGender]       = useState<string | null>(params.get("gender") || null);
+  // Selections are NOT read from the URL (no PII in the URL). They start empty and are restored from
+  // sessionStorage on mount — so a reload on any step (incl. the intro) keeps age/worry/name.
+  const [ready, setReady]         = useState(false);
+  const [step, setStep]           = useState<Step>(1);
+  const [age, setAge]             = useState<string | null>(null);
+  const [worry, setWorry]         = useState<string | null>(null);
+  const [frequency, setFrequency] = useState<string | null>(null);
+  const [childName, setChildName] = useState("");
+  const [gender, setGender]       = useState<string | null>(null);
   const [navigating, setNavigating] = useState(false); // intro "Start" loading state (never a silent button)
   const navLockRef = useRef(false);                     // synchronous one-tap guard (state is too late for a fast double tap)
   const nameRef = useRef<HTMLInputElement>(null);
@@ -55,25 +56,47 @@ export default function StartFlowV2() {
     captureUtmOnce();
     const sid = getFlowSid();
     sidRef.current = sid;
-    if (restored) return; // restored to the intro from the assessment — skip re-create/re-fire of landing
-    fetch("/api/flow/session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sid, flow: "v2", utm: getStoredUtm() }),
-    }).catch(() => {});
-    track("landing_view", { flow: "v2" }, sid);
+    // Restore prior selections (reload / Back from Q1) and resume at the furthest completed step.
+    const s = loadStartState();
+    let resumed = false;
+    if (s && (s.age || s.worry || s.name)) {
+      setAge(s.age); setWorry(s.worry); setFrequency(s.frequency); setChildName(s.name); setGender(s.gender);
+      const resumeStep: Step = s.age && s.worry && childStepReady(s.name, s.gender) ? 4 : s.age && s.worry ? 3 : s.age ? 2 : 1;
+      setStep(resumeStep);
+      resumed = resumeStep > 1;
+    }
+    setReady(true);
+    if (!resumed) { // a genuinely fresh landing — create the session + fire landing_view once
+      fetch("/api/flow/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sid, flow: "v2", utm: getStoredUtm() }),
+      }).catch(() => {});
+      track("landing_view", { flow: "v2" }, sid);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Persist selections to sessionStorage whenever they change (after the initial restore).
+  useEffect(() => {
+    if (!ready) return;
+    saveStartState({ name: childName, gender, age, worry, frequency });
+  }, [ready, childName, gender, age, worry, frequency]);
+
   // Age is now the FIRST screen — fire start_age_view once it's shown (to measure drop at the age step).
   useEffect(() => {
-    if (step === 1 && sidRef.current) track("start_age_view", {}, sidRef.current);
-  }, [step]);
+    if (ready && step === 1 && sidRef.current) track("start_age_view", {}, sidRef.current);
+  }, [ready, step]);
 
   // Intro screen impression (C5) — fire once each time the intro (step 4) is shown.
   useEffect(() => {
-    if (step === 4 && sidRef.current) track("assessment_intro_view", { flow: "v2" }, sidRef.current);
-  }, [step]);
+    if (ready && step === 4 && sidRef.current) track("assessment_intro_view", { flow: "v2" }, sidRef.current);
+  }, [ready, step]);
+
+  // Prefetch the assessment route while the parent reads the intro, so the first tap is near-instant.
+  useEffect(() => {
+    if (ready && step === 4) router.prefetch("/assessment?flow=v2&variant=simplified");
+  }, [ready, step, router]);
 
   const ageBand: AgeBandV2 = (AGE_BANDS as readonly string[]).includes(age ?? "") ? (age as AgeBandV2) : "10-11";
   const worryList = WORRIES_BY_AGE[ageBand];
@@ -125,17 +148,9 @@ export default function StartFlowV2() {
     track("start_child", { gender }, sidRef.current);
     setStep(4);
   }
-  function buildAssessmentUrl(): string {
-    const p = new URLSearchParams();
-    p.set("flow", "v2");
-    p.set("name", childName.trim());
-    if (gender) p.set("gender", gender);
-    if (age) p.set("age", age);
-    if (worry) p.set("concerns", worry);
-    if (frequency) p.set("freq", frequency);
-    p.set("variant", "simplified");
-    return `/assessment?${p.toString()}`;
-  }
+  // No child name / age / worry / frequency in the URL — they travel in sessionStorage (saved above),
+  // so GA4 page_location and the Meta Pixel never see them. Only flow + variant are in the URL.
+  const ASSESSMENT_URL = "/assessment?flow=v2&variant=simplified";
   // The intro "Start" control is a real <a href> (see step 4), so it navigates even before hydration
   // and does a reliable navigation inside in-app browsers. When hydrated we intercept for a smooth
   // SPA push AND flip a loading state, so a slow (4G / WebView) navigation is never a silent button.
@@ -147,7 +162,7 @@ export default function StartFlowV2() {
     if (navLockRef.current)                 { e?.preventDefault(); return; } // ignore the 2nd+ tap synchronously
     navLockRef.current = true;
     setNavigating(true);
-    if (e) { e.preventDefault(); router.push(buildAssessmentUrl()); }
+    if (e) { e.preventDefault(); router.push(ASSESSMENT_URL); }
   }
 
   // ── OOB modal (handbook) ───────────────────────────────────────────────────
@@ -182,6 +197,10 @@ export default function StartFlowV2() {
       </div>
     </div>
   ) : null;
+
+  // Hold the first paint until sessionStorage is read, so a reload resumes the right step without a
+  // flash of the age screen.
+  if (!ready) return <Screen><p style={{ color: FLOW.dim, fontSize: 15 }}>Loading&hellip;</p></Screen>;
 
   // ── STEP 1 — AGE (navy hero + bands below) ────────────────────────────────────
   if (step === 1) {
@@ -342,7 +361,7 @@ export default function StartFlowV2() {
     { big: `${FLOW_TOTAL_MIN} min`, small: "about" },
     { big: "Free", small: "report on WhatsApp" },
   ];
-  const startHref = buildAssessmentUrl();
+  const startHref = ASSESSMENT_URL;
   return (
     <>
       <style>{`@keyframes aa-spin{to{transform:rotate(360deg)}}`}</style>
