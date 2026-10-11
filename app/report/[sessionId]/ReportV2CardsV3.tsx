@@ -1,7 +1,8 @@
 "use client";
-// Report v3 as 5 cards, each sized to ONE phone screen (rendered when content.layout === "v3").
+// Report v3 as 6 cards, each sized to ONE phone screen (rendered when content.layout === "v3").
+// Cards 1–5 are the report; card 6 is the goal picker (card 5 → card 6 → plan).
 // Layout contract (report-fixes-v4 · B):
-//   • 100dvh flex column: sticky TOP bar (progress + ← Back + "N of 5" + "See plan →" on 1–4) and
+//   • 100dvh flex column: sticky TOP bar (progress + ← Back + "N of 6" + "See plan →" on 1–4) and
 //     sticky BOTTOM bar (the one main button). Content between, never covered by either.
 //   • NO inner scroll anywhere — the body has no overflow box. From 360×700 up the card fits with
 //     no page scroll; below 700px tall the whole card scrolls as one page (bars stay sticky).
@@ -20,7 +21,8 @@ import {
   CARD2_EYEBROW, CARD2_BTN, WHY_BOXES, bareArchetype,
   CARD3_EYEBROW, CARD3_HEADLINE, CARD3_BOX_LABEL, card3BoxClosing, CARD3_NOTE, CARD3_BTN, NEED, PLAIN_ANSWER,
   CARD4_EYEBROW, CARD4_HEADLINE, CARD4_INSTEAD_LABEL, CARD4_SAY_LABEL, CARD4_HOW_LABEL, CARD4_UNDER, CARD4_BTN,
-  CARD5_EYEBROW, CARD5_HEADLINE, CARD5_SUB, CARD5_GOAL_LABEL, CARD5_GOAL_SMALL, CARD5_BTN_PLAN, GOAL_LINE,
+  CARD5_EYEBROW, CARD5_HEADLINE, CARD5_SUB, CARD5_GOAL_LABEL, CARD5_GOAL_SMALL, CARD5_BTN_GOAL, GOAL_LINE,
+  CARD6_EYEBROW, CARD6_HEADING, CARD6_SUGGESTED, CARD6_BTN_PLAN,
 } from "@/lib/report-v2/v3-copy";
 
 import { track } from "@/lib/analytics/track";
@@ -56,21 +58,25 @@ type Props = {
   gender: Gender;
   childName: string;
   frequency?: string | null;       // C2 "how often?" key (d1_2/d3_4/most/daily) or null
-  goalOptions: { key: string; text: string }[];  // kept for signature parity (picker removed)
+  goalOptions: { key: string; text: string }[];  // card-6 picker options (key = concern key)
   initialCard: number;
   planHref: string;
   calendlyUrl: string;             // kept for signature parity (call link removed from card 5)
 };
 
 export default function ReportV2CardsV3(props: Props) {
-  const { sessionId, content: c, copy, strengths, gender, childName, frequency, planHref } = props;
+  const { sessionId, content: c, copy, strengths, gender, childName, frequency, goalOptions, planHref } = props;
   const frequencyPhrase = frequency ? (FREQUENCY_CARD1_PHRASE[frequency] ?? null) : null;
   const [card, setCard] = useState(clampV3(props.initialCard || 1));
+  // Card-6 goal picker: the worry's goal is the suggested default pre-selection.
+  const suggestedKey = c.concern;
+  const [selGoal, setSelGoal] = useState(suggestedKey);
+  const [saving, setSaving] = useState(false);
 
   const f = makeFiller(childName, gender);
   const bare = bareArchetype(c.archetype);
   const type = typeName(c.archetype);
-  // Card-5 goal box: the approved per-worry line (the late goal-picker was removed per spec).
+  // Card-5 goal box shows the approved per-worry line (the suggested goal).
   const goal = f(GOAL_LINE[c.concern] ?? GOAL_LINE.other);
 
   useEffect(() => {
@@ -98,8 +104,25 @@ export default function ReportV2CardsV3(props: Props) {
   }, []);
 
   const goPlan = () => { window.location.assign(planHref); };
+  // Cards 1–4 "See plan →": straight to the plan on the worry's default goal (no goal change).
   const goSkip = () => { track("report_skip_to_plan", { from: card }, sessionId); window.location.assign(planHref); };
   const back = () => { if (card > 1) window.history.back(); else goPlan(); };
+
+  // Card 6 "See plan →": save the chosen goal (report_v2_goal) + fire report_goal_selected
+  // (GA4 + DB only — goalKey is a concern key, no child data), then go to the plan.
+  const confirmGoal = async () => {
+    if (saving) return;
+    setSaving(true);
+    const opt = goalOptions.find((o) => o.key === selGoal);
+    track("report_goal_selected", { goalKey: selGoal, changed: selGoal !== suggestedKey }, sessionId);
+    if (opt) {
+      await fetch("/api/report/goal-v2", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, goal: opt.text, goalKey: selGoal }),
+      }).catch(() => {});
+    }
+    window.location.assign(planHref);
+  };
 
   const navy = card === 1 || card === 5;
   const bg = navy ? FLOW.navy : FLOW.cream;
@@ -139,7 +162,7 @@ export default function ReportV2CardsV3(props: Props) {
       {/* full-screen card takeover — hide the global chat widget here */}
       <style>{`#wa-widget{display:none!important}`}</style>
 
-      {/* fixed TOP bar: progress + ← Back + "N of 5" + "See plan →" (cards 1–4) */}
+      {/* fixed TOP bar: progress + ← Back + "N of 6" + "See plan →" (cards 1–4) */}
       <div style={{ position: "sticky", top: 0, zIndex: 2, background: bg, padding: "14px 20px 10px", flexShrink: 0 }}>
         <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
           {Array.from({ length: TOTAL }).map((_, i) => (
@@ -149,7 +172,7 @@ export default function ReportV2CardsV3(props: Props) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, fontWeight: 600, color: dim }}>
           <button onClick={back} aria-label="Back" style={barLink}>← Back</button>
           <span>{card} of {TOTAL}</span>
-          {card < TOTAL
+          {card <= 4
             ? <button onClick={goSkip} style={barLink}>See plan →</button>
             : <span aria-hidden style={{ width: 52 }} />}
         </div>
@@ -243,6 +266,30 @@ export default function ReportV2CardsV3(props: Props) {
             <p style={{ fontSize: 13.5, lineHeight: 1.5, color: FLOW.dim, margin: 0 }}>{CARD5_GOAL_SMALL}</p>
           </div>
         </>)}
+
+        {card === 6 && (<>
+          {eyebrow(CARD6_EYEBROW)}
+          <H1 mb={16}>{CARD6_HEADING}</H1>
+          <div>
+            {goalOptions.map((o) => {
+              const selected = o.key === selGoal;
+              const suggested = o.key === suggestedKey;
+              return (
+                <button key={o.key} onClick={() => setSelGoal(o.key)} style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", textAlign: "left",
+                  minHeight: 46, padding: "10px 14px", marginBottom: 8, borderRadius: 12, cursor: "pointer", fontFamily: BODY,
+                  border: `1.5px solid ${selected ? FLOW.gold : FLOW.line}`, background: selected ? FLOW.sel : "#fff",
+                  color: FLOW.ink, fontSize: 14.5, lineHeight: 1.3, fontWeight: selected ? 700 : 500,
+                }}>
+                  <span>{o.text}</span>
+                  {suggested && (
+                    <span style={{ flexShrink: 0, fontSize: 10.5, fontWeight: 800, letterSpacing: ".04em", textTransform: "uppercase", color: "#8A5F0F", background: "#F6E3BE", borderRadius: 999, padding: "3px 8px" }}>{CARD6_SUGGESTED}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>)}
       </div>
 
       {/* fixed BOTTOM bar: the one main button */}
@@ -251,7 +298,8 @@ export default function ReportV2CardsV3(props: Props) {
         {card === 2 && <Btn label={CARD2_BTN} onClick={() => nav(3)} />}
         {card === 3 && <Btn label={CARD3_BTN} onClick={() => nav(4)} />}
         {card === 4 && <Btn label={CARD4_BTN} onClick={() => nav(5)} />}
-        {card === 5 && <Btn label={f(CARD5_BTN_PLAN)} onClick={goPlan} />}
+        {card === 5 && <Btn label={f(CARD5_BTN_GOAL)} onClick={() => nav(6)} />}
+        {card === 6 && <Btn label={f(CARD6_BTN_PLAN)} onClick={confirmGoal} />}
       </div>
     </div>
   );

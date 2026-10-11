@@ -42,6 +42,7 @@ export const CATALOG: Record<string, EventSpec> = {
   // / OpenAI lead_created (so handbook leads don't train the ad platforms as paid-funnel leads).
   handbook_lead:               { ga4: true, meta: true },
   report_view:                 { ga4: true }, // all 3 report types; carries {variant: v1|v2|simplified}
+  report_goal_selected:        { ga4: true }, // card-6 goal pick; {goalKey, changed}. GA4 + DB only — no ad platforms
   report_gate_view:            { ga4: true, meta: true }, // retires the Pixel-only "ReportGateView"
   scroll_milestone:            { ga4: true },
   exit_intent_shown:           { ga4: true },

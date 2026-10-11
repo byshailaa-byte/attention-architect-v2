@@ -43,11 +43,12 @@ export default function PlanV2({ sessionId, content: c, goalKey, ageBand, childN
   const nm = (childName ?? c.childName)?.trim() ? displayChildName(childName ?? c.childName) : "Your child";
   const band = (["8-9", "10-11", "12-14"].includes(ageBand) ? ageBand : "10-11") as AgeBand;
 
-  const headline = f((PLAN_HEADLINE[c.concern] ?? PLAN_HEADLINE.other));
-  const tile1 = CHANGES_TILE1[c.concern] ?? CHANGES_TILE1.other;
+  // Hero headline, the first "What changes for you" tile and the six-week outcomes all follow the
+  // CHOSEN goal (card 6), not just the detected worry — goalKey is the canonical concern key.
+  const headline = f((PLAN_HEADLINE[goalKey] ?? PLAN_HEADLINE.other));
+  const tile1 = CHANGES_TILE1[goalKey] ?? CHANGES_TILE1.other;
   const tiles = [tile1, ...CHANGES_FIXED];
 
-  // The six weeks follow the chosen goal's concern key.
   const outcomes = weekOutcomesFor(goalKey);
   const weeks = [1, 2, 3, 4, 5, 6] as const;
 

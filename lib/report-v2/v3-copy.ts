@@ -315,6 +315,13 @@ export const CARD5_BTN_PLAN = "See {Name}'s 6-week plan and price →";
 export const CARD5_BTN_CALL = "Talk to us first (15 min, free)"; // existing Calendly link
 export const CARD5_PICK_ANOTHER = "Pick another goal"; // small link under the goal
 
+// ── Card 5 → 6 → plan (report-fixes-v4). Card 5 leads to the card-6 goal picker. ──────────────
+export const CARD5_BTN_GOAL = "Choose {Name}'s goal →";       // card 5 button → card 6
+export const CARD6_EYEBROW = "YOUR GOAL";
+export const CARD6_HEADING = "Which goal should we work on first?";
+export const CARD6_SUGGESTED = "Suggested";                    // badge on the worry's goal
+export const CARD6_BTN_PLAN = "See {Name}'s plan and price →"; // card 6 button → plan
+
 // ════════════════════════════════════════════════════════════════════════════════
 // PLAN PAGE — one scrolling page (§100–132)
 // ════════════════════════════════════════════════════════════════════════════════
