@@ -4,6 +4,7 @@
 // (no LLM) and kick a background generate so the next view is the full LLM version.
 import "server-only";
 import { getSql } from "@/lib/db/client";
+import { enqueueReportForSession } from "@/lib/whatsapp/outbox";
 import { generateReportV2, fallbackContentFor, type AssessmentInput } from "./generate";
 import { REPORT_V2_VERSION, type ReportV2Content } from "./types";
 
@@ -46,7 +47,11 @@ export async function loadAssessmentInput(sql: Sql, sessionId: string): Promise<
 // cache is already warm it does nothing (no wasted LLM call). Safe to fire-and-forget.
 export async function generateAndStoreReportV2(sessionId: string): Promise<void> {
   const sql = getSql();
-  if (await readCachedReportV2(sql, sessionId)) return;
+  if (await readCachedReportV2(sql, sessionId)) {
+    // Already generated — make sure the report is queued/sent now that content exists.
+    await enqueueReportForSession(sessionId).catch((e) => console.warn("[report-v2] enqueue report:", (e as Error).message));
+    return;
+  }
   const input = await loadAssessmentInput(sql, sessionId);
   if (!input) return;
   const { content, cost } = await generateReportV2(input);
@@ -69,6 +74,8 @@ export async function generateAndStoreReportV2(sessionId: string): Promise<void>
   } catch (e) {
     console.warn("[report-v2] cost log:", (e as Error).message);
   }
+  // Report content now exists → queue it to the WhatsApp outbox (sends immediately when provider=cloud).
+  await enqueueReportForSession(sessionId).catch((e) => console.warn("[report-v2] enqueue report:", (e as Error).message));
 }
 
 // What the view path renders: the cache if warm, else the instant fallback (no LLM).

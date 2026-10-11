@@ -3,7 +3,12 @@
 // never lost — the on-screen report/handbook buttons cover delivery. With =cloud, it sends via the
 // Meta Cloud API and moves to 'sent'/'failed', and the queue drains automatically.
 import { getSql } from "@/lib/db/client";
+import { normalizePhone } from "@/lib/whatsapp";
 import { sendTemplateCloud, reportComponents, handbookComponents } from "./cloud";
+
+// Report template on the Cloud API — body params (parentName, childName) + URL button (sessionId),
+// matching reportComponents(). Set REPORT_WA_TEMPLATE to the approved name if it differs.
+export const REPORT_TEMPLATE = process.env.REPORT_WA_TEMPLATE || "report_ready";
 
 export type WaKind = "report" | "handbook";
 export type WaProvider = "cloud" | "none";
@@ -74,6 +79,27 @@ export async function drainQueued(limit = 25): Promise<{ provider: WaProvider; a
   let sent = 0;
   for (const { id } of ids) { const r = await sendOutboxRow(id).catch(() => ({ ok: false })); if (r.ok) sent++; }
   return { provider: "cloud", attempted: ids.length, sent };
+}
+
+// Enqueue the report the moment its content is generated (called from the generation service). No-op
+// if the phone isn't captured yet or the report was already sent. Once provider=cloud this sends
+// within seconds of generation — not at the next daily cron run.
+export async function enqueueReportForSession(sessionId: string): Promise<void> {
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT parent_name, child_name, phone, whatsapp_report_sent_at
+    FROM assessments WHERE session_id = ${sessionId}::uuid LIMIT 1
+  `) as unknown as { parent_name: string | null; child_name: string | null; phone: string | null; whatsapp_report_sent_at: Date | null }[];
+  const a = rows[0];
+  if (!a || !a.phone || a.whatsapp_report_sent_at) return;
+  const toPhone = normalizePhone(a.phone);
+  if (!toPhone) return;
+  const q = await enqueueWhatsApp({
+    kind: "report", toPhone, template: REPORT_TEMPLATE,
+    params: { parentName: a.parent_name ?? "Parent", childName: a.child_name ?? "your child", sessionId },
+    ref: sessionId,
+  });
+  if (q.status === "sent") await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${sessionId}::uuid`;
 }
 
 export async function outboxCounts(): Promise<{ queued: number; sent: number; failed: number }> {

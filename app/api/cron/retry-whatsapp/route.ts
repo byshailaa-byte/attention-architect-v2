@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { normalizePhone } from "@/lib/whatsapp";
-import { enqueueWhatsApp } from "@/lib/whatsapp/outbox";
+import { enqueueWhatsApp, REPORT_TEMPLATE } from "@/lib/whatsapp/outbox";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 import { sendOpsAlert } from "@/lib/alerts/notify";
 
@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
       const toPhone = normalizePhone(row.phone ?? c.phone ?? "");
       const q = toPhone
         ? await enqueueWhatsApp({
-            kind: "report", toPhone, template: "send_assessment_new",
+            kind: "report", toPhone, template: REPORT_TEMPLATE,
             params: { parentName: row.parent_name ?? c.parent_name ?? "Parent", childName: row.child_name ?? c.child_name ?? CHILD_NAME_FALLBACK_MID, sessionId: c.session_id },
             ref: c.session_id,
           })

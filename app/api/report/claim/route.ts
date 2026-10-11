@@ -2,7 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { normalizePhone } from "@/lib/whatsapp";
-import { enqueueWhatsApp } from "@/lib/whatsapp/outbox";
+import { enqueueWhatsApp, REPORT_TEMPLATE } from "@/lib/whatsapp/outbox";
 import { metaMatchFromRequest, isInternalRequest } from "@/lib/meta/match";
 import { trackServer } from "@/lib/analytics/track.server";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
         const toPhone = normalizePhone(row.phone ?? effPhone);
         const q = toPhone
           ? await enqueueWhatsApp({
-              kind: "report", toPhone, template: "send_assessment_new",
+              kind: "report", toPhone, template: REPORT_TEMPLATE,
               params: { parentName: row.parent_name ?? parentName.trim(), childName: row.child_name ?? CHILD_NAME_FALLBACK_MID, sessionId },
               ref: sessionId,
             }).catch((e: unknown) => { console.error("[whatsapp] enqueue failed:", (e as Error).message); return null; })
