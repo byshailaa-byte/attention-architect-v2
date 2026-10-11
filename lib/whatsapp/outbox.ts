@@ -21,6 +21,22 @@ export function whatsappProvider(): WaProvider {
   return p === "cloud" ? "cloud" : p === "wati" ? "wati" : "none";
 }
 
+// A number that isn't on WhatsApp → add the parent to the Calls queue (call_log) so they get a
+// call/SMS with their report link. Report rows only (handbook leads aren't in the Calls queue).
+// Deduped per assessment. Exported so the one-off backfill can reuse it.
+export async function routeNotOnWhatsApp(kind: WaKind, sessionId?: string): Promise<void> {
+  if (kind !== "report" || !sessionId) return;
+  const sql = getSql();
+  const a = (await sql`SELECT id FROM assessments WHERE session_id = ${sessionId}::uuid LIMIT 1`) as unknown as { id: string }[];
+  if (!a[0]) return;
+  const exists = (await sql`SELECT 1 FROM call_log WHERE assessment_id = ${a[0].id} AND segment = 'wa_unreachable' LIMIT 1`) as unknown as unknown[];
+  if (exists.length) return;
+  await sql`
+    INSERT INTO call_log (assessment_id, segment, notes, follow_up_at)
+    VALUES (${a[0].id}, 'wa_unreachable', 'WhatsApp unreachable: share report link', now())
+  `;
+}
+
 const MAX_FAST_ATTEMPTS = 8;    // fast retries (~5-min spacing) before switching to hourly
 const RETRY_WINDOW_HOURS = 24;  // keep retrying hourly until this long after the first attempt, then fail
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -52,6 +68,9 @@ export async function enqueueWhatsApp(input: EnqueueInput): Promise<{ id: string
   if (whatsappProvider() !== "none" && row.status !== "sent") {
     attempted = true;
     await sendOutboxRow(row.id).catch(() => {}); // best-effort; stays 'queued' on failure
+    // Opportunistic drain: each new send also clears up to 5 OLDER queued messages, so the backlog
+    // shrinks between cron runs. Best-effort; respects the 1/sec WATI limit.
+    await drainQueued(5).catch(() => {});
   }
   return { id: row.id, status: row.status, attempted };
 }
@@ -91,7 +110,14 @@ export async function sendOutboxRow(id: string): Promise<{ ok: boolean; error?: 
     await sql`UPDATE whatsapp_outbox SET status='sent', provider=${provider}, wa_message_id=${res.messageId ?? null}, sent_at=now(), last_error=NULL, updated_at=now() WHERE id=${id}::uuid`;
     return { ok: true };
   }
-  await sql`UPDATE whatsapp_outbox SET status='queued', last_error=${res.error ?? "send failed"}, updated_at=now() WHERE id=${id}::uuid`;
+  // A number that isn't on WhatsApp can never be delivered → mark failed (not_on_whatsapp) and route
+  // the parent to the Calls queue for a call/SMS with their report link. Other errors stay queued.
+  if (/"validWhatsAppNumber"\s*:\s*false/i.test(res.error ?? "")) {
+    await sql`UPDATE whatsapp_outbox SET status='failed', last_error=${`not_on_whatsapp: ${res.error ?? ""}`}, updated_at=now() WHERE id=${id}::uuid`;
+    await routeNotOnWhatsApp(r.kind, p.sessionId).catch((e) => console.warn("[outbox] route to calls:", (e as Error).message));
+  } else {
+    await sql`UPDATE whatsapp_outbox SET status='queued', last_error=${res.error ?? "send failed"}, updated_at=now() WHERE id=${id}::uuid`;
+  }
   return { ok: false, error: res.error };
 }
 
