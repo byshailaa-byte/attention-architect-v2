@@ -123,7 +123,8 @@ export default function ReportV2CardsV3(props: Props) {
   // Top-bar text links: ≥44px hit area via padding, visual position preserved via negative margin.
   const barLink: React.CSSProperties = {
     background: "none", border: "none", color: dim, fontWeight: 700, fontSize: 13.5, cursor: "pointer",
-    fontFamily: BODY, padding: "12px 10px", margin: "-12px -10px", lineHeight: 1,
+    fontFamily: BODY, minHeight: 44, display: "inline-flex", alignItems: "center",
+    padding: "0 10px", margin: "-14px -10px", lineHeight: 1,
   };
 
   const why = WHY_BOXES[bare];
