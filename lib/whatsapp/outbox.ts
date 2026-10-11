@@ -65,17 +65,26 @@ export async function sendOutboxRow(id: string): Promise<{ ok: boolean; error?: 
     await sql`UPDATE whatsapp_outbox SET status='sent', provider='cloud', wa_message_id=${res.messageId ?? null}, sent_at=now(), last_error=NULL, updated_at=now() WHERE id=${id}::uuid`;
     return { ok: true };
   }
-  // Keep it queued (never lost); record the error for the admin view.
-  await sql`UPDATE whatsapp_outbox SET status='queued', last_error=${res.error ?? "send failed"}, claimed_at=NULL, updated_at=now() WHERE id=${id}::uuid`;
+  // Keep it queued (never lost). Leave claimed_at set so the 5-minute claim guard backs the retry
+  // off; record the error for the admin view.
+  await sql`UPDATE whatsapp_outbox SET status='queued', last_error=${res.error ?? "send failed"}, updated_at=now() WHERE id=${id}::uuid`;
   return { ok: false, error: res.error };
 }
 
+const MAX_SEND_ATTEMPTS = 8;
+
 // Drain up to `limit` queued rows (used by the cron and the admin "Send queued" button). No-op
-// unless provider=cloud.
+// unless provider=cloud. Retries are spaced ~5 min by the claim guard in sendOutboxRow and capped
+// at MAX_SEND_ATTEMPTS.
 export async function drainQueued(limit = 25): Promise<{ provider: WaProvider; attempted: number; sent: number }> {
   if (whatsappProvider() !== "cloud") return { provider: "none", attempted: 0, sent: 0 };
   const sql = getSql();
-  const ids = (await sql`SELECT id FROM whatsapp_outbox WHERE status='queued' ORDER BY created_at LIMIT ${limit}`) as unknown as { id: string }[];
+  const ids = (await sql`
+    SELECT id FROM whatsapp_outbox
+    WHERE status='queued' AND attempts < ${MAX_SEND_ATTEMPTS}
+      AND (claimed_at IS NULL OR claimed_at < now() - interval '5 minutes')
+    ORDER BY created_at LIMIT ${limit}
+  `) as unknown as { id: string }[];
   let sent = 0;
   for (const { id } of ids) { const r = await sendOutboxRow(id).catch(() => ({ ok: false })); if (r.ok) sent++; }
   return { provider: "cloud", attempted: ids.length, sent };
@@ -100,6 +109,16 @@ export async function enqueueReportForSession(sessionId: string): Promise<void> 
     ref: sessionId,
   });
   if (q.status === "sent") await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${sessionId}::uuid`;
+}
+
+// Delivery-status webhook → update the outbox row by its Cloud message id. We store statuses only
+// (no inbound messages). 'failed' flips the row to failed with the reason.
+export async function recordDeliveryStatus(waMessageId: string, status: string, reason?: string): Promise<void> {
+  const sql = getSql();
+  if (status === "delivered") await sql`UPDATE whatsapp_outbox SET delivered_at = COALESCE(delivered_at, now()), updated_at = now() WHERE wa_message_id = ${waMessageId}`;
+  else if (status === "read") await sql`UPDATE whatsapp_outbox SET read_at = COALESCE(read_at, now()), delivered_at = COALESCE(delivered_at, now()), updated_at = now() WHERE wa_message_id = ${waMessageId}`;
+  else if (status === "failed") await sql`UPDATE whatsapp_outbox SET status = 'failed', last_error = ${reason ?? "delivery failed"}, updated_at = now() WHERE wa_message_id = ${waMessageId}`;
+  // 'sent' is a no-op (we already set 'sent' on API acceptance).
 }
 
 export async function outboxCounts(): Promise<{ queued: number; sent: number; failed: number }> {
