@@ -1,14 +1,15 @@
 "use client";
 // Report v3 as 5 cards, each sized to ONE phone screen (rendered when content.layout === "v3").
 // Layout contract (report-fixes-v4 · B):
-//   • 100dvh flex column: sticky TOP bar (progress + ← Back + "N of 5") and sticky BOTTOM bar
-//     (the one main button). Content sits between and is never covered by either.
+//   • 100dvh flex column: sticky TOP bar (progress + ← Back + "N of 5" + "See plan →" on 1–4) and
+//     sticky BOTTOM bar (the one main button). Content between, never covered by either.
 //   • NO inner scroll anywhere — the body has no overflow box. From 360×700 up the card fits with
 //     no page scroll; below 700px tall the whole card scrolls as one page (bars stay sticky).
 //   • Swiping is OFF. Only the buttons and the phone Back button move between cards.
 //   • One history entry per card via ?c=N; reloading stays on the same card; Back = previous card.
-// Static copy is the VERBATIM v3-copy.ts strings; tokens filled via the shared makeFiller.
-import { useCallback, useEffect, useRef, useState } from "react";
+//   • Every tappable control has a ≥44px hit area (text links use padding + negative margin so the
+//     look is unchanged).
+import { useCallback, useEffect, useState } from "react";
 import { FLOW, HEAD, BODY, FREQUENCY_CARD1_PHRASE } from "@/app/components/FlowShell";
 import { CARD_TOTAL_V3 as TOTAL } from "@/lib/report-v2/cards-nav";
 import { makeFiller, typeName, type CardsCopy } from "@/lib/report-v2/cards-copy";
@@ -19,8 +20,7 @@ import {
   CARD2_EYEBROW, CARD2_BTN, WHY_BOXES, bareArchetype,
   CARD3_EYEBROW, CARD3_HEADLINE, CARD3_BOX_LABEL, card3BoxClosing, CARD3_NOTE, CARD3_BTN, NEED, PLAIN_ANSWER,
   CARD4_EYEBROW, CARD4_HEADLINE, CARD4_INSTEAD_LABEL, CARD4_SAY_LABEL, CARD4_HOW_LABEL, CARD4_UNDER, CARD4_BTN,
-  CARD5_EYEBROW, CARD5_HEADLINE, CARD5_SUB, CARD5_GOAL_LABEL, CARD5_GOAL_SMALL, CARD5_BTN_PLAN,
-  CARD5_PICK_ANOTHER, GOAL_LINE,
+  CARD5_EYEBROW, CARD5_HEADLINE, CARD5_SUB, CARD5_GOAL_LABEL, CARD5_GOAL_SMALL, CARD5_BTN_PLAN, GOAL_LINE,
 } from "@/lib/report-v2/v3-copy";
 
 import { track } from "@/lib/analytics/track";
@@ -56,25 +56,22 @@ type Props = {
   gender: Gender;
   childName: string;
   frequency?: string | null;       // C2 "how often?" key (d1_2/d3_4/most/daily) or null
-  goalOptions: { key: string; text: string }[];
+  goalOptions: { key: string; text: string }[];  // kept for signature parity (picker removed)
   initialCard: number;
   planHref: string;
   calendlyUrl: string;             // kept for signature parity (call link removed from card 5)
 };
 
 export default function ReportV2CardsV3(props: Props) {
-  const { sessionId, content: c, copy, strengths, gender, childName, frequency, goalOptions, planHref } = props;
+  const { sessionId, content: c, copy, strengths, gender, childName, frequency, planHref } = props;
   const frequencyPhrase = frequency ? (FREQUENCY_CARD1_PHRASE[frequency] ?? null) : null;
   const [card, setCard] = useState(clampV3(props.initialCard || 1));
-  const [goal, setGoal] = useState("");
-  const [sheet, setSheet] = useState(false);
 
   const f = makeFiller(childName, gender);
   const bare = bareArchetype(c.archetype);
   const type = typeName(c.archetype);
-  // Card-5 goal box shows the approved per-worry line; the picker can swap to another goal.
-  const defaultGoal = f(GOAL_LINE[c.concern] ?? GOAL_LINE.other);
-  const shownGoal = goal || defaultGoal;
+  // Card-5 goal box: the approved per-worry line (the late goal-picker was removed per spec).
+  const goal = f(GOAL_LINE[c.concern] ?? GOAL_LINE.other);
 
   useEffect(() => {
     track("report_card_view", { card, layout: "v3" }, sessionId);
@@ -101,15 +98,8 @@ export default function ReportV2CardsV3(props: Props) {
   }, []);
 
   const goPlan = () => { window.location.assign(planHref); };
+  const goSkip = () => { track("report_skip_to_plan", { from: card }, sessionId); window.location.assign(planHref); };
   const back = () => { if (card > 1) window.history.back(); else goPlan(); };
-  const saveGoal = async (opt: { key: string; text: string }) => {
-    setGoal(opt.text); setSheet(false);
-    track("goal_changed", { goalKey: opt.key }, sessionId);
-    await fetch("/api/report/goal-v2", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, goal: opt.text, goalKey: opt.key }),
-    }).catch(() => {});
-  };
 
   const navy = card === 1 || card === 5;
   const bg = navy ? FLOW.navy : FLOW.cream;
@@ -130,6 +120,11 @@ export default function ReportV2CardsV3(props: Props) {
       border: "none", background: FLOW.gold, color: "#1a1a1a",
     }}>{label}</button>
   );
+  // Top-bar text links: ≥44px hit area via padding, visual position preserved via negative margin.
+  const barLink: React.CSSProperties = {
+    background: "none", border: "none", color: dim, fontWeight: 700, fontSize: 13.5, cursor: "pointer",
+    fontFamily: BODY, padding: "12px 10px", margin: "-12px -10px", lineHeight: 1,
+  };
 
   const why = WHY_BOXES[bare];
   const youToldUs = c.evidence.slice(0, 3).map((e) => {
@@ -143,7 +138,7 @@ export default function ReportV2CardsV3(props: Props) {
       {/* full-screen card takeover — hide the global chat widget here */}
       <style>{`#wa-widget{display:none!important}`}</style>
 
-      {/* fixed TOP bar: progress + ← Back + "N of 5" */}
+      {/* fixed TOP bar: progress + ← Back + "N of 5" + "See plan →" (cards 1–4) */}
       <div style={{ position: "sticky", top: 0, zIndex: 2, background: bg, padding: "14px 20px 10px", flexShrink: 0 }}>
         <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
           {Array.from({ length: TOTAL }).map((_, i) => (
@@ -151,8 +146,11 @@ export default function ReportV2CardsV3(props: Props) {
           ))}
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, fontWeight: 600, color: dim }}>
-          <button onClick={back} aria-label="Back" style={{ background: "none", border: "none", color: dim, fontWeight: 700, fontSize: 13.5, padding: 0, cursor: "pointer", fontFamily: BODY }}>← Back</button>
+          <button onClick={back} aria-label="Back" style={barLink}>← Back</button>
           <span>{card} of {TOTAL}</span>
+          {card < TOTAL
+            ? <button onClick={goSkip} style={barLink}>See plan →</button>
+            : <span aria-hidden style={{ width: 52 }} />}
         </div>
       </div>
 
@@ -240,10 +238,7 @@ export default function ReportV2CardsV3(props: Props) {
           <p style={{ fontSize: 15.5, lineHeight: 1.5, color: dim, margin: "0 0 18px" }}>{f(CARD5_SUB)}</p>
           <div style={{ background: FLOW.cream, color: FLOW.ink, borderRadius: 14, padding: 18 }}>
             {miniLabel(CARD5_GOAL_LABEL, FLOW.gold)}
-            <h2 style={{ fontFamily: HEAD, fontSize: 22, lineHeight: 1.25, margin: "0 0 10px", fontWeight: 500, color: FLOW.navy }}>{shownGoal}</h2>
-            <button onClick={() => setSheet(true)} style={{ background: "none", border: "none", color: "#8A5F0F", fontWeight: 700, fontSize: 14, padding: "11px 0", minHeight: 44, cursor: "pointer", textDecoration: "underline", display: "block" }}>
-              {CARD5_PICK_ANOTHER}
-            </button>
+            <h2 style={{ fontFamily: HEAD, fontSize: 22, lineHeight: 1.25, margin: "0 0 12px", fontWeight: 500, color: FLOW.navy }}>{goal}</h2>
             <p style={{ fontSize: 13.5, lineHeight: 1.5, color: FLOW.dim, margin: 0 }}>{CARD5_GOAL_SMALL}</p>
           </div>
         </>)}
@@ -257,20 +252,6 @@ export default function ReportV2CardsV3(props: Props) {
         {card === 4 && <Btn label={CARD4_BTN} onClick={() => nav(5)} />}
         {card === 5 && <Btn label={f(CARD5_BTN_PLAN)} onClick={goPlan} />}
       </div>
-
-      {/* goal bottom sheet */}
-      {sheet && (
-        <div onClick={() => setSheet(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 520, background: "#fff", color: FLOW.ink, borderRadius: "18px 18px 0 0", padding: "20px 20px calc(20px + env(safe-area-inset-bottom))", maxHeight: "80dvh", overflowY: "auto" }}>
-            <div style={{ fontFamily: HEAD, fontSize: 20, marginBottom: 14 }}>Pick the goal that fits</div>
-            {goalOptions.map((o) => (
-              <button key={o.key} onClick={() => saveGoal(o)} style={{ display: "block", width: "100%", textAlign: "left", padding: "14px 16px", marginBottom: 8, borderRadius: 12, border: `1.5px solid ${o.text === shownGoal ? FLOW.gold : FLOW.line}`, background: o.text === shownGoal ? FLOW.sel : "#fff", fontSize: 16, lineHeight: 1.35, cursor: "pointer", fontFamily: BODY, color: FLOW.ink }}>
-                {o.text}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

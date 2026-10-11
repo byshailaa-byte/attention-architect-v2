@@ -202,7 +202,7 @@ export function PlanV3BottomCall({ sessionId, calendlyUrl }: { sessionId: string
   return (
     <div style={{ fontFamily: BODY, textAlign: "center" }}>
       <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" onClick={() => track("call_click", { where: "plan" }, sessionId)}
-        style={{ display: "inline-block", fontSize: 15.5, fontWeight: 700, color: C.navy, textDecoration: "underline" }}>
+        style={{ display: "inline-flex", alignItems: "center", minHeight: 44, padding: "11px 16px", fontSize: 15.5, fontWeight: 700, color: C.navy, textDecoration: "underline" }}>
         {PLAN_BOTTOM_CALL}
       </a>
     </div>

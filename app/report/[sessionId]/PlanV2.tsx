@@ -60,8 +60,8 @@ export default function PlanV2({ sessionId, content: c, goalKey, ageBand, childN
       <PlanV3StickyBar childName={nm} />
 
       {/* ← Back to the report */}
-      <div style={{ ...section, paddingTop: 16 }}>
-        <a href="?report=v2&c=5" style={{ fontSize: 14, fontWeight: 700, color: C.dim, textDecoration: "none" }}>{PLAN_BACK}</a>
+      <div style={{ ...section, paddingTop: 8 }}>
+        <a href="?report=v2&c=5" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, padding: "11px 0", fontSize: 14, fontWeight: 700, color: C.dim, textDecoration: "none" }}>{PLAN_BACK}</a>
       </div>
 
       {/* navy hero: kicker + worry headline + subline */}
