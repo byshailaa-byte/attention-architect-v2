@@ -29,11 +29,14 @@ export async function routeNotOnWhatsApp(kind: WaKind, sessionId?: string): Prom
   const sql = getSql();
   const a = (await sql`SELECT id FROM assessments WHERE session_id = ${sessionId}::uuid LIMIT 1`) as unknown as { id: string }[];
   if (!a[0]) return;
-  const exists = (await sql`SELECT 1 FROM call_log WHERE assessment_id = ${a[0].id} AND segment = 'wa_unreachable' LIMIT 1`) as unknown as unknown[];
+  // Dedup on the note (call_log.outcome is CHECK-constrained, so the tag lives in notes). Surfaced
+  // as a 'callback' due now (segment A) so the parent appears in the Calls queue immediately.
+  const note = "WhatsApp unreachable: share report link";
+  const exists = (await sql`SELECT 1 FROM call_log WHERE assessment_id = ${a[0].id} AND notes = ${note} LIMIT 1`) as unknown as unknown[];
   if (exists.length) return;
   await sql`
-    INSERT INTO call_log (assessment_id, segment, notes, follow_up_at)
-    VALUES (${a[0].id}, 'wa_unreachable', 'WhatsApp unreachable: share report link', now())
+    INSERT INTO call_log (assessment_id, segment, outcome, notes, follow_up_at, called_by)
+    VALUES (${a[0].id}, 'A', 'callback', ${note}, now(), 'system')
   `;
 }
 
