@@ -110,7 +110,7 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
   // is empty for ChatGPT. "Current" flow version only (never mixes old + new).
   const bySource = (await sql`
     WITH s AS (
-      SELECT f.session_id, f.created_at,
+      SELECT f.session_id, f.created_at, f.anon_id,
         CASE
           WHEN lower(f.utm->>'utm_source') = ANY(ARRAY['meta','facebook','fb','instagram','ig']) THEN 'Meta'
           WHEN f.utm->>'utm_source' ILIKE 'chatgpt' OR f.utm->>'utm_source' ILIKE 'openai' THEN 'ChatGPT'
@@ -125,12 +125,15 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
     )
     SELECT src,
       COUNT(*) FILTER (WHERE created_at >= (now() AT TIME ZONE 'Asia/Kolkata')::date::timestamp AT TIME ZONE 'Asia/Kolkata')::int AS land_today,
+      COUNT(DISTINCT anon_id) FILTER (WHERE created_at >= (now() AT TIME ZONE 'Asia/Kolkata')::date::timestamp AT TIME ZONE 'Asia/Kolkata')::int AS vis_today,
       COUNT(*) FILTER (WHERE reached_age AND created_at >= (now() AT TIME ZONE 'Asia/Kolkata')::date::timestamp AT TIME ZONE 'Asia/Kolkata')::int AS age_today,
       COUNT(*) FILTER (WHERE is_lead     AND created_at >= (now() AT TIME ZONE 'Asia/Kolkata')::date::timestamp AT TIME ZONE 'Asia/Kolkata')::int AS lead_today,
       COUNT(*) FILTER (WHERE created_at >= now() - interval '7 days')::int AS land_7,
+      COUNT(DISTINCT anon_id) FILTER (WHERE created_at >= now() - interval '7 days')::int AS vis_7,
       COUNT(*) FILTER (WHERE reached_age AND created_at >= now() - interval '7 days')::int AS age_7,
       COUNT(*) FILTER (WHERE is_lead     AND created_at >= now() - interval '7 days')::int AS lead_7,
       COUNT(*)::int AS land_14,
+      COUNT(DISTINCT anon_id)::int AS vis_14,
       COUNT(*) FILTER (WHERE reached_age)::int AS age_14,
       COUNT(*) FILTER (WHERE is_lead)::int AS lead_14
     FROM s GROUP BY src ORDER BY land_14 DESC
@@ -141,6 +144,7 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
   const chatgptByTerm = (await sql`
     SELECT COALESCE(NULLIF(btrim(f.utm->>'utm_term'), ''), '(none)') AS term,
            COUNT(DISTINCT f.session_id)::int AS landings,
+           COUNT(DISTINCT f.anon_id)::int AS visitors,
            COUNT(DISTINCT a.session_id) FILTER (WHERE a.parent_name IS NOT NULL)::int AS leads
     FROM flow_sessions f
     LEFT JOIN assessments a ON a.session_id = f.session_id AND NOT a.is_internal
@@ -148,7 +152,7 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
       AND f.created_at >= now() - interval '30 days'
       AND (f.utm->>'utm_source' ILIKE 'chatgpt' OR f.utm->>'utm_source' ILIKE 'openai')
     GROUP BY 1 ORDER BY landings DESC, term ASC LIMIT 25
-  `) as unknown as { term: string; landings: number; leads: number }[];
+  `) as unknown as { term: string; landings: number; visitors: number; leads: number }[];
 
   function href(next: Partial<{ days: string; device: string; source: string; flow: string; fver: string }>) {
     const p = new URLSearchParams({ days, device, source, flow, fver, ...next });
@@ -229,26 +233,27 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
             <tr style={{ borderBottom: "2px solid #14284D" }}>
               <th style={{ padding: "7px 6px", textAlign: "left" }}>Source</th>
               {["Today", "7 days", "14 days"].map((w) => (
-                <th key={w} colSpan={3} style={{ padding: "7px 6px", textAlign: "center", borderLeft: "1px solid #ece8da" }}>{w}</th>
+                <th key={w} colSpan={4} style={{ padding: "7px 6px", textAlign: "center", borderLeft: "1px solid #ece8da" }}>{w}</th>
               ))}
             </tr>
             <tr style={{ borderBottom: "1px solid #14284D", fontSize: 11.5, color: "#9a927c" }}>
               <th />
               {["today", "7d", "14d"].flatMap((g) => [
                 <th key={`l${g}`} style={{ padding: "4px 6px", textAlign: "right", borderLeft: "1px solid #ece8da" }}>land</th>,
+                <th key={`v${g}`} style={{ padding: "4px 6px", textAlign: "right" }}>visitors</th>,
                 <th key={`a${g}`} style={{ padding: "4px 6px", textAlign: "right" }}>age</th>,
                 <th key={`d${g}`} style={{ padding: "4px 6px", textAlign: "right" }}>lead</th>,
               ])}
             </tr>
           </thead>
           <tbody>
-            {bySource.length === 0 && <tr><td colSpan={10} style={{ padding: "10px 6px", color: "#9a927c" }}>No landings in window.</td></tr>}
+            {bySource.length === 0 && <tr><td colSpan={13} style={{ padding: "10px 6px", color: "#9a927c" }}>No landings in window.</td></tr>}
             {bySource.map((r) => (
               <tr key={String(r.src)} style={{ borderBottom: "1px solid #ece8da" }}>
                 <td style={{ padding: "7px 6px", fontWeight: 600 }}>{String(r.src)}</td>
-                <td style={cellR(true)}>{r.land_today}</td><td style={cellR()}>{r.age_today}</td><td style={cellR()}>{r.lead_today}</td>
-                <td style={cellR(true)}>{r.land_7}</td><td style={cellR()}>{r.age_7}</td><td style={cellR()}>{r.lead_7}</td>
-                <td style={cellR(true)}>{r.land_14}</td><td style={cellR()}>{r.age_14}</td><td style={cellR()}>{r.lead_14}</td>
+                <td style={cellR(true)}>{r.land_today}</td><td style={cellV()}>{r.vis_today}</td><td style={cellR()}>{r.age_today}</td><td style={cellR()}>{r.lead_today}</td>
+                <td style={cellR(true)}>{r.land_7}</td><td style={cellV()}>{r.vis_7}</td><td style={cellR()}>{r.age_7}</td><td style={cellR()}>{r.lead_7}</td>
+                <td style={cellR(true)}>{r.land_14}</td><td style={cellV()}>{r.vis_14}</td><td style={cellR()}>{r.age_14}</td><td style={cellR()}>{r.lead_14}</td>
               </tr>
             ))}
           </tbody>
@@ -263,15 +268,17 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
             <tr style={{ textAlign: "left", borderBottom: "2px solid #14284D" }}>
               <th style={{ padding: "7px 6px" }}>utm_term</th>
               <th style={{ padding: "7px 6px", textAlign: "right" }}>Landings</th>
+              <th style={{ padding: "7px 6px", textAlign: "right" }}>Visitors</th>
               <th style={{ padding: "7px 6px", textAlign: "right" }}>Leads</th>
             </tr>
           </thead>
           <tbody>
-            {chatgptByTerm.length === 0 && <tr><td colSpan={3} style={{ padding: "10px 6px", color: "#9a927c" }}>No ChatGPT landings in 30 days.</td></tr>}
+            {chatgptByTerm.length === 0 && <tr><td colSpan={4} style={{ padding: "10px 6px", color: "#9a927c" }}>No ChatGPT landings in 30 days.</td></tr>}
             {chatgptByTerm.map((t) => (
               <tr key={t.term} style={{ borderBottom: "1px solid #ece8da" }}>
                 <td style={{ padding: "7px 6px", wordBreak: "break-word" }}>{t.term}</td>
                 <td style={cellR(true)}>{t.landings}</td>
+                <td style={cellV()}>{t.visitors}</td>
                 <td style={{ padding: "7px 6px", textAlign: "right", fontWeight: 700, color: t.leads === 0 ? "#c0392b" : "#14284D" }}>{t.leads}</td>
               </tr>
             ))}
@@ -284,3 +291,5 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
 
 const labelCss: React.CSSProperties = { fontSize: 11, textTransform: "uppercase", letterSpacing: ".1em", color: "#9a927c", marginBottom: 6 };
 const cellR = (strong = false): React.CSSProperties => ({ padding: "7px 6px", textAlign: "right", fontWeight: strong ? 700 : 400, color: strong ? "#14284D" : "#6b6756", borderLeft: strong ? "1px solid #ece8da" : undefined });
+// Distinct-visitor cell: slightly emphasised (teal) so it reads as a companion to landings.
+const cellV = (): React.CSSProperties => ({ padding: "7px 6px", textAlign: "right", fontWeight: 600, color: "#2F7D6B" });

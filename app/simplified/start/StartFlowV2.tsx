@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, type MouseEvent as ReactMouseEvent } from 
 import { useRouter } from "next/navigation";
 import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import { getFlowSid } from "@/lib/flow/session";
+import { getAnonId } from "@/lib/flow/anon";
 import { loadStartState, saveStartState } from "@/lib/flow/start-state";
 import { isValidIndianMobile, childStepReady } from "@/lib/flow/validate";
 import { displayChildName } from "@/lib/report/pronouns";
@@ -70,7 +71,7 @@ export default function StartFlowV2() {
       fetch("/api/flow/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sid, flow: "v2", utm: getStoredUtm() }),
+        body: JSON.stringify({ session_id: sid, flow: "v2", utm: getStoredUtm(), anon_id: getAnonId() }),
       }).catch(() => {});
       track("landing_view", { flow: "v2" }, sid);
     }

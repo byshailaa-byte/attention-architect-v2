@@ -17,6 +17,9 @@ export async function POST(req: Request) {
   const eventType: unknown = body?.event_type;
   const sessionId: unknown = body?.session_id;
   const metadata: unknown = body?.metadata;
+  // First-party anonymous visitor id (random, no PII). DB-only — never forwarded to ad platforms.
+  const anonRaw: unknown = body?.anon_id;
+  const anonId = typeof anonRaw === "string" && UUID_RE.test(anonRaw) ? anonRaw : null;
 
   if (typeof eventType !== "string") {
     return new Response("bad request", { status: 400 });
@@ -43,8 +46,8 @@ export async function POST(req: Request) {
   if (hasSession) {
     try {
       await sql`
-        INSERT INTO funnel_events (event_type, session_id, metadata)
-        VALUES (${eventType}, ${sessionId as string}::uuid, ${JSON.stringify(meta)}::jsonb)
+        INSERT INTO funnel_events (event_type, session_id, metadata, anon_id)
+        VALUES (${eventType}, ${sessionId as string}::uuid, ${JSON.stringify(meta)}::jsonb, ${anonId})
       `;
     } catch (e) {
       // Do NOT swallow silently — a dropped funnel insert is invisible data loss (this is how

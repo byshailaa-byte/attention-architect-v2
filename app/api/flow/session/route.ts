@@ -14,6 +14,9 @@ export async function POST(req: NextRequest) {
   const sessionId: unknown = body?.session_id;
   const flow: unknown = body?.flow;
   const utm: unknown = body?.utm;
+  // First-party anonymous visitor id (random, no PII). Stored only; never sent to ad platforms.
+  const anonRaw: unknown = body?.anon_id;
+  const anonId = typeof anonRaw === "string" && UUID_RE.test(anonRaw) ? anonRaw : null;
 
   if (typeof sessionId !== "string" || !UUID_RE.test(sessionId)) {
     return new NextResponse("bad request", { status: 400 });
@@ -37,12 +40,13 @@ export async function POST(req: NextRequest) {
   const sql = getSql();
   try {
     await sql`
-      INSERT INTO flow_sessions (session_id, flow, is_internal, device, utm)
-      VALUES (${sessionId}::uuid, ${flowArm}, ${isInternal}, ${device}, ${JSON.stringify(utmValue)}::jsonb)
+      INSERT INTO flow_sessions (session_id, flow, is_internal, device, utm, anon_id)
+      VALUES (${sessionId}::uuid, ${flowArm}, ${isInternal}, ${device}, ${JSON.stringify(utmValue)}::jsonb, ${anonId})
       ON CONFLICT (session_id) DO UPDATE SET
         is_internal = flow_sessions.is_internal OR EXCLUDED.is_internal,
         device      = COALESCE(flow_sessions.device, EXCLUDED.device),
-        utm         = CASE WHEN flow_sessions.utm = '{}'::jsonb THEN EXCLUDED.utm ELSE flow_sessions.utm END
+        utm         = CASE WHEN flow_sessions.utm = '{}'::jsonb THEN EXCLUDED.utm ELSE flow_sessions.utm END,
+        anon_id     = COALESCE(flow_sessions.anon_id, EXCLUDED.anon_id)
     `;
   } catch (e) {
     console.warn("[flow/session] upsert failed:", (e as Error).message);

@@ -11,6 +11,7 @@
 "use client";
 
 import { fireGtag } from "@/lib/gtag";
+import { getAnonId } from "@/lib/flow/anon";
 import { CATALOG, OPENAI_SEND, pickAdParams, consentAllowsAds, metaEventId } from "./catalog";
 
 declare global {
@@ -62,7 +63,9 @@ function postFunnelEvent(name: string, sessionId: string | null | undefined, par
   fetch("/api/funnel/event", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event_type: name, session_id: sessionId ?? null, metadata: params }),
+    // anon_id is a TOP-LEVEL field (NOT inside metadata/params) — the ad adapters only ever see
+    // pickAdParams(params), so the visitor id never reaches GA4 / Meta / OpenAI. DB-only.
+    body: JSON.stringify({ event_type: name, session_id: sessionId ?? null, metadata: params, anon_id: getAnonId() }),
     keepalive: true,
   }).catch(() => {});
 }
