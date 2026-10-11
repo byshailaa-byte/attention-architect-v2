@@ -38,7 +38,8 @@ export default async function WhatsAppOutboxPage() {
             <tbody>
               {c.errors.map((e, i) => (
                 <tr key={i} style={{ borderBottom: "1px solid #ece8da" }}>
-                  <td style={{ padding: "6px 6px", color: "#6b6756", wordBreak: "break-word" }}>{e.error}</td>
+                  {/* Truncated display; full error on hover (title). */}
+                  <td title={e.error} style={{ padding: "6px 6px", color: "#6b6756", maxWidth: 520, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "help" }}>{e.error}</td>
                   <td style={{ padding: "6px 6px", textAlign: "right", fontWeight: 700 }}>{e.n}</td>
                 </tr>
               ))}

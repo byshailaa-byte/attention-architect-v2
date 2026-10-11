@@ -166,10 +166,11 @@ export async function outboxCounts(): Promise<{ queued: number; sent: number; fa
   const sql = getSql();
   const rows = (await sql`SELECT status, count(*)::int n FROM whatsapp_outbox GROUP BY status`) as unknown as { status: string; n: number }[];
   const by = Object.fromEntries(rows.map((r) => [r.status, r.n]));
-  // Latest error codes (across queued + failed), most common first. No phone numbers.
+  // Latest error codes (across queued + failed), most common first. Full text (shown on hover in the
+  // admin UI). This is the operator's own tool, so a recipient number inside a WATI error is fine here.
   const errs = (await sql`
-    SELECT left(last_error, 80) AS error, count(*)::int n
-    FROM whatsapp_outbox WHERE last_error IS NOT NULL GROUP BY 1 ORDER BY n DESC LIMIT 5
+    SELECT last_error AS error, count(*)::int n
+    FROM whatsapp_outbox WHERE last_error IS NOT NULL GROUP BY last_error ORDER BY n DESC LIMIT 8
   `) as unknown as { error: string; n: number }[];
   return { queued: by.queued ?? 0, sent: by.sent ?? 0, failed: by.failed ?? 0, errors: errs };
 }
