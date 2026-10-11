@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { normalizePhone } from "@/lib/whatsapp";
-import { enqueueWhatsApp, REPORT_TEMPLATE } from "@/lib/whatsapp/outbox";
+import { enqueueWhatsApp, REPORT_TEMPLATE, drainQueued } from "@/lib/whatsapp/outbox";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 import { sendOpsAlert } from "@/lib/alerts/notify";
 
@@ -107,6 +107,9 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Drain the outbox (oldest first; WATI 1/sec). No-op on provider=none. Bounded to fit maxDuration.
+  const outboxDrained = await drainQueued(40).catch(() => ({ provider: "none" as const, attempted: 0, sent: 0, failed: 0 }));
+
   // Alert on exhausted sessions — these need manual recovery via the admin panel.
   const exhaustedRows = await sql`
     SELECT COUNT(*)::int AS count
@@ -191,6 +194,8 @@ export async function GET(req: NextRequest) {
     sent:          results.filter(r => r.result === "sent").length,
     failed:        results.filter(r => r.result === "failed").length,
     skipped:       results.filter(r => r.result === "skipped").length,
+    queued:        results.filter(r => r.result === "queued").length,
+    outboxDrained,
     exhausted,
     neverGenerated,
   });

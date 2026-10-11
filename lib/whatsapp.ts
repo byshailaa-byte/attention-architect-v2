@@ -24,18 +24,16 @@ export async function sendWhatsAppReport({
   childName: string;
   sessionId: string;
   rawPhone: string;
-}): Promise<void> {
+}): Promise<{ ok: boolean; error?: string }> {
   const to = normalizePhone(rawPhone); // 91XXXXXXXXXX — WATI wants the country code
-  if (!to) throw new Error(`invalid phone: "${rawPhone}"`);
+  if (!to) return { ok: false, error: "invalid phone" };
 
-  // Transport moved from the Meta Cloud API to WATI (the number 9993374923 now
-  // lives on WATI). Everything around this call — the claim, dedup flags, retry
-  // cron, MAX_WA_ATTEMPTS — is unchanged; only the HTTP call differs, and the
-  // function still THROWS on any failure so callers retry / release the claim.
+  // Delivery goes through WATI (template send_assessment_new). Normalised to return {ok,error} (no
+  // throw) so the outbox can record the WATI error and keep the row queued for a later retry.
   const endpoint = process.env.WATI_API_ENDPOINT;
   const token    = process.env.WATI_ACCESS_TOKEN;
   if (!endpoint || !token) {
-    throw new Error("WATI_API_ENDPOINT or WATI_ACCESS_TOKEN not set");
+    return { ok: false, error: "WATI_API_ENDPOINT or WATI_ACCESS_TOKEN not set" };
   }
 
   // WATI's sendTemplateMessage takes a FLAT `parameters` array of {name, value}
@@ -73,14 +71,15 @@ export async function sendWhatsAppReport({
     // WATI can return HTTP 200 with { result: false } (e.g. invalid number,
     // template not approved) — treat that as a failure too, so the caller retries.
     if (!res.ok || data.result === false) {
-      throw new Error(`WATI sendTemplateMessage ${res.status}: ${JSON.stringify(data)}`);
+      return { ok: false, error: `WATI sendTemplateMessage ${res.status}: ${JSON.stringify(data).slice(0, 200)}` };
     }
     console.log("[whatsapp] WATI sent to", to, "session", sessionId, JSON.stringify(data));
+    return { ok: true };
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
-      throw new Error("WATI sendTemplateMessage timed out after 8s");
+      return { ok: false, error: "WATI sendTemplateMessage timed out after 8s" };
     }
-    throw err;
+    return { ok: false, error: (err as Error).message };
   } finally {
     clearTimeout(timer);
   }

@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     const q = toPhone
       ? await enqueueWhatsApp({
           kind: "handbook", toPhone,
-          template: process.env.HANDBOOK_WA_TEMPLATE || "handbook_send",
+          template: "handbook_send", // WATI sends handbook_send (via sendWatiHandbook)
           params: { name: firstName || "there" },
           ref: `handbook_lead:${row.id}`,
         }).catch((e: unknown) => { console.error(`[handbook-lead] enqueue failed for lead ${row.id}:`, (e as Error).message); return null; })

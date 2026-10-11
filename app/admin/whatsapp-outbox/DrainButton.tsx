@@ -22,7 +22,7 @@ export function DrainButton({ enabled }: { enabled: boolean }) {
           background: enabled ? "#14284D" : "#c9c4b4", color: "#fff", cursor: enabled && !busy ? "pointer" : "not-allowed" }}>
         {busy ? "Sending…" : "Send queued"}
       </button>
-      {!enabled && <span style={{ marginLeft: 12, fontSize: 13, color: "#9a927c" }}>Disabled until WHATSAPP_PROVIDER=cloud.</span>}
+      {!enabled && <span style={{ marginLeft: 12, fontSize: 13, color: "#9a927c" }}>Disabled until WHATSAPP_PROVIDER is wati (or cloud).</span>}
       {msg && <div style={{ marginTop: 10, fontSize: 13.5, color: "#14284D" }}>{msg}</div>}
     </div>
   );

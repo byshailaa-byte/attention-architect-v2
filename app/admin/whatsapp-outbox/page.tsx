@@ -26,7 +26,22 @@ export default async function WhatsAppOutboxPage() {
         {card("Sent", c.sent, "#2F7D4F")}
         {card("Failed", c.failed, "#C2543B")}
       </div>
-      <DrainButton enabled={provider === "cloud"} />
+      <DrainButton enabled={provider !== "none"} />
+      {c.errors.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".08em", color: "#9a927c", marginBottom: 8 }}>Latest error codes</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <tbody>
+              {c.errors.map((e, i) => (
+                <tr key={i} style={{ borderBottom: "1px solid #ece8da" }}>
+                  <td style={{ padding: "6px 6px", color: "#6b6756", wordBreak: "break-word" }}>{e.error}</td>
+                  <td style={{ padding: "6px 6px", textAlign: "right", fontWeight: 700 }}>{e.n}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
