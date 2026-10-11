@@ -295,7 +295,7 @@ export const CARD4_BTN = "How do I make it stick? →";
 export const CARD5_EYEBROW = "THE 6-WEEK PROGRAM";
 export const CARD5_HEADLINE = "A program for you, the parent.";
 export const CARD5_SUB =
-  "No lessons for {Name}. Each day, you try one small change in how you talk or plan with {him}.";
+  "No lessons for {Name}. Each day you try one small change in how you talk or plan with {him}. About 5 minutes.";
 
 export const CARD5_HOW_LABEL = "HOW IT WORKS";
 // Shared 4 "how it works" steps + the Coach line (§93, §107). Markdown bold preserved.
@@ -308,7 +308,7 @@ export const HOW_IT_WORKS_STEPS: [string, string, string, string] = [
 export const HOW_IT_WORKS_COACH =
   "**Stuck?** Ask the Attention Coach any time. It knows {Name}'s plan and answers in your language.";
 
-export const CARD5_GOAL_LABEL = "WHAT WE WORK TOWARD"; // + CONCERN_GOAL (existing, or override)
+export const CARD5_GOAL_LABEL = "WHAT WE WORK TOWARDS"; // + GOAL_LINE[worry] (B)
 export const CARD5_GOAL_SMALL =
   "Every child is different, so we can't promise results. We can give you a clear plan and help at every step.";
 export const CARD5_BTN_PLAN = "See {Name}'s 6-week plan and price →";
@@ -474,3 +474,83 @@ export const PLAN_FAQ: { q: string; a: string }[] = [
 export const PLAN_CLOSE_HEADLINE = "Start tonight. One small step at a time.";
 export const PLAN_CLOSE_BTN_PLAN = "Start {Name}'s plan";
 export const PLAN_CLOSE_BTN_CALL = "Not sure? Book a free 15-min call";
+
+// ════════════════════════════════════════════════════════════════════════════════
+// REPORT-FIXES-V4 (B + C) — one-screen cards + rebuilt plan page.
+// Approved copy: A–E prompt + user item-4 edits. Tokens filled at render. {s:a|b} = unset-gender
+// verb agreement (3rd-person-singular when gender set; plural "they"-form when unset) — this is
+// the grammar fix for the two "finish" lines ("they start", not "they starts").
+// ════════════════════════════════════════════════════════════════════════════════
+
+// B · Card 1 — the intro box, shortened to one line.
+export const CARD1_INTRO_ONELINE = "{Name}'s attention report, from your answers.";
+
+// B · Card 5 — "WHAT WE WORK TOWARDS", one goal line per worry.
+export const GOAL_LINE: Record<string, string> = {
+  reminders:  "{Name} starts with one reminder, or none.",
+  homework:   "{Name} sits down to homework without the fight.",
+  screens:    "{Name} turns the screen off without a battle.",
+  confidence: "{Name} tries the hard bit before saying “I can’t”.",
+  giveup:     "{Name} has another go after the first try doesn’t work.",
+  finish:     "{Name} finishes what {he} {s:starts|start}.",
+  other:      "{Name} gets going, and keeps going, on {his} own.",
+};
+
+// C · Plan hero headline — "From …, to …" per worry.
+export const PLAN_HEADLINE: Record<string, string> = {
+  reminders:  "From reminding {him} again and again, to {Name} starting on {his} own.",
+  homework:   "From the nightly homework fight, to {Name} sitting down on {his} own.",
+  screens:    "From the battle over screens, to {Name} switching off calmly.",
+  confidence: "From “I can’t” before trying, to {Name} taking on the hard bit.",
+  giveup:     "From giving up at the first wall, to {Name} having another go.",
+  finish:     "From half-done work, to {Name} finishing what {he} {s:starts|start}.",
+  other:      "From stop-start days, to {Name} getting going and keeping going.",
+};
+
+// C · "What changes for you" — first tile per worry (item-4 edits for
+// confidence / finish / homework). Tiles 2–4 are fixed.
+export const CHANGES_TILE1: Record<string, { title: string; line: string }> = {
+  reminders:  { title: "Fewer reminders",        line: "The number you count on Day 1 is the one we work on." },
+  homework:   { title: "Calmer homework starts", line: "Less fighting at the start of homework." },
+  screens:    { title: "Easier screen-offs",     line: "Turning the screen off stops being a daily battle." },
+  confidence: { title: "More first tries",       line: "{Name} tries before saying “I can’t”." },
+  giveup:     { title: "One more go",            line: "{Name} tries again after the first try doesn’t work." },
+  finish:     { title: "More finished work",     line: "More of what {Name} starts gets done." },
+  other:      { title: "Steadier starts",        line: "Getting going and keeping going gets easier." },
+};
+export const CHANGES_FIXED: { title: string; line: string }[] = [
+  { title: "Calmer starts",     line: "Less back-and-forth in the first 5 minutes." },
+  { title: "The exact words",   line: "You know what to say, and what to stop saying." },
+  { title: "See it in numbers", line: "Every Sunday, you see what you logged that week." },
+];
+export const PLAN_CHANGES_LABEL = "WHAT CHANGES FOR YOU";
+
+// C · Plan hero (new structure).
+export const PLAN_BACK = "← Back to the report";
+export const PLAN_HERO_KICKER = "{NAME}’S 6-WEEK PLAN · AGE {band}";
+export const PLAN_HERO_SUBLINE =
+  "5 minutes a day, for you. Written for how {Name} pays attention, and for {his} age.";
+export const PLAN_SIX_WEEKS_LABEL_C = "THE SIX WEEKS";
+
+// C · "Pick your plan" comparison table (§111) — verbatim from the A–E spec.
+export const PLAN_PICK_LABEL = "PICK YOUR PLAN";
+export const PLAN_COMPARE_COL_PLAN = { name: "Plan", price: "₹2,999" };
+export const PLAN_COMPARE_COL_CALLS = { name: "Plan + calls", price: "₹4,999" };
+export const PLAN_COMPARE_ROWS: { label: string; plan: boolean; calls: boolean }[] = [
+  { label: "A 5-minute step every day for 6 weeks", plan: true, calls: true },
+  { label: "The exact words to say in the moment", plan: true, calls: true },
+  { label: "Attention Coach: ask any time, it knows {Name}’s plan", plan: true, calls: true },
+  { label: "Your numbers every Sunday", plan: true, calls: true },
+  { label: "3 video calls with our founder. We look at what you logged and change the plan with you.", plan: false, calls: true },
+];
+export const PLAN_COMPARE_PERDAY_LABEL = "Per day, for 6 weeks";
+export const PLAN_COMPARE_PERDAY = { plan: "₹71", calls: "₹119" };
+// Split into ≤16-word sentences (spec §7) without changing the user's words.
+export const PLAN_WHICH_ONE =
+  "Take the calls if you’ve tried things before and they didn’t last. Or if you want someone to adjust the plan with you. Otherwise the plan is enough. You can add calls later for ₹2,000.";
+export const PLAN_BTN_CALLS = "Start with calls · ₹4,999";
+export const PLAN_BTN_PLAN = "Start the plan · ₹2,999";
+export const PLAN_GUARANTEE: string[] = ["7-day full refund", "Keep the report", "UPI & cards"];
+
+// C · the one bottom line (§121).
+export const PLAN_BOTTOM_CALL = "Not sure yet? Book a free 15-min call.";

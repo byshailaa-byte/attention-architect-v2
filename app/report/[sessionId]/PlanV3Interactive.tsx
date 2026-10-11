@@ -1,21 +1,20 @@
 "use client";
-// Plan v3 interactive island for the one-page plan. Owns: the view events (plan_v2_view +
-// day1_preview_view on mount), the sticky mobile bottom bar, the forked price cards (with the
-// exact Razorpay checkout + tier ids + analytics event names reused from PlanInteractive.tsx),
-// and the FAQ accordions. Static sections are server-rendered in PlanV2.tsx.
+// Plan v3 interactive island for the rebuilt one-page plan (report-fixes-v4 · C). Owns: the view
+// events (plan_v2_view + view_item on mount), the sticky mobile bottom bar, the "Pick your plan"
+// comparison table + two checkout buttons, the FAQ accordions, and the single bottom call link.
 //
-// CHECKOUT is byte-for-byte the PlanInteractive flow: POST /api/checkout/order {sessionId,tier};
-// events plan_cta_click, begin_checkout, checkout_modal_opened/dismissed; gtag/fbq purchase;
-// redirect /checkout/success. PlanInteractive.tsx itself is left untouched (simplified funnel).
+// CHECKOUT is byte-for-byte the prior flow: POST /api/checkout/order {sessionId,tier}; events
+// plan_cta_click, begin_checkout, checkout_modal_opened/dismissed; purchase; redirect
+// /checkout/success. Amounts unchanged — plan=₹2,999 (tier1), plan+calls=₹4,999 (tier2).
 import { useEffect, useState } from "react";
 import Script from "next/script";
 import { HEAD, BODY } from "@/app/components/FlowShell";
 import { track } from "@/lib/analytics/track";
-import { SHOW_COMPARE_AT } from "@/lib/report-v2/flags";
 import {
   PLAN_STICKY_LABEL, PLAN_STICKY_BTN,
-  PRICE_INCLUDE_LABEL, PRICE_INCLUDES, PRICE_TIER1, PRICE_TIER2, PRICE_COMPARE_AT, PRICE_BADGES,
-  PLAN_FAQ_LABEL, PLAN_FAQ,
+  PLAN_PICK_LABEL, PLAN_COMPARE_COL_PLAN, PLAN_COMPARE_COL_CALLS, PLAN_COMPARE_ROWS,
+  PLAN_COMPARE_PERDAY_LABEL, PLAN_COMPARE_PERDAY, PLAN_WHICH_ONE, PLAN_BTN_CALLS, PLAN_BTN_PLAN,
+  PLAN_GUARANTEE, PLAN_FAQ_LABEL, PLAN_FAQ, PLAN_BOTTOM_CALL,
 } from "@/lib/report-v2/v3-copy";
 
 const C = {
@@ -26,8 +25,7 @@ const GREEN = "#2F9E6E";
 
 type RazorpayCtor = new (o: Record<string, unknown>) => { open(): void };
 
-// Minimal {Name}-only filler (pronouns are already resolved server-side in the strings passed
-// as props; the price copy only carries {Name}). Kept tiny on purpose.
+// Minimal {Name}-only filler (pronouns are resolved server-side; price copy only carries {Name}).
 function fillName(tmpl: string, name: string) {
   return tmpl.replace(/\{Name\}/g, name);
 }
@@ -35,19 +33,18 @@ function fillName(tmpl: string, name: string) {
 export function PlanV3View({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     track("plan_v2_view", { layout: "v3" }, sessionId);
-    track("day1_preview_view", { layout: "v3" }, sessionId);
-    // view_item (GA4 + Meta ViewContent) for the plan/price view — was missing on the v3 plan, so
-    // the plan page view never reached the ad platforms. Entry tier value; no child data.
+    // view_item (GA4 + Meta ViewContent) for the plan/price view. Entry tier value; no child data.
     track("view_item", { currency: "INR", value: 2999, content_name: "plan", tier: "tier1" }, sessionId);
   }, [sessionId]);
   return null;
 }
 
+// "Start now" / sticky bar / bottom call all scroll to the "Pick your plan" section (#price).
 function scrollToPrice() {
   document.getElementById("price")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// Sticky mobile bottom bar (§102) — appears after the hero CTA scrolls out of view.
+// Sticky mobile bottom bar (§102) — appears after the hero scrolls out of view.
 export function PlanV3StickyBar({ childName }: { childName: string }) {
   const [show, setShow] = useState(false);
   useEffect(() => {
@@ -97,8 +94,7 @@ export function PlanV3Faq({ childName }: { childName: string }) {
   );
 }
 
-// Forked price cards (§111–115). Both tiers, badges, "Both plans include" ticks, strikethrough
-// compare-at gated behind SHOW_COMPARE_AT (currently false → hidden).
+// "Pick your plan" — comparison table (§111) + "Which one?" note + two checkout buttons + guarantee.
 export function PlanV3Pricing({ sessionId, childName, parentName = "", email = "", phone = "" }: {
   sessionId: string; childName: string; parentName?: string; email?: string; phone?: string;
 }) {
@@ -107,7 +103,7 @@ export function PlanV3Pricing({ sessionId, childName, parentName = "", email = "
   if (email) prefill.email = email;
   if (phone) prefill.contact = phone;
 
-  const titleFor = (tier: "tier1" | "tier2") => tier === "tier2" ? fillName(PRICE_TIER2.title, childName) : PRICE_TIER1.title;
+  const titleFor = (tier: "tier1" | "tier2") => tier === "tier2" ? "Plan + 3 calls" : "The 6-week plan";
 
   async function openCheckout(tier: "tier1" | "tier2", value: number) {
     track("plan_cta_click", { tier, value }, sessionId);
@@ -139,73 +135,75 @@ export function PlanV3Pricing({ sessionId, childName, parentName = "", email = "
     } catch { alert("Could not start checkout. Please try again."); }
   }
 
-  const Price = ({ now, was, onNavy }: { now: string; was: string; onNavy: boolean }) => (
-    <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-      <span style={{ fontFamily: HEAD, fontSize: 28, fontWeight: 600 }}>{now}</span>
-      {SHOW_COMPARE_AT && <s style={{ fontSize: 15, fontWeight: 600, color: onNavy ? "rgba(255,255,255,.6)" : "#A6ADB8" }}>{was}</s>}
-    </div>
-  );
+  // Grid: label column + two value columns. The "calls" column is highlighted (navy tint).
+  const COLS = "1fr 58px 58px";
+  const callsCell: React.CSSProperties = { background: "rgba(30,58,95,.06)" };
+  const headCell: React.CSSProperties = { textAlign: "center", padding: "10px 4px", lineHeight: 1.2 };
+  const Mark = ({ on }: { on: boolean }) => on
+    ? <span style={{ color: GREEN, fontWeight: 800, fontSize: 17 }}>✓</span>
+    : <span style={{ color: "#B9C0CB", fontWeight: 700, fontSize: 17 }}>–</span>;
 
   return (
     <div style={{ fontFamily: BODY }}>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+      <div style={{ fontFamily: BODY, fontSize: 12, fontWeight: 700, letterSpacing: ".12em", color: C.gold, textTransform: "uppercase", marginBottom: 14 }}>{PLAN_PICK_LABEL}</div>
 
-      {/* Both plans include */}
-      <div style={{ background: "#fff", border: `1.5px solid ${C.line}`, borderRadius: 14, padding: "16px 18px", marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".08em", color: C.dim, textTransform: "uppercase", marginBottom: 10 }}>{PRICE_INCLUDE_LABEL}</div>
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          {PRICE_INCLUDES.map((t, i) => (
-            <li key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start", marginBottom: 8, fontSize: 15, lineHeight: 1.45 }}>
-              <span style={{ color: GREEN, fontWeight: 800, flexShrink: 0 }}>✓</span>
-              <span>{fillName(t, childName)}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Tier 2 — navy, "MOST HELP" */}
-      <div style={{ background: C.navy, color: "#fff", borderRadius: 16, padding: "20px 20px", marginBottom: 14, boxShadow: "0 10px 26px rgba(30,58,95,.28)" }}>
-        <div style={{ display: "inline-block", background: C.gold, color: "#1a1a1a", fontWeight: 800, fontSize: 11, letterSpacing: ".08em", textTransform: "uppercase", padding: "4px 10px", borderRadius: 999, marginBottom: 12 }}>{PRICE_TIER2.badge}</div>
-        <div style={{ fontFamily: HEAD, fontSize: 20, lineHeight: 1.25, marginBottom: 10 }}>{fillName(PRICE_TIER2.title, childName)}</div>
-        <Price now={PRICE_TIER2.price} was={PRICE_COMPARE_AT.tier2} onNavy />
-        <div style={{ fontSize: 13, color: C.onNavy, margin: "4px 0 12px" }}>{PRICE_TIER2.perDay}</div>
-        <p style={{ fontSize: 15, lineHeight: 1.5, margin: "0 0 16px", color: "#EAF1F8" }}>{fillName(PRICE_TIER2.body, childName)}</p>
-        <button onClick={() => openCheckout("tier2", 4999)} style={{ width: "100%", minHeight: 50, borderRadius: 13, border: "none", cursor: "pointer", fontFamily: BODY, fontWeight: 700, fontSize: 16, background: C.gold, color: "#1a1a1a" }}>{PRICE_TIER2.button}</button>
-      </div>
-
-      {/* Tier 1 */}
-      <div style={{ background: "#fff", color: C.ink, border: `1.5px solid ${C.line}`, borderRadius: 16, padding: "20px 20px", marginBottom: 16 }}>
-        <div style={{ fontFamily: HEAD, fontSize: 20, lineHeight: 1.25, marginBottom: 10 }}>{PRICE_TIER1.title}</div>
-        <Price now={PRICE_TIER1.price} was={PRICE_COMPARE_AT.tier1} onNavy={false} />
-        <div style={{ fontSize: 13, color: C.dim, margin: "4px 0 12px" }}>{PRICE_TIER1.perDay}</div>
-        <p style={{ fontSize: 15, lineHeight: 1.5, margin: "0 0 16px" }}>{PRICE_TIER1.body}</p>
-        <button onClick={() => openCheckout("tier1", 2999)} style={{ width: "100%", minHeight: 50, borderRadius: 13, border: `1.5px solid ${C.navy}`, cursor: "pointer", fontFamily: BODY, fontWeight: 700, fontSize: 16, background: "transparent", color: C.navy }}>{PRICE_TIER1.button}</button>
-      </div>
-
-      {/* Badges */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {PRICE_BADGES.map((b, i) => (
-          <div key={i} style={{ display: "flex", gap: 9, alignItems: "center", fontSize: 13.5, color: C.dim }}>
-            <span style={{ color: GREEN, fontWeight: 800, flexShrink: 0 }}>✓</span>
-            <span>{b}</span>
+      {/* comparison table */}
+      <div style={{ border: `1.5px solid ${C.line}`, borderRadius: 14, overflow: "hidden", background: "#fff" }}>
+        {/* header */}
+        <div style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "stretch", borderBottom: `1px solid ${C.line}` }}>
+          <div />
+          <div style={headCell}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: C.ink }}>{PLAN_COMPARE_COL_PLAN.name}</div>
+            <div style={{ fontFamily: HEAD, fontSize: 15, color: C.navy }}>{PLAN_COMPARE_COL_PLAN.price}</div>
           </div>
+          <div style={{ ...headCell, ...callsCell, borderLeft: `1px solid ${C.line}` }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: C.navy }}>{PLAN_COMPARE_COL_CALLS.name}</div>
+            <div style={{ fontFamily: HEAD, fontSize: 15, color: C.navy }}>{PLAN_COMPARE_COL_CALLS.price}</div>
+          </div>
+        </div>
+        {/* rows */}
+        {PLAN_COMPARE_ROWS.map((r, i) => (
+          <div key={i} style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center", borderBottom: `1px solid ${C.line}` }}>
+            <div style={{ fontSize: 13.5, lineHeight: 1.35, color: C.ink, padding: "11px 12px" }}>{fillName(r.label, childName)}</div>
+            <div style={{ textAlign: "center", padding: "11px 4px" }}><Mark on={r.plan} /></div>
+            <div style={{ textAlign: "center", padding: "11px 4px", ...callsCell, borderLeft: `1px solid ${C.line}` }}><Mark on={r.calls} /></div>
+          </div>
+        ))}
+        {/* per-day footer row */}
+        <div style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: C.dim, padding: "11px 12px" }}>{PLAN_COMPARE_PERDAY_LABEL}</div>
+          <div style={{ textAlign: "center", padding: "11px 4px", fontFamily: HEAD, fontSize: 14, color: C.navy }}>{PLAN_COMPARE_PERDAY.plan}</div>
+          <div style={{ textAlign: "center", padding: "11px 4px", ...callsCell, borderLeft: `1px solid ${C.line}`, fontFamily: HEAD, fontSize: 14, color: C.navy }}>{PLAN_COMPARE_PERDAY.calls}</div>
+        </div>
+      </div>
+
+      {/* which one? */}
+      <p style={{ fontSize: 14, lineHeight: 1.55, color: C.dim, margin: "16px 0 18px" }}>{PLAN_WHICH_ONE}</p>
+
+      {/* buttons: calls (filled) + plan (outline) */}
+      <button onClick={() => openCheckout("tier2", 4999)} style={{ width: "100%", minHeight: 52, borderRadius: 13, border: "none", cursor: "pointer", fontFamily: BODY, fontWeight: 700, fontSize: 16, background: C.gold, color: "#1a1a1a", marginBottom: 10 }}>{PLAN_BTN_CALLS}</button>
+      <button onClick={() => openCheckout("tier1", 2999)} style={{ width: "100%", minHeight: 52, borderRadius: 13, border: `1.5px solid ${C.navy}`, cursor: "pointer", fontFamily: BODY, fontWeight: 700, fontSize: 16, background: "transparent", color: C.navy, marginBottom: 16 }}>{PLAN_BTN_PLAN}</button>
+
+      {/* guarantee row */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", justifyContent: "center" }}>
+        {PLAN_GUARANTEE.map((g, i) => (
+          <span key={i} style={{ display: "inline-flex", gap: 6, alignItems: "center", fontSize: 13, color: C.dim }}>
+            <span style={{ color: GREEN, fontWeight: 800 }}>✓</span>{g}
+          </span>
         ))}
       </div>
     </div>
   );
 }
 
-// Close CTA (§121) + a scroll-to-price primary. Keeps the free-call Calendly link.
-export function PlanV3Close({ sessionId, calendlyUrl, childName, headline, btnPlan, btnCall }: {
-  sessionId: string; calendlyUrl: string; childName: string; headline: string; btnPlan: string; btnCall: string;
-}) {
+// The single bottom line (§121): "Not sure yet? Book a free 15-min call."
+export function PlanV3BottomCall({ sessionId, calendlyUrl }: { sessionId: string; calendlyUrl: string }) {
   return (
     <div style={{ fontFamily: BODY, textAlign: "center" }}>
-      <h2 style={{ fontFamily: HEAD, fontSize: 26, lineHeight: 1.2, fontWeight: 500, color: C.navy, margin: "0 0 20px" }}>{headline}</h2>
-      <button onClick={scrollToPrice} style={{ width: "100%", maxWidth: 360, minHeight: 50, borderRadius: 13, border: "none", cursor: "pointer", fontFamily: BODY, fontWeight: 700, fontSize: 16, background: C.gold, color: "#1a1a1a", margin: "0 auto 12px", display: "block" }}>{fillName(btnPlan, childName)}</button>
       <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" onClick={() => track("call_click", { where: "plan" }, sessionId)}
-        style={{ display: "inline-block", fontSize: 15, fontWeight: 700, color: C.navy, textDecoration: "underline" }}>
-        {btnCall}
+        style={{ display: "inline-block", fontSize: 15.5, fontWeight: 700, color: C.navy, textDecoration: "underline" }}>
+        {PLAN_BOTTOM_CALL}
       </a>
     </div>
   );

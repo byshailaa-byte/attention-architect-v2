@@ -17,7 +17,7 @@ import ReportV2 from "./ReportV2";
 import { parseCardParam } from "@/lib/report-v2/cards-nav";
 
 type Params = Promise<{ sessionId: string }>;
-type SearchParams = Promise<{ f?: string; report?: string; card?: string; plan?: string }>;
+type SearchParams = Promise<{ f?: string; report?: string; card?: string; c?: string; plan?: string }>;
 
 export default async function ReportPage({
   params,
@@ -27,7 +27,7 @@ export default async function ReportPage({
   searchParams: SearchParams;
 }) {
   const { sessionId } = await params;
-  const { f, report, card, plan } = await searchParams;
+  const { f, report, card, c, plan } = await searchParams;
   const fallbackMode = f === "1"; // set by generating page on hard-cap timeout — skip redirect
 
   // Validate UUID format before hitting the DB
@@ -115,7 +115,7 @@ export default async function ReportPage({
     return (
       <ReportV2
         session={sessionId}
-        card={parseCardParam(card)}
+        card={parseCardParam(c ?? card)}
         plan={plan === "1" || plan === "true"}
       />
     );
