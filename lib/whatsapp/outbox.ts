@@ -21,7 +21,8 @@ export function whatsappProvider(): WaProvider {
   return p === "cloud" ? "cloud" : p === "wati" ? "wati" : "none";
 }
 
-const MAX_SEND_ATTEMPTS = 8;
+const MAX_FAST_ATTEMPTS = 8;    // fast retries (~5-min spacing) before switching to hourly
+const RETRY_WINDOW_HOURS = 24;  // keep retrying hourly until this long after the first attempt, then fail
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type EnqueueInput = {
@@ -62,9 +63,12 @@ export async function sendOutboxRow(id: string): Promise<{ ok: boolean; error?: 
   const sql = getSql();
   const provider = whatsappProvider();
   if (provider === "none") return { ok: false, error: "provider is none" };
+  // Short claim guard (2 min) prevents two concurrent drains double-claiming the same row during a
+  // send; the retry backoff itself (5 min fast / 1 h hourly) is enforced by drainQueued's SELECT.
   const claimed = (await sql`
-    UPDATE whatsapp_outbox SET claimed_at = now(), attempts = attempts + 1, updated_at = now()
-    WHERE id = ${id}::uuid AND status = 'queued' AND (claimed_at IS NULL OR claimed_at < now() - interval '5 minutes')
+    UPDATE whatsapp_outbox
+    SET claimed_at = now(), attempts = attempts + 1, first_attempt_at = COALESCE(first_attempt_at, now()), updated_at = now()
+    WHERE id = ${id}::uuid AND status = 'queued' AND (claimed_at IS NULL OR claimed_at < now() - interval '2 minutes')
     RETURNING id, kind, to_phone, template, params
   `) as unknown as { id: string; kind: WaKind; to_phone: string; template: string; params: Record<string, string> }[];
   if (claimed.length === 0) return { ok: false, error: "not claimable" };
@@ -92,16 +96,29 @@ export async function sendOutboxRow(id: string): Promise<{ ok: boolean; error?: 
 }
 
 // Drain queued rows, OLDEST FIRST (so messages queued since the 2b deploy go out first). No-op on
-// provider=none. WATI is rate-limited to ≤ 1 message/second. Retries are spaced ~5 min (claim guard)
-// and capped at MAX_SEND_ATTEMPTS. No double-send (atomic claim + dedup by ref).
+// provider=none. WATI is rate-limited to ≤ 1 message/second. Retry schedule: the first
+// MAX_FAST_ATTEMPTS tries are spaced ~5 min; after that it keeps retrying hourly until
+// RETRY_WINDOW_HOURS since the first attempt, then the row is marked 'failed'. No double-send
+// (atomic claim + dedup by ref).
 export async function drainQueued(limit = 200): Promise<{ provider: WaProvider; attempted: number; sent: number; failed: number }> {
   const provider = whatsappProvider();
   if (provider === "none") return { provider, attempted: 0, sent: 0, failed: 0 };
   const sql = getSql();
+  // Give up: still queued MAX_FAST_ATTEMPTS+ tries in and past the 24h window → mark failed.
+  await sql`
+    UPDATE whatsapp_outbox SET status='failed', updated_at=now()
+    WHERE status='queued' AND attempts >= ${MAX_FAST_ATTEMPTS}
+      AND first_attempt_at IS NOT NULL AND first_attempt_at < now() - ${`${RETRY_WINDOW_HOURS} hours`}::interval
+  `;
+  // Due for a retry: fast phase (5-min spacing) for the first attempts, then hourly within the window.
   const ids = (await sql`
     SELECT id FROM whatsapp_outbox
-    WHERE status='queued' AND attempts < ${MAX_SEND_ATTEMPTS}
-      AND (claimed_at IS NULL OR claimed_at < now() - interval '5 minutes')
+    WHERE status='queued' AND (
+      (attempts < ${MAX_FAST_ATTEMPTS} AND (claimed_at IS NULL OR claimed_at < now() - interval '5 minutes'))
+      OR (attempts >= ${MAX_FAST_ATTEMPTS}
+          AND (first_attempt_at IS NULL OR first_attempt_at > now() - ${`${RETRY_WINDOW_HOURS} hours`}::interval)
+          AND (claimed_at IS NULL OR claimed_at < now() - interval '1 hour'))
+    )
     ORDER BY created_at LIMIT ${limit}
   `) as unknown as { id: string }[];
   let sent = 0, failed = 0;
@@ -111,6 +128,18 @@ export async function drainQueued(limit = 200): Promise<{ provider: WaProvider; 
     if (provider === "wati") await sleep(1000); // ≤ 1 message/second
   }
   return { provider, attempted: ids.length, sent, failed };
+}
+
+// "Retry failed" — put failed rows back in the queue with a fresh retry window.
+export async function retryFailed(): Promise<{ requeued: number }> {
+  const sql = getSql();
+  const rows = (await sql`
+    UPDATE whatsapp_outbox
+    SET status='queued', attempts=0, first_attempt_at=NULL, claimed_at=NULL, updated_at=now()
+    WHERE status='failed'
+    RETURNING id
+  `) as unknown as { id: string }[];
+  return { requeued: rows.length };
 }
 
 // Enqueue the report the moment its content is generated (called from the generation service). No-op

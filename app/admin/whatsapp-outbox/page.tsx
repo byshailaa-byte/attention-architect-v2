@@ -1,5 +1,6 @@
 import { outboxCounts, whatsappProvider } from "@/lib/whatsapp/outbox";
 import { DrainButton } from "./DrainButton";
+import { RetryFailedButton } from "./RetryFailedButton";
 
 // Admin WhatsApp outbox dashboard — queued / sent / failed, and a "Send queued" button that's
 // disabled until the provider is cloud. Protected by the /admin Basic-Auth middleware.
@@ -26,7 +27,10 @@ export default async function WhatsAppOutboxPage() {
         {card("Sent", c.sent, "#2F7D4F")}
         {card("Failed", c.failed, "#C2543B")}
       </div>
-      <DrainButton enabled={provider !== "none"} />
+      <div style={{ marginTop: 16, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+        <DrainButton enabled={provider !== "none"} />
+        <RetryFailedButton failed={c.failed} />
+      </div>
       {c.errors.length > 0 && (
         <div style={{ marginTop: 24 }}>
           <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".08em", color: "#9a927c", marginBottom: 8 }}>Latest error codes</div>
