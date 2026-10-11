@@ -47,7 +47,14 @@ export async function POST(req: Request) {
         VALUES (${eventType}, ${sessionId as string}::uuid, ${JSON.stringify(meta)}::jsonb)
       `;
     } catch (e) {
-      console.warn("[funnel] insert failed:", (e as Error).message);
+      // Do NOT swallow silently — a dropped funnel insert is invisible data loss (this is how
+      // ~6 handbook_lead rows were lost to the out-of-order CHECK). Log WITH the event type and
+      // record it so the admin funnel page can show a non-zero error count.
+      const msg = (e as Error).message;
+      console.error(`[funnel] insert FAILED for event_type="${eventType}": ${msg}`);
+      try {
+        await sql`INSERT INTO funnel_event_errors (event_type, error) VALUES (${eventType}, ${msg.slice(0, 500)})`;
+      } catch { /* never let error-logging break the 200 response */ }
     }
   }
 

@@ -3,6 +3,7 @@
 // funnel_events.session_id is NOT NULL).
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { CATALOG } from "@/lib/analytics/catalog";
 
 const h = vi.hoisted(() => ({ sqlMock: vi.fn().mockResolvedValue([]) }));
 vi.mock("@/lib/boot-guard", () => ({ assertBootGuards: () => {} }));
@@ -59,6 +60,28 @@ describe("/api/funnel/event validation", () => {
   it("rejects an unknown event_type", async () => {
     const { POST } = await import("@/app/api/funnel/event/route");
     const res = await POST(req({ event_type: "nope", session_id: VALID }));
+    expect(res.status).toBe(400);
+  });
+});
+
+// (a) Catalog is the single source of truth (DB CHECK dropped in phase_62). EVERY catalog event
+// must be accepted; anything not in the catalog must be rejected. Fails the build on drift.
+describe("/api/funnel/event — catalog coverage", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("accepts every catalog event (200)", async () => {
+    const { POST } = await import("@/app/api/funnel/event/route");
+    const bad: string[] = [];
+    for (const event_type of Object.keys(CATALOG)) {
+      const res = await POST(req({ event_type, session_id: VALID, metadata: {} }));
+      if (res.status !== 200) bad.push(`${event_type} → ${res.status}`);
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it("rejects an event that is NOT in the catalog (400)", async () => {
+    const { POST } = await import("@/app/api/funnel/event/route");
+    const res = await POST(req({ event_type: "definitely_not_in_catalog", session_id: VALID }));
     expect(res.status).toBe(400);
   });
 });
