@@ -159,7 +159,7 @@ export default function ReportV2CardsV3(props: Props) {
       {/* body — no inner scroll; grows to fill, or the whole page scrolls on very short screens */}
       <div style={{ flex: "1 0 auto", padding: "12px 22px 10px" }}>
         {card === 1 && (<>
-          <p style={{ fontSize: 14.5, lineHeight: 1.45, color: dim, margin: "0 0 16px" }}><Rich text={f(CARD1_INTRO_ONELINE)} /></p>
+          <p style={{ fontSize: 15, lineHeight: 1.45, color: dim, margin: "0 0 16px" }}><Rich text={f(CARD1_INTRO_ONELINE)} /></p>
           {eyebrow(CARD1_EYEBROW)}
           <H1 mb={frequencyPhrase ? 8 : 16}>{copy.card1Headline}</H1>
           {frequencyPhrase && (
@@ -208,7 +208,7 @@ export default function ReportV2CardsV3(props: Props) {
             <div style={{ height: 1, background: FLOW.line, margin: "0 0 13px" }} />
             <p style={{ fontSize: 16.5, lineHeight: 1.5, fontWeight: 700, margin: 0, color: FLOW.navy }}>{needLine}</p>
           </div>
-          <p style={{ fontSize: 14.5, lineHeight: 1.5, color: FLOW.dim, margin: "14px 0 0" }}>
+          <p style={{ fontSize: 15, lineHeight: 1.5, color: FLOW.dim, margin: "14px 0 0" }}>
             {f(CARD3_NOTE.replace(/\{Type\}/g, type))} {strengths[0]}
           </p>
         </>)}
@@ -231,7 +231,7 @@ export default function ReportV2CardsV3(props: Props) {
               </li>
             ))}
           </ol>
-          <p style={{ fontSize: 14.5, lineHeight: 1.5, color: FLOW.dim, margin: 0 }}>{CARD4_UNDER}</p>
+          <p style={{ fontSize: 15, lineHeight: 1.5, color: FLOW.dim, margin: 0 }}>{CARD4_UNDER}</p>
         </>)}
 
         {card === 5 && (<>
@@ -241,7 +241,7 @@ export default function ReportV2CardsV3(props: Props) {
           <div style={{ background: FLOW.cream, color: FLOW.ink, borderRadius: 14, padding: 18 }}>
             {miniLabel(CARD5_GOAL_LABEL, FLOW.gold)}
             <h2 style={{ fontFamily: HEAD, fontSize: 22, lineHeight: 1.25, margin: "0 0 10px", fontWeight: 500, color: FLOW.navy }}>{shownGoal}</h2>
-            <button onClick={() => setSheet(true)} style={{ background: "none", border: "none", color: "#8A5F0F", fontWeight: 700, fontSize: 14, padding: 0, cursor: "pointer", textDecoration: "underline", marginBottom: 12 }}>
+            <button onClick={() => setSheet(true)} style={{ background: "none", border: "none", color: "#8A5F0F", fontWeight: 700, fontSize: 14, padding: "11px 0", minHeight: 44, cursor: "pointer", textDecoration: "underline", display: "block" }}>
               {CARD5_PICK_ANOTHER}
             </button>
             <p style={{ fontSize: 13.5, lineHeight: 1.5, color: FLOW.dim, margin: 0 }}>{CARD5_GOAL_SMALL}</p>
