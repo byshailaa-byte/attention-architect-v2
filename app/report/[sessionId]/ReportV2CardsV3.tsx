@@ -269,7 +269,7 @@ export default function ReportV2CardsV3(props: Props) {
 
         {card === 6 && (<>
           {eyebrow(CARD6_EYEBROW)}
-          <H1 mb={16}>{CARD6_HEADING}</H1>
+          <H1 mb={12}>{CARD6_HEADING}</H1>
           <div>
             {goalOptions.map((o) => {
               const selected = o.key === selGoal;
@@ -277,7 +277,7 @@ export default function ReportV2CardsV3(props: Props) {
               return (
                 <button key={o.key} onClick={() => setSelGoal(o.key)} style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", textAlign: "left",
-                  minHeight: 46, padding: "10px 14px", marginBottom: 8, borderRadius: 12, cursor: "pointer", fontFamily: BODY,
+                  minHeight: 44, padding: "9px 14px", marginBottom: 6, borderRadius: 12, cursor: "pointer", fontFamily: BODY,
                   border: `1.5px solid ${selected ? FLOW.gold : FLOW.line}`, background: selected ? FLOW.sel : "#fff",
                   color: FLOW.ink, fontSize: 14.5, lineHeight: 1.3, fontWeight: selected ? 700 : 500,
                 }}>
