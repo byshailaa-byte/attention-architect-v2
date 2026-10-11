@@ -36,6 +36,9 @@ export function PlanV3View({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     track("plan_v2_view", { layout: "v3" }, sessionId);
     track("day1_preview_view", { layout: "v3" }, sessionId);
+    // view_item (GA4 + Meta ViewContent) for the plan/price view — was missing on the v3 plan, so
+    // the plan page view never reached the ad platforms. Entry tier value; no child data.
+    track("view_item", { currency: "INR", value: 2999, content_name: "plan", tier: "tier1" }, sessionId);
   }, [sessionId]);
   return null;
 }
