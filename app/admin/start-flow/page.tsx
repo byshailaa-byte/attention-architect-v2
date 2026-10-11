@@ -228,6 +228,7 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
       {/* Landings → Age → Lead by source */}
       <div style={{ marginTop: 36 }}>
         <div style={labelCss}>Landings → Age → Lead by source (current flow; attribution from flow_sessions)</div>
+        <p style={{ fontSize: 11.5, color: "#9a927c", margin: "2px 0 0" }}>Visitors counted from 11 Oct (first-party aa_anon cookie). Earlier periods show &ldquo;—&rdquo;.</p>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5, marginTop: 10 }}>
           <thead>
             <tr style={{ borderBottom: "2px solid #14284D" }}>
@@ -251,9 +252,9 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
             {bySource.map((r) => (
               <tr key={String(r.src)} style={{ borderBottom: "1px solid #ece8da" }}>
                 <td style={{ padding: "7px 6px", fontWeight: 600 }}>{String(r.src)}</td>
-                <td style={cellR(true)}>{r.land_today}</td><td style={cellV()}>{r.vis_today}</td><td style={cellR()}>{r.age_today}</td><td style={cellR()}>{r.lead_today}</td>
-                <td style={cellR(true)}>{r.land_7}</td><td style={cellV()}>{r.vis_7}</td><td style={cellR()}>{r.age_7}</td><td style={cellR()}>{r.lead_7}</td>
-                <td style={cellR(true)}>{r.land_14}</td><td style={cellV()}>{r.vis_14}</td><td style={cellR()}>{r.age_14}</td><td style={cellR()}>{r.lead_14}</td>
+                <td style={cellR(true)}>{r.land_today}</td><td style={cellV()}>{visN(r.vis_today)}</td><td style={cellR()}>{r.age_today}</td><td style={cellR()}>{r.lead_today}</td>
+                <td style={cellR(true)}>{r.land_7}</td><td style={cellV()}>{visN(r.vis_7)}</td><td style={cellR()}>{r.age_7}</td><td style={cellR()}>{r.lead_7}</td>
+                <td style={cellR(true)}>{r.land_14}</td><td style={cellV()}>{visN(r.vis_14)}</td><td style={cellR()}>{r.age_14}</td><td style={cellR()}>{r.lead_14}</td>
               </tr>
             ))}
           </tbody>
@@ -263,6 +264,7 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
       {/* ChatGPT: landings + leads by term */}
       <div style={{ marginTop: 32 }}>
         <div style={labelCss}>ChatGPT — landings + leads by term (last 30 days · from flow_sessions)</div>
+        <p style={{ fontSize: 11.5, color: "#9a927c", margin: "2px 0 0" }}>Visitors counted from 11 Oct; earlier periods show &ldquo;—&rdquo;.</p>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5, marginTop: 10, maxWidth: 460 }}>
           <thead>
             <tr style={{ textAlign: "left", borderBottom: "2px solid #14284D" }}>
@@ -278,7 +280,7 @@ export default async function StartFlowAdminPage({ searchParams }: { searchParam
               <tr key={t.term} style={{ borderBottom: "1px solid #ece8da" }}>
                 <td style={{ padding: "7px 6px", wordBreak: "break-word" }}>{t.term}</td>
                 <td style={cellR(true)}>{t.landings}</td>
-                <td style={cellV()}>{t.visitors}</td>
+                <td style={cellV()}>{visN(t.visitors)}</td>
                 <td style={{ padding: "7px 6px", textAlign: "right", fontWeight: 700, color: t.leads === 0 ? "#c0392b" : "#14284D" }}>{t.leads}</td>
               </tr>
             ))}
@@ -293,3 +295,6 @@ const labelCss: React.CSSProperties = { fontSize: 11, textTransform: "uppercase"
 const cellR = (strong = false): React.CSSProperties => ({ padding: "7px 6px", textAlign: "right", fontWeight: strong ? 700 : 400, color: strong ? "#14284D" : "#6b6756", borderLeft: strong ? "1px solid #ece8da" : undefined });
 // Distinct-visitor cell: slightly emphasised (teal) so it reads as a companion to landings.
 const cellV = (): React.CSSProperties => ({ padding: "7px 6px", textAlign: "right", fontWeight: 600, color: "#2F7D6B" });
+// Rows from before the aa_anon cookie (anon_id NULL) have no visitor count — show "—", not 0, so
+// older periods don't read as "zero visitors".
+const visN = (n: number | string): string => (Number(n) > 0 ? String(n) : "—");

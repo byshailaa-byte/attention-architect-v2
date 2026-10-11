@@ -37,6 +37,10 @@ export default function PrivacyPage() {
             </ul>
           </Section>
 
+          <Section title="Cookies">
+            <p style={p}>We use a first-party cookie (aa_anon) with a random ID to count unique visitors. It contains no personal information and is not shared with advertisers.</p>
+          </Section>
+
           <Section title="2. How We Use It">
             <ul style={ul}>
               <li style={li}>To generate your child&rsquo;s personalised report and, if purchased, the weekly course content. To create the narrative report, your child&rsquo;s first name, age band, gender, and assessment answers are sent to our AI provider (Anthropic) — see Section 3.</li>
