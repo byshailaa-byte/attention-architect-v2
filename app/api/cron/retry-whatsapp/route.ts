@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
-import { sendWhatsAppReport, upsertWatiContactAfterSend } from "@/lib/whatsapp";
+import { normalizePhone } from "@/lib/whatsapp";
+import { enqueueWhatsApp } from "@/lib/whatsapp/outbox";
 import { CHILD_NAME_FALLBACK_MID } from "@/lib/report/pronouns";
 import { sendOpsAlert } from "@/lib/alerts/notify";
 
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
     LIMIT ${BATCH_SIZE}
   ` as unknown as { session_id: string; child_name: string | null; parent_name: string | null; phone: string | null }[];
 
-  const results: { sessionId: string; result: "sent" | "failed" | "skipped" }[] = [];
+  const results: { sessionId: string; result: "sent" | "failed" | "skipped" | "queued" }[] = [];
 
   for (const c of candidates) {
     // Atomic claim — also guards against a concurrent claim route invocation.
@@ -81,23 +82,27 @@ export async function GET(req: NextRequest) {
 
     const row = claimed[0];
     try {
-      await sendWhatsAppReport({
-        parentName: row.parent_name ?? c.parent_name ?? "Parent",
-        childName:  row.child_name  ?? c.child_name  ?? CHILD_NAME_FALLBACK_MID,
-        sessionId:  c.session_id,
-        rawPhone:   row.phone       ?? c.phone       ?? "",
-      });
-      await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${c.session_id}::uuid`;
-      // Send succeeded → upsert the WATI contact with purchased=no + attributes.
-      // Cron is a background job (no render path); the helper never throws.
-      await upsertWatiContactAfterSend(sql, c.session_id, row.phone ?? c.phone ?? "", row.parent_name ?? c.parent_name ?? "Parent");
-      results.push({ sessionId: c.session_id, result: "sent" });
+      // Outbox-first (WATI no longer called). Enqueue + (on provider=cloud) send; queued on =none.
+      const toPhone = normalizePhone(row.phone ?? c.phone ?? "");
+      const q = toPhone
+        ? await enqueueWhatsApp({
+            kind: "report", toPhone, template: "send_assessment_new",
+            params: { parentName: row.parent_name ?? c.parent_name ?? "Parent", childName: row.child_name ?? c.child_name ?? CHILD_NAME_FALLBACK_MID, sessionId: c.session_id },
+            ref: c.session_id,
+          })
+        : null;
+      if (q?.status === "sent") {
+        await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${c.session_id}::uuid`;
+        results.push({ sessionId: c.session_id, result: "sent" });
+      } else {
+        await sql`UPDATE assessments SET whatsapp_send_claimed_at = NULL WHERE session_id = ${c.session_id}::uuid`
+          .catch((e2: unknown) => console.error("[cron/retry-whatsapp] claim release failed:", (e2 as Error).message));
+        results.push({ sessionId: c.session_id, result: "queued" });
+      }
     } catch (e: unknown) {
-      console.error("[cron/retry-whatsapp] send failed:", c.session_id, (e as Error).message);
-      await sql`
-        UPDATE assessments SET whatsapp_send_claimed_at = NULL
-        WHERE session_id = ${c.session_id}::uuid
-      `.catch((e2: unknown) => console.error("[cron/retry-whatsapp] claim release failed:", (e2 as Error).message));
+      console.error("[cron/retry-whatsapp] enqueue failed:", c.session_id, (e as Error).message);
+      await sql`UPDATE assessments SET whatsapp_send_claimed_at = NULL WHERE session_id = ${c.session_id}::uuid`
+        .catch((e2: unknown) => console.error("[cron/retry-whatsapp] claim release failed:", (e2 as Error).message));
       results.push({ sessionId: c.session_id, result: "failed" });
     }
   }

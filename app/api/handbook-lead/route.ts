@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
-import { sendWatiHandbook } from "@/lib/whatsapp";
+import { normalizePhone as toWaPhone } from "@/lib/whatsapp";
+import { enqueueWhatsApp } from "@/lib/whatsapp/outbox";
 import { normalizePhone } from "@/lib/phone";
-import { sendOpsAlert, opsAlertBody } from "@/lib/alerts/notify";
 
 assertBootGuards();
 
@@ -62,30 +62,22 @@ export async function POST(req: NextRequest) {
       RETURNING id
     `) as unknown as { id: number }[];
 
-    // Deliver over WATI (the number 9993374923 now lives on WATI, not Meta Cloud).
+    // Outbox-first (WATI no longer called). Queued on provider=none; the OOB "Download the handbook"
+    // button covers delivery. wa_sent flips true only on an actual cloud send.
     const firstName = name.trim().split(/\s+/)[0] ?? "";
-    const result = await sendWatiHandbook({
-      firstName,
-      contactName: name.trim(),
-      rawPhone: phone.trim(),
-    });
+    const toPhone = toWaPhone(phone.trim());
+    const q = toPhone
+      ? await enqueueWhatsApp({
+          kind: "handbook", toPhone,
+          template: process.env.HANDBOOK_WA_TEMPLATE || "handbook_send",
+          params: { name: firstName || "there" },
+          ref: `handbook_lead:${row.id}`,
+        }).catch((e: unknown) => { console.error(`[handbook-lead] enqueue failed for lead ${row.id}:`, (e as Error).message); return null; })
+      : null;
+    const sent = q?.status === "sent";
+    if (sent) await sql`UPDATE handbook_leads SET wa_sent = true WHERE id = ${row.id}`;
 
-    if (result.ok) {
-      await sql`UPDATE handbook_leads SET wa_sent = true WHERE id = ${row.id}`;
-    } else {
-      // Leave wa_sent = false, log, and alert ops — lead id + WATI error, NO phone.
-      console.error(`[handbook-lead] WATI send failed for lead ${row.id}: ${result.error}`);
-      await sendOpsAlert(
-        "handbook WhatsApp send failed",
-        opsAlertBody({
-          stage: "handbook_wa_send",
-          sessionId: `handbook_lead:${row.id}`,
-          error: result.error ?? "(unknown WATI error)",
-        }),
-      );
-    }
-
-    return NextResponse.json({ saved: true, wa_sent: result.ok });
+    return NextResponse.json({ saved: true, wa_sent: sent, queued: q?.status === "queued" });
   } catch (e) {
     console.error("[handbook-lead]", e);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

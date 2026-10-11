@@ -327,7 +327,7 @@ export default function AssessmentV2() {
         {/* Name + WhatsApp form */}
         <div style={{ background: "#fff", border: `1px solid ${FLOW.line}`, borderRadius: 20, padding: "24px 20px", boxShadow: "0 8px 22px rgba(30,58,95,.06)" }}>
           <h2 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 23, lineHeight: 1.2, color: FLOW.ink, margin: "0 0 6px" }}>Where should we send {kidName}&rsquo;s full report?</h2>
-          <p style={{ fontSize: 15, color: FLOW.dim, lineHeight: 1.5, margin: "0 0 22px" }}>It comes on WhatsApp in about a minute. Free.</p>
+          <p style={{ fontSize: 15, color: FLOW.dim, lineHeight: 1.5, margin: "0 0 22px" }}>Free — on screen right after, and on WhatsApp too.</p>
 
           {/* WhatsApp */}
           <label style={{ fontSize: 13, fontWeight: 600, color: FLOW.ink, display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
