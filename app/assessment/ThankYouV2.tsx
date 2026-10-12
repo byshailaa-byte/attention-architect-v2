@@ -5,6 +5,8 @@ import { normalizePhone, maskPhone } from "@/lib/phone";
 import { getFlowSid } from "@/lib/flow/session";
 import { FLOW, HEAD, BODY, Wordmark, ModuleIcon } from "@/app/components/FlowShell";
 import { track } from "@/lib/analytics/track";
+import { waDeliveryActive } from "@/lib/whatsapp/delivery";
+import { waWidgetEnabled } from "@/lib/whatsapp/widget-flag";
 
 type Preview = {
   ok: boolean;
@@ -30,6 +32,8 @@ export default function ThankYouV2({
   const kid = childName.trim() || "your child";
   const parentFirst = (parentName.trim().split(/\s+/)[0]) || "there";
   const masked = maskPhone(normalizePhone(phone));
+  const waActive = waDeliveryActive();   // report also goes to WhatsApp only when a provider is live
+  const waWidget = waWidgetEnabled();    // "message us on WhatsApp" support link behind the widget flag
   const [preview, setPreview] = useState<Preview | null>(null);
   // Always give the parent the report ON SCREEN — never dependent on a WhatsApp send succeeding.
   const [reportHref, setReportHref] = useState<string | null>(null);
@@ -72,10 +76,12 @@ export default function ThankYouV2({
               Open {kid}&rsquo;s report &rarr;
             </a>
           )}
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.16)", borderRadius: 999, padding: "7px 14px", fontSize: 13, color: "#EAF1F8" }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.5 11.5a7.5 7.5 0 0 1-10.9 6.7L4 20l1.3-4.4A7.5 7.5 0 1 1 20.5 11.5z" stroke={FLOW.goldSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            Also going to {masked} on WhatsApp
-          </span>
+          {waActive && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.16)", borderRadius: 999, padding: "7px 14px", fontSize: 13, color: "#EAF1F8" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.5 11.5a7.5 7.5 0 0 1-10.9 6.7L4 20l1.3-4.4A7.5 7.5 0 1 1 20.5 11.5z" stroke={FLOW.goldSoft} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              Also going to {masked} on WhatsApp
+            </span>
+          )}
         </div>
       </div>
 
@@ -137,10 +143,12 @@ export default function ThankYouV2({
           )}
         </div>
 
-        <p style={{ fontSize: 13, color: FLOW.dim, lineHeight: 1.6, textAlign: "center", margin: "22px 6px 0" }}>
-          Report not there in a few minutes? Check that {masked} is right, or{" "}
-          <a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener noreferrer" style={{ color: FLOW.navy, fontWeight: 600 }}>message us on WhatsApp</a>.
-        </p>
+        {waActive && (
+          <p style={{ fontSize: 13, color: FLOW.dim, lineHeight: 1.6, textAlign: "center", margin: "22px 6px 0" }}>
+            Report not there in a few minutes? Check that {masked} is right{waWidget ? (<>, or{" "}
+            <a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener noreferrer" style={{ color: FLOW.navy, fontWeight: 600 }}>message us on WhatsApp</a></>) : ""}.
+          </p>
+        )}
       </div>
     </div>
   );

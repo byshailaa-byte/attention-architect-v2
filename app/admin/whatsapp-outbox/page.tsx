@@ -1,6 +1,8 @@
-import { outboxCounts, whatsappProvider } from "@/lib/whatsapp/outbox";
+import { outboxCounts, whatsappProvider, listQueued } from "@/lib/whatsapp/outbox";
+import { maskPhone } from "@/lib/phone";
 import { DrainButton } from "./DrainButton";
 import { RetryFailedButton } from "./RetryFailedButton";
+import { OutboxRowActions } from "./OutboxRowActions";
 
 // Admin WhatsApp outbox dashboard — queued / sent / failed, and a "Send queued" button that's
 // disabled until the provider is cloud. Protected by the /admin Basic-Auth middleware.
@@ -9,6 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function WhatsAppOutboxPage() {
   const provider = whatsappProvider();
   const c = await outboxCounts();
+  const queued = await listQueued();
   const card = (label: string, n: number, color: string) => (
     <div style={{ flex: "1 1 120px", background: "#fff", border: "1px solid #e7e0d2", borderRadius: 12, padding: "16px 18px" }}>
       <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".08em", color: "#9a927c", marginBottom: 6 }}>{label}</div>
@@ -47,6 +50,37 @@ export default async function WhatsAppOutboxPage() {
           </table>
         </div>
       )}
+
+      {/* Not-yet-sent (queued) rows — send by hand while delivery is paused. */}
+      <div style={{ marginTop: 32 }}>
+        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".08em", color: "#9a927c", marginBottom: 8 }}>WhatsApp delivery — not yet sent ({queued.length})</div>
+        {queued.length === 0 ? (
+          <p style={{ fontSize: 13.5, color: "#6b6756" }}>Nothing queued.</p>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ textAlign: "left", borderBottom: "2px solid #14284D" }}>
+                <th style={{ padding: "7px 6px" }}>Kind</th>
+                <th style={{ padding: "7px 6px" }}>To</th>
+                <th style={{ padding: "7px 6px" }}>Ref</th>
+                <th style={{ padding: "7px 6px", textAlign: "right" }}>Tries</th>
+                <th style={{ padding: "7px 6px", textAlign: "right" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {queued.map((r) => (
+                <tr key={r.id} style={{ borderBottom: "1px solid #ece8da" }}>
+                  <td style={{ padding: "8px 6px", fontWeight: 600 }}>{r.kind}</td>
+                  <td style={{ padding: "8px 6px", color: "#6b6756" }}>{maskPhone(r.to_phone)}</td>
+                  <td style={{ padding: "8px 6px", color: "#6b6756", fontFamily: "ui-monospace, monospace" }} title={r.last_error ?? ""}>{r.ref.slice(0, 8)}…</td>
+                  <td style={{ padding: "8px 6px", textAlign: "right" }}>{r.attempts}</td>
+                  <td style={{ padding: "8px 6px", textAlign: "right" }}><OutboxRowActions id={r.id} kind={r.kind} refValue={r.ref} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

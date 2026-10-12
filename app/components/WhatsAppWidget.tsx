@@ -9,6 +9,7 @@
 
 import Script from "next/script";
 import { usePathname } from "next/navigation";
+import { waWidgetEnabled } from "@/lib/whatsapp/widget-flag";
 import { useEffect, useState } from "react";
 import { track } from "@/lib/analytics/track";
 
@@ -112,6 +113,8 @@ export function WhatsAppWidget() {
     setHref(`https://wa.me/${PHONE}?text=${encodeURIComponent(prefill)}`);
   }, [pathname]);
 
+  // Behind the widget flag — off while WhatsApp is paused, re-enable via env, no code change.
+  if (!waWidgetEnabled()) return null;
   // Renders nothing at all on assessment / programme routes.
   if (HIDE_ON.some((p) => pathname.startsWith(p))) return null;
 

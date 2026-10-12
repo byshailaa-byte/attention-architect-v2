@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { captureUtmOnce, getStoredUtm } from "@/lib/utm";
 import { getFlowSid } from "@/lib/flow/session";
 import { getAnonId } from "@/lib/flow/anon";
+import { waDeliveryActive } from "@/lib/whatsapp/delivery";
 import { loadStartState, saveStartState } from "@/lib/flow/start-state";
 import { isValidIndianMobile, childStepReady } from "@/lib/flow/validate";
 import { displayChildName } from "@/lib/report/pronouns";
@@ -30,6 +31,7 @@ const OOB_COPY: Record<"younger" | "older", { heading: string; body: string }> =
 type Step = 1 | 2 | 3 | 4;
 
 export default function StartFlowV2() {
+  const waActive = waDeliveryActive();
   const router = useRouter();
   // Selections are NOT read from the URL (no PII in the URL). They start empty and are restored from
   // sessionStorage on mount — so a reload on any step (incl. the intro) keeps age/worry/name.
@@ -361,7 +363,7 @@ export default function StartFlowV2() {
   const TILES: { big: string; small: string }[] = [
     { big: "15–17", small: "questions" },
     { big: `${FLOW_TOTAL_MIN} min`, small: "about" },
-    { big: "Free", small: "on screen & WhatsApp" },
+    { big: "Free", small: waActive ? "on screen & WhatsApp" : "on screen" },
   ];
   const startHref = ASSESSMENT_URL;
   return (

@@ -171,6 +171,30 @@ export async function retryFailed(): Promise<{ requeued: number }> {
   return { requeued: rows.length };
 }
 
+// Mark one queued row as sent BY HAND (operator sent it another way). provider='manual' records that
+// it wasn't sent by WATI/Cloud, so the drain never re-sends it. Only acts on a queued row.
+export async function markSentManual(id: string): Promise<{ ok: boolean }> {
+  const sql = getSql();
+  const rows = (await sql`
+    UPDATE whatsapp_outbox
+    SET status='sent', provider='manual', sent_at=now(), last_error=NULL, updated_at=now()
+    WHERE id = ${id}::uuid AND status = 'queued'
+    RETURNING id
+  `) as unknown as { id: string }[];
+  return { ok: rows.length > 0 };
+}
+
+// The "not yet sent" (queued) rows for the admin delivery table. report rows carry the session id in
+// `ref` (→ report link); handbook rows don't. No raw phone leaves here (admin masks it).
+export async function listQueued(limit = 100): Promise<{ id: string; kind: WaKind; ref: string; attempts: number; last_error: string | null; created_at: string; to_phone: string }[]> {
+  const sql = getSql();
+  return (await sql`
+    SELECT id::text, kind, ref, attempts, last_error, created_at, to_phone
+    FROM whatsapp_outbox WHERE status = 'queued'
+    ORDER BY created_at ASC LIMIT ${limit}
+  `) as unknown as { id: string; kind: WaKind; ref: string; attempts: number; last_error: string | null; created_at: string; to_phone: string }[];
+}
+
 // Enqueue the report the moment its content is generated (called from the generation service). No-op
 // if the phone isn't captured yet or the report was already sent. Sends right away on wati/cloud.
 export async function enqueueReportForSession(sessionId: string): Promise<void> {

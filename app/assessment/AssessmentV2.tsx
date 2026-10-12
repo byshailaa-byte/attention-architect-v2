@@ -14,6 +14,7 @@ import { displayChildName, fillTokens, CHILD_NAME_FALLBACK_MID, type Gender } fr
 import { HALFWAY_FIRST_READ, HALFWAY_FIRST_READ_FALLBACK, fillHalfwayLine } from "@/content/assessment/halfway-first-read";
 import { FLOW, HEAD, BODY, Wordmark, BackLink, Screen, QuestionProgress, minsLeft } from "@/app/components/FlowShell";
 import ThankYouV2 from "./ThankYouV2";
+import { waDeliveryActive } from "@/lib/whatsapp/delivery";
 import SiteFooter from "@/app/components/SiteFooter";
 import { track, identifyPixel } from "@/lib/analytics/track";
 
@@ -32,6 +33,7 @@ export default function AssessmentV2() {
   // GA4 page_location and the Meta Pixel). Loaded on mount; render is gated on `ready` below.
   const [start, setStart] = useState<StartState | null>(null);
   const [ready, setReady] = useState(false);
+  const waActive = waDeliveryActive(); // "on screen & WhatsApp" when a provider is live, else "on screen"
 
   const [phase, setPhase]       = useState<Phase>("questions");
   // v3: the first 8 questions (Part 1 + Part 2) are fixed for everyone; Part 3 is appended once
@@ -268,7 +270,7 @@ export default function AssessmentV2() {
         <div style={{ marginBottom: 20 }}><Wordmark /></div>
         <div style={{ background: "#fff", border: `1px solid ${FLOW.line}`, borderRadius: 20, padding: "24px 20px", boxShadow: "0 8px 22px rgba(30,58,95,.06)" }}>
           <h2 style={{ fontFamily: HEAD, fontWeight: 600, fontSize: 23, lineHeight: 1.2, color: FLOW.ink, margin: "0 0 6px" }}>Where should we send {kidName}&rsquo;s full report?</h2>
-          <p style={{ fontSize: 15, color: FLOW.dim, lineHeight: 1.5, margin: "0 0 22px" }}>Free — on screen right after, and on WhatsApp too.</p>
+          <p style={{ fontSize: 15, color: FLOW.dim, lineHeight: 1.5, margin: "0 0 22px" }}>{waActive ? "Free — on screen right after, and on WhatsApp too." : "Free — on screen right after."}</p>
 
           {/* WhatsApp */}
           <label style={{ fontSize: 13, fontWeight: 600, color: FLOW.ink, display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
