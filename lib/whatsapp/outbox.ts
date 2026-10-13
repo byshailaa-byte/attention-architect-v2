@@ -215,6 +215,16 @@ export async function enqueueReportForSession(sessionId: string): Promise<void> 
   if (q.status === "sent") await sql`UPDATE assessments SET whatsapp_report_sent_at = NOW() WHERE session_id = ${sessionId}::uuid`;
 }
 
+// Delivery-status webhook → update the outbox row by its Cloud message id. We store statuses only
+// (no inbound messages). 'failed' flips the row to failed with the reason.
+export async function recordDeliveryStatus(waMessageId: string, status: string, reason?: string): Promise<void> {
+  const sql = getSql();
+  if (status === "delivered") await sql`UPDATE whatsapp_outbox SET delivered_at = COALESCE(delivered_at, now()), updated_at = now() WHERE wa_message_id = ${waMessageId}`;
+  else if (status === "read") await sql`UPDATE whatsapp_outbox SET read_at = COALESCE(read_at, now()), delivered_at = COALESCE(delivered_at, now()), updated_at = now() WHERE wa_message_id = ${waMessageId}`;
+  else if (status === "failed") await sql`UPDATE whatsapp_outbox SET status = 'failed', last_error = ${reason ?? "delivery failed"}, updated_at = now() WHERE wa_message_id = ${waMessageId}`;
+  // 'sent' is a no-op (we already set 'sent' on API acceptance).
+}
+
 export async function outboxCounts(): Promise<{ queued: number; sent: number; failed: number; errors: { error: string; n: number }[] }> {
   const sql = getSql();
   const rows = (await sql`SELECT status, count(*)::int n FROM whatsapp_outbox GROUP BY status`) as unknown as { status: string; n: number }[];
