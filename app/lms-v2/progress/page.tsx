@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { getLmsUserContext } from "@/lib/lms/user-context";
 import { getSql } from "@/lib/db/client";
+import { fillTokens } from "@/lib/report/pronouns";
+import { readOutcomes } from "@/lib/lms/coach/outcomes";
+import { getCheckin, getEarliestCheckin, isImproved } from "@/lib/lms/coach/checkin";
+import { baselineQuestion } from "@/lib/coach-trial/onboarding";
+import { canonicalConcern } from "@/lib/report-v2/goal-mapping";
+import { ResultsPanel } from "@/components/lms/coach/ResultsPanel";
 
 const BG = `var(--font-bricolage),'Bricolage Grotesque',sans-serif`;
 
@@ -80,6 +86,34 @@ export default async function LmsV2ProgressPage() {
   const totalWeekends = weekendRows.length;
   const streak        = computeStreak(streakRows);
 
+  // Weekly results (this week): what the parent logged (5-value day outcomes) + the optional
+  // "where are you now?" number, shown only if improved vs the earliest (baseline) week.
+  const currentWeek = progressRows.length ? Math.max(...progressRows.map((r) => r.week)) : 1;
+  const concernRows = (await sql`
+    SELECT a.concerns FROM assessments a JOIN purchases p ON p.assessment_id = a.id
+    WHERE p.user_id = ${ctx.userId} AND p.status = 'paid' ORDER BY p.created_at DESC LIMIT 1
+  `) as unknown as { concerns: string[] | null }[];
+  const worry = canonicalConcern(concernRows[0]?.concerns?.[0]);
+  const [weekOutcomes, baselineNum, nowNum] = await Promise.all([
+    readOutcomes("paid", ctx.userId),
+    getEarliestCheckin("paid", ctx.userId),
+    getCheckin("paid", ctx.userId, currentWeek),
+  ]);
+  const bq = baselineQuestion(worry);
+  const fillCtx = fillTokens(ctx.childName, ctx.childGender);
+  const labelFor = (v: string | null) => bq.chips.find((c) => c.value === v)?.label ?? v ?? "";
+  const weekImproved = isImproved(worry, baselineNum, nowNum) ? { fromLabel: labelFor(baselineNum), toLabel: labelFor(nowNum) } : null;
+  const resultsProps = {
+    endpoint: "/api/lms/checkin",
+    extraBody: { week: currentWeek },
+    question: fillCtx(bq.question),
+    chips: bq.chips,
+    answered: nowNum !== null,
+    improved: weekImproved,
+    outcomes: weekOutcomes.filter((o) => o.week === currentWeek).map((o) => ({ day: o.day, outcome: o.outcome, note: o.note })),
+    outcomeUnit: "day" as const,
+  };
+
   const reflMap: Record<string, number> = {};
   let totalRefl = 0;
   for (const r of reflectionRows) {
@@ -108,6 +142,14 @@ export default async function LmsV2ProgressPage() {
         <p style={{ fontSize:14, color:"var(--v2-dim2)", marginBottom:0 }}>
           A record of what you tried and what happened. Nothing here is a score on {ctx.childName}.
         </p>
+
+        {/* This week — what you logged + the optional "where are you now?" number */}
+        <div style={{ margin:"20px 0 6px" }}>
+          <div style={{ fontSize:10.5, letterSpacing:".1em", textTransform:"uppercase", fontWeight:700, color:"var(--v2-dim2)", marginBottom:12 }}>
+            This week — Week {currentWeek}
+          </div>
+          <ResultsPanel {...resultsProps} />
+        </div>
 
         {/* Stat grid */}
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, margin:"18px 0" }}>

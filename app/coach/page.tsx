@@ -12,11 +12,32 @@ import {
   introBubble, HOW_IT_WORKS, baselineQuestion,
   COMMIT_QUESTION, COMMIT_CHIPS, COMMIT_DONE, STEP_CARD_EYEBROW, READ_FULL_STEP,
 } from "@/lib/coach-trial/onboarding";
+import { readOutcomes } from "@/lib/lms/coach/outcomes";
+import { getCheckin, isImproved } from "@/lib/lms/coach/checkin";
+import type { ResultsPanelProps } from "@/components/lms/coach/ResultsPanel";
 import CoachClient from "./CoachClient";
 import { LockScreen } from "./LockScreen";
 
 export const dynamic = "force-dynamic";
 const CALENDLY = "https://calendly.com/attentionarchitect/attention-architect-discovery";
+
+// Build the trial Day-4 results props (only what the parent logged; number only if improved).
+async function trialResults(trialId: string, worry: string, baseline: string | null, fill: (s: string) => string): Promise<ResultsPanelProps> {
+  const outcomes = await readOutcomes("trial", trialId);
+  const now = await getCheckin("trial", trialId, 4);
+  const bq = baselineQuestion(worry);
+  const labelFor = (v: string | null) => bq.chips.find((c) => c.value === v)?.label ?? v ?? "";
+  const improved = isImproved(worry, baseline, now) ? { fromLabel: labelFor(baseline), toLabel: labelFor(now) } : null;
+  return {
+    endpoint: "/api/coach/checkin",
+    question: fill(bq.question),
+    chips: bq.chips,
+    answered: now !== null,
+    improved,
+    outcomes: outcomes.map((o) => ({ day: o.day, outcome: o.outcome, note: o.note })),
+    outcomeUnit: "day",
+  };
+}
 
 export default async function CoachPage() {
   const jar = await cookies();
@@ -47,6 +68,7 @@ export default async function CoachPage() {
   });
 
   if (locked) {
+    const results = await trialResults(trial.id, trial.worry ?? "other", trial.baseline_value, fill);
     return (
       <LockScreen
         childName={userCtx.childName}
@@ -54,6 +76,7 @@ export default async function CoachPage() {
         calendlyUrl={CALENDLY}
         baseline={trial.baseline_value}
         days={days}
+        results={results}
       />
     );
   }
