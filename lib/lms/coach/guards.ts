@@ -305,7 +305,7 @@ export async function enforceReplyQuality(
     for (let attempt = 0; attempt < 2 && !primarySayThis(text); attempt++) {
       fired.advise++;
       log(`[coach-guard] max diagnostic questions reached — reply must give the adjusted step now`);
-      const t = await regenerate("Stop asking questions — you have enough to help. Give the adjusted step now, in short plain parts: when to do it, the exact words to say in quotes, how long it takes, one short line on why, what you might see, then end with \"Does that make sense?\" No new question before the step.");
+      const t = await regenerate("Stop asking questions — you have enough to help. Give the adjusted step now, in short plain parts: when to do it, the exact words to say in quotes, how long it takes, one short line on why, what you might see, then ask \"Does that make sense?\" and say you'll check how it went tomorrow. No new question before the step.");
       if (!t) break;
       text = t;
     }
@@ -325,28 +325,6 @@ export async function enforceReplyQuality(
     const t = await regenerate("Use short sentences — about 10 words each, never more than 18. Split any long sentence into two. Keep the exact words to say.");
     if (!t) break;
     text = t;
-  }
-  // Offer Hindi when the parent said the language is hard. Regenerate once; if the model still won't
-  // add it, append the line so it's deterministic.
-  if (requireHindiOffer) {
-    if (!/\bhindi\b/i.test(text)) {
-      fired.hindi++;
-      log(`[coach-guard] parent said the language is hard — regenerating to offer Hindi`);
-      const t = await regenerate('Keep it short and simple, then add one line offering Hindi: "Would you like this in Hindi?"');
-      if (t) text = t;
-    }
-    if (!/\bhindi\b/i.test(text) && !/हिंदी/.test(text)) text = text.trimEnd() + HINDI_LINE[lang];
-  }
-
-  // Offer a call on the 2nd confusion. Regenerate once; append the call line if still missing.
-  if (requireOfferCall) {
-    if (!offersCall(text)) {
-      fired.call++;
-      log(`[coach-guard] 2nd confusion — regenerating to offer a call with the team`);
-      const t = await regenerate("Stop re-explaining. Offer a quick call with our team to go through it together, in one short line.");
-      if (t) text = t;
-    }
-    if (!offersCall(text)) text = text.trimEnd() + CALL_LINE[lang];
   }
   if (quotePlusQuestion(text)) {
     fired.question++;
@@ -418,6 +396,18 @@ export async function enforceReplyQuality(
     const t = await regenerate(`Address the parent ONLY in the respectful 'aap' form. Re-read your draft and fix EVERY verb aimed at the parent: any command ending in "-o" becomes "-iye" (bolo→boliye, karo→kariye, dekho→dekhiye, suno→suniye, socho→sochiye), raho→rahiye, do→dijiye, and "...ho"→"...hain" ("kar rahe ho"→"kar rahe hain"). Never tum/tu. The sentence the parent SAYS to the child (inside quotes) may stay informal.`);
     if (!t) break;
     text = t;
+  }
+
+  // ── Deterministic APPENDS last (after all regenerating guards, so nothing strips them) ──
+  // Offer Hindi when the parent said the language is hard.
+  if (requireHindiOffer && !/\bhindi\b/i.test(text) && !/हिंदी/.test(text)) {
+    fired.hindi++;
+    text = text.trimEnd() + HINDI_LINE[lang];
+  }
+  // Offer a call on the 2nd confusion.
+  if (requireOfferCall && !offersCall(text)) {
+    fired.call++;
+    text = text.trimEnd() + CALL_LINE[lang];
   }
   return { text, fired };
 }
