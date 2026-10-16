@@ -5,7 +5,7 @@ import { getSql } from "@/lib/db/client";
 import { loadLmsUserContextById, type LmsUserContext } from "@/lib/lms/user-context";
 import { displayChildName, type Gender } from "@/lib/report/pronouns";
 import type { AgeBand } from "@/content/types";
-import { getTrialByUser, currentTrialDay, isTrialLocked, type CoachTrial } from "./trial";
+import { getTrialByUser, getTrialById, currentTrialDay, isTrialLocked, type CoachTrial } from "./trial";
 
 function normalizeGender(raw: string | null): Gender {
   if (!raw) return null;
@@ -45,6 +45,26 @@ async function trialUserContext(trial: CoachTrial): Promise<LmsUserContext | nul
     parentPattern: a.parent_pattern,
     weakestTwo: a.weakest_two ?? [],
     onboardingCompleted: !!trial.baseline_value, // trial onboarding done once a baseline is saved
+  };
+}
+
+// phase_65 — preview (sandbox) access: resolve a preview trial BY ID (admin-only), not by session.
+// `now` is the simulated clock from the admin day switcher. Only resolves is_preview=true trials.
+export type PreviewAccess =
+  | { role: "trial"; trial: CoachTrial; userCtx: LmsUserContext; locked: boolean; day: number }
+  | { role: "none" };
+
+export async function resolvePreviewAccess(trialId: string, now: Date = new Date()): Promise<PreviewAccess> {
+  const trial = await getTrialById(trialId);
+  if (!trial || !trial.is_preview) return { role: "none" };
+  const userCtx = await trialUserContext(trial);
+  if (!userCtx) return { role: "none" };
+  return {
+    role: "trial",
+    trial,
+    userCtx,
+    locked: isTrialLocked(trial, now),
+    day: currentTrialDay(new Date(trial.started_at), now),
   };
 }
 

@@ -3,7 +3,7 @@ import { getSql } from "@/lib/db/client";
 import { assertBootGuards } from "@/lib/boot-guard";
 import { coachTrialEnabled } from "@/lib/coach-trial/flags";
 import { parentKey } from "@/lib/coach-trial/parent-key";
-import { getTrialByParentKey } from "@/lib/coach-trial/trial";
+import { getTrialByParentKey, getPreviewByParentKey } from "@/lib/coach-trial/trial";
 import { getTrialAdminView } from "@/lib/coach-trial/admin";
 import { readTrialCard4 } from "@/lib/coach-trial/content";
 import { trialLinkFor } from "@/lib/coach-trial/link";
@@ -26,11 +26,19 @@ export async function GET(req: NextRequest) {
     const paid = ((await sql`SELECT 1 FROM purchases WHERE assessment_id = ${a.id} AND status = 'paid' LIMIT 1`) as unknown as unknown[]).length > 0;
     const pkey = parentKey(a.phone, a.email);
     const trial = pkey ? await getTrialByParentKey(pkey) : null;
+    const preview = pkey ? await getPreviewByParentKey(pkey) : null;
     const view = trial ? await getTrialAdminView(trial) : null;
     const reportReady = !!(await readTrialCard4(sql, sessionId).catch(() => null));
     const base = process.env.NEXT_PUBLIC_BASE_URL ?? req.nextUrl.origin;
     // Copy-link is offered only while the trial is active (the token is bound to the live ends_at).
     const trialLink = trial && trial.status === "active" ? trialLinkFor(base, trial.id, trial.ends_at) : null;
+
+    // Per-parent chip state: Approved & offered (real trial stamped) > Trial Day X (active real trial)
+    // > Previewed (sandbox exists) > Not previewed.
+    const chip = trial?.approved_at ? "approved"
+      : trial && view ? "trial"
+      : preview ? "previewed"
+      : "not_previewed";
 
     return NextResponse.json({
       enabled: coachTrialEnabled(),
@@ -40,6 +48,10 @@ export async function GET(req: NextRequest) {
       trialId: trial?.id ?? null,
       trialLink,
       view,
+      previewId: preview?.id ?? null,
+      previewUrl: preview ? `/admin/coach-preview/${preview.id}` : null,
+      approved: !!trial?.approved_at,
+      chip,
     });
   } catch (e) {
     console.error("[api/admin/coach-trial/status]", e);

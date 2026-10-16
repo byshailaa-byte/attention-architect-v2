@@ -16,6 +16,7 @@ type TrialAdminView = {
   flagged: boolean;
 };
 
+type ChipState = "not_previewed" | "previewed" | "trial" | "approved";
 type StatusResponse = {
   enabled: boolean;
   paid: boolean;
@@ -24,6 +25,10 @@ type StatusResponse = {
   trialId: string | null;
   trialLink: string | null;
   view: TrialAdminView | null;
+  previewId: string | null;
+  previewUrl: string | null;
+  approved: boolean;
+  chip: ChipState;
 };
 
 // "Mon 13 Oct" — compact, IST-leaning readable date.
@@ -57,6 +62,25 @@ export function CoachTrialCard({ sessionId, paid }: { sessionId: string; paid: b
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [focus, setFocus] = useState("");
+  const [previewing, setPreviewing] = useState(false);
+
+  // Launch a sandbox Preview Coach in a new tab (optional focus concern ≤200 chars). Never touches
+  // the parent. On success opens /admin/coach-preview/<trialId>.
+  const startPreview = async () => {
+    if (previewing) return;
+    setPreviewing(true); setError(null);
+    try {
+      const res = await fetch("/api/admin/coach-preview/create", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, focusConcern: focus.trim() || undefined }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { previewUrl?: string; error?: string };
+      if (res.ok && data.previewUrl) { window.open(data.previewUrl, "_blank", "noopener"); await load(); }
+      else setError(errorLabel(data.error));
+    } catch { setError("Couldn’t start the preview (network) — try again."); }
+    setPreviewing(false);
+  };
 
   const copyLink = async (link: string) => {
     try { await navigator.clipboard.writeText(link); setCopied(true); window.setTimeout(() => setCopied(false), 2000); }
@@ -156,6 +180,49 @@ export function CoachTrialCard({ sessionId, paid }: { sessionId: string; paid: b
 
   const view = status.view;
 
+  // Per-parent status chip (Not previewed / Previewed / Trial Day X / Approved & offered).
+  const CHIP: Record<ChipState, { label: string; bg: string; fg: string }> = {
+    not_previewed: { label: "Not previewed", bg: "#EFECE4", fg: "#6B6456" },
+    previewed: { label: "Previewed", bg: "#FFF8EC", fg: "#8A6D1F" },
+    trial: { label: view ? `Trial · Day ${view.day} of 4` : "Trial", bg: "#E8F0FF", fg: T.navy },
+    approved: { label: "Approved & offered", bg: "#E7F6EC", fg: "#1F7A46" },
+  };
+  const c = CHIP[status.chip];
+  const chipEl = (
+    <span style={{ alignSelf: "flex-start", fontSize: 11.5, fontWeight: 800, padding: "3px 10px", borderRadius: 999, background: c.bg, color: c.fg }}>
+      {c.label}
+    </span>
+  );
+
+  // Preview Coach launcher (optional focus concern). Hidden once the parent has paid.
+  const previewEl = status.paid ? null : (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: `1px dashed ${T.inputBorder}`, paddingTop: 12 }}>
+      <div style={sectionLabel}>PREVIEW COACH (SANDBOX)</div>
+      <textarea
+        value={focus}
+        onChange={(e) => setFocus(e.target.value.slice(0, 200))}
+        placeholder="Focus concern (optional, ≤200 chars)"
+        rows={2}
+        style={{ resize: "none", padding: "9px 11px", borderRadius: 10, border: `1px solid ${T.inputBorder}`, background: T.card, color: T.text, fontSize: 13.5, fontFamily: "inherit" }}
+      />
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <button
+          onClick={startPreview}
+          disabled={previewing || !status.reportReady}
+          style={{ flex: 1, background: T.card, color: T.navy, border: `1px solid ${T.navy}`, borderRadius: 10, padding: "9px 12px", fontWeight: 700, fontSize: 13.5, cursor: previewing || !status.reportReady ? "default" : "pointer", opacity: previewing || !status.reportReady ? 0.55 : 1 }}
+        >
+          {previewing ? "Starting…" : "Preview Coach"}
+        </button>
+        {status.previewUrl && (
+          <a href={status.previewUrl} target="_blank" rel="noopener" style={{ fontSize: 13, fontWeight: 700, color: T.navy, textDecoration: "underline" }}>
+            Open preview
+          </a>
+        )}
+      </div>
+      {!status.reportReady && <div style={{ fontSize: 12.5, color: T.muted }}>Report not ready yet — can’t preview.</div>}
+    </div>
+  );
+
   // ── No trial yet: offer to grant one. ─────────────────────────────────────
   if (!view) {
     const blocked = paid || status.paid || status.alreadyTrialed || !status.reportReady;
@@ -166,6 +233,7 @@ export function CoachTrialCard({ sessionId, paid }: { sessionId: string; paid: b
     return (
       <section style={panel}>
         <div style={sectionLabel}>FREE 4-DAY QUICK START</div>
+        {chipEl}
         <button
           onClick={grant}
           disabled={blocked || busy}
@@ -178,6 +246,7 @@ export function CoachTrialCard({ sessionId, paid }: { sessionId: string; paid: b
           {busy ? "Granting…" : "Grant 4-day trial"}
         </button>
         {reason && <div style={{ fontSize: 13, color: T.muted }}>{reason}</div>}
+        {previewEl}
         {error && <div style={errBox}>{error}</div>}
       </section>
     );
@@ -202,6 +271,7 @@ export function CoachTrialCard({ sessionId, paid }: { sessionId: string; paid: b
   return (
     <section style={panel}>
       <div style={sectionLabel}>FREE 4-DAY QUICK START</div>
+      {chipEl}
       <div style={{ fontSize: 15, fontWeight: 700, color: T.navy }}>{headline}</div>
       <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: "7px 14px", fontSize: 13.5, lineHeight: 1.4 }}>
         <span style={rowLabel}>Ends</span>
@@ -231,6 +301,7 @@ export function CoachTrialCard({ sessionId, paid }: { sessionId: string; paid: b
           <button onClick={() => end(status.trialId ?? "")} disabled={busy} style={btn("end")}>End trial</button>
         </div>
       )}
+      {previewEl}
       {error && <div style={errBox}>{error}</div>}
     </section>
   );

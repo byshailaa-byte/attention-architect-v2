@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
       gender: userCtx.childGender, worryGoal: fill(worryGoalLine(trial.worry ?? "other")),
       baseline: trial.baseline_value, dayNumber: day, stepTitle: today?.title ?? "Tonight's step",
       stepBody, hardPart: report?.hardPart ?? "", supportEmail: ENTITY.supportEmail, language,
+      focusConcern: trial.focus_concern,
     });
     const history = await loadTrialHistory(trial.id);
 
