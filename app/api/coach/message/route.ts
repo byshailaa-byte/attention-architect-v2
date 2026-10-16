@@ -16,6 +16,7 @@ import { resolveTrialDays } from "@/lib/coach-trial/content";
 import { buildTrialSystemPrompt, loadTrialHistory } from "@/lib/coach-trial/prompt";
 import { worryGoalLine } from "@/lib/coach-trial/onboarding";
 import { flagTrial } from "@/lib/coach-trial/trial";
+import { extractOutcome, recordTrialOutcome } from "@/lib/lms/coach/outcomes";
 import { trackServer } from "@/lib/analytics/track.server";
 import type { AgeBand } from "@/content/types";
 
@@ -125,6 +126,13 @@ export async function POST(req: NextRequest) {
       RETURNING id`) as unknown as { id: string }[];
 
     await trackServer("coach_message_sent", { source: "llm" }, { sessionId: trial.session_id });
+
+    // Record a day outcome from the parent's own words (source='chat'). Additive; note stays in the
+    // DB only (never logged / sent to analytics).
+    const extracted = extractOutcome(message);
+    if (extracted) {
+      await recordTrialOutcome(trial.id, day, extracted.outcome, extracted.note, "chat").catch((e) => console.error("[coach-trial] outcome record failed:", (e as Error).message));
+    }
 
     return NextResponse.json({
       reply: result.text, role: "coach", messageId: coachRows[0]?.id,

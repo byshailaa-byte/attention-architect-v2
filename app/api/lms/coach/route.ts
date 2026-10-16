@@ -8,6 +8,7 @@ import { buildCoachContext } from "@/lib/lms/coach/context";
 import { callCoach, type CoachResult } from "@/lib/lms/coach/llm";
 import { enforceReplyQuality, primarySayThis, looksLikeStepRequest, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "@/lib/lms/coach/guards";
 import { updateCoachMemory } from "@/lib/lms/coach/memory";
+import { extractOutcome, recordPaidOutcome, readOutcomes, needsCall } from "@/lib/lms/coach/outcomes";
 import { COACH_DAILY_LIMIT, overDailyLimit } from "@/lib/lms/coach/limits";
 import { sendCoachSafetyAlert } from "@/lib/auth/email";
 import { ENTITY } from "@/lib/entity";
@@ -121,6 +122,14 @@ export async function POST(req: NextRequest) {
       RETURNING id
     `) as unknown as { id: string }[];
 
+    // Structured outcome from the parent's own words (source='chat'). Additive — never blocks the
+    // reply. The note is the parent's words; it stays in the DB (never logged / sent to analytics).
+    const extracted = extractOutcome(message);
+    if (extracted && day >= 1) {
+      await recordPaidOutcome(userId, week, day, extracted.outcome, extracted.note, "chat").catch((e) => console.error("[coach] outcome record failed:", (e as Error).message));
+      await flagNeedsCallIfRun(userId).catch((e) => console.error("[coach] needs-call check failed:", (e as Error).message));
+    }
+
     const nowCount = usedToday + 1;
     // Memory: after every 6th parent message, and after any after_done conversation.
     if (nowCount % 6 === 0 || source === "after_done") {
@@ -137,4 +146,28 @@ export async function POST(req: NextRequest) {
     console.error("[api/lms/coach]", e);
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
+}
+
+// "Needs a call": two 'unclear' or two 'missed' outcomes in a row → queue a call for this parent in
+// the calling list (one open 'coach' follow-up at a time; we don't stack duplicates). No PII logged.
+async function flagNeedsCallIfRun(userId: string): Promise<void> {
+  const rows = await readOutcomes("paid", userId);
+  const { flag, reason } = needsCall(rows);
+  if (!flag) return;
+  const sql = getSql();
+  const a = (await sql`
+    SELECT a.id FROM assessments a JOIN purchases p ON p.assessment_id = a.id
+    WHERE p.user_id = ${userId} AND p.status = 'paid' ORDER BY p.created_at DESC LIMIT 1
+  `) as unknown as { id: string }[];
+  const assessmentId = a[0]?.id;
+  if (!assessmentId) return;
+  // Don't stack: only add if there isn't already an open 'coach' needs-a-call row.
+  const existing = (await sql`
+    SELECT 1 FROM call_log WHERE assessment_id = ${assessmentId} AND segment = 'coach' AND notes ILIKE 'Needs a call%' LIMIT 1
+  `) as unknown as unknown[];
+  if (existing.length > 0) return;
+  await sql`
+    INSERT INTO call_log (assessment_id, segment, notes, follow_up_at)
+    VALUES (${assessmentId}, 'coach', ${`Needs a call: ${reason}`}, now())
+  `.catch((e: unknown) => console.error("[coach] needs-call insert failed:", (e as Error).message));
 }
