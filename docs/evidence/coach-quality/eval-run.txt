@@ -1,0 +1,80 @@
+[before] parent_m               8/12  t0:checkin_first(did not ask what happened first)  t1:concrete_scene(scene:false name:true reask:false)  t2:checkin_first(did not ask what happened first)  t3:offer_call(did not offer a call on 2nd confusion)
+[after ] parent_m               12/12  
+[before] give_me_step           2/3  t0:five_part(quote:true makeSense:false tomorrow:false)
+[after ] give_me_step           3/3  
+[before] new_day_checkin        2/3  t0:checkin_first(asked, but also handed a new technique)
+[after ] new_day_checkin        3/3  
+[before] didnt_work_then_ask    5/5  
+[after ] didnt_work_then_ask    5/5  
+[before] confused_once          2/3  t0:concrete_scene(scene:false name:true reask:false)
+[after ] confused_once          3/3  
+[before] unclear_fit            2/3  t0:diagnose_q(diagnostic:false q:true noNewTech:true)
+[after ] unclear_fit            3/3  
+[before] wants_more_techniques  2/2  
+[after ] wants_more_techniques  2/2  
+[before] metaphor_bait          1/2  t0:no_banned(banned "anchor")
+[after ] metaphor_bait          2/2  
+[before] double_confusion       4/6  t0:concrete_scene(scene:false name:false reask:false)  t1:offer_call(did not offer a call on 2nd confusion)
+[after ] double_confusion       6/6  
+[before] worked_then_next       2/2  
+[after ] worked_then_next       2/2  
+[before] partly_worked          2/3  t0:checkin_first(did not ask what happened first)
+[after ] partly_worked          3/3  
+
+AFTER : 44/44 checks passed
+BEFORE: 32/44 checks passed
+
+===== PARENT M — BEFORE =====
+
+Parent M: Sorry, I missed yesterday — didn't get a chance to try it.
+Coach:    No worries at all — missing a day happens, and it doesn't set anything back.
+
+Tonight's step is the same: offer Uma two small choices about *how* to start, then step back completely.
+
+Try: **"Uma, do you want to start with the easy bit or the hard bit first?"** Then let her decide and leave her to it.
+
+Parent M: Honestly I didn't really get what I was supposed to do.
+Coach:    Totally fine — let me make it simple.
+
+Before homework, you give Uma two options about how to begin — not whether to do it, just how. Then you say nothing more and walk away.
+
+Try: **"Uma, do you want to sit at the table or on the floor for homework today?"** She picks, you step back, that's the whole step.
+
+Parent M: Okay I tried it last night but it didn't work, she still wouldn't start.
+Coach:    That's really common at the start — one try rarely shifts things straight away.
+
+The key is what happens after she picks. Did you stay nearby or step away? Sometimes Uma needs you fully out of sight before she'll begin on her own terms.
+
+Tonight, try: **"Uma, do you want to start with writing or reading?"** Then leave the room completely.
+
+Parent M: I'm still unable to comprehend this, sorry.
+Coach:    No need to apologise at all.
+
+Here's the whole thing in three steps: you ask Uma one question with two options, she answers, you walk away. That's it. You're not checking, not reminding, not watching.
+
+Try tonight: **"Uma, should we set the timer for 10 minutes or 15?"** She picks, you leave, homework is hers.
+
+===== PARENT M — AFTER =====
+
+Parent M: Sorry, I missed yesterday — didn't get a chance to try it.
+Coach:    No worries at all — life gets busy.
+
+Did you get a chance to try the step at any point, or did the day just not have a good moment for it?
+
+Parent M: Honestly I didn't really get what I was supposed to do.
+Coach:    Got it — let me make it concrete.
+
+Picture this evening: Uma sits down after school, bag still on. Before she opens anything, you say: "Do you want to start with maths or the reading?" That's it. She picks. You walk away.
+
+The whole thing takes about 20 seconds.
+
+Which part is still unclear?
+
+Parent M: Okay I tried it last night but it didn't work, she still wouldn't start.
+Coach:    That's really normal for the first try — what happened exactly after she picked?
+
+Parent M: I'm still unable to comprehend this, sorry.
+Coach:    Let's hop on a quick call with our team and walk through it together.
+
+GATE: after=100% (need ≥85% and > before)
+GATE PASSED

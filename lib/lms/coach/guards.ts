@@ -32,6 +32,13 @@ export const BANNED_PATTERNS: { label: string; re: RegExp }[] = [
   { label: "testing you", re: /\btesting\s+you\b/i },
   { label: "consequence", re: /\bconsequences?\b/i },
   { label: "punish", re: /\bpunish\w*/i },
+  // ── Metaphors / jargon — plain language only (grade-6). A coach reply never literally needs these,
+  // so a whole-word ban is safe; the regen instruction asks for a concrete, literal rewrite. ──
+  { label: "locks into", re: /\block(?:s|ed|ing)?\s+(?:in|into)\b/i },
+  { label: "plant", re: /\bplant(?:s|ed|ing)?\b/i },        // "plant the idea/seed"
+  { label: "anchor", re: /\banchor(?:s|ed|ing)?\b/i },      // "anchor the habit"
+  { label: "lean into", re: /\blean(?:s|ed|ing)?\s+into\b/i },
+  { label: "audience", re: /\baudiences?\b/i },             // "give her an audience"
 ];
 
 // Returns the first banned label in `text`, or null. "treat" is allowed ONLY when the parent's own
@@ -113,6 +120,16 @@ export function wordCount(s: string): number {
   return (s || "").trim().split(/\s+/).filter(Boolean).length;
 }
 
+// Does the parent's message ask us to GIVE/explain the step? Those turns are a 5-part step delivery,
+// which is allowed to run longer than a normal conversational reply (the length cap is raised).
+const STEP_REQUEST_RE = /\b(step|what\s+(?:do|should|can)\s+i|what'?s\s+(?:today|the\s+step)|how\s+do\s+i\s+(?:start|begin|do)|walk\s+me\s+through|give\s+me\s+(?:the|today)|remind\s+me|explain\s+(?:it|the\s+step|again))\b/i;
+export function looksLikeStepRequest(message: string): boolean {
+  return STEP_REQUEST_RE.test(message || "");
+}
+// Normal conversational cap vs a 5-part step-delivery cap.
+export const REPLY_MAX_WORDS = 90;
+export const STEP_DELIVERY_MAX_WORDS = 160;
+
 // All quoted spans (straight or curly quotes), length ≥2, trimmed.
 export function extractQuotes(text: string): string[] {
   const out: string[] = [];
@@ -178,15 +195,17 @@ export async function enforceReplyQuality(
   priorQuotes: string[] = [],
   parentMessage = "",
   language?: Language,
+  maxWords: number = REPLY_MAX_WORDS,
 ): Promise<{ text: string; fired: GuardFired }> {
   let text = firstText;
   const lang: Language = language ?? decideLanguage(parentMessage);
   const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0 };
 
-  if (wordCount(text) > 90) {
+  if (wordCount(text) > maxWords) {
     fired.long++;
-    log(`[coach-guard] reply ${wordCount(text)} words > 90 — regenerating shorter`);
-    const t = await regenerate("Shorter: max 60 words. Keep tonight's step and the one sentence to say.");
+    const target = Math.round(maxWords * 0.67);
+    log(`[coach-guard] reply ${wordCount(text)} words > ${maxWords} — regenerating shorter`);
+    const t = await regenerate(`Shorter: max ${target} words. Keep tonight's step and the one sentence to say.`);
     if (t) text = t;
   }
   if (quotePlusQuestion(text)) {
