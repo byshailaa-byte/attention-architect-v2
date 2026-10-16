@@ -141,7 +141,7 @@ describe("enforceReplyQuality regen loop", () => {
     const clean = 'Let Kabir start his own way. Say "You choose how to begin."';
     const out = await enforceReplyQuality(clean, async () => "REGEN");
     expect(out.text).toBe(clean);
-    expect(out.fired).toEqual({ long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0, advise: 0 });
+    expect(out.fired).toEqual({ long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0, advise: 0, sentence: 0, hindi: 0 });
   });
   it("regenerates Hinglish that leaks into an English reply", async () => {
     const out = await enforceReplyQuality(

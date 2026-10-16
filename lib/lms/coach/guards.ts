@@ -159,6 +159,17 @@ export const CHECKIN_FALLBACK: Record<Language, string> = {
   hi: "क्या आप इसे आज़मा पाए? क्या हुआ?",
 };
 
+// ── Plain language: short sentences + "offer Hindi" when the parent says the language is hard ──
+export function longestSentenceWords(text: string): number {
+  const sentences = (text || "").split(/(?<=[.!?])\s+/).map((s) => wordCount(s));
+  return sentences.length ? Math.max(...sentences) : 0;
+}
+export const MAX_SENTENCE_WORDS = 22;
+// Did the parent complain that the LANGUAGE is hard (so the reply should offer Hindi)?
+export function isLanguageComplaint(message: string): boolean {
+  return /\b(complicated|difficult|hard|tough|confusing)\s+(language|words|english|to understand)\b|too\s+complicated|can'?t understand the (words|language)|\bin hindi\b|samajh nahi/i.test(message || "");
+}
+
 // All quoted spans (straight or curly quotes), length ≥2, trimmed.
 export function extractQuotes(text: string): string[] {
   const out: string[] = [];
@@ -214,7 +225,7 @@ export function groupsChild(text: string): boolean {
   return GROUP_RE.test(text) || TYPE_WORDS.test(text);
 }
 
-export type GuardFired = { long: number; question: number; banned: number; repeat: number; group: number; script: number; aap: number; lang: number; checkin: number; advise: number };
+export type GuardFired = { long: number; question: number; banned: number; repeat: number; group: number; script: number; aap: number; lang: number; checkin: number; advise: number; sentence: number; hindi: number };
 
 // Run the reply guards. `regenerate(correction)` must produce a fresh reply built on the previous
 // one + the correction, returning its text ("" on failure keeps the current text). `priorQuotes`
@@ -231,10 +242,11 @@ export async function enforceReplyQuality(
   maxWords: number = REPLY_MAX_WORDS,
   requireCheckin = false,
   mustAdvise = false,
+  requireHindiOffer = false,
 ): Promise<{ text: string; fired: GuardFired }> {
   let text = firstText;
   const lang: Language = language ?? decideLanguage(parentMessage);
-  const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0, advise: 0 };
+  const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0, advise: 0, sentence: 0, hindi: 0 };
 
   // CHECK-IN FIRST (runs before everything): on a check-in turn, the reply MUST ask what happened and
   // MUST NOT hand over a new technique (a "say this" quote). Regenerate up to twice; if it still
@@ -272,6 +284,21 @@ export async function enforceReplyQuality(
     const target = Math.round(maxWords * 0.67);
     log(`[coach-guard] reply ${wordCount(text)} words > ${maxWords} — regenerating shorter`);
     const t = await regenerate(`Shorter: max ${target} words. Keep tonight's step and the one sentence to say.`);
+    if (t) text = t;
+  }
+  // Short sentences (plain English for a second-language reader): no sentence over MAX_SENTENCE_WORDS.
+  for (let attempt = 0; attempt < 2 && longestSentenceWords(text) > MAX_SENTENCE_WORDS; attempt++) {
+    fired.sentence++;
+    log(`[coach-guard] a sentence is ${longestSentenceWords(text)} words — regenerating with shorter sentences`);
+    const t = await regenerate("Use short sentences — about 10 words each, never more than 18. Split any long sentence into two. Keep the exact words to say.");
+    if (!t) break;
+    text = t;
+  }
+  // Offer Hindi when the parent said the language is hard.
+  if (requireHindiOffer && !/\bhindi\b/i.test(text)) {
+    fired.hindi++;
+    log(`[coach-guard] parent said the language is hard — regenerating to offer Hindi`);
+    const t = await regenerate('Keep it simple, then add one line offering Hindi: "Would you like this in Hindi?"');
     if (t) text = t;
   }
   if (quotePlusQuestion(text)) {

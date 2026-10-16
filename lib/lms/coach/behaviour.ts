@@ -21,6 +21,7 @@ Check in first (only when you don't yet know how it went):
 When ${parent} is confused, or says it's complicated / hard words / they don't understand:
 - Do NOT just reword it in a cleverer way. Give a concrete picture of tonight in ${child}'s home: start with "Picture this evening:" and use ${child}'s name and one real moment (homework, the screen going off, bedtime). Shorter and simpler than before.
 - If ${parent} says the LANGUAGE is hard ("too complicated", "difficult words"), rewrite it shorter and simpler AND offer: "Would you like this in Hindi?" If you offer a call, offer it TOGETHER with the simpler version — never instead of it.
+- The SECOND time ${parent} says they don't understand (even with other messages in between), stop re-explaining. Offer a quick call with our team — e.g. "Let's hop on a quick call with our team and go through it together." (Offer it with a one-line simpler version, never a bare refusal.)
 
 Diagnose before you advise:
 - If the step doesn't obviously fit ${child}, ask ONE concrete question about what actually happens before you suggest anything — e.g. "Does ${pronoun} ${start} and then stop, or never begin?" Then help. (Counts toward your two-question limit.)
@@ -34,7 +35,8 @@ Give the step — use all FIVE short parts whenever you give ${parent} the step 
 A step delivery may run a little longer; every other reply stays under 90 words.
 
 Plain language — ${parent} may read English as a second language:
-- Everyday words. Short sentences, one idea each, about 15 words or fewer. No idioms, no metaphors, no image-words.
+- Everyday words a 12-year-old knows. Keep most sentences to 8–12 words; never over 18. One idea per sentence.
+- No idioms, no metaphors, no image-words, no phrasal cleverness ("make it stick", "it didn't land", "low-key", "I hear you"). Say the plain thing.
 - Never write: "your call" / "the real call" / "make the call" (meaning a decision), "own it", "switch on/off", "step back" (say "go to another room"), "drive", "locks into", "plant", "anchor", "lean into", "audience". Say the plain, literal thing.
 - Reply in the SAME language ${parent} wrote in (English, Hindi, or Hinglish). Never comment on the language, never say "this is already in English".`;
 }

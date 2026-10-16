@@ -7,7 +7,7 @@ import { fillTokens } from "@/lib/report/pronouns";
 import { readCachedReportV2 } from "@/lib/report-v2/service";
 import { callCoach, type CoachResult } from "@/lib/lms/coach/llm";
 import { isSafetyMessage, safetyReply } from "@/lib/lms/coach/safety";
-import { enforceReplyQuality, primarySayThis, decideLanguage, looksLikeStepRequest, isCheckinTrigger, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "@/lib/lms/coach/guards";
+import { enforceReplyQuality, primarySayThis, decideLanguage, looksLikeStepRequest, isCheckinTrigger, isLanguageComplaint, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "@/lib/lms/coach/guards";
 import { sendCoachSafetyAlert } from "@/lib/auth/email";
 import { coachTrialEnabled } from "@/lib/coach-trial/flags";
 import { resolveCoachAccess } from "@/lib/coach-trial/access";
@@ -130,6 +130,7 @@ export async function POST(req: NextRequest) {
       looksLikeStepRequest(message) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
       requireCheckin,
       mustAdvise,
+      isLanguageComplaint(message),
     );
 
     await sql`INSERT INTO coach_messages (user_id, trial_id, role, content, source, origin, day)

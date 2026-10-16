@@ -5,7 +5,7 @@
 // shape without a network call.
 //
 // No real parent names: "Parent M" / "Child U" are anonymised; fixture child names only.
-import { bannedPhrase, wordCount, primarySayThis, hasQuotedSentence, asksWhatHappened, normalizeQuote } from "./guards";
+import { bannedPhrase, wordCount, primarySayThis, hasQuotedSentence, asksWhatHappened, normalizeQuote, longestSentenceWords, MAX_SENTENCE_WORDS } from "./guards";
 
 export type Check =
   | "checkin_first"        // genuine check-in (new day, no news): ask what happened, no new technique
@@ -27,11 +27,6 @@ export type ScoreCtx = { child: string; stepDelivery?: boolean; priorReplies?: s
 
 const q = (re: RegExp, s: string) => re.test(s || "");
 
-// Longest sentence length (words) — plain language wants short sentences.
-function longestSentenceWords(text: string): number {
-  const sentences = (text || "").split(/(?<=[.!?])\s+/).map((s) => wordCount(s));
-  return sentences.length ? Math.max(...sentences) : 0;
-}
 // The trailing question of a reply (last sentence that ends with "?"), normalised for comparison.
 function trailingQuestion(text: string): string | null {
   const m = (text || "").trim().match(/([^.!?]*\?)\s*$/);
@@ -99,7 +94,7 @@ export function scoreCheck(check: Check, reply: string, ctx: ScoreCtx): { pass: 
       const bp = bannedPhrase(r);
       const longest = longestSentenceWords(r);
       const hasAction = hasQuotedSentence(r) || q(/\b(say|tell|ask|give|hand|let|try|put|set|turn)\b/i, r);
-      const ok = bp === null && longest <= 22 && hasAction;
+      const ok = bp === null && longest <= MAX_SENTENCE_WORDS && hasAction;
       return { pass: ok, reason: `banned:${bp ?? "none"} longestSentence:${longest} hasAction:${hasAction}` };
     }
     case "no_banned": {

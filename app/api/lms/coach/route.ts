@@ -6,7 +6,7 @@ import { getSql } from "@/lib/db/client";
 import { isSafetyMessage, safetyReply } from "@/lib/lms/coach/safety";
 import { buildCoachContext } from "@/lib/lms/coach/context";
 import { callCoach, type CoachResult } from "@/lib/lms/coach/llm";
-import { enforceReplyQuality, primarySayThis, looksLikeStepRequest, isCheckinTrigger, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "@/lib/lms/coach/guards";
+import { enforceReplyQuality, primarySayThis, looksLikeStepRequest, isCheckinTrigger, isLanguageComplaint, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "@/lib/lms/coach/guards";
 import { updateCoachMemory } from "@/lib/lms/coach/memory";
 import { extractOutcome, recordPaidOutcome, readOutcomes, needsCall, hasOutcomeAnswer } from "@/lib/lms/coach/outcomes";
 import { COACH_DAILY_LIMIT, overDailyLimit } from "@/lib/lms/coach/limits";
@@ -128,6 +128,7 @@ export async function POST(req: NextRequest) {
       looksLikeStepRequest(message) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
       requireCheckin,
       mustAdvise,
+      isLanguageComplaint(message),
     );
     const regenCount = Object.values(fired).reduce((a, b) => a + b, 0);
     console.log(`[coach] model=${result.model} latency=${Date.now() - genStart}ms regens=${regenCount} (user ${userId.slice(0, 8)})`);
