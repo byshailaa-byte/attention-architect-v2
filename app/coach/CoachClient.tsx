@@ -28,16 +28,22 @@ type Props = {
   commitQuestion: string; commitChips: Chip[]; commitDone: string;
   stepEyebrow: string; readFullLabel: string;
   days: TrialDayCard[]; // 4 cards, index 0 = trial day 1
+  // Optional overrides so Preview Coach can reuse this EXACT UI. Defaults = the live parent endpoints,
+  // so parent-facing behaviour is unchanged when these are omitted.
+  messageEndpoint?: string;
+  onboardingEndpoint?: string;
+  flagEndpoint?: string;                 // when set, each Coach reply shows a ⚑ Flag control (admin preview)
+  extraBody?: Record<string, unknown>;   // merged into message + onboarding POST bodies (e.g. { trialId, day })
 };
 
 // A single transcript entry. "card" renders the highlighted step card for a given day.
 type Bubble =
-  | { kind: "coach"; text: string }
+  | { kind: "coach"; text: string; id?: string }
   | { kind: "parent"; text: string }
   | { kind: "card"; day: TrialDayCard };
 
 // ── Message API shapes ────────────────────────────────────────────────────────
-type MessageOk = { reply: string; role: "coach" | "safety"; messagesLeft: number };
+type MessageOk = { reply: string; role: "coach" | "safety"; messagesLeft: number; messageId?: string };
 type MessageErr = { error: string; reply?: string; messagesLeft?: number };
 
 export default function CoachClient(props: Props) {
@@ -47,6 +53,11 @@ export default function CoachClient(props: Props) {
     stepEyebrow, readFullLabel, days,
   } = props;
   void childName;
+
+  const messageEndpoint = props.messageEndpoint ?? "/api/coach/message";
+  const onboardingEndpoint = props.onboardingEndpoint ?? "/api/coach/onboarding";
+  const flagEndpoint = props.flagEndpoint;
+  const extraBody = props.extraBody ?? {};
 
   const todayCard = days[Math.min(Math.max(trialDay, 1), days.length) - 1] ?? days[0];
 
@@ -106,9 +117,9 @@ export default function CoachClient(props: Props) {
     setBaselineOpen(false);
     setBubbles((prev) => [...prev, { kind: "parent", text: chip.label }]);
     try {
-      await fetch("/api/coach/onboarding", {
+      await fetch(onboardingEndpoint, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ baselineValue: chip.value }),
+        body: JSON.stringify({ ...extraBody, baselineValue: chip.value }),
       });
     } catch {
       /* non-blocking: the confirm bubble + flow still proceed */
@@ -128,9 +139,9 @@ export default function CoachClient(props: Props) {
     setCommitOpen(false);
     setBubbles((prev) => [...prev, { kind: "parent", text: chip.label }]);
     try {
-      await fetch("/api/coach/onboarding", {
+      await fetch(onboardingEndpoint, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ commitSlot: chip.value }),
+        body: JSON.stringify({ ...extraBody, commitSlot: chip.value }),
       });
     } catch {
       /* non-blocking */
@@ -148,14 +159,14 @@ export default function CoachClient(props: Props) {
     setSending(true);
     setBubbles((prev) => [...prev, { kind: "parent", text }]);
     try {
-      const res = await fetch("/api/coach/message", {
+      const res = await fetch(messageEndpoint, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ ...extraBody, message: text }),
       });
       const data: MessageOk | MessageErr = await res.json().catch(() => ({ error: "failed" }));
 
       if (res.ok && "reply" in data && data.reply) {
-        setBubbles((prev) => [...prev, { kind: "coach", text: data.reply ?? "" }]);
+        setBubbles((prev) => [...prev, { kind: "coach", text: data.reply ?? "", id: (data as MessageOk).messageId }]);
         if (typeof (data as MessageOk).messagesLeft === "number") setMessagesLeft((data as MessageOk).messagesLeft);
         setSending(false);
         return;
@@ -198,7 +209,7 @@ export default function CoachClient(props: Props) {
 
         {/* TRANSCRIPT */}
         <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "18px 16px 10px", display: "flex", flexDirection: "column", gap: 12 }}>
-          {bubbles.map((b, i) => <BubbleRow key={i} bubble={b} stepEyebrow={stepEyebrow} readFullLabel={readFullLabel} />)}
+          {bubbles.map((b, i) => <BubbleRow key={i} bubble={b} stepEyebrow={stepEyebrow} readFullLabel={readFullLabel} flagEndpoint={flagEndpoint} />)}
 
           {/* baseline chips (onboarding step c) */}
           {baselineOpen && <ChipRow chips={baselineChips} onPick={onBaseline} />}
@@ -257,12 +268,13 @@ function renderBold(text: string): React.ReactNode[] {
 }
 
 // ── A transcript row: coach bubble (left/white), parent bubble (right/gold), or step card ──
-function BubbleRow({ bubble, stepEyebrow, readFullLabel }: { bubble: Bubble; stepEyebrow: string; readFullLabel: string }) {
+function BubbleRow({ bubble, stepEyebrow, readFullLabel, flagEndpoint }: { bubble: Bubble; stepEyebrow: string; readFullLabel: string; flagEndpoint?: string }) {
   if (bubble.kind === "card") return <StepCard day={bubble.day} stepEyebrow={stepEyebrow} readFullLabel={readFullLabel} />;
 
   const isParent = bubble.kind === "parent";
+  const canFlag = !isParent && !!flagEndpoint && !!bubble.id;
   return (
-    <div style={{ display: "flex", justifyContent: isParent ? "flex-end" : "flex-start" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: isParent ? "flex-end" : "flex-start" }}>
       <div
         style={{
           maxWidth: "82%", padding: "10px 14px", fontSize: 15, lineHeight: 1.5,
@@ -276,7 +288,36 @@ function BubbleRow({ bubble, stepEyebrow, readFullLabel }: { bubble: Bubble; ste
       >
         {isParent ? bubble.text : renderBold(bubble.text)}
       </div>
+      {canFlag && <FlagReply messageId={bubble.id!} flagEndpoint={flagEndpoint!} />}
     </div>
+  );
+}
+
+// Admin-only (Preview Coach): flag a single Coach reply with a note for later review.
+function FlagReply({ messageId, flagEndpoint }: { messageId: string; flagEndpoint: string }) {
+  const [state, setState] = useState<"idle" | "done">("idle");
+  async function onFlag() {
+    const note = window.prompt("Flag this reply — add a note for review (optional):", "");
+    if (note === null) return; // cancelled
+    try {
+      const res = await fetch(flagEndpoint, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, note }),
+      });
+      if (res.ok) setState("done");
+    } catch { /* non-blocking */ }
+  }
+  return (
+    <button
+      onClick={onFlag}
+      disabled={state === "done"}
+      style={{
+        marginTop: 3, marginLeft: 2, background: "none", border: "none", cursor: state === "done" ? "default" : "pointer",
+        fontSize: 11.5, fontWeight: 700, color: state === "done" ? "#8C3F22" : C.dim, padding: "2px 2px",
+      }}
+    >
+      {state === "done" ? "⚑ Flagged" : "⚑ Flag this reply"}
+    </button>
   );
 }
 

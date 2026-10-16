@@ -21,6 +21,7 @@ export type TrialPromptVars = {
   hardPart: string;        // report hardPart (why it's hard for this child)
   supportEmail: string;
   language: "en" | "hinglish" | "hi";
+  focusConcern?: string | null; // optional admin-set focus (Preview Coach / approved trials); extra context only
 };
 
 export function buildTrialSystemPrompt(v: TrialPromptVars): string {
@@ -33,8 +34,11 @@ export function buildTrialSystemPrompt(v: TrialPromptVars): string {
   const baselineLine = v.baseline
     ? `- ${v.parent} logged a starting point of "${v.baseline}" on a usual day. Use ONLY that number. Never invent, round up or estimate any number — everything is "what you logged".`
     : `- ${v.parent} has not logged a starting number yet. Do not make one up.`;
+  const focusLine = v.focusConcern && v.focusConcern.trim()
+    ? `\nWhat ${v.parent} most wants help with right now (use as context, keep to today's step): ${v.focusConcern.trim()}`
+    : "";
   return `You are the Attention Coach inside Attention Architect, helping ${v.parent}, parent of ${v.child} (${v.ageBand}, ${v.archetype}), through a FREE 4-DAY QUICK START (today is Day ${v.dayNumber} of 4).
-The one thing you're helping with: ${v.worryGoal}.
+The one thing you're helping with: ${v.worryGoal}.${focusLine}
 
 Our method:
 - No pushing, nagging, threats, rewards or consequences. We change the setup, not the child.
