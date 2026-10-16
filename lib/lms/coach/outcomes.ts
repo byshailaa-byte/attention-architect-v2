@@ -46,7 +46,7 @@ const RE = {
   unclear: /\b(don'?t (get|understand)|didn'?t (really )?(get|understand)|not sure what (you|i)|what (do|does) (you|that|this) mean|unclear|confus|unable to comprehend|makes no sense|lost)\b/i,
   worked: /\b(it worked|that worked|worked (really )?well|went (really )?well|much better|she started|he started|they started|started on (her|his|their) own|did it (herself|himself|themselves)|success|way better|big improvement)\b/i,
   partly: /\b(sort of|kind of|a (little )?bit|partly|somewhat|half( way)?|started but|began but|better but|some progress|a bit better)\b/i,
-  didntWork: /\b(didn'?t work|did not work|no change|nothing changed|still (wouldn'?t|won'?t|didn'?t|refuses?|refused)|same as (before|always)|no (luck|difference)|made no difference)\b/i,
+  didntWork: /\b(didn'?t work|did not work|no change|nothing changed|still (wouldn'?t|won'?t|didn'?t|refuses?|refused)|same as (before|always)|no (luck|difference)|made no difference|ignored( me| it)?|not at all|wouldn'?t listen|didn'?t listen|took no notice|paid no attention)\b/i,
 };
 export function extractOutcome(message: string): { outcome: Outcome; note: string } | null {
   const m = message || "";
@@ -57,6 +57,12 @@ export function extractOutcome(message: string): { outcome: Outcome; note: strin
   if (RE.partly.test(m)) return { outcome: "tried_partly", note };
   if (RE.worked.test(m)) return { outcome: "tried_worked", note };
   return null;
+}
+
+// Does this message itself ANSWER "what happened?" (so the Coach records it and moves on, rather than
+// asking the check-in question again)? True whenever an outcome can be extracted from the words.
+export function hasOutcomeAnswer(message: string): boolean {
+  return extractOutcome(message) !== null;
 }
 
 // ── Writes (idempotent per day: a new report for the same day replaces the prior one) ──

@@ -8,7 +8,7 @@ import { buildCoachContext } from "@/lib/lms/coach/context";
 import { callCoach, type CoachResult } from "@/lib/lms/coach/llm";
 import { enforceReplyQuality, primarySayThis, looksLikeStepRequest, isCheckinTrigger, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "@/lib/lms/coach/guards";
 import { updateCoachMemory } from "@/lib/lms/coach/memory";
-import { extractOutcome, recordPaidOutcome, readOutcomes, needsCall } from "@/lib/lms/coach/outcomes";
+import { extractOutcome, recordPaidOutcome, readOutcomes, needsCall, hasOutcomeAnswer } from "@/lib/lms/coach/outcomes";
 import { COACH_DAILY_LIMIT, overDailyLimit } from "@/lib/lms/coach/limits";
 import { sendCoachSafetyAlert } from "@/lib/auth/email";
 import { ENTITY } from "@/lib/entity";
@@ -90,14 +90,22 @@ export async function POST(req: NextRequest) {
     // Reply-quality guards (each fires at most once): too long (>90 words), a quoted sentence AND a
     // trailing question, or a banned method-drift phrase. Each regenerates with a targeted fix.
     const priorQuotes = coachCtx.history.filter((h) => h.role === "assistant").map((h) => primarySayThis(h.content)).filter((q): q is string => !!q);
-    // Check-in-first: force "what happened?" when the parent is reporting on / skipping the last step
-    // (or opening a new day) AND we haven't recorded an outcome for this step yet.
+    // Check-in-first: ask "what happened?" ONLY when we don't yet know how it went — i.e. a new day /
+    // check-in context where the parent's message is NOT itself an answer, and no outcome is recorded.
+    // If the message states an outcome ("it didn't work"), that's the answer → no forced question.
     const checkinTriggered = isCheckinTrigger(message) || (usedToday === 0 && day > 1);
     let requireCheckin = false;
-    if (checkinTriggered) {
+    if (checkinTriggered && !hasOutcomeAnswer(message)) {
       const prior = await readOutcomes("paid", userId);
       requireCheckin = !prior.some((o) => o.week === week && o.day === day);
     }
+    // Must-advise: after 2 diagnostic questions on this step today, the Coach must GIVE the step.
+    const coachMsgsToday = (await sql`
+      SELECT content FROM coach_messages WHERE user_id = ${userId} AND role = 'coach'
+        AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (now() AT TIME ZONE 'Asia/Kolkata')::date
+    `) as unknown as { content: string }[];
+    const coachQuestionsToday = coachMsgsToday.filter((m) => m.content.trim().endsWith("?") && !primarySayThis(m.content)).length;
+    const mustAdvise = coachQuestionsToday >= 2;
     const genStart = Date.now();
     const { fired } = await enforceReplyQuality(
       result.text,
@@ -119,6 +127,7 @@ export async function POST(req: NextRequest) {
       coachCtx.language,
       looksLikeStepRequest(message) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
       requireCheckin,
+      mustAdvise,
     );
     const regenCount = Object.values(fired).reduce((a, b) => a + b, 0);
     console.log(`[coach] model=${result.model} latency=${Date.now() - genStart}ms regens=${regenCount} (user ${userId.slice(0, 8)})`);

@@ -16,7 +16,7 @@ import { resolveTrialDays } from "@/lib/coach-trial/content";
 import { buildTrialSystemPrompt, loadTrialHistory } from "@/lib/coach-trial/prompt";
 import { worryGoalLine } from "@/lib/coach-trial/onboarding";
 import { flagTrial } from "@/lib/coach-trial/trial";
-import { extractOutcome, recordTrialOutcome, readOutcomes } from "@/lib/lms/coach/outcomes";
+import { extractOutcome, recordTrialOutcome, readOutcomes, hasOutcomeAnswer } from "@/lib/lms/coach/outcomes";
 import { trackServer } from "@/lib/analytics/track.server";
 import type { AgeBand } from "@/content/types";
 
@@ -104,13 +104,18 @@ export async function POST(req: NextRequest) {
     }
 
     const priorQuotes = history.filter((h) => h.role === "assistant").map((h) => primarySayThis(h.content)).filter((q): q is string => !!q);
-    // Check-in-first: force "what happened?" when the parent reports on / skips the last step and we
-    // haven't recorded an outcome for this day yet.
+    // Check-in-first only when the message isn't itself an answer ("it didn't work" is the answer).
     let requireCheckin = false;
-    if (isCheckinTrigger(message)) {
+    if (isCheckinTrigger(message) && !hasOutcomeAnswer(message)) {
       const prior = await readOutcomes("trial", trial.id);
       requireCheckin = !prior.some((o) => o.day === day);
     }
+    // Must-advise: after 2 diagnostic questions on this day, the Coach must GIVE the step.
+    const coachMsgsToday = (await sql`
+      SELECT content FROM coach_messages WHERE trial_id = ${trial.id}::uuid AND role = 'coach'
+        AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (now() AT TIME ZONE 'Asia/Kolkata')::date
+    `) as unknown as { content: string }[];
+    const mustAdvise = coachMsgsToday.filter((m) => m.content.trim().endsWith("?") && !primarySayThis(m.content)).length >= 2;
     await enforceReplyQuality(
       result.text,
       async (correction) => {
@@ -124,6 +129,7 @@ export async function POST(req: NextRequest) {
       priorQuotes, message, language,
       looksLikeStepRequest(message) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
       requireCheckin,
+      mustAdvise,
     );
 
     await sql`INSERT INTO coach_messages (user_id, trial_id, role, content, source, origin, day)

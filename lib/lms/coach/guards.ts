@@ -39,6 +39,14 @@ export const BANNED_PATTERNS: { label: string; re: RegExp }[] = [
   { label: "anchor", re: /\banchor(?:s|ed|ing)?\b/i },      // "anchor the habit"
   { label: "lean into", re: /\blean(?:s|ed|ing)?\s+into\b/i },
   { label: "audience", re: /\baudiences?\b/i },             // "give her an audience"
+  // ── Idioms a parent with basic English may not follow (from a real transcript). "call" meaning a
+  //    DECISION is banned; "call with our team" (a phone call) is NOT matched by these. ──
+  { label: "your/the call (decision)", re: /\b(your|his|her|their|one real|a real|the real)\s+call\b/i },
+  { label: "make the call", re: /\b(makes?|made|making)\s+the\s+call\b/i },
+  { label: "own it", re: /\bown\s+it\b/i },
+  { label: "switch on/off", re: /\bswitch(?:es|ed|ing)?\s+(?:on|off)\b/i },
+  { label: "step back", re: /\bstep(?:s|ped|ping)?\s+back\b/i },   // use "go to another room" instead
+  { label: "drive (metaphor)", re: /\bdrive\b/i },                 // "her drive" — not driveway
 ];
 
 // Returns the first banned label in `text`, or null. "treat" is allowed ONLY when the parent's own
@@ -206,7 +214,7 @@ export function groupsChild(text: string): boolean {
   return GROUP_RE.test(text) || TYPE_WORDS.test(text);
 }
 
-export type GuardFired = { long: number; question: number; banned: number; repeat: number; group: number; script: number; aap: number; lang: number; checkin: number };
+export type GuardFired = { long: number; question: number; banned: number; repeat: number; group: number; script: number; aap: number; lang: number; checkin: number; advise: number };
 
 // Run the reply guards. `regenerate(correction)` must produce a fresh reply built on the previous
 // one + the correction, returning its text ("" on failure keeps the current text). `priorQuotes`
@@ -222,10 +230,11 @@ export async function enforceReplyQuality(
   language?: Language,
   maxWords: number = REPLY_MAX_WORDS,
   requireCheckin = false,
+  mustAdvise = false,
 ): Promise<{ text: string; fired: GuardFired }> {
   let text = firstText;
   const lang: Language = language ?? decideLanguage(parentMessage);
-  const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0 };
+  const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0, advise: 0 };
 
   // CHECK-IN FIRST (runs before everything): on a check-in turn, the reply MUST ask what happened and
   // MUST NOT hand over a new technique (a "say this" quote). Regenerate up to twice; if it still
@@ -242,6 +251,19 @@ export async function enforceReplyQuality(
       fired.checkin++;
       log(`[coach-guard] check-in-first: regeneration still off — using the fixed check-in line`);
       text = CHECKIN_FALLBACK[lang];
+    }
+  }
+
+  // MUST ADVISE: after enough diagnostic questions, the Coach has to GIVE the adjusted step (exact
+  // words in quotes), not ask yet another question. Regenerate until the reply has a concrete step.
+  // No deterministic fallback (we can't fabricate the step), so this is best-effort over 2 retries.
+  if (mustAdvise && !requireCheckin) {
+    for (let attempt = 0; attempt < 2 && !primarySayThis(text); attempt++) {
+      fired.advise++;
+      log(`[coach-guard] max diagnostic questions reached — reply must give the adjusted step now`);
+      const t = await regenerate("Stop asking questions — you have enough to help. Give the adjusted step now, in short plain parts: when to do it, the exact words to say in quotes, how long it takes, one short line on why, what you might see, then end with \"Does that make sense?\" No new question before the step.");
+      if (!t) break;
+      text = t;
     }
   }
 

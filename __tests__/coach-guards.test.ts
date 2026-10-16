@@ -138,10 +138,10 @@ describe("enforceReplyQuality regen loop", () => {
     expect(wordCount(out.text)).toBeLessThanOrEqual(90);
   });
   it("does nothing to a clean reply", async () => {
-    const clean = 'Let Kabir start his own way. Say "Your call how to begin."';
+    const clean = 'Let Kabir start his own way. Say "You choose how to begin."';
     const out = await enforceReplyQuality(clean, async () => "REGEN");
     expect(out.text).toBe(clean);
-    expect(out.fired).toEqual({ long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0 });
+    expect(out.fired).toEqual({ long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0, advise: 0 });
   });
   it("regenerates Hinglish that leaks into an English reply", async () => {
     const out = await enforceReplyQuality(
@@ -197,12 +197,12 @@ describe("enforceReplyQuality regen loop", () => {
     expect(usesTumVerb(out.text)).toBe(false);
   });
   it("regenerates when the 'say this' sentence repeats one already given", async () => {
-    const reply = 'Try again tonight. Say "Your call how to begin."';
+    const reply = 'Try again tonight. Say "You choose how to begin."';
     const out = await enforceReplyQuality(
       reply,
       async () => 'A fresh angle. Say "What would you try first?"',
       undefined,
-      ["Your call how to begin."], // already said earlier in the chat
+      ["You choose how to begin."], // already said earlier in the chat
     );
     expect(out.fired.repeat).toBe(1);
     expect(out.text).toContain("What would you try first?");
