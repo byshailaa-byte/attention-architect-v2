@@ -1,84 +1,167 @@
-[before] parent_m               8/12  t0:checkin_first(did not ask what happened first)  t1:concrete_scene(scene:false name:true reask:false)  t2:checkin_first(did not ask what happened first)  t3:offer_call(did not offer a call on 2nd confusion)
-[after ] parent_m               12/12  
-[before] give_me_step           2/3  t0:five_part(quote:true makeSense:false tomorrow:false)
-[after ] give_me_step           3/3  
+[before] real_didnt_work        14/16  t1:five_part(quote:true makeSense:false tomorrow:false)  t2:offer_hindi(did not offer Hindi)
+[after ] real_didnt_work        15/16  t1:five_part(quote:true makeSense:true tomorrow:false)
+[before] parent_m               11/16  t0:no_banned(banned "step back")  t0:plain_language(banned:step back longestSentence:30)  t1:concrete_scene(scene:false name:true reask:false)  t2:plain_language(banned:none longestSentence:23)  t3:offer_call(did not offer a call)
+[after ] parent_m               15/16  t0:plain_language(banned:none longestSentence:25)
+[before] give_me_step           1/4  t0:five_part(quote:true makeSense:false tomorrow:false)  t0:no_banned(banned "step back")  t0:plain_language(banned:step back longestSentence:30)
+[after ] give_me_step           3/4  t0:plain_language(banned:none longestSentence:25)
 [before] new_day_checkin        2/3  t0:checkin_first(did not ask what happened first)
 [after ] new_day_checkin        3/3  
-[before] didnt_work_then_ask    5/5  
-[after ] didnt_work_then_ask    5/5  
-[before] confused_once          2/3  t0:concrete_scene(scene:false name:true reask:false)
-[after ] confused_once          3/3  
+[before] didnt_work_then_adjust 7/8  t1:plain_language(banned:none longestSentence:25)
+[after ] didnt_work_then_adjust 8/8  
+[before] confused_once          3/4  t0:concrete_scene(scene:false name:true reask:false)
+[after ] confused_once          4/4  
 [before] unclear_fit            2/3  t0:diagnose_q(diagnostic:false q:true noNewTech:true)
 [after ] unclear_fit            3/3  
-[before] wants_more_techniques  2/2  
-[after ] wants_more_techniques  2/2  
-[before] metaphor_bait          1/2  t0:no_banned(banned "anchor")
-[after ] metaphor_bait          2/2  
-[before] double_confusion       4/6  t0:concrete_scene(scene:false name:false reask:false)  t1:offer_call(did not offer a call on 2nd confusion)
+[before] wants_more_techniques  2/3  t0:plain_language(banned:none longestSentence:28)
+[after ] wants_more_techniques  3/3  t0:plain_language_llm(FAIL: No concrete action or example words given.)
+[before] metaphor_bait          1/3  t0:no_banned(banned "anchor")  t0:plain_language(banned:anchor longestSentence:22)
+[after ] metaphor_bait          3/3  t0:plain_language_llm(FAIL: "make it stick" is a non-literal idiom.)
+[before] double_confusion       3/6  t0:concrete_scene(scene:false name:true reask:false)  t1:offer_call(did not offer a call)  t1:no_banned(banned "step back")
 [after ] double_confusion       6/6  
-[before] worked_then_next       2/2  
-[after ] worked_then_next       2/2  
-[before] partly_worked          2/3  t0:checkin_first(did not ask what happened first)
-[after ] partly_worked          3/3  
+[before] worked_then_next       2/4  t0:no_banned(banned "step back")  t0:plain_language(banned:step back longestSentence:17)
+[after ] worked_then_next       4/4  
+[before] partly_worked          4/4  
+[after ] partly_worked          4/4  t0:plain_language_llm(FAIL: "step forward" and "drift away" are idioms.)
 
-AFTER : 44/44 checks passed
-BEFORE: 32/44 checks passed
+AFTER : 71/74 deterministic checks passed
+BEFORE: 52/74 deterministic checks passed
+LLM plain-language judge (reported, not gated): 11/14
+
+===== REAL TRANSCRIPT (it did not work → complicated language) — BEFORE =====
+
+Parent: It did not work.
+Coach:  That's okay — first tries often need a small tweak.
+
+Can you tell me what happened? What did you offer Uma, and how did she respond? That'll help me suggest one small change for tonight.
+
+Parent: She just ignored me and did not start at all.
+Coach:  That happens — when the offer comes at the wrong moment, it lands flat.
+
+Try catching her mid-something she's already enjoying, before you mention homework at all. Offer the choice then, lightly.
+
+"Uma, later — do you want to start with maths or the reading bit first?"
+
+Then walk away. No follow-up. Let it sit with her.
+
+Parent: You are using very complicated language.
+Coach:  Sorry about that!
+
+Try this when Uma is relaxed — not right before homework.
+
+"Uma, maths first or reading first — you pick."
+
+Then just walk away.
+
+===== REAL TRANSCRIPT (it did not work → complicated language) — AFTER =====
+
+Parent: It did not work.
+Coach:  That's okay — first tries often need a small adjustment.
+
+Can you tell me: when you offered the choice, what did Uma do? Did she ignore it, say something, or walk away?
+
+Parent: She just ignored me and did not start at all.
+Coach:  Got it. Here's tonight's step.
+
+**1. What to do:** Wait for Uma to sit down naturally. Say this within one minute: "Uma, do you want to start with easy or hard tonight?" Then go to another room. It takes about 30 seconds.
+
+**2. Why:** Uma starts better when the choice feels like hers.
+
+**3. What you might see:** She may not answer. She may just begin quietly on her own.
+
+**4. Does that make sense?**
+
+I'll check in tomorrow.
+
+Parent: You are using very complicated language.
+Coach:  Picture this evening:
+
+Uma sits down after school. You walk up and say: "Uma, easy first or hard first tonight?" Then you walk to the kitchen.
+
+That's it. One question. Then you leave.
+
+Does that make sense? Would you like this in Hindi?
 
 ===== PARENT M — BEFORE =====
 
-Parent M: Sorry, I missed yesterday — didn't get a chance to try it.
-Coach:    No worries at all — missing a day happens, and it doesn't set anything back.
+Parent: Sorry, I missed yesterday — didn't get a chance to try it.
+Coach:  No problem at all — missing a day happens, and it doesn't set anything back.
 
-Tonight you can try it fresh. Before Uma sits down, offer two small choices: "Do you want to start with the easy subject or the harder one?" Then step back and let her decide.
+Tonight's step is the same: offer Mira a small real choice about how to start, then step back completely.
 
-What subject does Uma have homework in tonight?
+Try saying: "Mira, do you want to start with the subject you like or the one you want to get out of the way first?"
 
-Parent M: Honestly I didn't really get what I was supposed to do.
-Coach:    Totally fine — let me make it simple.
+Then let her decide — and don't add anything after.
 
-Before Uma starts homework, you say one sentence that gives her two options about *how* to begin. That's it. You don't guide after that.
+Parent: Honestly I didn't really get what I was supposed to do.
+Coach:  That's really helpful to know — let me make it concrete.
 
-Try this tonight: "Uma, do you want to start at your desk or somewhere else?"
+Before homework, you give Mira two options for how to begin. That's it. No instructions after. For example:
 
-Then walk away. She picks, she starts. Does that feel clearer?
+"Mira, do you want to start at your desk or somewhere else in the room?"
 
-Parent M: Okay I tried it last night but it didn't work, she still wouldn't start.
-Coach:    That's useful to know — one attempt not landing is just information.
+She picks. You walk away. The choosing is what makes it feel like her idea — and that's what gets her started.
 
-Sometimes the moment matters as much as the words. Try catching Uma before she's already doing something else — earlier, when she's just finished a snack or walked in.
+Parent: Okay I tried it last night but it didn't work, she still wouldn't start.
+Coach:  That's normal for the first try — the step often needs a small tweak.
 
-Tonight, try: "Uma, desk or floor — where do you want to work today?" Then move away before she answers.
+Try offering the choice even earlier, before she's already resisting. Catch her in a calm moment, not when homework time feels like it's already arrived.
 
-Parent M: I'm still unable to comprehend this, sorry.
-Coach:    No need to apologise at all.
+"Mira, later when you do homework — do you want to start with maths or with reading?"
 
-Here's the whole thing in one go: you say one sentence that gives Uma two options. She picks. You leave. That's the entire step.
+Then drop it completely and walk away.
 
-Tonight, just say: "Uma, do you want to start with maths or skip it for last?" Then walk to another room.
+Parent: I'm still unable to comprehend this, sorry.
+Coach:  No need to apologise — let me break it down simply.
+
+One moment, one sentence, then you leave.
+
+Before homework, find Mira doing something calm. Say: "Mira, when you start homework, do you want to sit at the table or on your bed?"
+
+That's the whole step. You don't wait for her to start. You just offer, then go.
+
+Does that feel clearer?
 
 ===== PARENT M — AFTER =====
 
-Parent M: Sorry, I missed yesterday — didn't get a chance to try it.
-Coach:    No worries at all — life gets busy.
+Parent: Sorry, I missed yesterday — didn't get a chance to try it.
+Coach:  No problem at all. Here is tonight's step.
 
-Did you get a chance to try it at any point, or did yesterday just not have a good moment for it? What happened?
+**1. What to do:** Five minutes before homework, go to Mira. Say: "Do you want to start with the easy subject or the hard one?" Then go to another room. Let her decide. This takes about one minute.
 
-Parent M: Honestly I didn't really get what I was supposed to do.
-Coach:    Got it — let me make it concrete.
+**2. Why:** Mira starts well when the first move feels like hers.
 
-Picture this evening: Uma sits down after school. Before she opens her bag, you say: "Do you want to start with maths or with reading?" She picks. You say "okay" and walk away.
+**3. What you might see:** She may pick one and begin. She may pause first. Both are fine.
 
-That's the whole step. You offer two options. She chooses. You leave her to it.
+Does that make sense? I will check in tomorrow.
 
-Which part is still unclear?
+Parent: Honestly I didn't really get what I was supposed to do.
+Coach:  No problem. Let me make it simpler.
 
-Parent M: Okay I tried it last night but it didn't work, she still wouldn't start.
-Coach:    That's okay — it doesn't always land the first time.
+**Picture this evening:** Mira is about to start homework. Before she sits down, say: "Mira, do you want to start with maths or English?" Then walk to another room. That's it.
 
-What happened exactly? Did Uma pick one of the options but then not start, or did she not engage with the choice at all?
+You are not telling her how to work. You are giving her one small choice. She picks. You leave.
 
-Parent M: I'm still unable to comprehend this, sorry.
-Coach:    Let's hop on a quick call with our team and walk through it together.
+Say: **"Mira, do you want to start with maths or English?"**
 
-GATE: after=100% (need ≥85% and > before)
+Parent: Okay I tried it last night but it didn't work, she still wouldn't start.
+Coach:  That happens often in the first try. No problem.
+
+Try the choice **earlier** — 10 minutes before homework.
+
+Say: **"Mira, in 10 minutes you'll start. Easy stuff or hard stuff first?"**
+
+Then walk to another room. Don't say anything more.
+
+She gets time to feel ready on her own.
+
+Does that make sense? I'll check in tomorrow.
+
+Parent: I'm still unable to comprehend this, sorry.
+Coach:  No problem at all.
+
+**Picture this evening:** Mira is playing or watching something. Ten minutes before homework, go to her. Say this one sentence, then leave the room:
+
+**"Mira, easy stuff or hard stuff first tonight?"** If it helps, let's hop on a quick call with our team and go through it together.
+
+GATE: after=96% (need ≥85% and > before)
 GATE PASSED
