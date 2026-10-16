@@ -1,6 +1,9 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { T } from "../../crm-theme";
+import { OUTCOME_CHIP, OUTCOME_LABEL, type Outcome } from "@/lib/lms/coach/outcomes";
+
+type OutcomeStripItem = { day: number; outcome: Outcome; note: string | null };
 
 // Admin view of a live/ended trial — mirrors the API's TrialAdminView shape.
 type TrialAdminView = {
@@ -29,7 +32,29 @@ type StatusResponse = {
   previewUrl: string | null;
   approved: boolean;
   chip: ChipState;
+  outcomeStrip: OutcomeStripItem[];
+  needsCall: boolean;
+  needsCallReason: string | null;
 };
+
+// Day-by-day outcome strip (1..4) from what the parent logged only.
+function OutcomeStrip({ strip }: { strip: OutcomeStripItem[] }) {
+  const byDay = new Map(strip.map((s) => [s.day, s]));
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      {[1, 2, 3, 4].map((d) => {
+        const item = byDay.get(d);
+        const chip = item ? OUTCOME_CHIP[item.outcome] : { t: "·", bg: "#F3F0EA", fg: "#B4ADA0" };
+        return (
+          <div key={d} title={item ? `Day ${d}: ${OUTCOME_LABEL[item.outcome]}${item.note ? ` — ${item.note}` : ""}` : `Day ${d}: no log`}
+            style={{ width: 30, height: 30, borderRadius: 8, background: chip.bg, color: chip.fg, display: "grid", placeItems: "center", fontWeight: 800, fontSize: 14 }}>
+            {chip.t}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // "Mon 13 Oct" — compact, IST-leaning readable date.
 function fmtDate(iso: string): string {
@@ -282,7 +307,14 @@ export function CoachTrialCard({ sessionId, paid }: { sessionId: string; paid: b
         <span>{view.parentMessages} Coach messages · ₹{view.costInr}</span>
         <span style={rowLabel}>Last active</span>
         <span>{fmtRelative(view.lastActiveAt)}</span>
+        <span style={rowLabel}>Days logged</span>
+        <OutcomeStrip strip={status.outcomeStrip} />
       </div>
+      {status.needsCall && (
+        <div style={{ fontSize: 13, fontWeight: 800, color: T.dangerText, background: T.dangerBg, borderRadius: 10, padding: "8px 12px" }}>
+          ☎ Needs a call — {status.needsCallReason}
+        </div>
+      )}
       {view.flagged && (
         <div style={{ fontSize: 13, fontWeight: 700, color: T.dangerText }}>⚑ Flagged — review</div>
       )}
