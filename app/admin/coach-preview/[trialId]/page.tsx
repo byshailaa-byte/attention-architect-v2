@@ -11,7 +11,10 @@ import {
   COMMIT_QUESTION, COMMIT_CHIPS, COMMIT_DONE, STEP_CARD_EYEBROW, READ_FULL_STEP,
 } from "@/lib/coach-trial/onboarding";
 import CoachClient from "@/app/coach/CoachClient";
+import { LockScreen } from "@/app/coach/LockScreen";
 import { PreviewAdminBar } from "./PreviewAdminBar";
+
+const CALENDLY = "https://calendly.com/attentionarchitect/attention-architect-discovery";
 
 // Preview Coach — the REAL parent Coach UI (reused CoachClient) plus an admin bar. Admin-only via the
 // /admin/* Basic-Auth middleware. Resolves a sandbox (is_preview) trial by id; the day switcher is a
@@ -27,7 +30,7 @@ export default async function CoachPreviewPage({
   if (!coachTrialEnabled()) notFound();
   const { trialId } = await params;
   const sp = await searchParams;
-  const day = Math.min(Math.max(parseInt(sp.day ?? "1", 10) || 0, 0), 4);
+  const day = Math.min(Math.max(parseInt(sp.day ?? "1", 10) || 0, 0), 5); // 5 = ended/results (LockScreen)
   const tod = sp.tod === "evening" ? "evening" : "morning";
 
   const access = await resolvePreviewAccess(trialId);
@@ -56,6 +59,23 @@ export default async function CoachPreviewPage({
   const onboardingDone = day >= 1;
   const trialDay = Math.max(day, 1);
   const bq = baselineQuestion(trial.worry ?? "other");
+
+  // Day 5 = the post-trial "results" screen (the real LockScreen), shown so the admin can preview
+  // what the parent sees once the 4 days end.
+  if (day >= 5) {
+    return (
+      <div style={{ minHeight: "100dvh", background: "#fff" }}>
+        <PreviewAdminBar trialId={trialId} day={day} tod={tod} focusConcern={trial.focus_concern} />
+        <LockScreen
+          childName={userCtx.childName}
+          reportHref={`/report/${trial.session_id}?report=v2`}
+          calendlyUrl={CALENDLY}
+          baseline={trial.baseline_value}
+          days={days}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100dvh", background: "#fff" }}>

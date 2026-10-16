@@ -70,6 +70,7 @@ export function PreviewAdminBar(props: {
         <span style={{ fontSize: 12, color: DIM }}>Day:</span>
         <button onClick={() => go(0)} style={dayBtn(0)}>0</button>
         {[1, 2, 3, 4].map((d) => <button key={d} onClick={() => go(d)} style={dayBtn(d)}>{d}</button>)}
+        <button onClick={() => go(5)} style={{ ...dayBtn(5), minWidth: "auto", padding: "6px 10px" }}>Results</button>
         <span style={{ width: 1, height: 20, background: LINE, margin: "0 2px" }} />
         <button onClick={() => go(day, "morning")} style={todBtn("morning")}>Morning</button>
         <button onClick={() => go(day, "evening")} style={todBtn("evening")}>Evening</button>
