@@ -4,6 +4,7 @@ import {
   quotePlusQuestion, groupsChild, enforceReplyQuality,
   firstForeignScriptChar, hasDevanagari, usesTumTu, usesTumVerb, aapForm, looksHindi,
   decideLanguage, hindiMarkerCount,
+  isCheckinTrigger, asksWhatHappened, CHECKIN_FALLBACK,
 } from "@/lib/lms/coach/guards";
 
 describe("banned words — report-v2 + coach list, whole-word", () => {
@@ -140,7 +141,7 @@ describe("enforceReplyQuality regen loop", () => {
     const clean = 'Let Kabir start his own way. Say "Your call how to begin."';
     const out = await enforceReplyQuality(clean, async () => "REGEN");
     expect(out.text).toBe(clean);
-    expect(out.fired).toEqual({ long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0 });
+    expect(out.fired).toEqual({ long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0 });
   });
   it("regenerates Hinglish that leaks into an English reply", async () => {
     const out = await enforceReplyQuality(
@@ -205,5 +206,41 @@ describe("enforceReplyQuality regen loop", () => {
     );
     expect(out.fired.repeat).toBe(1);
     expect(out.text).toContain("What would you try first?");
+  });
+});
+
+describe("check-in-first guard (deterministic)", () => {
+  it("isCheckinTrigger detects missed / didn't-work / partly / tried", () => {
+    expect(isCheckinTrigger("I missed yesterday")).toBe(true);
+    expect(isCheckinTrigger("it didn't work")).toBe(true);
+    expect(isCheckinTrigger("it sort of worked")).toBe(true);
+    expect(isCheckinTrigger("I tried it last night")).toBe(true);
+    expect(isCheckinTrigger("what time should homework be?")).toBe(false);
+  });
+
+  it("requireCheckin + a reply that dumps a technique → regenerates to a check-in", async () => {
+    const out = await enforceReplyQuality(
+      'Try tonight: say "Uma, you pick where to start."',   // new technique, no check-in
+      async () => "Did you get a chance to try it? What happened?",
+      undefined, [], "it didn't work", "en", 90, /* requireCheckin */ true,
+    );
+    expect(out.fired.checkin).toBeGreaterThan(0);
+    expect(asksWhatHappened(out.text)).toBe(true);
+  });
+
+  it("requireCheckin + regeneration keeps failing → falls back to the fixed line", async () => {
+    const out = await enforceReplyQuality(
+      'Try tonight: say "Uma, you pick where to start."',
+      async () => 'Still a technique: say "Uma, choose your spot."',  // regen never asks what happened
+      undefined, [], "I missed yesterday", "en", 90, true,
+    );
+    expect(out.text).toBe(CHECKIN_FALLBACK.en);
+  });
+
+  it("requireCheckin but the reply already checks in with no technique → left unchanged", async () => {
+    const good = "Did you get a chance to try it? What happened last night?";
+    const out = await enforceReplyQuality(good, async () => "SHOULD NOT REGEN", undefined, [], "it didn't work", "en", 90, true);
+    expect(out.fired.checkin).toBe(0);
+    expect(out.text).toBe(good);
   });
 });

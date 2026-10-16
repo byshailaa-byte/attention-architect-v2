@@ -7,7 +7,7 @@ import { fillTokens } from "@/lib/report/pronouns";
 import { readCachedReportV2 } from "@/lib/report-v2/service";
 import { callCoach, type CoachResult } from "@/lib/lms/coach/llm";
 import { isSafetyMessage, safetyReply } from "@/lib/lms/coach/safety";
-import { enforceReplyQuality, primarySayThis, decideLanguage, looksLikeStepRequest, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "@/lib/lms/coach/guards";
+import { enforceReplyQuality, primarySayThis, decideLanguage, looksLikeStepRequest, isCheckinTrigger, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "@/lib/lms/coach/guards";
 import { sendCoachSafetyAlert } from "@/lib/auth/email";
 import { coachTrialEnabled } from "@/lib/coach-trial/flags";
 import { resolveCoachAccess } from "@/lib/coach-trial/access";
@@ -16,7 +16,7 @@ import { resolveTrialDays } from "@/lib/coach-trial/content";
 import { buildTrialSystemPrompt, loadTrialHistory } from "@/lib/coach-trial/prompt";
 import { worryGoalLine } from "@/lib/coach-trial/onboarding";
 import { flagTrial } from "@/lib/coach-trial/trial";
-import { extractOutcome, recordTrialOutcome } from "@/lib/lms/coach/outcomes";
+import { extractOutcome, recordTrialOutcome, readOutcomes } from "@/lib/lms/coach/outcomes";
 import { trackServer } from "@/lib/analytics/track.server";
 import type { AgeBand } from "@/content/types";
 
@@ -104,6 +104,13 @@ export async function POST(req: NextRequest) {
     }
 
     const priorQuotes = history.filter((h) => h.role === "assistant").map((h) => primarySayThis(h.content)).filter((q): q is string => !!q);
+    // Check-in-first: force "what happened?" when the parent reports on / skips the last step and we
+    // haven't recorded an outcome for this day yet.
+    let requireCheckin = false;
+    if (isCheckinTrigger(message)) {
+      const prior = await readOutcomes("trial", trial.id);
+      requireCheckin = !prior.some((o) => o.day === day);
+    }
     await enforceReplyQuality(
       result.text,
       async (correction) => {
@@ -116,6 +123,7 @@ export async function POST(req: NextRequest) {
       (m) => console.warn(`${m} (trial ${trial.id.slice(0, 8)})`),
       priorQuotes, message, language,
       looksLikeStepRequest(message) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
+      requireCheckin,
     );
 
     await sql`INSERT INTO coach_messages (user_id, trial_id, role, content, source, origin, day)

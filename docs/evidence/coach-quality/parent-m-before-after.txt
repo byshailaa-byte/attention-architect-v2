@@ -1,3 +1,5 @@
+3-run hardened results (production path, check-in-first guard): RUN1 44/44, RUN2 44/44, RUN3 44/44 — checkin_first 100% in all runs.
+
 AFTER : 44/44 checks passed
 BEFORE: 32/44 checks passed
 
@@ -6,49 +8,53 @@ BEFORE: 32/44 checks passed
 Parent M: Sorry, I missed yesterday — didn't get a chance to try it.
 Coach:    No worries at all — missing a day happens, and it doesn't set anything back.
 
-Tonight's step is the same: offer Uma two small choices about *how* to start, then step back completely.
+Tonight you can try it fresh. Before Uma sits down, offer two small choices: "Do you want to start with the easy subject or the harder one?" Then step back and let her decide.
 
-Try: **"Uma, do you want to start with the easy bit or the hard bit first?"** Then let her decide and leave her to it.
+What subject does Uma have homework in tonight?
 
 Parent M: Honestly I didn't really get what I was supposed to do.
 Coach:    Totally fine — let me make it simple.
 
-Before homework, you give Uma two options about how to begin — not whether to do it, just how. Then you say nothing more and walk away.
+Before Uma starts homework, you say one sentence that gives her two options about *how* to begin. That's it. You don't guide after that.
 
-Try: **"Uma, do you want to sit at the table or on the floor for homework today?"** She picks, you step back, that's the whole step.
+Try this tonight: "Uma, do you want to start at your desk or somewhere else?"
+
+Then walk away. She picks, she starts. Does that feel clearer?
 
 Parent M: Okay I tried it last night but it didn't work, she still wouldn't start.
-Coach:    That's really common at the start — one try rarely shifts things straight away.
+Coach:    That's useful to know — one attempt not landing is just information.
 
-The key is what happens after she picks. Did you stay nearby or step away? Sometimes Uma needs you fully out of sight before she'll begin on her own terms.
+Sometimes the moment matters as much as the words. Try catching Uma before she's already doing something else — earlier, when she's just finished a snack or walked in.
 
-Tonight, try: **"Uma, do you want to start with writing or reading?"** Then leave the room completely.
+Tonight, try: "Uma, desk or floor — where do you want to work today?" Then move away before she answers.
 
 Parent M: I'm still unable to comprehend this, sorry.
 Coach:    No need to apologise at all.
 
-Here's the whole thing in three steps: you ask Uma one question with two options, she answers, you walk away. That's it. You're not checking, not reminding, not watching.
+Here's the whole thing in one go: you say one sentence that gives Uma two options. She picks. You leave. That's the entire step.
 
-Try tonight: **"Uma, should we set the timer for 10 minutes or 15?"** She picks, you leave, homework is hers.
+Tonight, just say: "Uma, do you want to start with maths or skip it for last?" Then walk to another room.
 
 ===== PARENT M — AFTER =====
 
 Parent M: Sorry, I missed yesterday — didn't get a chance to try it.
 Coach:    No worries at all — life gets busy.
 
-Did you get a chance to try the step at any point, or did the day just not have a good moment for it?
+Did you get a chance to try it at any point, or did yesterday just not have a good moment for it? What happened?
 
 Parent M: Honestly I didn't really get what I was supposed to do.
 Coach:    Got it — let me make it concrete.
 
-Picture this evening: Uma sits down after school, bag still on. Before she opens anything, you say: "Do you want to start with maths or the reading?" That's it. She picks. You walk away.
+Picture this evening: Uma sits down after school. Before she opens her bag, you say: "Do you want to start with maths or with reading?" She picks. You say "okay" and walk away.
 
-The whole thing takes about 20 seconds.
+That's the whole step. You offer two options. She chooses. You leave her to it.
 
 Which part is still unclear?
 
 Parent M: Okay I tried it last night but it didn't work, she still wouldn't start.
-Coach:    That's really normal for the first try — what happened exactly after she picked?
+Coach:    That's okay — it doesn't always land the first time.
+
+What happened exactly? Did Uma pick one of the options but then not start, or did she not engage with the choice at all?
 
 Parent M: I'm still unable to comprehend this, sorry.
 Coach:    Let's hop on a quick call with our team and walk through it together.

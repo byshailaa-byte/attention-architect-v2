@@ -130,6 +130,27 @@ export function looksLikeStepRequest(message: string): boolean {
 export const REPLY_MAX_WORDS = 90;
 export const STEP_DELIVERY_MAX_WORDS = 160;
 
+// ── Check-in-first ──
+// Does the reply ask what happened (the required check-in question)? Shared by the guard AND the eval
+// scorer so they stay aligned.
+const ASKS_WHAT_HAPPENED_RE = /\b(did you (get (a )?(chance|to)|get to)? ?try|were you able to try|what happened|how did (it|that|yesterday|the step|last night) go|what got in the way|what stopped|did you get to it)\b/i;
+export function asksWhatHappened(text: string): boolean {
+  return ASKS_WHAT_HAPPENED_RE.test(text || "");
+}
+// Is the parent's message a check-in trigger — they're reporting on (or skipping) the last step:
+// missed / didn't work / partly worked / "I tried…". The caller also requires that the day's outcome
+// isn't recorded yet before forcing the check-in.
+const CHECKIN_TRIGGER_RE = /\b(missed|didn'?t (get|try|work|manage)|did not (work|try)|couldn'?t (try|get)|forgot|no time|skipped|it (didn'?t|did not) work|sort of|kind of|partly|half( way)?|started but|began but|i tried|we tried|tried it|gave up|still (wouldn'?t|won'?t|didn'?t)|no change|nothing changed)\b/i;
+export function isCheckinTrigger(message: string): boolean {
+  return CHECKIN_TRIGGER_RE.test(message || "");
+}
+// Deterministic fallback check-in line, per language, if regeneration can't produce one.
+export const CHECKIN_FALLBACK: Record<Language, string> = {
+  en: "Did you get a chance to try it? What happened?",
+  hinglish: "Aap ise try kar paaye? Kya huaa?",
+  hi: "क्या आप इसे आज़मा पाए? क्या हुआ?",
+};
+
 // All quoted spans (straight or curly quotes), length ≥2, trimmed.
 export function extractQuotes(text: string): string[] {
   const out: string[] = [];
@@ -163,6 +184,10 @@ export function quotePlusQuestion(text: string): boolean {
   const t = (text || "").trim();
   if (!t.endsWith("?")) return false;
   if (!hasQuotedSentence(t)) return false;
+  // A comprehension RE-ASK ("Which part is still unclear?", "Does that make sense?") is the INTENDED
+  // ending of a concrete-scene / step-delivery reply — it's not the "two asks" violation, even when
+  // the reply also quotes a line. Don't fire on it.
+  if (/(which part|still unclear|any part unclear|does that make sense|is any part|make sense)[^?]*\?\s*$/i.test(t)) return false;
   const lastClose = Math.max(t.lastIndexOf('"'), t.lastIndexOf("”"));
   return t.lastIndexOf("?") > lastClose;
 }
@@ -181,7 +206,7 @@ export function groupsChild(text: string): boolean {
   return GROUP_RE.test(text) || TYPE_WORDS.test(text);
 }
 
-export type GuardFired = { long: number; question: number; banned: number; repeat: number; group: number; script: number; aap: number; lang: number };
+export type GuardFired = { long: number; question: number; banned: number; repeat: number; group: number; script: number; aap: number; lang: number; checkin: number };
 
 // Run the reply guards. `regenerate(correction)` must produce a fresh reply built on the previous
 // one + the correction, returning its text ("" on failure keeps the current text). `priorQuotes`
@@ -196,10 +221,29 @@ export async function enforceReplyQuality(
   parentMessage = "",
   language?: Language,
   maxWords: number = REPLY_MAX_WORDS,
+  requireCheckin = false,
 ): Promise<{ text: string; fired: GuardFired }> {
   let text = firstText;
   const lang: Language = language ?? decideLanguage(parentMessage);
-  const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0 };
+  const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0 };
+
+  // CHECK-IN FIRST (runs before everything): on a check-in turn, the reply MUST ask what happened and
+  // MUST NOT hand over a new technique (a "say this" quote). Regenerate up to twice; if it still
+  // fails, fall back to the fixed line so this is deterministic, never prompt-dependent.
+  if (requireCheckin) {
+    for (let attempt = 0; attempt < 2 && (!asksWhatHappened(text) || !!primarySayThis(text)); attempt++) {
+      fired.checkin++;
+      log(`[coach-guard] check-in-first: reply must ask what happened and give NO new technique — regenerating`);
+      const t = await regenerate('First ask ONLY what happened — e.g. "Did you get a chance to try it? What happened?" Do NOT give any new step, technique, or sentence-to-say this turn. One short question, nothing else.');
+      if (!t) break;
+      text = t;
+    }
+    if (!asksWhatHappened(text) || primarySayThis(text)) {
+      fired.checkin++;
+      log(`[coach-guard] check-in-first: regeneration still off — using the fixed check-in line`);
+      text = CHECKIN_FALLBACK[lang];
+    }
+  }
 
   if (wordCount(text) > maxWords) {
     fired.long++;

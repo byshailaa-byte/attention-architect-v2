@@ -6,7 +6,7 @@ import { getSql } from "@/lib/db/client";
 import { isSafetyMessage, safetyReply } from "@/lib/lms/coach/safety";
 import { buildCoachContext } from "@/lib/lms/coach/context";
 import { callCoach, type CoachResult } from "@/lib/lms/coach/llm";
-import { enforceReplyQuality, primarySayThis, looksLikeStepRequest, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "@/lib/lms/coach/guards";
+import { enforceReplyQuality, primarySayThis, looksLikeStepRequest, isCheckinTrigger, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "@/lib/lms/coach/guards";
 import { updateCoachMemory } from "@/lib/lms/coach/memory";
 import { extractOutcome, recordPaidOutcome, readOutcomes, needsCall } from "@/lib/lms/coach/outcomes";
 import { COACH_DAILY_LIMIT, overDailyLimit } from "@/lib/lms/coach/limits";
@@ -90,6 +90,14 @@ export async function POST(req: NextRequest) {
     // Reply-quality guards (each fires at most once): too long (>90 words), a quoted sentence AND a
     // trailing question, or a banned method-drift phrase. Each regenerates with a targeted fix.
     const priorQuotes = coachCtx.history.filter((h) => h.role === "assistant").map((h) => primarySayThis(h.content)).filter((q): q is string => !!q);
+    // Check-in-first: force "what happened?" when the parent is reporting on / skipping the last step
+    // (or opening a new day) AND we haven't recorded an outcome for this step yet.
+    const checkinTriggered = isCheckinTrigger(message) || (usedToday === 0 && day > 1);
+    let requireCheckin = false;
+    if (checkinTriggered) {
+      const prior = await readOutcomes("paid", userId);
+      requireCheckin = !prior.some((o) => o.week === week && o.day === day);
+    }
     const genStart = Date.now();
     const { fired } = await enforceReplyQuality(
       result.text,
@@ -110,6 +118,7 @@ export async function POST(req: NextRequest) {
       message,
       coachCtx.language,
       looksLikeStepRequest(message) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
+      requireCheckin,
     );
     const regenCount = Object.values(fired).reduce((a, b) => a + b, 0);
     console.log(`[coach] model=${result.model} latency=${Date.now() - genStart}ms regens=${regenCount} (user ${userId.slice(0, 8)})`);

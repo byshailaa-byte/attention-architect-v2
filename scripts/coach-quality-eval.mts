@@ -9,6 +9,7 @@ import path from "node:path";
 import { CONVERSATIONS, scoreCheck, parentMConvo, type Convo } from "../lib/lms/coach/conversation-evals.ts";
 import { buildSystemPrompt, coachPronoun } from "../lib/lms/coach/prompt.ts";
 import { callCoach, type CoachTurn } from "../lib/lms/coach/llm.ts";
+import { enforceReplyQuality, primarySayThis, looksLikeStepRequest, isCheckinTrigger, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "../lib/lms/coach/guards.ts";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 if (!process.env.COACH_EVAL_LIVE) { console.log("set COACH_EVAL_LIVE=1 to run the live eval"); process.exit(0); }
@@ -35,12 +36,35 @@ async function runConvo(c: Convo, behaviour: boolean) {
   const history: CoachTurn[] = [];
   const replies: string[] = [];
   const results: { turn: number; check: string; pass: boolean; reason: string }[] = [];
+  // Track which days have an outcome recorded in THIS conversation, so requireCheckin mirrors the
+  // production rule (force check-in only until the step's outcome is recorded).
+  const recorded = new Set<number>();
   for (let i = 0; i < c.turns.length; i++) {
     const turn = c.turns[i];
+    const system = sysFor(c.child, behaviour);
     history.push({ role: "user", content: turn.parent });
     let reply = "";
-    try { reply = (await callCoach(sysFor(c.child, behaviour), history)).text; }
+    try { reply = (await callCoach(system, history)).text; }
     catch (e) { reply = ""; console.warn(`[eval] ${c.id} t${i} call failed: ${(e as Error).message}`); }
+
+    // PRODUCTION PATH: run the same guard/regen loop the live routes use (behaviour=false "before"
+    // runs raw so the contrast is real; "after" goes through the guards, including check-in-first).
+    if (behaviour && reply) {
+      const requireCheckin = isCheckinTrigger(turn.parent) && !recorded.has(i);
+      const priorQuotes = history.filter((h) => h.role === "assistant").map((h) => primarySayThis(h.content)).filter((q): q is string => !!q);
+      const out = await enforceReplyQuality(
+        reply,
+        async (correction) => {
+          try { const r = await callCoach(system, [...history, { role: "assistant", content: reply }, { role: "user", content: correction }]); return r.text || ""; }
+          catch { return ""; }
+        },
+        () => {}, priorQuotes, turn.parent, "en",
+        looksLikeStepRequest(turn.parent) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
+        requireCheckin,
+      );
+      reply = out.text;
+    }
+    recorded.add(i); // after this turn the step's outcome is "recorded"
     history.push({ role: "assistant", content: reply });
     replies.push(reply);
     for (const check of turn.expect) {

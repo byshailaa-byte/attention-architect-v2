@@ -4,7 +4,7 @@
 // (__tests__/coach-quality-eval.test.ts) checks the scorers + set shape without a network call.
 //
 // No real parent names: "Parent M" / "Child U" are anonymised; the fixture child name is "Uma".
-import { bannedPhrase, wordCount, primarySayThis, hasQuotedSentence } from "./guards";
+import { bannedPhrase, wordCount, primarySayThis, hasQuotedSentence, asksWhatHappened } from "./guards";
 
 export type Check =
   | "checkin_first"     // after a missed / didn't-work turn: ask what happened, do NOT dump a new technique
@@ -30,9 +30,10 @@ export function scoreCheck(check: Check, reply: string, ctx: { child: string; st
 
   switch (check) {
     case "checkin_first": {
-      const asksWhatHappened = q(/\b(did you (get to )?try|were you able to try|what happened|how did (it|that|yesterday|the step) go|what got in the way|what stopped)\b/i, r);
-      // Must ask what happened AND not hand over a brand-new technique in the same breath.
-      return { pass: asksWhatHappened && !newTechnique, reason: asksWhatHappened ? (newTechnique ? "asked, but also handed a new technique" : "asked what happened, no new technique") : "did not ask what happened first" };
+      // Must ask what happened AND not hand over a brand-new technique in the same breath. Uses the
+      // SAME asksWhatHappened() the production guard enforces, so scorer + guard never diverge.
+      const asked = asksWhatHappened(r);
+      return { pass: asked && !newTechnique, reason: asked ? (newTechnique ? "asked, but also handed a new technique" : "asked what happened, no new technique") : "did not ask what happened first" };
     }
     case "concrete_scene": {
       const scene = q(/\b(picture this|imagine (this )?(evening|tonight)|tonight,? when|here'?s tonight|say it'?s tonight|this evening,)\b/i, r);
