@@ -10,7 +10,7 @@ import { CONVERSATIONS, scoreCheck, parentMConvo, realTranscriptConvo, type Conv
 import { buildSystemPrompt, coachPronoun } from "../lib/lms/coach/prompt.ts";
 import { callCoach, type CoachTurn } from "../lib/lms/coach/llm.ts";
 import { enforceReplyQuality, primarySayThis, looksLikeStepRequest, isCheckinTrigger, isLanguageComplaint, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "../lib/lms/coach/guards.ts";
-import { hasOutcomeAnswer } from "../lib/lms/coach/outcomes.ts";
+import { hasOutcomeAnswer, extractOutcome } from "../lib/lms/coach/outcomes.ts";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 if (!process.env.COACH_EVAL_LIVE) { console.log("set COACH_EVAL_LIVE=1 to run the live eval"); process.exit(0); }
@@ -55,6 +55,7 @@ async function runConvo(c: Convo, behaviour: boolean) {
   const history: CoachTurn[] = [];
   const replies: string[] = [];
   const results: { turn: number; check: string; pass: boolean; reason: string }[] = [];
+  let confusionSoFar = 0;
   for (let i = 0; i < c.turns.length; i++) {
     const turn = c.turns[i];
     const system = sysFor(c.child, behaviour);
@@ -68,6 +69,8 @@ async function runConvo(c: Convo, behaviour: boolean) {
     if (behaviour && reply) {
       const requireCheckin = (isCheckinTrigger(turn.parent) || isNewDayOpener(turn.parent)) && !hasOutcomeAnswer(turn.parent);
       const mustAdvise = replies.filter(isBareQuestion).length >= 2;
+      const thisConfusion = extractOutcome(turn.parent)?.outcome === "unclear";
+      const requireOfferCall = thisConfusion && confusionSoFar >= 1;
       const priorQuotes = history.filter((h) => h.role === "assistant").map((h) => primarySayThis(h.content)).filter((q): q is string => !!q);
       const out = await enforceReplyQuality(
         reply,
@@ -76,8 +79,11 @@ async function runConvo(c: Convo, behaviour: boolean) {
           catch { return ""; }
         },
         () => {}, priorQuotes, turn.parent, "en",
-        looksLikeStepRequest(turn.parent) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
-        requireCheckin, mustAdvise, isLanguageComplaint(turn.parent),
+        {
+          maxWords: looksLikeStepRequest(turn.parent) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
+          requireCheckin, mustAdvise, requireHindiOffer: isLanguageComplaint(turn.parent),
+          requireOfferCall, forbidReinterrogate: hasOutcomeAnswer(turn.parent),
+        },
       );
       reply = out.text;
     }
@@ -93,6 +99,7 @@ async function runConvo(c: Convo, behaviour: boolean) {
       const j = await plainLanguageJudge(reply);
       results.push({ turn: i, check: "plain_language_llm", pass: j.pass, reason: j.reason });
     }
+    if (extractOutcome(turn.parent)?.outcome === "unclear") confusionSoFar++;
   }
   return { replies, results };
 }

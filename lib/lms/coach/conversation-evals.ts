@@ -91,11 +91,12 @@ export function scoreCheck(check: Check, reply: string, ctx: ScoreCtx): { pass: 
       return { pass: !repeat, reason: repeat ? "repeated a question already asked" : "fresh question" };
     }
     case "plain_language": {
+      // Deterministic proxy: no banned idioms + short sentences. "Is there a concrete action?" is
+      // left to the LLM judge (plain_language_llm), since a check-in/question turn has no action yet.
       const bp = bannedPhrase(r);
       const longest = longestSentenceWords(r);
-      const hasAction = hasQuotedSentence(r) || q(/\b(say|tell|ask|give|hand|let|try|put|set|turn)\b/i, r);
-      const ok = bp === null && longest <= MAX_SENTENCE_WORDS && hasAction;
-      return { pass: ok, reason: `banned:${bp ?? "none"} longestSentence:${longest} hasAction:${hasAction}` };
+      const ok = bp === null && longest <= MAX_SENTENCE_WORDS;
+      return { pass: ok, reason: `banned:${bp ?? "none"} longestSentence:${longest}` };
     }
     case "no_banned": {
       const bp = bannedPhrase(r);
@@ -117,7 +118,7 @@ export const CONVERSATIONS: Convo[] = [
       // A stated outcome IS the answer → acknowledge, at most one short question, no re-interrogation.
       { parent: "It did not work.", expect: ["no_reinterrogate", "no_repeat_question", "no_banned", "plain_language", "length"] },
       { parent: "She just ignored me and did not start at all.", expect: ["max_two_questions", "five_part", "no_reinterrogate", "no_banned", "plain_language", "length"] },
-      { parent: "You are using very complicated language.", expect: ["offer_hindi", "concrete_scene", "no_banned", "plain_language", "length"] },
+      { parent: "You are using very complicated language.", expect: ["offer_hindi", "no_reinterrogate", "no_banned", "plain_language", "length"] },
     ],
   },
   {

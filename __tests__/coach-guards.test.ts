@@ -141,7 +141,7 @@ describe("enforceReplyQuality regen loop", () => {
     const clean = 'Let Kabir start his own way. Say "You choose how to begin."';
     const out = await enforceReplyQuality(clean, async () => "REGEN");
     expect(out.text).toBe(clean);
-    expect(out.fired).toEqual({ long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0, advise: 0, sentence: 0, hindi: 0 });
+    expect(out.fired).toEqual({ long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0, advise: 0, sentence: 0, hindi: 0, call: 0, reinterrogate: 0 });
   });
   it("regenerates Hinglish that leaks into an English reply", async () => {
     const out = await enforceReplyQuality(
@@ -222,7 +222,7 @@ describe("check-in-first guard (deterministic)", () => {
     const out = await enforceReplyQuality(
       'Try tonight: say "Uma, you pick where to start."',   // new technique, no check-in
       async () => "Did you get a chance to try it? What happened?",
-      undefined, [], "it didn't work", "en", 90, /* requireCheckin */ true,
+      undefined, [], "it didn't work", "en", { maxWords: 90, requireCheckin: true },
     );
     expect(out.fired.checkin).toBeGreaterThan(0);
     expect(asksWhatHappened(out.text)).toBe(true);
@@ -232,14 +232,14 @@ describe("check-in-first guard (deterministic)", () => {
     const out = await enforceReplyQuality(
       'Try tonight: say "Uma, you pick where to start."',
       async () => 'Still a technique: say "Uma, choose your spot."',  // regen never asks what happened
-      undefined, [], "I missed yesterday", "en", 90, true,
+      undefined, [], "I missed yesterday", "en", { maxWords: 90, requireCheckin: true },
     );
     expect(out.text).toBe(CHECKIN_FALLBACK.en);
   });
 
   it("requireCheckin but the reply already checks in with no technique → left unchanged", async () => {
     const good = "Did you get a chance to try it? What happened last night?";
-    const out = await enforceReplyQuality(good, async () => "SHOULD NOT REGEN", undefined, [], "it didn't work", "en", 90, true);
+    const out = await enforceReplyQuality(good, async () => "SHOULD NOT REGEN", undefined, [], "it didn't work", "en", { maxWords: 90, requireCheckin: true });
     expect(out.fired.checkin).toBe(0);
     expect(out.text).toBe(good);
   });

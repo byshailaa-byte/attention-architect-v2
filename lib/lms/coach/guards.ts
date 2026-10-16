@@ -225,7 +225,29 @@ export function groupsChild(text: string): boolean {
   return GROUP_RE.test(text) || TYPE_WORDS.test(text);
 }
 
-export type GuardFired = { long: number; question: number; banned: number; repeat: number; group: number; script: number; aap: number; lang: number; checkin: number; advise: number; sentence: number; hindi: number };
+export type GuardFired = { long: number; question: number; banned: number; repeat: number; group: number; script: number; aap: number; lang: number; checkin: number; advise: number; sentence: number; hindi: number; call: number; reinterrogate: number };
+
+// Behavioural flags for enforceReplyQuality (grouped so call sites stay readable).
+export type GuardOpts = {
+  maxWords?: number;
+  requireCheckin?: boolean;      // genuine check-in turn → must ask what happened, no new technique
+  mustAdvise?: boolean;          // after 2 questions → must give the step
+  requireHindiOffer?: boolean;   // parent said the language is hard → must offer Hindi
+  requireOfferCall?: boolean;    // 2nd confusion → must offer a call with the team
+  forbidReinterrogate?: boolean; // parent already answered → must NOT ask "what happened" again
+};
+// Append-on-failure lines (per language) so Hindi/call offers are deterministic.
+const HINDI_LINE: Record<Language, string> = {
+  en: " Would you like this in Hindi?",
+  hinglish: " Kya aap ise Hindi mein chahenge?",
+  hi: " क्या आप इसे हिंदी में चाहेंगे?",
+};
+const CALL_LINE: Record<Language, string> = {
+  en: " If it helps, let's hop on a quick call with our team and go through it together.",
+  hinglish: " Agar aasaan ho, hum apni team ke saath ek chhoti call par ise saath mein dekh sakte hain.",
+  hi: " अगर आसान हो, तो हम अपनी टीम के साथ एक छोटी कॉल पर इसे साथ में देख सकते हैं।",
+};
+const offersCall = (t: string) => /\b(call with (us|our team|the team)|hop on a (quick )?call|book a call|jump on a call|quick call|chhoti call|छोटी कॉल)\b/i.test(t || "");
 
 // Run the reply guards. `regenerate(correction)` must produce a fresh reply built on the previous
 // one + the correction, returning its text ("" on failure keeps the current text). `priorQuotes`
@@ -239,14 +261,24 @@ export async function enforceReplyQuality(
   priorQuotes: string[] = [],
   parentMessage = "",
   language?: Language,
-  maxWords: number = REPLY_MAX_WORDS,
-  requireCheckin = false,
-  mustAdvise = false,
-  requireHindiOffer = false,
+  opts: GuardOpts = {},
 ): Promise<{ text: string; fired: GuardFired }> {
+  const { maxWords = REPLY_MAX_WORDS, requireCheckin = false, mustAdvise = false, requireHindiOffer = false, requireOfferCall = false, forbidReinterrogate = false } = opts;
   let text = firstText;
   const lang: Language = language ?? decideLanguage(parentMessage);
-  const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0, advise: 0, sentence: 0, hindi: 0 };
+  const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0, advise: 0, sentence: 0, hindi: 0, call: 0, reinterrogate: 0 };
+
+  // NO RE-INTERROGATION: the parent already told us how it went → the reply must not ask the generic
+  // "what happened?" again. Regenerate up to twice.
+  if (forbidReinterrogate) {
+    for (let attempt = 0; attempt < 2 && (asksWhatHappened(text) || /\bwhat happened\b/i.test(text)); attempt++) {
+      fired.reinterrogate++;
+      log(`[coach-guard] parent already answered — reply must not re-ask "what happened"`);
+      const t = await regenerate("They already told you how it went. Do NOT ask 'what happened' or 'did you try' again. Give one short warm line, then one specific question OR the adjusted step.");
+      if (!t) break;
+      text = t;
+    }
+  }
 
   // CHECK-IN FIRST (runs before everything): on a check-in turn, the reply MUST ask what happened and
   // MUST NOT hand over a new technique (a "say this" quote). Regenerate up to twice; if it still
@@ -287,19 +319,34 @@ export async function enforceReplyQuality(
     if (t) text = t;
   }
   // Short sentences (plain English for a second-language reader): no sentence over MAX_SENTENCE_WORDS.
-  for (let attempt = 0; attempt < 2 && longestSentenceWords(text) > MAX_SENTENCE_WORDS; attempt++) {
+  for (let attempt = 0; attempt < 3 && longestSentenceWords(text) > MAX_SENTENCE_WORDS; attempt++) {
     fired.sentence++;
     log(`[coach-guard] a sentence is ${longestSentenceWords(text)} words — regenerating with shorter sentences`);
     const t = await regenerate("Use short sentences — about 10 words each, never more than 18. Split any long sentence into two. Keep the exact words to say.");
     if (!t) break;
     text = t;
   }
-  // Offer Hindi when the parent said the language is hard.
-  if (requireHindiOffer && !/\bhindi\b/i.test(text)) {
-    fired.hindi++;
-    log(`[coach-guard] parent said the language is hard — regenerating to offer Hindi`);
-    const t = await regenerate('Keep it simple, then add one line offering Hindi: "Would you like this in Hindi?"');
-    if (t) text = t;
+  // Offer Hindi when the parent said the language is hard. Regenerate once; if the model still won't
+  // add it, append the line so it's deterministic.
+  if (requireHindiOffer) {
+    if (!/\bhindi\b/i.test(text)) {
+      fired.hindi++;
+      log(`[coach-guard] parent said the language is hard — regenerating to offer Hindi`);
+      const t = await regenerate('Keep it short and simple, then add one line offering Hindi: "Would you like this in Hindi?"');
+      if (t) text = t;
+    }
+    if (!/\bhindi\b/i.test(text) && !/हिंदी/.test(text)) text = text.trimEnd() + HINDI_LINE[lang];
+  }
+
+  // Offer a call on the 2nd confusion. Regenerate once; append the call line if still missing.
+  if (requireOfferCall) {
+    if (!offersCall(text)) {
+      fired.call++;
+      log(`[coach-guard] 2nd confusion — regenerating to offer a call with the team`);
+      const t = await regenerate("Stop re-explaining. Offer a quick call with our team to go through it together, in one short line.");
+      if (t) text = t;
+    }
+    if (!offersCall(text)) text = text.trimEnd() + CALL_LINE[lang];
   }
   if (quotePlusQuestion(text)) {
     fired.question++;

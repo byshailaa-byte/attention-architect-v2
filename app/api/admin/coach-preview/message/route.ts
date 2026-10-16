@@ -98,11 +98,10 @@ export async function POST(req: NextRequest) {
     }
 
     const priorQuotes = history.filter((h) => h.role === "assistant").map((h) => primarySayThis(h.content)).filter((q): q is string => !!q);
-    let requireCheckin = false;
-    if (isCheckinTrigger(message) && !hasOutcomeAnswer(message)) {
-      const prior = await readOutcomes("trial", trial.id);
-      requireCheckin = !prior.some((o) => o.day === day);
-    }
+    const prior = await readOutcomes("trial", trial.id);
+    const requireCheckin = isCheckinTrigger(message) && !hasOutcomeAnswer(message) && !prior.some((o) => o.day === day);
+    const thisConfusion = extractOutcome(message)?.outcome === "unclear";
+    const requireOfferCall = thisConfusion && prior.filter((o) => o.day === day && o.outcome === "unclear").length >= 1;
     const coachMsgsToday = (await sql`
       SELECT content FROM coach_messages WHERE trial_id = ${trial.id}::uuid AND role = 'coach'
         AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (now() AT TIME ZONE 'Asia/Kolkata')::date
@@ -119,10 +118,11 @@ export async function POST(req: NextRequest) {
       },
       (m) => console.warn(`${m} (preview ${trial.id.slice(0, 8)})`),
       priorQuotes, message, language,
-      looksLikeStepRequest(message) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
-      requireCheckin,
-      mustAdvise,
-      isLanguageComplaint(message),
+      {
+        maxWords: looksLikeStepRequest(message) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
+        requireCheckin, mustAdvise, requireHindiOffer: isLanguageComplaint(message),
+        requireOfferCall, forbidReinterrogate: hasOutcomeAnswer(message),
+      },
     );
 
     await sql`INSERT INTO coach_messages (user_id, trial_id, role, content, source, origin, day)
