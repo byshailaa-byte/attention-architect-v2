@@ -12,6 +12,8 @@ import {
 } from "@/lib/coach-trial/onboarding";
 import CoachClient from "@/app/coach/CoachClient";
 import { LockScreen } from "@/app/coach/LockScreen";
+import { readOutcomes } from "@/lib/lms/coach/outcomes";
+import { getCheckin, isImproved } from "@/lib/lms/coach/checkin";
 import { PreviewAdminBar } from "./PreviewAdminBar";
 
 const CALENDLY = "https://calendly.com/attentionarchitect/attention-architect-discovery";
@@ -63,6 +65,16 @@ export default async function CoachPreviewPage({
   // Day 5 = the post-trial "results" screen (the real LockScreen), shown so the admin can preview
   // what the parent sees once the 4 days end.
   if (day >= 5) {
+    const worry = trial.worry ?? "other";
+    const now = await getCheckin("trial", trial.id, 4);
+    const outcomes = await readOutcomes("trial", trial.id);
+    const labelFor = (v: string | null) => bq.chips.find((c) => c.value === v)?.label ?? v ?? "";
+    const improved = isImproved(worry, trial.baseline_value, now) ? { fromLabel: labelFor(trial.baseline_value), toLabel: labelFor(now) } : null;
+    const results = {
+      endpoint: "/api/coach/checkin", // note: preview uses the admin session; capture is a demo only
+      question: fill(bq.question), chips: bq.chips, answered: now !== null, improved,
+      outcomes: outcomes.map((o) => ({ day: o.day, outcome: o.outcome, note: o.note })), outcomeUnit: "day" as const,
+    };
     return (
       <div style={{ minHeight: "100dvh", background: "#fff" }}>
         <PreviewAdminBar trialId={trialId} day={day} tod={tod} focusConcern={trial.focus_concern} />
@@ -72,6 +84,7 @@ export default async function CoachPreviewPage({
           calendlyUrl={CALENDLY}
           baseline={trial.baseline_value}
           days={days}
+          results={results}
         />
       </div>
     );

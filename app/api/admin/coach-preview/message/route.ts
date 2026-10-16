@@ -13,6 +13,7 @@ import { TRIAL_DAILY_LIMIT, trialOverDailyLimit } from "@/lib/coach-trial/limits
 import { resolveTrialDays } from "@/lib/coach-trial/content";
 import { buildTrialSystemPrompt, loadTrialHistory } from "@/lib/coach-trial/prompt";
 import { worryGoalLine } from "@/lib/coach-trial/onboarding";
+import { extractOutcome, recordTrialOutcome } from "@/lib/lms/coach/outcomes";
 import type { AgeBand } from "@/content/types";
 
 assertBootGuards();
@@ -116,6 +117,10 @@ export async function POST(req: NextRequest) {
       INSERT INTO coach_messages (user_id, trial_id, role, content, source, origin, day, model, input_tokens, output_tokens, cost_paise)
       VALUES (${trial.user_id}, ${trial.id}::uuid, 'coach', ${result.text}, 'coach', 'llm', ${day}, ${result.model}, ${result.inputTokens}, ${result.outputTokens}, ${result.costPaise})
       RETURNING id`) as unknown as { id: string }[];
+
+    // Record a day outcome from the parent's own words (so the preview Results screen has content).
+    const extracted = extractOutcome(message);
+    if (extracted) await recordTrialOutcome(trial.id, day, extracted.outcome, extracted.note, "chat").catch(() => {});
 
     return NextResponse.json({
       reply: result.text, role: "coach", messageId: coachRows[0]?.id,
