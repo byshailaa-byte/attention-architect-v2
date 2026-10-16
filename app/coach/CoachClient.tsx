@@ -376,19 +376,17 @@ function StepCard({ day, stepEyebrow, readFullLabel }: { day: TrialDayCard; step
         day.body && <p style={{ fontSize: 15.5, lineHeight: 1.55, color: C.ink, margin: "0 0 12px", whiteSpace: "pre-wrap" }}>{day.body}</p>
       )}
 
-      {/* "Read the full step" only on Day 1 (the report) — trial users can't open the paid LMS
-          library, so Days 2–4 show the inline step text only. */}
-      {day.source === "report" && (
-        <a
-          href={day.fullHref}
-          style={{
-            display: "inline-block", fontSize: 14, fontWeight: 700, color: C.navy,
-            textDecoration: "underline", textDecorationColor: C.gold, textUnderlineOffset: 3,
-          }}
-        >
-          {readFullLabel}
-        </a>
-      )}
+      {/* "Read the step in detail" on EVERY day — opens the trial-safe step page (/coach/step/[day])
+          for this day only; trial parents stay gated out of the rest of the paid LMS library. */}
+      <a
+        href={day.fullHref}
+        style={{
+          display: "inline-block", fontSize: 14, fontWeight: 700, color: C.navy,
+          textDecoration: "underline", textDecorationColor: C.gold, textUnderlineOffset: 3,
+        }}
+      >
+        {readFullLabel}
+      </a>
     </div>
   );
 }
