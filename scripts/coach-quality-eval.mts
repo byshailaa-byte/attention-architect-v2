@@ -6,10 +6,10 @@
 //   COACH_EVAL_LIVE=1 npx tsx scripts/coach-quality-eval.mts
 import * as dotenv from "dotenv";
 import path from "node:path";
-import { CONVERSATIONS, scoreCheck, parentMConvo, realTranscriptConvo, type Convo } from "../lib/lms/coach/conversation-evals.ts";
+import { CONVERSATIONS, scoreCheck, parentMConvo, realTranscriptConvo, hindiConvo, type Convo } from "../lib/lms/coach/conversation-evals.ts";
 import { buildSystemPrompt, coachPronoun } from "../lib/lms/coach/prompt.ts";
 import { callCoach, type CoachTurn } from "../lib/lms/coach/llm.ts";
-import { enforceReplyQuality, primarySayThis, looksLikeStepRequest, isCheckinTrigger, isLanguageComplaint, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "../lib/lms/coach/guards.ts";
+import { enforceReplyQuality, primarySayThis, looksLikeStepRequest, isCheckinTrigger, isLanguageComplaint, decideLanguage, REPLY_MAX_WORDS, STEP_DELIVERY_MAX_WORDS } from "../lib/lms/coach/guards.ts";
 import { hasOutcomeAnswer, extractOutcome } from "../lib/lms/coach/outcomes.ts";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
@@ -18,20 +18,22 @@ if (!process.env.COACH_EVAL_LIVE) { console.log("set COACH_EVAL_LIVE=1 to run th
 const BOYS = new Set(["Aarav", "Reyan", "Kabir", "Veer", "Dev"]);
 const genderOf = (child: string): "boy" | "girl" => (BOYS.has(child) ? "boy" : "girl");
 
-function sysFor(child: string, behaviour: boolean): string {
+function sysFor(child: string, behaviour: boolean, language: "en" | "hinglish" | "hi" = "en"): string {
   const gender = genderOf(child);
   return buildSystemPrompt({
     parent: "there", child, age_band: "10-11", archetype: "The Live Wire", week: 1,
     pronoun: coachPronoun(gender === "boy" ? "boy" : "girl"),
     support_email: "team@thehumandecision.in",
     archetype_description: `${child} moves fast and starts strong, then loses the thread when a task feels long or dull.`,
-    day_title: "Offer two ways to begin, then step back",
-    day_body: "Before homework, offer one small real choice about how to start, then let the choice stand and step back.",
+    day_title: "Offer two ways to begin",
+    day_body: "Before homework, offer one small real choice about how to start, then let the choice stand and go to another room.",
     week_goal: "Week 1 — starting without being told twice",
     hard_part: "being told how to start before it feels like their own idea",
-    language: "en",
+    language,
   }, { behaviour });
 }
+// Failing after-mode replies, collected for the report.
+const failReport: { convo: string; turn: number; fails: string; reply: string }[] = [];
 
 const isBareQuestion = (t: string) => (t || "").trim().endsWith("?") && !primarySayThis(t);
 const isNewDayOpener = (m: string) => /\b(good morning|i'?m here|here for today|ready for today|back for)\b/i.test(m || "");
@@ -41,9 +43,9 @@ const isNewDayOpener = (m: string) => /\b(good morning|i'?m here|here for today|
 async function plainLanguageJudge(reply: string): Promise<{ pass: boolean; reason: string }> {
   const sys = `You judge if an Indian parent who reads English as a SECOND LANGUAGE could follow a parenting-coach reply. Be realistic, not pedantic. PASS if the parent could understand it and knows what to do. FAIL ONLY for a real barrier:
 (a) a hard IDIOM where the meaning isn't literal — e.g. "your call"/"the real call" (meaning a decision), "own it", "step back" (meaning don't hover), "switch on", "make it stick", "it didn't land", "low-key";
-(b) there is NO concrete thing to do (no action, no example words); OR
+(b) it is giving a STEP but there is NO concrete thing to do (no action, no example words); OR
 (c) long, complex sentences.
-Plain, literal phrasing is fine even if friendly. These are GOOD, never fail them: "Picture this evening: ...", "go to another room", "say: '...'", "wait quietly", "life gets busy", short everyday words.
+A short, clear QUESTION on its own (e.g. "What did she do when you offered the choice?") is fine — PASS it; a question turn does not need an action. Plain, literal phrasing is fine even if friendly. These are GOOD, never fail them: "Picture this evening: ...", "go to another room", "say: '...'", "wait quietly", "life gets busy", short everyday words.
 Reply with exactly "PASS" or "FAIL: <≤8-word reason>".`;
   try {
     const out = (await callCoach(sys, [{ role: "user", content: reply }], 40)).text.trim();
@@ -56,9 +58,13 @@ async function runConvo(c: Convo, behaviour: boolean) {
   const replies: string[] = [];
   const results: { turn: number; check: string; pass: boolean; reason: string }[] = [];
   let confusionSoFar = 0;
+  const parentMsgs: string[] = [];
   for (let i = 0; i < c.turns.length; i++) {
     const turn = c.turns[i];
-    const system = sysFor(c.child, behaviour);
+    // Language decided from the parent's message, exactly as production does.
+    const language = decideLanguage(turn.parent, parentMsgs.slice(-3));
+    parentMsgs.push(turn.parent);
+    const system = sysFor(c.child, behaviour, language);
     history.push({ role: "user", content: turn.parent });
     let reply = "";
     try { reply = (await callCoach(system, history)).text; }
@@ -66,9 +72,10 @@ async function runConvo(c: Convo, behaviour: boolean) {
 
     // PRODUCTION PATH: the "after" reply goes through the real guard/regen loop (requireCheckin +
     // mustAdvise computed exactly as the routes do). "before" stays raw so the contrast is real.
+    const mustAdvise = replies.filter(isBareQuestion).length >= 2;
+    const stepDelivery = turn.stepDelivery || mustAdvise || looksLikeStepRequest(turn.parent);
     if (behaviour && reply) {
       const requireCheckin = (isCheckinTrigger(turn.parent) || isNewDayOpener(turn.parent)) && !hasOutcomeAnswer(turn.parent);
-      const mustAdvise = replies.filter(isBareQuestion).length >= 2;
       const thisConfusion = extractOutcome(turn.parent)?.outcome === "unclear";
       const requireOfferCall = thisConfusion && confusionSoFar >= 1;
       const priorQuotes = history.filter((h) => h.role === "assistant").map((h) => primarySayThis(h.content)).filter((q): q is string => !!q);
@@ -78,9 +85,9 @@ async function runConvo(c: Convo, behaviour: boolean) {
           try { const r = await callCoach(system, [...history, { role: "assistant", content: reply }, { role: "user", content: correction }]); return r.text || ""; }
           catch { return ""; }
         },
-        () => {}, priorQuotes, turn.parent, "en",
+        () => {}, priorQuotes, turn.parent, language,
         {
-          maxWords: looksLikeStepRequest(turn.parent) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
+          maxWords: stepDelivery ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
           requireCheckin, mustAdvise, requireHindiOffer: isLanguageComplaint(turn.parent),
           requireOfferCall, forbidReinterrogate: hasOutcomeAnswer(turn.parent),
         },
@@ -90,14 +97,18 @@ async function runConvo(c: Convo, behaviour: boolean) {
     const priorReplies = [...replies];
     history.push({ role: "assistant", content: reply });
     replies.push(reply);
+    const turnFails: string[] = [];
     for (const check of turn.expect) {
-      const s = scoreCheck(check, reply, { child: c.child, stepDelivery: turn.stepDelivery, priorReplies });
+      const s = scoreCheck(check, reply, { child: c.child, stepDelivery, priorReplies });
       results.push({ turn: i, check, pass: s.pass, reason: s.reason });
+      if (!s.pass) turnFails.push(`${check}(${s.reason})`);
     }
+    if (behaviour && turnFails.length) failReport.push({ convo: c.id, turn: i, fails: turnFails.join("  "), reply });
     // LLM plain-language judge on every turn that expects plain language (after-mode only).
     if (behaviour && reply && turn.expect.includes("plain_language")) {
       const j = await plainLanguageJudge(reply);
       results.push({ turn: i, check: "plain_language_llm", pass: j.pass, reason: j.reason });
+      if (!j.pass) failReport.push({ convo: c.id, turn: i, fails: `plain_language_llm(${j.reason})`, reply });
     }
     if (extractOutcome(turn.parent)?.outcome === "unclear") confusionSoFar++;
   }
@@ -123,8 +134,17 @@ console.log(`\nAFTER : ${tally.after.pass}/${tally.after.total} deterministic ch
 console.log(`BEFORE: ${tally.before.pass}/${tally.before.total} deterministic checks passed`);
 console.log(`LLM plain-language judge (reported, not gated): ${judge.pass}/${judge.total}`);
 
+// Every failing after-reply, with its text (so failures are inspectable).
+if (failReport.length) {
+  console.log(`\n===== FAILING REPLIES (after) =====`);
+  for (const f of failReport) {
+    console.log(`\n[${f.convo} t${f.turn}] ${f.fails}`);
+    console.log(`  reply: ${f.reply.replace(/\n+/g, " ⏎ ")}`);
+  }
+}
+
 // Before/after transcripts for the two key cases.
-for (const [label, convo] of [["REAL TRANSCRIPT (it did not work → complicated language)", realTranscriptConvo()], ["PARENT M", parentMConvo()]] as const) {
+for (const [label, convo] of [["REAL TRANSCRIPT (it did not work → complicated language)", realTranscriptConvo()], ["HINDI ACCEPT (→ Coach continues in Hindi)", hindiConvo()], ["PARENT M", parentMConvo()]] as const) {
   for (const mode of ["before", "after"] as const) {
     console.log(`\n===== ${label} — ${mode.toUpperCase()} =====`);
     const { replies } = await runConvo(convo, mode === "after");

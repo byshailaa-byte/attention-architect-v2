@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
       message,
       coachCtx.language,
       {
-        maxWords: looksLikeStepRequest(message) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
+        maxWords: (looksLikeStepRequest(message) || mustAdvise) ? STEP_DELIVERY_MAX_WORDS : REPLY_MAX_WORDS,
         requireCheckin, mustAdvise, requireHindiOffer: isLanguageComplaint(message),
         requireOfferCall, forbidReinterrogate: hasOutcomeAnswer(message),
       },

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CONVERSATIONS, scoreCheck, parentMConvo, realTranscriptConvo } from "@/lib/lms/coach/conversation-evals";
+import { CONVERSATIONS, scoreCheck, parentMConvo, realTranscriptConvo, hindiConvo } from "@/lib/lms/coach/conversation-evals";
 import { buildSystemPrompt, coachPronoun } from "@/lib/lms/coach/prompt";
 import { behaviourRules } from "@/lib/lms/coach/behaviour";
 
@@ -36,6 +36,16 @@ describe("coach-quality conversation eval set", () => {
     expect(checks.has("max_two_questions")).toBe(true);
     expect(checks.has("offer_hindi")).toBe(true);
     expect(checks.has("plain_language")).toBe(true);
+  });
+
+  it("includes the Hindi-acceptance case (accept the offer → Coach continues in Hindi)", () => {
+    const hc = hindiConvo();
+    expect(hc).toBeTruthy();
+    const joined = hc.turns.map((t) => t.parent.toLowerCase()).join(" | ");
+    expect(joined).toMatch(/hindi mein batao/);
+    const checks = new Set(hc.turns.flatMap((t) => t.expect));
+    expect(checks.has("reply_in_hindi")).toBe(true);
+    expect(checks.has("has_quote")).toBe(true);
   });
 
   it("no real names leak into the eval set (anonymised fixtures only)", () => {
@@ -104,6 +114,13 @@ describe("scoreCheck — scorers behave", () => {
   it("plain_language: fails on banned idioms / long sentences; passes on plain concrete action", () => {
     expect(scoreCheck("plain_language", "Give her the real call and let her own it.", ctx).pass).toBe(false);
     expect(scoreCheck("plain_language", 'Tonight, say "Uma, maths or reading first?" Then wait quietly.', ctx).pass).toBe(true);
+  });
+
+  it("reply_in_hindi + has_quote: detect a Hindi reply with exact words", () => {
+    expect(scoreCheck("reply_in_hindi", "Aaj raat Aditi se kahiye: \"pehle maths ya reading?\" phir doosre kamre mein jaaiye.", ctx).pass).toBe(true);
+    expect(scoreCheck("reply_in_hindi", "Tonight, say this and wait quietly.", ctx).pass).toBe(false);
+    expect(scoreCheck("has_quote", 'Kahiye: "pehle maths ya reading?"', ctx).pass).toBe(true);
+    expect(scoreCheck("has_quote", "Bas use choose karne dijiye.", ctx).pass).toBe(false);
   });
 });
 

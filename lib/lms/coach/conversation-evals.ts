@@ -5,7 +5,7 @@
 // shape without a network call.
 //
 // No real parent names: "Parent M" / "Child U" are anonymised; fixture child names only.
-import { bannedPhrase, wordCount, primarySayThis, hasQuotedSentence, asksWhatHappened, normalizeQuote, longestSentenceWords, MAX_SENTENCE_WORDS } from "./guards";
+import { bannedPhrase, wordCount, primarySayThis, hasQuotedSentence, asksWhatHappened, normalizeQuote, longestSentenceWords, MAX_SENTENCE_WORDS, looksHindi } from "./guards";
 
 export type Check =
   | "checkin_first"        // genuine check-in (new day, no news): ask what happened, no new technique
@@ -18,6 +18,8 @@ export type Check =
   | "max_two_questions"    // after 2 coach questions, the reply must give the step (not another question)
   | "no_repeat_question"   // don't re-ask a question already asked earlier
   | "plain_language"       // plain, short, concrete (deterministic proxy; LLM judge runs in the live harness)
+  | "reply_in_hindi"       // the reply is in Hindi/Hinglish (parent accepted the Hindi offer / wrote in Hindi)
+  | "has_quote"            // the reply gives exact words to say (a quoted sentence)
   | "no_banned"            // no banned idiom / metaphor / drift word
   | "length";              // within the length cap
 
@@ -98,6 +100,13 @@ export function scoreCheck(check: Check, reply: string, ctx: ScoreCtx): { pass: 
       const ok = bp === null && longest <= MAX_SENTENCE_WORDS;
       return { pass: ok, reason: `banned:${bp ?? "none"} longestSentence:${longest}` };
     }
+    case "reply_in_hindi": {
+      const hindi = looksHindi(r);
+      return { pass: hindi, reason: hindi ? "reply in Hindi/Hinglish" : "reply not in Hindi" };
+    }
+    case "has_quote": {
+      return { pass: hasQuotedSentence(r), reason: hasQuotedSentence(r) ? "has exact words to say" : "no quoted words" };
+    }
     case "no_banned": {
       const bp = bannedPhrase(r);
       return { pass: bp === null, reason: bp ? `banned "${bp}"` : "no banned words" };
@@ -119,6 +128,14 @@ export const CONVERSATIONS: Convo[] = [
       { parent: "It did not work.", expect: ["no_reinterrogate", "no_repeat_question", "no_banned", "plain_language", "length"] },
       { parent: "She just ignored me and did not start at all.", expect: ["max_two_questions", "five_part", "no_reinterrogate", "no_banned", "plain_language", "length"] },
       { parent: "You are using very complicated language.", expect: ["offer_hindi", "no_reinterrogate", "no_banned", "plain_language", "length"] },
+    ],
+  },
+  {
+    id: "hindi_accept", title: "Parent accepts the Hindi offer → Coach continues in Hindi", child: "Aditi",
+    turns: [
+      { parent: "You are using very complicated language.", expect: ["offer_hindi", "no_banned"] },
+      { parent: "haan, Hindi mein batao", expect: ["reply_in_hindi", "has_quote", "no_banned"] },      // step in Hindi, exact words in Hindi
+      { parent: "theek hai, aur agar woh phir bhi na kare?", expect: ["reply_in_hindi", "no_banned"] }, // next Hindi message stays Hindi
     ],
   },
   {
@@ -199,4 +216,7 @@ export function parentMConvo(): Convo {
 }
 export function realTranscriptConvo(): Convo {
   return CONVERSATIONS.find((c) => c.id === "real_didnt_work")!;
+}
+export function hindiConvo(): Convo {
+  return CONVERSATIONS.find((c) => c.id === "hindi_accept")!;
 }

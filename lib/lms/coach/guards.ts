@@ -46,6 +46,7 @@ export const BANNED_PATTERNS: { label: string; re: RegExp }[] = [
   { label: "own it", re: /\bown\s+it\b/i },
   { label: "switch on/off", re: /\bswitch(?:es|ed|ing)?\s+(?:on|off)\b/i },
   { label: "step back", re: /\bstep(?:s|ped|ping)?\s+back\b/i },   // use "go to another room" instead
+  { label: "step in", re: /\bstep(?:s|ped|ping)?\s+in\b/i },       // use "help" instead
   { label: "drive (metaphor)", re: /\bdrive\b/i },                 // "her drive" — not driveway
 ];
 
@@ -160,8 +161,11 @@ export const CHECKIN_FALLBACK: Record<Language, string> = {
 };
 
 // ── Plain language: short sentences + "offer Hindi" when the parent says the language is hard ──
+// Longest NARRATION sentence (words). The exact words to say (a quoted span) are collapsed to one
+// token first — a parent reads the quote aloud as a unit, so its length isn't a readability problem.
 export function longestSentenceWords(text: string): number {
-  const sentences = (text || "").split(/(?<=[.!?])\s+/).map((s) => wordCount(s));
+  const stripped = (text || "").replace(/["“][^"”]*["”]/g, '"q"');
+  const sentences = stripped.split(/(?<=[.!?])\s+/).map((s) => wordCount(s));
   return sentences.length ? Math.max(...sentences) : 0;
 }
 export const MAX_SENTENCE_WORDS = 22;
