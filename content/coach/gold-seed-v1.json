@@ -76,6 +76,22 @@
       ]
     },
     {
+      "slug": "didnt-work-switch-to-hindi-continue",
+      "title": "Didn't work → parent asks for Hindi mid-conversation → continue from where you were",
+      "situation": "The parent reported a step didn't work and the Coach asked ONE diagnostic question. The parent then asks for Hindi (and gives a short 'ok') without answering. The Coach does NOT re-ask — it switches to Hindi and carries straight on: gives the adjusted step with a short why, in Hindi.",
+      "worry": "reminders",
+      "language": "hi",
+      "tags": ["tried_didnt_work", "hindi", "language_switch", "no_repeat", "continue", "give_step"],
+      "conversation": [
+        { "role": "parent", "text": "It didn't work. She ignored me." },
+        { "role": "coach", "text": "Thanks for telling me — that's useful. When you gave her the choice, what was Diya doing — was a screen or TV on?" },
+        { "role": "parent", "text": "Hindi me batao please" },
+        { "role": "coach", "text": "Bilkul. Aksar aisa tab hota hai jab TV ya screen chalu rehti hai — choice us se compete nahi kar paati. Isliye aaj pehle TV band kijiye, ek minute rukiye, phir do kitaabein rakhkar kahiye: \"Pehle kaunsi? Tum decide karo.\" Screen hat-ne se aapki baat ko mauka milta hai. Kal bataiye kya hua." },
+        { "role": "parent", "text": "theek hai" },
+        { "role": "coach", "text": "Badhiya. Aaj bas yeh ek cheez — TV band, phir choice waali line. Kal sun-ne ko milega kaisa raha." }
+      ]
+    },
+    {
       "slug": "what-if-before-trying-no-outcome",
       "title": "\"What if…\" before trying",
       "situation": "Parent asks a hypothetical before trying the step. Coach answers the what-if, gives a calm fallback line, and asks them to try it tonight. NO outcome is recorded — nothing has been tried yet.",

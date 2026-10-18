@@ -82,8 +82,29 @@ async function loadHistory(kind: "paid" | "trial", subjectId: string, limit = 16
   return (rows as unknown as { role: string; content: string }[]).reverse().map((r) => ({ role: r.role === "parent" ? "user" : "assistant", content: r.content }));
 }
 
-export async function assembleCoachContext(input: CoachSubjectInput, latestMessage = ""): Promise<AssembledContext> {
+// A compact, explicit record of the live thread so the Coach carries it across a language switch or
+// a non-answer and never re-asks. Built from the SAME history the model sees.
+function conversationSoFar(history: CoachTurn[], parent: string): string {
+  const parentMsgs = history.filter((h) => h.role === "user").map((h) => h.content.trim()).filter(Boolean).slice(-5);
+  const coachQs: string[] = [];
+  for (const h of history.filter((h) => h.role === "assistant")) {
+    for (const s of h.content.split(/(?<=[.?!])\s+/)) {
+      const t = s.trim().replace(/\s+/g, " ");
+      if (t.endsWith("?") && t.length > 8) coachQs.push(t);
+    }
+  }
+  const uniqQs = [...new Set(coachQs)].slice(-5);
+  if (!parentMsgs.length && !uniqQs.length) return "";
+  const out = ["\n\n## This conversation so far (carry it forward; NEVER re-ask or start over)"];
+  if (parentMsgs.length) out.push(`${parent} has told you (oldest first): ${parentMsgs.map((m) => `"${m.slice(0, 140)}"`).join("  |  ")}`);
+  if (uniqQs.length) out.push(`You have ALREADY asked these — do NOT ask any of them again: ${uniqQs.map((q) => `"${q}"`).join("  ")}`);
+  out.push(`If something you asked is still unanswered after one try — including when ${parent} only switches language or says "ok"/"theek hai" — stop asking and give the single next step with its why, in ${parent}'s language.`);
+  return out.join("\n");
+}
+
+export async function assembleCoachContext(input: CoachSubjectInput, latestMessage = "", historyOverride?: CoachTurn[]): Promise<AssembledContext> {
   const pronoun = coachPronoun(input.childGender);
+  const history = historyOverride ?? await loadHistory(input.kind, input.subjectId);
 
   // Language: stored preference wins; else detect from the latest message; else English.
   const stored = await getLanguagePref(input.kind, input.subjectId);
@@ -127,11 +148,11 @@ export async function assembleCoachContext(input: CoachSubjectInput, latestMessa
     baselines.length ? `Numbers ${input.parentFirst} gave you (use ONLY these, never round): ${baselines.map((b) => `${b!.metric} started at ${fmtRange(b!.min, b!.max)}${b!.parentWords ? ` ("${b!.parentWords}")` : ""}`).join("; ")}.` : "",
   ].filter(Boolean);
 
-  const system = system0 + lines.join("\n") + formatGoldForPrompt(gold) + formatWorksStat(stat, input.child);
+  const system = system0 + lines.join("\n") + conversationSoFar(history, input.parentFirst) + formatGoldForPrompt(gold) + formatWorksStat(stat, input.child);
 
   return {
     system,
-    history: await loadHistory(input.kind, input.subjectId),
+    history,
     tools: COACH_TOOLS,
     toolSubject: { kind: input.kind, subjectId: input.subjectId, assessmentId: input.assessmentId, week: input.week, day: input.day },
     language,

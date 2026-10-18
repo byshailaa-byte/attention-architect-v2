@@ -3,7 +3,7 @@
 Branch: `coach-quality` (dev/preview only — nothing merged or deployed to prod).
 
 ## Try it (preview on dev DB)
-Preview: https://attention-architect-v2-mik22l7px-the-human-decision-s-projects.vercel.app
+Preview: https://attention-architect-v2-3muyto4kc-the-human-decision-s-projects.vercel.app  (commit 392b32b)
 Coach (Diya / The Captain / reminders), start at Day 0:
 `/admin/coach-preview/fd5d006a-8905-45b3-ad58-2383bc31ca06?day=0`
 - The Coach **opens the chat itself** (speak-first). Type as the parent; replies **stream**.
@@ -54,6 +54,31 @@ stay off until you approve the policy line above. Cohorts smaller than 5 childre
 - Personas: Diya baseline "1 reminder", didn't-work→Hindi, what-if, frustrated, medical, low-English,
   unprompted Hindi, "I don't understand" (Parent-M). Every past failure included. Paid JSON path
   (non-streaming engine + backstop) exercised separately — returns JSON, tools fire.
+
+### Language-switch "lost the thread" fix (root cause of the didnt_work→Hindi failures)
+Cause: the parent never answered the diagnostic question ("Hindi me batao" is a language request,
+"theek hai" is a non-answer), so the Coach kept re-asking instead of moving to the step + why.
+Verified: `set_language` only writes the language preference (no context reset/rebuild); history and
+parent_memory are never dropped; the method prompt is rebuilt in Hindi correctly. The gap was no
+explicit "a language switch changes only output language — continue where you were" rule and no
+server-side record of the live thread. Fix:
+- `method.ts`: a language request changes ONLY the output language — not a reason to restart or re-ask;
+  continue exactly where you were, give the step with its why in the new language.
+- `context.ts`: a "## This conversation so far" block (what the parent said + questions already asked)
+  so the Coach never re-asks; built from the same history the model sees (eval passes it too).
+- 1 gold example: didnt_work → parent asks Hindi mid-conversation → Coach continues in Hindi with the
+  adjusted step, no re-asking.
+- Judge made stable: temperature 0, fixed prompt, 3 runs, per-persona **median** reported.
+
+**Before → after:**
+- `didnt_work→Hindi` persona: median ~6/8 → **8/8** (runs 8,8,7). `explained_why` fails: **8 → 0**.
+- Overall judge: mean 81–84% → **88%** (169/192); **median 91%** (58/64). **Paid-path judge: 88%** (21/24).
+- Per-criterion fails (24 persona-runs) before→after: explained_why 8→0, one_plain_step 7→3,
+  followed_up 6→4, right_language 1→0; listened_first 7→7 and no_repeats 5→8 shifted to
+  frustrated_vent/parent_m (step reinforcement) — deterministic lexical repeats still 0.
+- Fixed transcript (run 1): Coach switches to Hindi and continues — *"Aksar jab screen chalu rehti hai,
+  Diya ke liye choice sunna mushkil… aaj pehle TV band kijiye… phir kahiye: «Diya, pehle kaunsi? Tum
+  batao.»"* — step + why, no re-ask.
 
 ### no_repeats fix (method rule + 2 gold examples + engine backstop)
 - Method rule: on a short non-answer, never repeat/rephrase — give the single next action OR one NEW question.

@@ -148,7 +148,7 @@ async function judge(transcript: string, persona: string): Promise<{ scores: Rec
 - correct_escalation: for medical/safety worries it said to see a professional; for mere frustration it did NOT over-escalate.
 Be realistic, not pedantic. A clear question counts as a valid turn.`;
   try {
-    const r = await callCoach(sys, [{ role: "user", content: `Persona: ${persona}\n\n${transcript}` }], 220);
+    const r = await callCoach(sys, [{ role: "user", content: `Persona: ${persona}\n\n${transcript}` }], 220, undefined, 0); // temperature 0 = stable judge
     const m = r.text.match(/\{[\s\S]*\}/);
     const o = JSON.parse(m ? m[0] : r.text);
     const keys = ["listened_first", "explained_why", "one_plain_step", "followed_up", "no_repeats", "no_idioms", "right_language", "correct_escalation"];
@@ -170,7 +170,7 @@ async function runPersona(p: Persona, run: number, guard = true) {
 
   for (let i = 0; i < maxTurns; i++) {
     const parentMsg = p.turns ? p.turns[i] : await parentLLM(p.drive!, transcript);
-    const ctx = await assembleCoachContext(subject, parentMsg);
+    const ctx = await assembleCoachContext(subject, parentMsg, history); // pass in-memory history so the "conversation so far" block is populated
     const previousReply = [...history].reverse().find((h) => h.role === "assistant")?.content;
     const res = await runCoachTurn({
       system: ctx.system, history, userMessage: parentMsg, tools: ctx.tools,
@@ -204,6 +204,7 @@ async function main() {
   const judgeTally = { pass: 0, total: 0 };
   const critFail: Record<string, number> = Object.fromEntries(CRITERIA.map((c) => [c, 0]));
   const critExample: Record<string, string> = {};
+  const perPersonaScores: Record<string, number[]> = {}; // each persona's judge score (0-8) per run → median
   let afterRepeats = 0;
 
   for (let run = 1; run <= RUNS; run++) {
@@ -215,6 +216,7 @@ async function main() {
       const jPass = Object.values(r.judge.scores).filter(Boolean).length;
       const jTotal = Object.keys(r.judge.scores).length;
       judgeTally.pass += jPass; judgeTally.total += jTotal;
+      (perPersonaScores[p.id] ??= []).push(jPass);
       const t = (toolTally[p.id] ??= { pass: 0, total: 0 });
       t.pass += tcPass; t.total += r.toolChecks.length;
       for (const [k, v] of Object.entries(r.judge.scores)) if (!v) { critFail[k] = (critFail[k] ?? 0) + 1; if (!critExample[k]) critExample[k] = `${p.id}: ${r.judge.notes}`; }
@@ -243,27 +245,39 @@ async function main() {
   // JSON wrapper. We exercise the non-streaming engine path + backstop here (jsonCoachTurn itself
   // can't be imported under tsx — it pulls Next 'server-only' via report-v2/service).
   console.log(`\n========================= PAID JSON PATH (non-streaming engine, same backstop) =========================`);
-  for (const p of [PERSONAS[0], PERSONAS[7]]) { // baseline + "I don't understand" (non-answer heavy)
+  let paidJudgePass = 0, paidJudgeTotal = 0;
+  for (const p of [PERSONAS[0], PERSONAS[1], PERSONAS[7]]) { // baseline + didnt_work→Hindi + "I don't understand"
     await cleanEvalState();
     const subject = { ...baseSubject, day: p.day ?? 1 };
     const history: CoachTurn[] = [];
+    let transcript = "";
     for (const parentMsg of p.turns!) {
-      const ctx = await assembleCoachContext(subject, parentMsg);
+      const ctx = await assembleCoachContext(subject, parentMsg, history);
       const previousReply = [...history].reverse().find((h) => h.role === "assistant")?.content;
       const res = await runCoachTurn({
         system: ctx.system, history, userMessage: parentMsg, tools: ctx.tools, toolSubject: ctx.toolSubject,
         language: ctx.language, previousReply, guardRepeat: isShortNonAnswer(parentMsg), // NO onDelta = JSON/buffered shape
       });
       history.push({ role: "user", content: parentMsg }, { role: "assistant", content: res.text });
+      transcript += `Parent: ${parentMsg}\nCoach: ${res.text}\n`;
       console.log(`  [${p.id}] JSON ok=${!!res.text && !res.errored} replyLen=${res.text.length} tools=[${res.toolCalls.map((t) => t.name).join(",")}] guard=${res.repeatGuard ?? "-"} ₹${(res.costPaise / 100).toFixed(2)}`);
     }
+    const pj = await judge(transcript, p.id);
+    paidJudgePass += Object.values(pj.scores).filter(Boolean).length; paidJudgeTotal += Object.keys(pj.scores).length;
   }
+  console.log(`  PAID PATH judge: ${paidJudgePass}/${paidJudgeTotal} = ${Math.round((paidJudgePass / paidJudgeTotal) * 100)}%`);
 
   console.log(`\n######## SUMMARY (${RUNS} guarded runs) ########`);
   let allToolPass = 0, allToolTotal = 0;
   for (const [id, t] of Object.entries(toolTally)) { console.log(`  tool-checks ${id.padEnd(28)} ${t.pass}/${t.total}`); allToolPass += t.pass; allToolTotal += t.total; }
   console.log(`\n  TOOL-CALL CHECKS: ${allToolPass}/${allToolTotal}`);
-  console.log(`  LLM JUDGE (method criteria): ${judgeTally.pass}/${judgeTally.total} = ${Math.round((judgeTally.pass / judgeTally.total) * 100)}%`);
+  console.log(`  LLM JUDGE (method criteria, mean over ${RUNS} runs): ${judgeTally.pass}/${judgeTally.total} = ${Math.round((judgeTally.pass / judgeTally.total) * 100)}%`);
+  // Per-persona MEDIAN of the 3 run-scores (robust to a single off run), + overall from medians.
+  const median = (a: number[]) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+  let medSum = 0; const nPersona = Object.keys(perPersonaScores).length;
+  console.log(`\n  PER-PERSONA JUDGE MEDIAN (of ${RUNS} runs, out of 8):`);
+  for (const [id, scores] of Object.entries(perPersonaScores)) { const m = median(scores); medSum += m; console.log(`    ${id.padEnd(28)} median ${m}/8   runs=[${scores.join(",")}]`); }
+  console.log(`  OVERALL (sum of medians): ${medSum}/${nPersona * 8} = ${Math.round((medSum / (nPersona * 8)) * 100)}%`);
   console.log(`\n  PER-CRITERION FAILURE TABLE (out of ${RUNS * PERSONAS.length} persona-runs):`);
   console.log(`  criterion            fails  example`);
   for (const c of CRITERIA) console.log(`  ${c.padEnd(20)} ${String(critFail[c]).padEnd(5)}  ${critFail[c] ? critExample[c] : "—"}`);
