@@ -11,11 +11,11 @@ import * as dotenv from "dotenv";
 import path from "node:path";
 import { getSql } from "../lib/db/client.ts";
 import { assembleCoachContext, type CoachSubjectInput } from "../lib/coach/context.ts";
-import { runCoachTurn } from "../lib/coach/engine.ts";
+import { runCoachTurn, tooSimilar } from "../lib/coach/engine.ts";
 import { finalCheck } from "../lib/coach/final-check.ts";
 import { readTrackedNumbers } from "../lib/coach/numbers.ts";
 import { callCoach } from "../lib/lms/coach/llm.ts";
-import { detectLanguage } from "../lib/coach/lang.ts";
+import { detectLanguage, isShortNonAnswer } from "../lib/coach/lang.ts";
 import { IDIOMS_TO_AVOID } from "../lib/coach/method.ts";
 import type { CoachTurn } from "../lib/lms/coach/llm.ts";
 import type { ToolCallRecord } from "../lib/coach/tools.ts";
@@ -123,6 +123,7 @@ const PERSONAS: Persona[] = [
 ];
 
 async function cleanEvalState() {
+  await sql`DELETE FROM coach_messages WHERE trial_id=${EVAL_TRIAL}::uuid`;
   await sql`DELETE FROM coach_trial_day_outcome WHERE trial_id=${EVAL_TRIAL}::uuid`;
   await sql`DELETE FROM coach_tracked_number WHERE subject_id=${EVAL_TRIAL}`;
   await sql`DELETE FROM parent_memory WHERE subject_id=${EVAL_TRIAL}`;
@@ -157,21 +158,28 @@ Be realistic, not pedantic. A clear question counts as a valid turn.`;
   } catch (e) { return { scores: {}, notes: "judge error: " + (e as Error).message }; }
 }
 
-async function runPersona(p: Persona, run: number) {
+// guard=false disables the engine's no-repeat backstop (for the BEFORE/AFTER comparison).
+async function runPersona(p: Persona, run: number, guard = true) {
   await cleanEvalState();
   const subject = { ...baseSubject, day: p.day ?? 1 };
   const history: CoachTurn[] = [];
   const allTools: ToolCallRecord[] = [];
-  let transcript = "";
+  const coachReplies: string[] = [];
+  let transcript = "", repeats = 0;
   const maxTurns = p.turns ? p.turns.length : (p.maxTurns ?? 4);
 
   for (let i = 0; i < maxTurns; i++) {
     const parentMsg = p.turns ? p.turns[i] : await parentLLM(p.drive!, transcript);
     const ctx = await assembleCoachContext(subject, parentMsg);
+    const previousReply = [...history].reverse().find((h) => h.role === "assistant")?.content;
     const res = await runCoachTurn({
       system: ctx.system, history, userMessage: parentMsg, tools: ctx.tools,
       toolSubject: ctx.toolSubject, language: ctx.language,
+      previousReply, guardRepeat: guard && isShortNonAnswer(parentMsg),
     });
+    // Deterministic repeat signal: is this reply a near-duplicate of the Coach's previous one?
+    if (previousReply && tooSimilar(res.text, previousReply)) repeats++;
+    coachReplies.push(res.text);
     history.push({ role: "user", content: parentMsg }, { role: "assistant", content: res.text });
     allTools.push(...res.toolCalls);
     transcript += `Parent: ${parentMsg}\nCoach: ${res.text}\n`;
@@ -184,40 +192,85 @@ async function runPersona(p: Persona, run: number) {
   const coachLines = transcript.split("\n").filter((l) => l.startsWith("Coach:")).join(" ");
   const fc = finalCheck(transcript, { language: detectLanguage(coachLines), recordedNumbers: nums.flatMap((n) => [n.min, n.max]) });
 
-  return { id: p.id, run, transcript, allTools, toolChecks, judge: j, finalCheck: fc };
+  return { id: p.id, run, transcript, allTools, toolChecks, judge: j, finalCheck: fc, repeats };
 }
+
+const CRITERIA = ["listened_first", "explained_why", "one_plain_step", "followed_up", "no_repeats", "no_idioms", "right_language", "correct_escalation"];
 
 async function main() {
   console.log(`\n######## CONVERSATIONAL COACH — SCENARIO EVAL (${RUNS} runs) ########`);
+  console.log("Anonymised: parent 'Sneha' + child 'Diya' are fictional (sandbox preview trial); no real names, phones or parent data used.\n");
   const toolTally: Record<string, { pass: number; total: number }> = {};
   const judgeTally = { pass: 0, total: 0 };
+  const critFail: Record<string, number> = Object.fromEntries(CRITERIA.map((c) => [c, 0]));
+  const critExample: Record<string, string> = {};
+  let afterRepeats = 0;
 
   for (let run = 1; run <= RUNS; run++) {
-    console.log(`\n========================= RUN ${run} =========================`);
+    console.log(`\n========================= RUN ${run} (guard ON) =========================`);
     for (const p of PERSONAS) {
-      const r = await runPersona(p, run);
+      const r = await runPersona(p, run, true);
+      afterRepeats += r.repeats;
       const tcPass = r.toolChecks.filter((c) => c.pass).length;
       const jPass = Object.values(r.judge.scores).filter(Boolean).length;
       const jTotal = Object.keys(r.judge.scores).length;
       judgeTally.pass += jPass; judgeTally.total += jTotal;
       const t = (toolTally[p.id] ??= { pass: 0, total: 0 });
       t.pass += tcPass; t.total += r.toolChecks.length;
+      for (const [k, v] of Object.entries(r.judge.scores)) if (!v) { critFail[k] = (critFail[k] ?? 0) + 1; if (!critExample[k]) critExample[k] = `${p.id}: ${r.judge.notes}`; }
 
       console.log(`\n--- ${p.id} ---`);
       if (run === 1) console.log(r.transcript.trim());
-      console.log(`TOOLS fired: ${r.allTools.map((x) => `${x.name}${x.ok ? "" : "✗"}`).join(", ") || "(none)"}`);
+      console.log(`TOOLS: ${r.allTools.map((x) => `${x.name}${x.ok ? "" : "✗"}`).join(", ") || "(none)"} | repeats=${r.repeats}`);
       for (const c of r.toolChecks) console.log(`  [${c.pass ? "PASS" : "FAIL"}] ${c.name}${c.pass ? "" : "  — " + c.detail}`);
       console.log(`  judge: ${jPass}/${jTotal}  ${Object.entries(r.judge.scores).filter(([, v]) => !v).map(([k]) => "✗" + k).join(" ")}  "${r.judge.notes}"`);
       if (!r.finalCheck.ok) console.log(`  final-check: ${r.finalCheck.detail.join("; ")}`);
     }
   }
 
-  console.log(`\n######## SUMMARY (${RUNS} runs) ########`);
+  // BEFORE pass: identical scenarios with the no-repeat backstop OFF, to show the contrast.
+  console.log(`\n========================= BEFORE (guard OFF, 1 pass) =========================`);
+  let beforeRepeats = 0; const beforeCritFail: Record<string, number> = { no_repeats: 0 };
+  for (const p of PERSONAS) {
+    const r = await runPersona(p, 0, false);
+    beforeRepeats += r.repeats;
+    if (r.judge.scores.no_repeats === false) beforeCritFail.no_repeats++;
+    console.log(`  ${p.id.padEnd(28)} repeats=${r.repeats}  judge.no_repeats=${r.judge.scores.no_repeats === false ? "FAIL" : "ok"}`);
+  }
+
+  // PAID JSON PATH: the paid route (CoachScreen) calls jsonCoachTurn, which runs this SAME engine
+  // with NO onDelta (buffered, returned as JSON) — the paid route only adds buildPaidSubject + the
+  // JSON wrapper. We exercise the non-streaming engine path + backstop here (jsonCoachTurn itself
+  // can't be imported under tsx — it pulls Next 'server-only' via report-v2/service).
+  console.log(`\n========================= PAID JSON PATH (non-streaming engine, same backstop) =========================`);
+  for (const p of [PERSONAS[0], PERSONAS[7]]) { // baseline + "I don't understand" (non-answer heavy)
+    await cleanEvalState();
+    const subject = { ...baseSubject, day: p.day ?? 1 };
+    const history: CoachTurn[] = [];
+    for (const parentMsg of p.turns!) {
+      const ctx = await assembleCoachContext(subject, parentMsg);
+      const previousReply = [...history].reverse().find((h) => h.role === "assistant")?.content;
+      const res = await runCoachTurn({
+        system: ctx.system, history, userMessage: parentMsg, tools: ctx.tools, toolSubject: ctx.toolSubject,
+        language: ctx.language, previousReply, guardRepeat: isShortNonAnswer(parentMsg), // NO onDelta = JSON/buffered shape
+      });
+      history.push({ role: "user", content: parentMsg }, { role: "assistant", content: res.text });
+      console.log(`  [${p.id}] JSON ok=${!!res.text && !res.errored} replyLen=${res.text.length} tools=[${res.toolCalls.map((t) => t.name).join(",")}] guard=${res.repeatGuard ?? "-"} ₹${(res.costPaise / 100).toFixed(2)}`);
+    }
+  }
+
+  console.log(`\n######## SUMMARY (${RUNS} guarded runs) ########`);
   let allToolPass = 0, allToolTotal = 0;
   for (const [id, t] of Object.entries(toolTally)) { console.log(`  tool-checks ${id.padEnd(28)} ${t.pass}/${t.total}`); allToolPass += t.pass; allToolTotal += t.total; }
   console.log(`\n  TOOL-CALL CHECKS: ${allToolPass}/${allToolTotal}`);
   console.log(`  LLM JUDGE (method criteria): ${judgeTally.pass}/${judgeTally.total} = ${Math.round((judgeTally.pass / judgeTally.total) * 100)}%`);
+  console.log(`\n  PER-CRITERION FAILURE TABLE (out of ${RUNS * PERSONAS.length} persona-runs):`);
+  console.log(`  criterion            fails  example`);
+  for (const c of CRITERIA) console.log(`  ${c.padEnd(20)} ${String(critFail[c]).padEnd(5)}  ${critFail[c] ? critExample[c] : "—"}`);
+  console.log(`\n  NO_REPEATS (deterministic near-duplicate count across all turns):`);
+  console.log(`    BEFORE (guard off, 1 pass): ${beforeRepeats} repeats, ${beforeCritFail.no_repeats} judge no_repeats fails`);
+  console.log(`    AFTER  (guard on, ${RUNS} passes): ${afterRepeats} repeats, ${critFail.no_repeats} judge no_repeats fails`);
   await cleanEvalState();
-  console.log("\n[eval state cleaned]");
+  console.log("\n[eval state cleaned] — all data anonymised (fictional Sneha/Diya; no real PII)");
 }
 main().catch((e) => { console.error("EVAL ERROR:", e); process.exit(1); });

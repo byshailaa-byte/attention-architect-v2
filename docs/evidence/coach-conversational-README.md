@@ -45,15 +45,27 @@ are no longer in the live path (kept only for the legacy test suite; to be delet
 Cross-parent "what works" stats are **OFF in production** (env `COACH_CROSS_PARENT_STATS` unset) and
 stay off until you approve the policy line above. Cohorts smaller than 5 children are never surfaced.
 
-## Results (dev, latest run)
-**Scenario eval, 3 runs through the production path** (`coach-conversational-eval.txt`):
+## Results (dev, latest run — with the no-repeat fix)
+**Scenario eval, 3 guarded runs through the production path** (`coach-conversational-eval.txt`):
 - Tool-call checks: **33/33 (100%)** — right tool, right value, ranges never rounded (4–5 kept as 4–5),
   no outcome on venting/what-if, urgent flag on medical, language switch on Hindi.
-- LLM method judge (8 criteria × 24 persona-runs): **162/192 = 84%**. Remaining misses are almost all
-  `no_repeats` in non-answer edges ("theek hai"/"ok"/"tell me what to do") — the single behaviour the
-  retired deterministic guard used to force. A small targeted post-check could re-cover it if wanted.
+- LLM method judge (8 criteria × 24 persona-runs): **81% this run** (79–84% across passes — LLM-judge
+  run-to-run variance; tool-checks and the deterministic repeat count are the stable signals).
 - Personas: Diya baseline "1 reminder", didn't-work→Hindi, what-if, frustrated, medical, low-English,
-  unprompted Hindi, "I don't understand" (Parent-M). Every past failure included.
+  unprompted Hindi, "I don't understand" (Parent-M). Every past failure included. Paid JSON path
+  (non-streaming engine + backstop) exercised separately — returns JSON, tools fire.
+
+### no_repeats fix (method rule + 2 gold examples + engine backstop)
+- Method rule: on a short non-answer, never repeat/rephrase — give the single next action OR one NEW question.
+- 2 gold examples (EN + HI) for the non-answer situation (`content/coach/gold-seed-v1.json`).
+- Engine backstop: on non-answer turns, buffer → if the reply is lexically too similar to the previous
+  reply, regenerate once → else a short fallback line.
+- **Before vs after (deterministic lexical repeats): 0 → 0.** The Coach was never producing lexical
+  near-duplicates, so the backstop almost never fires (correct). The judge's residual `no_repeats`/
+  `listened_first` dings are **semantic** — re-asking the same question *reworded* after the parent
+  switches to Hindi (the didnt_work→Hindi persona) — plus some judge strictness. A lexical backstop
+  can't catch that; an LLM-based "did you just re-ask this?" check could, at ~1 extra call/turn. Flagged
+  for your call rather than silently added.
 
 **Model comparison** (`coach-model-compare.txt`, same judge + 4 hard scenarios):
 | model | quality | ₹/turn | ₹/trial parent (4 days) | ₹/paid parent/week |

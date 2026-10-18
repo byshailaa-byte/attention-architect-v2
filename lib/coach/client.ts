@@ -8,3 +8,9 @@ export function anthropic(): Anthropic {
   if (!_client) _client = new Anthropic({ apiKey: coachApiKey() });
   return _client;
 }
+
+// Reply model for ALL parents: Sonnet 4.6. Opus stays behind a config flag, OFF by default —
+// set COACH_MODEL_OPUS=1 to switch (not set in any environment).
+export function coachReplyModel(): string {
+  return process.env.COACH_MODEL_OPUS === "1" ? "claude-opus-4-8" : "claude-sonnet-4-6";
+}

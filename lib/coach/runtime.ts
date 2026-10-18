@@ -15,6 +15,14 @@ import type { AgeBand } from "@/content/types";
 import { assembleCoachContext, type CoachSubjectInput, type AssembledContext } from "@/lib/coach/context";
 import { runCoachTurn } from "@/lib/coach/engine";
 import { summariseParentMemory } from "@/lib/coach/memory";
+import { isShortNonAnswer } from "@/lib/coach/lang";
+import type { CoachTurn } from "@/lib/lms/coach/llm";
+
+// The Coach's previous reply + whether this is a repeat-risk turn — fed to the engine's no-repeat backstop.
+function repeatGuardFor(history: CoachTurn[], userMessage: string): { previousReply?: string; guardRepeat: boolean } {
+  const previousReply = [...history].reverse().find((h) => h.role === "assistant")?.content;
+  return { previousReply, guardRepeat: isShortNonAnswer(userMessage) };
+}
 
 // ── Subject builders ───────────────────────────────────────────────────────────────
 export async function buildTrialSubject(trial: CoachTrial, userCtx: LmsUserContext, day: number): Promise<CoachSubjectInput> {
@@ -127,6 +135,7 @@ export async function jsonCoachTurn(args: PersistArgs): Promise<{ reply: string;
   const res = await runCoachTurn({
     system: args.ctx.system, history: args.ctx.history, userMessage: args.userMessage,
     tools: args.ctx.tools, toolSubject: args.ctx.toolSubject, language: args.ctx.language, model: args.model,
+    ...repeatGuardFor(args.ctx.history, args.userMessage),
   });
   const messageId = await persistTurn(args.key, args.userMessage, res);
   if (args.onDone) await args.onDone({ text: res.text, errored: res.errored, toolNames: res.toolCalls.map((t) => t.name) });
@@ -155,6 +164,7 @@ export function streamCoachTurn(args: PersistArgs): Response {
           system: args.ctx.system, history: args.ctx.history, userMessage: args.userMessage,
           tools: args.ctx.tools, toolSubject: args.ctx.toolSubject, language: args.ctx.language,
           model: args.model, onDelta: (t) => send({ delta: t }),
+          ...repeatGuardFor(args.ctx.history, args.userMessage),
         });
         // Persist parent + coach messages.
         const messageId = await persistTurn(args.key, args.userMessage, res);
