@@ -6,10 +6,7 @@ import { coachTrialEnabled } from "@/lib/coach-trial/flags";
 import { resolvePreviewAccess } from "@/lib/coach-trial/access";
 import { resolveTrialDays } from "@/lib/coach-trial/content";
 import { TRIAL_DAILY_LIMIT } from "@/lib/coach-trial/limits";
-import {
-  introBubble, HOW_IT_WORKS, baselineQuestion,
-  COMMIT_QUESTION, COMMIT_CHIPS, COMMIT_DONE, STEP_CARD_EYEBROW, READ_FULL_STEP,
-} from "@/lib/coach-trial/onboarding";
+import { baselineQuestion } from "@/lib/coach-trial/onboarding";
 import CoachClient from "@/app/coach/CoachClient";
 import { LockScreen } from "@/app/coach/LockScreen";
 import { readOutcomes } from "@/lib/lms/coach/outcomes";
@@ -57,8 +54,7 @@ export default async function CoachPreviewPage({
   `) as unknown as { c: number }[];
   const messagesLeft = Math.max(0, TRIAL_DAILY_LIMIT - (used[0]?.c ?? 0));
 
-  // Day 0 = first-open onboarding; Days 1–4 = returning view at that day.
-  const onboardingDone = day >= 1;
+  // Days 1–4 = the conversational view at that day; day 0 collapses to Day 1 (the Coach opens the chat).
   const trialDay = Math.max(day, 1);
   const bq = baselineQuestion(trial.worry ?? "other");
 
@@ -97,22 +93,9 @@ export default async function CoachPreviewPage({
         key={`${day}-${tod}`}
         childName={userCtx.childName}
         trialDay={trialDay}
-        endsAt={trial.ends_at}
         messagesLeft={messagesLeft}
-        onboardingDone={onboardingDone}
-        worry={trial.worry ?? "other"}
-        intro={fill(introBubble(trial.worry ?? "other"))}
-        howItWorks={HOW_IT_WORKS}
-        baselineQuestion={fill(bq.question)}
-        baselineChips={bq.chips}
-        commitQuestion={COMMIT_QUESTION}
-        commitChips={COMMIT_CHIPS}
-        commitDone={COMMIT_DONE}
-        stepEyebrow={STEP_CARD_EYEBROW}
-        readFullLabel={READ_FULL_STEP}
-        days={days}
+        stepHref={`/coach/step/${trialDay}`}
         messageEndpoint="/api/admin/coach-preview/message"
-        onboardingEndpoint="/api/admin/coach-preview/onboarding"
         flagEndpoint="/api/admin/coach-preview/flag"
         extraBody={{ trialId, day: trialDay }}
       />

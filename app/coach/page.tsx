@@ -8,10 +8,7 @@ import { coachTrialEnabled } from "@/lib/coach-trial/flags";
 import { resolveCoachAccess } from "@/lib/coach-trial/access";
 import { resolveTrialDays } from "@/lib/coach-trial/content";
 import { TRIAL_DAILY_LIMIT } from "@/lib/coach-trial/limits";
-import {
-  introBubble, HOW_IT_WORKS, baselineQuestion,
-  COMMIT_QUESTION, COMMIT_CHIPS, COMMIT_DONE, STEP_CARD_EYEBROW, READ_FULL_STEP,
-} from "@/lib/coach-trial/onboarding";
+import { baselineQuestion } from "@/lib/coach-trial/onboarding";
 import { readOutcomes } from "@/lib/lms/coach/outcomes";
 import { getCheckin, isImproved } from "@/lib/lms/coach/checkin";
 import type { ResultsPanelProps } from "@/components/lms/coach/ResultsPanel";
@@ -81,7 +78,6 @@ export default async function CoachPage() {
     );
   }
 
-  const bq = baselineQuestion(trial.worry ?? "other");
   const sql = getSql();
   const used = (await sql`
     SELECT COUNT(*)::int c FROM coach_messages
@@ -89,25 +85,14 @@ export default async function CoachPage() {
       AND (created_at AT TIME ZONE 'Asia/Kolkata')::date = (now() AT TIME ZONE 'Asia/Kolkata')::date
   `) as unknown as { c: number }[];
   const messagesLeft = Math.max(0, TRIAL_DAILY_LIMIT - (used[0]?.c ?? 0));
+  void days; // step cards retired; days still used by the locked results screen above
 
   return (
     <CoachClient
       childName={userCtx.childName}
       trialDay={day}
-      endsAt={trial.ends_at}
       messagesLeft={messagesLeft}
-      onboardingDone={!!trial.baseline_value}
-      worry={trial.worry ?? "other"}
-      intro={fill(introBubble(trial.worry ?? "other"))}
-      howItWorks={HOW_IT_WORKS}
-      baselineQuestion={fill(bq.question)}
-      baselineChips={bq.chips}
-      commitQuestion={COMMIT_QUESTION}
-      commitChips={COMMIT_CHIPS}
-      commitDone={COMMIT_DONE}
-      stepEyebrow={STEP_CARD_EYEBROW}
-      readFullLabel={READ_FULL_STEP}
-      days={days}
+      stepHref={`/coach/step/${day}`}
     />
   );
 }

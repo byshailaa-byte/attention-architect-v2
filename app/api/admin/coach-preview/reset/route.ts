@@ -20,6 +20,12 @@ export async function POST(req: NextRequest) {
 
     const sql = getSql();
     await sql`DELETE FROM coach_messages WHERE trial_id = ${trialId}::uuid`;
+    // Also wipe the conversational-Coach state so the preview truly replays from Day 0.
+    await sql`DELETE FROM coach_trial_day_outcome WHERE trial_id = ${trialId}::uuid`;
+    await sql`DELETE FROM coach_tracked_number WHERE kind = 'trial' AND subject_id = ${trialId}`;
+    await sql`DELETE FROM parent_memory WHERE kind = 'trial' AND subject_id = ${trialId}`;
+    await sql`DELETE FROM coach_call_request WHERE kind = 'trial' AND subject_id = ${trialId}`;
+    await sql`DELETE FROM coach_checkin_number WHERE kind = 'trial' AND subject_id = ${trialId}`;
     // focusConcern present (even empty string) → update it; absent → leave as-is.
     if (typeof body.focusConcern === "string") {
       const focus = body.focusConcern.trim().slice(0, 200) || null;

@@ -1,0 +1,13 @@
+
+######## MODEL COMPARISON (Coach reply tier) ########
+
+model                 quality  avg-in  avg-out  ₹/turn  avg-latency
+claude-sonnet-4-6     72%      7860    188      ₹2.32   6338ms
+claude-opus-4-8       84%      7975    186      ₹11.75  4354ms
+
+  ₹/parent extrapolation (realistic usage, not the daily caps):
+  claude-sonnet-4-6     trial(4 days @ 6/day) ≈ ₹55.75   paid(8/week) ≈ ₹18.58/week
+  claude-opus-4-8       trial(4 days @ 6/day) ≈ ₹282.12   paid(8/week) ≈ ₹94.04/week
+
+  Opus is 5.1× the cost of Sonnet per turn; quality 84% vs 72%.
+  RECOMMENDATION: Opus — the quality gap justifies the cost.
