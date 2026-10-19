@@ -4,7 +4,7 @@
 // correct) — it never throws into the reply path. Child data (parent words/notes) stays in the DB:
 // never logged, never sent to analytics/ads.
 import type Anthropic from "@anthropic-ai/sdk";
-import { OUTCOMES, type Outcome, recordPaidOutcome, recordTrialOutcome } from "@/lib/lms/coach/outcomes";
+import { OUTCOMES, TRIGGERS, type Outcome, type Trigger, recordPaidOutcome, recordTrialOutcome } from "@/lib/lms/coach/outcomes";
 import { recordTrackedNumber } from "@/lib/coach/numbers";
 import { appendMemoryNote, setLanguagePref } from "@/lib/coach/memory";
 import { getSql } from "@/lib/db/client";
@@ -22,12 +22,13 @@ export const COACH_TOOLS: Anthropic.Tool[] = [
   {
     name: "record_outcome",
     description:
-      "Record how a step you gave actually went. Call ONLY when the parent reports the result of trying a step. Do NOT call it for a question, venting, or a 'what if' asked before trying anything.",
+      "Record how a step you gave actually went. Call when the parent reports the result of trying a step. Use 'not_tried' if they haven't tried it yet, had no time, or ask a 'what if' before trying — NEVER 'tried_didnt_work' for those. Do NOT call it for pure venting.",
     input_schema: {
       type: "object",
       properties: {
-        value: { type: "string", enum: [...OUTCOMES], description: "worked / partly / didn't work / missed / unclear" },
+        value: { type: "string", enum: [...OUTCOMES], description: "tried_worked / tried_partly / tried_didnt_work / missed / not_tried / unclear" },
         parent_words: { type: "string", description: "the parent's own words that reported this, verbatim" },
+        trigger: { type: "string", enum: [...TRIGGERS], description: "why the child stopped, IF the parent said: hard / boring / didnt_know / upset / unknown" },
       },
       required: ["value", "parent_words"],
     },
@@ -105,9 +106,11 @@ export async function runCoachTool(subject: ToolSubject, name: string, input: Re
         const value = String(input.value ?? "");
         if (!(OUTCOMES as readonly string[]).includes(value)) return bad(name, input, `invalid value '${value}'`);
         const note = typeof input.parent_words === "string" ? input.parent_words.slice(0, 200) : null;
-        if (subject.kind === "paid") await recordPaidOutcome(subject.subjectId, subject.week, subject.day, value as Outcome, note, "chat");
-        else await recordTrialOutcome(subject.subjectId, subject.day, value as Outcome, note, "chat");
-        return ok(name, input, `outcome ${value} recorded for day ${subject.day}`);
+        const trigger = (TRIGGERS as readonly string[]).includes(String(input.trigger)) ? (input.trigger as Trigger) : null;
+        // source='model' — the Coach decided to record this (vs the server-side 'backstop').
+        if (subject.kind === "paid") await recordPaidOutcome(subject.subjectId, subject.week, subject.day, value as Outcome, note, "model", trigger);
+        else await recordTrialOutcome(subject.subjectId, subject.day, value as Outcome, note, "model", trigger);
+        return ok(name, input, `outcome ${value}${trigger ? ` (trigger ${trigger})` : ""} recorded for day ${subject.day}`);
       }
       case "record_baseline":
       case "record_number": {

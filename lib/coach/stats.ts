@@ -33,6 +33,8 @@ export async function whatWorksFor(archetype: string, worry: string | null, ageB
     JOIN subj s ON s.kind = o.kind AND s.subject_id = o.subject_id
     WHERE s.archetype = ${archetype} AND s.age_band = ${ageBand}
       AND (${worry}::text IS NULL OR s.worry = ${worry})
+      AND (o.source IS NULL OR o.source <> 'backstop')  -- backstop-recorded rows kept separable
+      AND o.outcome <> 'not_tried'                       -- a step not attempted isn't a what-works signal
     GROUP BY o.outcome
   `) as unknown as { outcome: string; n: number; kids: number }[];
   const kids = Math.max(0, ...rows.map((r) => r.kids));

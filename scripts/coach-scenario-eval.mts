@@ -48,7 +48,7 @@ type Persona = {
   turns?: string[];
   drive?: string;      // persona prompt for an LLM parent
   maxTurns?: number;
-  expect: (tools: ToolCallRecord[], nums: { min: number; max: number }[], transcript: string) => { name: string; pass: boolean; detail: string }[];
+  expect?: (tools: ToolCallRecord[], nums: { min: number; max: number }[], transcript: string) => { name: string; pass: boolean; detail: string }[];
 };
 
 const has = (tools: ToolCallRecord[], name: string) => tools.filter((t) => t.name === name);
@@ -121,6 +121,48 @@ const PERSONAS: Persona[] = [
     turns: ["I don't understand what I have to do.", "it's complicated", "ok"],
     expect: () => [],
   },
+  {
+    id: "cant_not_wont",
+    day: 2,
+    turns: ["Aarav just sits at maths and won't start. He's being lazy.", "I asked — he said he doesn't get how to do the division.", "ok"],
+    expect: () => [],
+  },
+  {
+    id: "bored_repetitive",
+    day: 2,
+    turns: ["She won't do her spellings, says it's boring doing the same thing again and again.", "ok what should I do"],
+    expect: () => [],
+  },
+  {
+    id: "upset_child",
+    day: 2,
+    turns: ["She saw the red cross on her book and burst into tears. Homework is over now.", "ok"],
+    expect: () => [],
+  },
+  {
+    id: "worked_twice",
+    day: 3,
+    turns: ["Sitting beside her while she starts has worked two days running — she starts calmly now.", "yes that's right", "ok will do"],
+    expect: (tools) => [
+      { name: "records a positive outcome", pass: outcomeOf(tools).some((v) => v === "tried_worked" || v === "tried_partly"), detail: outcomeOf(tools).join(",") },
+    ],
+  },
+  {
+    id: "not_tried_yet",
+    day: 2,
+    turns: ["Kal time hi nahi mila, bahut kaam tha.", "theek hai"],
+    expect: (tools) => [
+      { name: "NOT recorded as didnt_work", pass: !outcomeOf(tools).includes("tried_didnt_work"), detail: outcomeOf(tools).join(",") },
+      { name: "recorded as not_tried (or left unrecorded)", pass: outcomeOf(tools).every((v) => v === "not_tried") , detail: outcomeOf(tools).join(",") },
+    ],
+  },
+  {
+    id: "father_hindi",
+    day: 2,
+    // A father writing in Hindi about a problem unlike any gold example (won't write, hides the book).
+    turns: ["Beta likhne se bachta hai, kal usne copy hi chhupa di thi.", "pata nahi kyun karta hai", "accha batao"],
+    expect: () => [],
+  },
 ];
 
 async function cleanEvalState() {
@@ -138,8 +180,11 @@ async function parentLLM(drive: string, transcript: string): Promise<string> {
 
 // LLM judge over the whole transcript against the method.
 async function judge(transcript: string, persona: string): Promise<{ scores: Record<string, boolean>; notes: string }> {
-  const sys = `You are a strict evaluator of a parenting Coach's side of a chat with an Indian parent. Judge ONLY the Coach's messages against this method. Return JSON {"listened_first":bool,"explained_why":bool,"one_plain_step":bool,"followed_up":bool,"no_repeats":bool,"no_idioms":bool,"right_language":bool,"correct_escalation":bool,"no_unconfirmed_cause":bool,"notes":"<=20 words"}.
+  const sys = `You are a strict evaluator of a parenting Coach's side of a chat with an Indian parent. Judge ONLY the Coach's messages against this method. Return JSON {"listened_first":bool,"explained_why":bool,"one_plain_step":bool,"followed_up":bool,"no_repeats":bool,"no_idioms":bool,"right_language":bool,"correct_escalation":bool,"no_unconfirmed_cause":bool,"asks_why_before_step":bool,"step_matches_reason":bool,"no_causation_claim":bool,"notes":"<=20 words"}.
 - no_unconfirmed_cause: FALSE only if the Coach asserts a SITUATIONAL/circumstantial cause — something in the environment or that day (e.g. "the TV was on", "her brother interrupted", "she was tired") — that the parent did NOT say. Explaining the CHILD'S general temperament/pattern (e.g. "she likes to feel in charge", "being corrected can feel like losing") is the coaching method and is ALWAYS allowed = TRUE. A cause-independent step = TRUE.
+- asks_why_before_step: when the child stopped/refused/gave up, the Coach found out WHY (hard / boring / didn't-know / upset) BEFORE giving a step — UNLESS the parent already said why. TRUE if no give-up/refusal in the chat, or the reason was known.
+- step_matches_reason: the step fits the reason — a "didn't know how" child gets help with the first bit together (NOT persistence/try-harder advice); "boring" keeps the task but adds a choice; "upset" settles first. TRUE if N/A.
+- no_causation_claim: the Coach did NOT claim it or the plan CAUSED the change (saying what changed is fine). TRUE if no such claim.
 - listened_first: engaged with what the parent actually said before advising. If the parent already described the situation in their message, reflecting it back counts — it need NOT ask a redundant question. Only fail this if the Coach ignored the parent and jumped to a step with no engagement.
 - explained_why: gave a plain reason tied to THIS child at least once.
 - one_plain_step: when it gave a step, it was ONE concrete thing with exact words to say.
@@ -153,42 +198,78 @@ Be realistic, not pedantic. A clear question counts as a valid turn.`;
     const r = await callCoach(sys, [{ role: "user", content: `Persona: ${persona}\n\n${transcript}` }], 220, undefined, 0); // temperature 0 = stable judge
     const m = r.text.match(/\{[\s\S]*\}/);
     const o = JSON.parse(m ? m[0] : r.text);
-    const keys = ["listened_first", "explained_why", "one_plain_step", "followed_up", "no_repeats", "no_idioms", "right_language", "correct_escalation", "no_unconfirmed_cause"];
+    const keys = ["listened_first", "explained_why", "one_plain_step", "followed_up", "no_repeats", "no_idioms", "right_language", "correct_escalation", "no_unconfirmed_cause", "asks_why_before_step", "step_matches_reason", "no_causation_claim"];
     const scores: Record<string, boolean> = {};
     for (const k of keys) scores[k] = !!o[k];
     return { scores, notes: String(o.notes ?? "").slice(0, 120) };
   } catch (e) { return { scores: {}, notes: "judge error: " + (e as Error).message }; }
 }
 
+type DetCheck = { name: string; pass: boolean; detail: string };
+// Approximate regex/tool checks (reported separately from the LLM judge). Only "applicable" ones score.
+function deterministicChecks(id: string, coachText: string, allTools: ToolCallRecord[]): DetCheck[] {
+  const out: DetCheck[] = [];
+  const outVals = allTools.filter((t) => t.name === "record_outcome").map((t) => (t.input as { value?: string; via?: string }));
+  const modelPositive = outVals.some((o) => (o.value === "tried_worked" || o.value === "tried_partly") && o.via !== "backstop");
+  const hindi = /[ऀ-ॿ]/.test(coachText) || /\b(aap|kijiye|poochiye|dekhiye|kahiye|karna|rahega)\b/i.test(coachText);
+  const hasStep = /["“][^"”]{6,}["”]/.test(coachText); // a quoted exact-words line = a step was given
+  const noticeMarker = /\b(notice|watch|dhyaan|dekhiye|gaur)\b/i.test(coachText);
+  const screenReward = /\b(screen|tv|phone|tablet|youtube|cartoon)\b/i.test(coachText) && /\b(reward|treat|inaam|baad mein de|if .*(finish|done)|as a reward)\b/i.test(coachText);
+  // Strip quoted spans first — the exact words to say TO THE CHILD legitimately use "tum" + gendered
+  // child verbs; the register/gender rules are about how the Coach addresses the PARENT (outside quotes).
+  const outsideQuotes = coachText.replace(/["“][^"”]*["”]/g, " ");
+  const genderedParent = /\b(aap[^.?!]{0,30}(kar sakti hain|kar sakte hain|karenge|kijiyega|sakti ho|sakte ho))\b/i.test(outsideQuotes);
+  const tumForms = /\b(tumhe|tumhara|tum (karo|kijiye|chuno|batao|dekho)|^tum|\btu\b|kar do yaar)\b/i.test(outsideQuotes);
+
+  if (hasStep) out.push({ name: "what_to_notice_present", pass: noticeMarker, detail: noticeMarker ? "" : "step given without a 'notice' line" });
+  if (id === "worked_twice") {
+    out.push({ name: "hand_back_offered", pass: /\b(check on you|check in|10 minute|a little less|step out|another room|thodi der baad)\b/i.test(coachText), detail: "" });
+    out.push({ name: "positive_outcome_recorded_by_model", pass: modelPositive, detail: modelPositive ? "model" : "not by model" });
+  }
+  if (id === "not_tried_yet") out.push({ name: "not_tried_recorded", pass: !outVals.some((o) => o.value === "tried_didnt_work"), detail: outVals.map((o) => o.value).join(",") });
+  out.push({ name: "no_screen_reward", pass: !screenReward, detail: screenReward ? "screen-as-reward phrasing" : "" });
+  if (hindi) {
+    out.push({ name: "no_gender_assumption", pass: !genderedParent, detail: genderedParent ? "gendered parent verb" : "" });
+    out.push({ name: "parent_register_consistent", pass: !tumForms, detail: tumForms ? "tum/tu form" : "" });
+  }
+  return out;
+}
+
 // guard=false disables the engine's no-repeat backstop (for the BEFORE/AFTER comparison).
-async function runPersona(p: Persona, run: number, guard = true) {
+// path 'trial' streams (onDelta sink); path 'paid' buffers (no onDelta) — same engine + backstop.
+async function runPersona(p: Persona, run: number, guard = true, path: "trial" | "paid" = "trial") {
   await cleanEvalState();
   const subject = { ...baseSubject, day: p.day ?? 1 };
   const history: CoachTurn[] = [];
   const allTools: ToolCallRecord[] = [];
+  const coachReplies: string[] = [];
   let transcript = "", repeats = 0;
   const recordedDays = new Set<number>();
   const maxTurns = p.turns ? p.turns.length : (p.maxTurns ?? 4);
 
   for (let i = 0; i < maxTurns; i++) {
     const parentMsg = p.turns ? p.turns[i] : await parentLLM(p.drive!, transcript);
-    const ctx = await assembleCoachContext(subject, parentMsg, history); // pass in-memory history so the "conversation so far" block is populated
+    const ctx = await assembleCoachContext(subject, parentMsg, history);
     const previousReply = [...history].reverse().find((h) => h.role === "assistant")?.content;
     const res = await runCoachTurn({
       system: ctx.system, history, userMessage: parentMsg, tools: ctx.tools,
       toolSubject: ctx.toolSubject, language: ctx.language,
       previousReply, guardRepeat: guard && isShortNonAnswer(parentMsg),
+      ...(path === "trial" ? { onDelta: () => {} } : {}),
     });
     if (previousReply && tooSimilar(res.text, previousReply)) repeats++;
+    coachReplies.push(res.text);
     history.push({ role: "user", content: parentMsg }, { role: "assistant", content: res.text });
     allTools.push(...res.toolCalls);
-    // Mirror production's deterministic outcome backstop (runtime.ts) so the tool-check reflects it.
+    // Mirror production's deterministic outcome backstop (runtime.ts): negatives/missed/not_tried; positives
+    // only from clear words with no venting markers.
     if (res.toolCalls.some((t) => t.name === "record_outcome" && t.ok)) recordedDays.add(subject.day);
     else {
       const ex = extractOutcome(parentMsg);
-      // Mirror runtime: only backstop negative/missed outcomes; never infer a positive from ambiguous words.
-      if (ex && (ex.outcome === "tried_didnt_work" || ex.outcome === "missed") && !recordedDays.has(subject.day)) {
-        await recordTrialOutcome(EVAL_TRIAL, subject.day, ex.outcome, ex.note, "chat");
+      const positive = ex && (ex.outcome === "tried_worked" || ex.outcome === "tried_partly");
+      const venting = /\b(cried|crying|tired|exhausted|nothing works|threw|upset|can'?t cope|fed up)\b/i.test(parentMsg);
+      if (ex && !(positive && venting) && !recordedDays.has(subject.day)) {
+        await recordTrialOutcome(EVAL_TRIAL, subject.day, ex.outcome, ex.note, "backstop");
         allTools.push({ name: "record_outcome", input: { value: ex.outcome, via: "backstop" }, ok: true, detail: "backstop" });
         recordedDays.add(subject.day);
       }
@@ -198,105 +279,106 @@ async function runPersona(p: Persona, run: number, guard = true) {
 
   const nums = await readTrackedNumbers("trial", EVAL_TRIAL);
   const recordedNums = nums.map((n) => ({ min: n.min, max: n.max }));
-  const toolChecks = p.expect(allTools, recordedNums, transcript);
+  const toolChecks = p.expect?.(allTools, recordedNums, transcript) ?? [];
+  const coachLines = coachReplies.join("\n"); // FULL coach replies (multi-line), not just first lines
+  const detChecks = deterministicChecks(p.id, coachLines, allTools);
   const j = await judge(transcript, p.id);
-  const coachLines = transcript.split("\n").filter((l) => l.startsWith("Coach:")).join(" ");
   const fc = finalCheck(transcript, { language: detectLanguage(coachLines), recordedNumbers: nums.flatMap((n) => [n.min, n.max]) });
 
-  return { id: p.id, run, transcript, allTools, toolChecks, judge: j, finalCheck: fc, repeats };
+  return { id: p.id, run, transcript, allTools, toolChecks, detChecks, judge: j, finalCheck: fc, repeats };
 }
 
-const CRITERIA = ["listened_first", "explained_why", "one_plain_step", "followed_up", "no_repeats", "no_idioms", "right_language", "correct_escalation", "no_unconfirmed_cause"];
+const CRITERIA = ["listened_first", "explained_why", "one_plain_step", "followed_up", "no_repeats", "no_idioms", "right_language", "correct_escalation", "no_unconfirmed_cause", "asks_why_before_step", "step_matches_reason", "no_causation_claim"];
 const CRIT_MAX = CRITERIA.length; // judge criteria per persona-run
 
+const median = (a: number[]) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+
 async function main() {
-  console.log(`\n######## CONVERSATIONAL COACH — SCENARIO EVAL (${RUNS} runs) ########`);
-  console.log("Anonymised: parent 'Sneha' + child 'Diya' are fictional (sandbox preview trial); no real names, phones or parent data used.\n");
+  console.log(`\n######## CONVERSATIONAL COACH — SCENARIO EVAL (${RUNS} runs, trial + paid paths) ########`);
+  console.log("Anonymised: all parents/children are fictional (sandbox preview trial); no real names, phones or parent data used.\n");
   const toolTally: Record<string, { pass: number; total: number }> = {};
-  const judgeTally = { pass: 0, total: 0 };
   const critFail: Record<string, number> = Object.fromEntries(CRITERIA.map((c) => [c, 0]));
   const critExample: Record<string, string> = {};
-  const perPersonaScores: Record<string, number[]> = {}; // each persona's judge score (0-8) per run → median
-  let afterRepeats = 0;
+  const detTally: Record<string, { pass: number; total: number }> = {};
+  const trialScores: Record<string, number[]> = {};
+  const paidScores: Record<string, number[]> = {};
+  let afterRepeats = 0, trialMean = { pass: 0, total: 0 };
+  let posHits = 0, posOpportunities = 0; // model-recorded positive outcomes (worked_twice persona)
 
+  // ── TRIAL PATH (full detail: transcripts, tool + deterministic checks, per-criterion) ──
   for (let run = 1; run <= RUNS; run++) {
-    console.log(`\n========================= RUN ${run} (guard ON) =========================`);
+    console.log(`\n========================= TRIAL PATH · RUN ${run} =========================`);
     for (const p of PERSONAS) {
-      const r = await runPersona(p, run, true);
+      const r = await runPersona(p, run, true, "trial");
       afterRepeats += r.repeats;
-      const tcPass = r.toolChecks.filter((c) => c.pass).length;
       const jPass = Object.values(r.judge.scores).filter(Boolean).length;
-      const jTotal = Object.keys(r.judge.scores).length;
-      judgeTally.pass += jPass; judgeTally.total += jTotal;
-      (perPersonaScores[p.id] ??= []).push(jPass);
+      trialMean.pass += jPass; trialMean.total += Object.keys(r.judge.scores).length;
+      (trialScores[p.id] ??= []).push(jPass);
       const t = (toolTally[p.id] ??= { pass: 0, total: 0 });
-      t.pass += tcPass; t.total += r.toolChecks.length;
+      t.pass += r.toolChecks.filter((c) => c.pass).length; t.total += r.toolChecks.length;
       for (const [k, v] of Object.entries(r.judge.scores)) if (!v) { critFail[k] = (critFail[k] ?? 0) + 1; if (!critExample[k]) critExample[k] = `${p.id}: ${r.judge.notes}`; }
+      for (const d of r.detChecks) { const dt = (detTally[d.name] ??= { pass: 0, total: 0 }); dt.pass += d.pass ? 1 : 0; dt.total++; if (d.name === "positive_outcome_recorded_by_model") { posOpportunities++; if (d.pass) posHits++; } }
 
       console.log(`\n--- ${p.id} ---`);
       if (run === 1) console.log(r.transcript.trim());
       console.log(`TOOLS: ${r.allTools.map((x) => `${x.name}${x.ok ? "" : "✗"}`).join(", ") || "(none)"} | repeats=${r.repeats}`);
       for (const c of r.toolChecks) console.log(`  [${c.pass ? "PASS" : "FAIL"}] ${c.name}${c.pass ? "" : "  — " + c.detail}`);
-      console.log(`  judge: ${jPass}/${jTotal}  ${Object.entries(r.judge.scores).filter(([, v]) => !v).map(([k]) => "✗" + k).join(" ")}  "${r.judge.notes}"`);
+      for (const d of r.detChecks) console.log(`  {${d.pass ? "ok" : "X"}} ${d.name}${d.pass ? "" : "  — " + d.detail}`);
+      console.log(`  judge: ${jPass}/${CRIT_MAX}  ${Object.entries(r.judge.scores).filter(([, v]) => !v).map(([k]) => "✗" + k).join(" ")}  "${r.judge.notes}"`);
       if (!r.finalCheck.ok) console.log(`  final-check: ${r.finalCheck.detail.join("; ")}`);
     }
   }
 
-  // BEFORE pass: identical scenarios with the no-repeat backstop OFF, to show the contrast.
+  // ── BEFORE pass (guard OFF, trial) — no-repeat contrast ──
   console.log(`\n========================= BEFORE (guard OFF, 1 pass) =========================`);
-  let beforeRepeats = 0; const beforeCritFail: Record<string, number> = { no_repeats: 0 };
+  let beforeRepeats = 0, beforeNoRepFails = 0;
   for (const p of PERSONAS) {
-    const r = await runPersona(p, 0, false);
+    const r = await runPersona(p, 0, false, "trial");
     beforeRepeats += r.repeats;
-    if (r.judge.scores.no_repeats === false) beforeCritFail.no_repeats++;
+    if (r.judge.scores.no_repeats === false) beforeNoRepFails++;
     console.log(`  ${p.id.padEnd(28)} repeats=${r.repeats}  judge.no_repeats=${r.judge.scores.no_repeats === false ? "FAIL" : "ok"}`);
   }
 
-  // PAID JSON PATH: the paid route (CoachScreen) calls jsonCoachTurn, which runs this SAME engine
-  // with NO onDelta (buffered, returned as JSON) — the paid route only adds buildPaidSubject + the
-  // JSON wrapper. We exercise the non-streaming engine path + backstop here (jsonCoachTurn itself
-  // can't be imported under tsx — it pulls Next 'server-only' via report-v2/service).
-  console.log(`\n========================= PAID JSON PATH (non-streaming engine, same backstop) =========================`);
-  let paidJudgePass = 0, paidJudgeTotal = 0;
-  for (const p of [PERSONAS[0], PERSONAS[1], PERSONAS[7]]) { // baseline + didnt_work→Hindi + "I don't understand"
-    await cleanEvalState();
-    const subject = { ...baseSubject, day: p.day ?? 1 };
-    const history: CoachTurn[] = [];
-    let transcript = "";
-    for (const parentMsg of p.turns!) {
-      const ctx = await assembleCoachContext(subject, parentMsg, history);
-      const previousReply = [...history].reverse().find((h) => h.role === "assistant")?.content;
-      const res = await runCoachTurn({
-        system: ctx.system, history, userMessage: parentMsg, tools: ctx.tools, toolSubject: ctx.toolSubject,
-        language: ctx.language, previousReply, guardRepeat: isShortNonAnswer(parentMsg), // NO onDelta = JSON/buffered shape
-      });
-      history.push({ role: "user", content: parentMsg }, { role: "assistant", content: res.text });
-      transcript += `Parent: ${parentMsg}\nCoach: ${res.text}\n`;
-      console.log(`  [${p.id}] JSON ok=${!!res.text && !res.errored} replyLen=${res.text.length} tools=[${res.toolCalls.map((t) => t.name).join(",")}] guard=${res.repeatGuard ?? "-"} ₹${(res.costPaise / 100).toFixed(2)}`);
+  // ── PAID JSON PATH (same engine, no streaming): 3x, judge median only ──
+  console.log(`\n========================= PAID JSON PATH · ${RUNS} runs (judge only) =========================`);
+  let paidMean = { pass: 0, total: 0 };
+  for (let run = 1; run <= RUNS; run++) {
+    for (const p of PERSONAS) {
+      const r = await runPersona(p, run, true, "paid");
+      const jPass = Object.values(r.judge.scores).filter(Boolean).length;
+      paidMean.pass += jPass; paidMean.total += Object.keys(r.judge.scores).length;
+      (paidScores[p.id] ??= []).push(jPass);
     }
-    const pj = await judge(transcript, p.id);
-    paidJudgePass += Object.values(pj.scores).filter(Boolean).length; paidJudgeTotal += Object.keys(pj.scores).length;
+    console.log(`  paid run ${run} done`);
   }
-  console.log(`  PAID PATH judge: ${paidJudgePass}/${paidJudgeTotal} = ${Math.round((paidJudgePass / paidJudgeTotal) * 100)}%`);
 
-  console.log(`\n######## SUMMARY (${RUNS} guarded runs) ########`);
+  // ── SUMMARY ──
+  console.log(`\n######## SUMMARY (${RUNS} runs each, trial + paid) ########`);
   let allToolPass = 0, allToolTotal = 0;
-  for (const [id, t] of Object.entries(toolTally)) { console.log(`  tool-checks ${id.padEnd(28)} ${t.pass}/${t.total}`); allToolPass += t.pass; allToolTotal += t.total; }
-  console.log(`\n  TOOL-CALL CHECKS: ${allToolPass}/${allToolTotal}`);
-  console.log(`  LLM JUDGE (method criteria, mean over ${RUNS} runs): ${judgeTally.pass}/${judgeTally.total} = ${Math.round((judgeTally.pass / judgeTally.total) * 100)}%`);
-  // Per-persona MEDIAN of the 3 run-scores (robust to a single off run), + overall from medians.
-  const median = (a: number[]) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
-  let medSum = 0; const nPersona = Object.keys(perPersonaScores).length;
-  console.log(`\n  PER-PERSONA JUDGE MEDIAN (of ${RUNS} runs, out of ${CRIT_MAX}):`);
-  for (const [id, scores] of Object.entries(perPersonaScores)) { const m = median(scores); medSum += m; console.log(`    ${id.padEnd(28)} median ${m}/${CRIT_MAX}   runs=[${scores.join(",")}]`); }
-  console.log(`  OVERALL (sum of medians): ${medSum}/${nPersona * CRIT_MAX} = ${Math.round((medSum / (nPersona * CRIT_MAX)) * 100)}%`);
-  console.log(`\n  PER-CRITERION FAILURE TABLE (out of ${RUNS * PERSONAS.length} persona-runs):`);
-  console.log(`  criterion            fails  example`);
-  for (const c of CRITERIA) console.log(`  ${c.padEnd(20)} ${String(critFail[c]).padEnd(5)}  ${critFail[c] ? critExample[c] : "—"}`);
+  for (const [, t] of Object.entries(toolTally)) { allToolPass += t.pass; allToolTotal += t.total; }
+  console.log(`  TOOL-CALL CHECKS (trial): ${allToolPass}/${allToolTotal}`);
+  console.log(`  TRIAL judge mean: ${trialMean.pass}/${trialMean.total} = ${Math.round((trialMean.pass / trialMean.total) * 100)}%  |  PAID judge mean: ${paidMean.pass}/${paidMean.total} = ${Math.round((paidMean.pass / paidMean.total) * 100)}%`);
+
+  console.log(`\n  PER-PERSONA JUDGE MEDIAN (of ${RUNS} runs, out of ${CRIT_MAX}) — trial vs paid:`);
+  let trialMed = 0, paidMed = 0; const nP = PERSONAS.length;
+  for (const p of PERSONAS) {
+    const tm = median(trialScores[p.id] ?? [0]); const pm = median(paidScores[p.id] ?? [0]);
+    trialMed += tm; paidMed += pm;
+    console.log(`    ${p.id.padEnd(28)} trial ${tm}/${CRIT_MAX} [${(trialScores[p.id] ?? []).join(",")}]   paid ${pm}/${CRIT_MAX} [${(paidScores[p.id] ?? []).join(",")}]`);
+  }
+  console.log(`  OVERALL median: trial ${trialMed}/${nP * CRIT_MAX} = ${Math.round((trialMed / (nP * CRIT_MAX)) * 100)}%  |  paid ${paidMed}/${nP * CRIT_MAX} = ${Math.round((paidMed / (nP * CRIT_MAX)) * 100)}%`);
+
+  console.log(`\n  PER-CRITERION FAILURE TABLE (trial, out of ${RUNS * nP} persona-runs):`);
+  for (const c of CRITERIA) console.log(`  ${c.padEnd(22)} ${String(critFail[c]).padEnd(4)}  ${critFail[c] ? critExample[c] : "—"}`);
+
+  console.log(`\n  DETERMINISTIC CHECKS (trial, approximate regex/tool):`);
+  for (const [name, t] of Object.entries(detTally)) console.log(`  ${name.padEnd(32)} ${t.pass}/${t.total}`);
+
+  console.log(`\n  MODEL-MISSED POSITIVE OUTCOMES: model recorded a positive on ${posHits}/${posOpportunities} worked_twice runs (missed ${posOpportunities - posHits}). Positive backstop is ON (from the parent's words, blocked on venting).`);
   console.log(`\n  NO_REPEATS (deterministic near-duplicate count across all turns):`);
-  console.log(`    BEFORE (guard off, 1 pass): ${beforeRepeats} repeats, ${beforeCritFail.no_repeats} judge no_repeats fails`);
+  console.log(`    BEFORE (guard off, 1 pass): ${beforeRepeats} repeats, ${beforeNoRepFails} judge no_repeats fails`);
   console.log(`    AFTER  (guard on, ${RUNS} passes): ${afterRepeats} repeats, ${critFail.no_repeats} judge no_repeats fails`);
   await cleanEvalState();
-  console.log("\n[eval state cleaned] — all data anonymised (fictional Sneha/Diya; no real PII)");
+  console.log("\n[eval state cleaned] — all data anonymised (fictional families; no real PII)");
 }
 main().catch((e) => { console.error("EVAL ERROR:", e); process.exit(1); });

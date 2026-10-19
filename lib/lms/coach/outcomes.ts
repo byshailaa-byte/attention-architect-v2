@@ -5,14 +5,21 @@
 // logged, never sent to analytics/ad platforms.
 import { getSql } from "@/lib/db/client";
 
-export const OUTCOMES = ["tried_worked", "tried_partly", "tried_didnt_work", "missed", "unclear"] as const;
+// 'not_tried' = the step wasn't attempted yet (no time / "what if" asked before trying). Distinct
+// from 'tried_didnt_work' (tried, didn't help) and 'missed' (had the chance, it slipped).
+export const OUTCOMES = ["tried_worked", "tried_partly", "tried_didnt_work", "missed", "not_tried", "unclear"] as const;
 export type Outcome = (typeof OUTCOMES)[number];
+
+// Why a child stopped — attached to an outcome when the parent gives it (nullable everywhere else).
+export const TRIGGERS = ["hard", "boring", "didnt_know", "upset", "unknown"] as const;
+export type Trigger = (typeof TRIGGERS)[number];
 
 export const OUTCOME_LABEL: Record<Outcome, string> = {
   tried_worked: "Tried · worked",
   tried_partly: "Tried · partly",
   tried_didnt_work: "Tried · didn't work",
   missed: "Missed",
+  not_tried: "Not tried yet",
   unclear: "Unclear",
 };
 // Compact one-letter chips for the admin day-by-day strip.
@@ -21,6 +28,7 @@ export const OUTCOME_CHIP: Record<Outcome, { t: string; bg: string; fg: string }
   tried_partly: { t: "~", bg: "#FFF8EC", fg: "#8A6D1F" },
   tried_didnt_work: { t: "✗", bg: "#FDECEC", fg: "#A23A2E" },
   missed: { t: "–", bg: "#EFECE4", fg: "#6B6456" },
+  not_tried: { t: "·", bg: "#EFECE4", fg: "#6B6456" },
   unclear: { t: "?", bg: "#EAF0FA", fg: "#1E3A5F" },
 };
 
@@ -42,16 +50,22 @@ export function isOutcome(raw: string): raw is Outcome {
 // the message isn't a day-outcome report (a question, small talk, etc.) so we only record real
 // signals. Order matters: missed / unclear (engagement + comprehension) win over tried-* .
 const RE = {
-  missed: /\b(missed|didn'?t get (a )?chance|couldn'?t (get to|try)|forgot|no time|didn'?t try|haven'?t tried|skipped)\b/i,
-  unclear: /\b(don'?t (get|understand)|didn'?t (really )?(get|understand)|not sure what (you|i)|what (do|does) (you|that|this) mean|unclear|confus|unable to comprehend|makes no sense|lost)\b/i,
-  worked: /\b(it worked|that worked|worked (really )?well|went (really )?well|much better|she started|he started|they started|started on (her|his|their) own|did it (herself|himself|themselves)|success|way better|big improvement)\b/i,
+  // NOT TRIED: not attempted yet / no time / a "what if" asked before trying. Checked FIRST so these
+  // never become 'tried_didnt_work' or 'missed'.
+  notTried: /\b(haven'?t tried|not tried (it )?yet|didn'?t try (it )?yet|didn'?t get (a )?chance|didn'?t get (the )?time|couldn'?t get to it|no time|didn'?t have time|time nahi mila|abhi tak nahi kiya|kal nahi kiya|what if|agar .* to kya)\b/i,
+  missed: /\b(missed|forgot|skipped|bhool gay|slipped)\b/i,
+  unclear: /\b(don'?t (get|understand)|didn'?t (really )?(get|understand)|not sure what (you|i)|what (do|does) (you|that|this) mean|unclear|confus|unable to comprehend|makes no sense|samajh nahi)\b/i,
+  worked: /\b(it worked|that worked|has worked|it'?s working|working (now|well|really well)|worked (two|three|for|really|very|so|great)|(two|three) days running|went (really )?well|much better|started on (her|his|their) own|did it (herself|himself|themselves)|success|way better|big improvement)\b/i,
   partly: /\b(sort of|kind of|a (little )?bit|partly|somewhat|half( way)?|started but|began but|better but|some progress|a bit better)\b/i,
   didntWork: /\b(didn'?t work|did not work|no change|nothing changed|still (wouldn'?t|won'?t|didn'?t|refuses?|refused)|same as (before|always)|no (luck|difference)|made no difference|ignored( me| it)?|not at all|wouldn'?t listen|didn'?t listen|took no notice|paid no attention)\b/i,
 };
 export function extractOutcome(message: string): { outcome: Outcome; note: string } | null {
   const m = message || "";
   const note = m.trim().slice(0, 160);
+  // An explicit "missed"/"forgot"/"skipped" wins over the softer not-tried phrases; otherwise
+  // "no time"/"haven't tried yet"/"what if" → not_tried.
   if (RE.missed.test(m)) return { outcome: "missed", note };
+  if (RE.notTried.test(m)) return { outcome: "not_tried", note };
   if (RE.unclear.test(m)) return { outcome: "unclear", note };
   if (RE.didntWork.test(m)) return { outcome: "tried_didnt_work", note };
   if (RE.partly.test(m)) return { outcome: "tried_partly", note };
@@ -65,16 +79,21 @@ export function hasOutcomeAnswer(message: string): boolean {
   return extractOutcome(message) !== null;
 }
 
+// source: 'model' = the Coach called record_outcome; 'backstop' = server recorded from the parent's
+// words when the model missed it; 'tap'/'chat' = legacy. Kept distinct so what-works stats can
+// separate model-recorded from backstop-recorded signals.
+export type OutcomeSource = "tap" | "chat" | "model" | "backstop";
+
 // ── Writes (idempotent per day: a new report for the same day replaces the prior one) ──
-export async function recordPaidOutcome(userId: string, week: number, day: number, outcome: Outcome, note: string | null, source: "tap" | "chat"): Promise<void> {
+export async function recordPaidOutcome(userId: string, week: number, day: number, outcome: Outcome, note: string | null, source: OutcomeSource, trigger: Trigger | null = null): Promise<void> {
   const sql = getSql();
   await sql`DELETE FROM lms_day_outcome WHERE user_id = ${userId} AND week = ${week} AND day = ${day}`;
-  await sql`INSERT INTO lms_day_outcome (user_id, week, day, outcome, note, source) VALUES (${userId}, ${week}, ${day}, ${outcome}, ${note}, ${source})`;
+  await sql`INSERT INTO lms_day_outcome (user_id, week, day, outcome, note, source, trigger) VALUES (${userId}, ${week}, ${day}, ${outcome}, ${note}, ${source}, ${trigger})`;
 }
-export async function recordTrialOutcome(trialId: string, day: number, outcome: Outcome, note: string | null, source: "tap" | "chat"): Promise<void> {
+export async function recordTrialOutcome(trialId: string, day: number, outcome: Outcome, note: string | null, source: OutcomeSource, trigger: Trigger | null = null): Promise<void> {
   const sql = getSql();
   await sql`DELETE FROM coach_trial_day_outcome WHERE trial_id = ${trialId}::uuid AND day = ${day}`;
-  await sql`INSERT INTO coach_trial_day_outcome (trial_id, day, outcome, note, source) VALUES (${trialId}::uuid, ${day}, ${outcome}, ${note}, ${source})`;
+  await sql`INSERT INTO coach_trial_day_outcome (trial_id, day, outcome, note, source, trigger) VALUES (${trialId}::uuid, ${day}, ${outcome}, ${note}, ${source}, ${trigger})`;
 }
 
 // ── Reads (normalised via the view) ──

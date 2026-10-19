@@ -27,14 +27,16 @@ async function outcomeBackstop(key: OpenerKey, subject: CoachSubjectInput, userM
   if (toolCalls.some((t) => t.name === "record_outcome" && t.ok)) return;
   const ex = extractOutcome(userMessage);
   if (!ex) return;
-  // Be MORE conservative than the model: only backstop the negative/missed outcomes that matter for
-  // follow-up and are the real drop-risk. Never infer a positive ("worked"/"partly") from ambiguous
-  // words (e.g. "she started crying" must not become tried_worked) — that would mis-record on venting.
-  if (ex.outcome !== "tried_didnt_work" && ex.outcome !== "missed") return;
+  // Positives are only backstopped from the parent's OWN clear words, and NEVER when the message also
+  // carries distress/venting — so "she started crying" / "nothing works, I'm tired" can't become a
+  // positive. Negatives / missed / not_tried always backstop (they matter for follow-up).
+  const positive = ex.outcome === "tried_worked" || ex.outcome === "tried_partly";
+  if (positive && /\b(cried|crying|tired|exhausted|nothing works|threw|upset|can'?t cope|fed up|overwhelm|hate|angry)\b/i.test(userMessage)) return;
   const prior = await readOutcomes(key.kind, subject.subjectId).catch(() => []);
   if (prior.some((o) => o.day === key.day)) return;
-  if (key.kind === "trial" && key.trialId) await recordTrialOutcome(key.trialId, key.day, ex.outcome, ex.note, "chat");
-  else if (key.kind === "paid") await recordPaidOutcome(key.userId, subject.week, key.day, ex.outcome, ex.note, "chat");
+  // source='backstop' — recorded by the server because the model didn't; kept separable in stats.
+  if (key.kind === "trial" && key.trialId) await recordTrialOutcome(key.trialId, key.day, ex.outcome, ex.note, "backstop");
+  else if (key.kind === "paid") await recordPaidOutcome(key.userId, subject.week, key.day, ex.outcome, ex.note, "backstop");
 }
 
 // The Coach's previous reply + whether this is a repeat-risk turn — fed to the engine's no-repeat backstop.

@@ -3,13 +3,45 @@
 Branch: `coach-quality` (dev/preview only — nothing merged or deployed to prod).
 
 ## Try it (preview on dev DB)
-Preview: https://attention-architect-v2-a9xo9ivcr-the-human-decision-s-projects.vercel.app  (commit 814100a)
+Preview: https://attention-architect-v2-io5v9cjwp-the-human-decision-s-projects.vercel.app  (commit cbdedde)
 Coach (Diya / The Captain / reminders), start at Day 0:
 `/admin/coach-preview/fd5d006a-8905-45b3-ad58-2383bc31ca06?day=0`
 - The Coach **opens the chat itself** (speak-first). Type as the parent; replies **stream**.
 - Use the day switcher (`?day=1..4`) — on a later day the Coach asks how the last step went first.
 - **Reset** (admin bar) wipes the transcript + all conversational state → fresh Day 0.
 - Weekly review: `/admin/coach-review`.
+
+## FINAL ROUND — principles + data model (method A1–A10, tools B, gold C, evals D, merge plan E)
+Method now encodes (plain words): trust order (safety > parent-now > recent outcomes/memory > assessment
+> general advice; an old assessment never overrides today); **can't vs won't** (find WHY a child stopped
+— hard / boring / didn't-know / upset — before a step; didn't-know → do the first bit together, NOT a
+persistence step); every step ends with ONE "what to notice"; **hand it back gradually** after a step
+works twice; praise the comeback; change ONE thing at a time; a never-suggest list (no screen-as-reward,
+no "you always give up", no finishing-at-any-cost, no pushing through distress); honest progress (say
+what changed, never claim the plan caused it); escalate gently (give-up across settings / strong
+distress / school affected → teacher or professional + flag_for_call normal); language (no parent-gender
+assumption → neutral Hindi phrasing, aap register, consistent child form, no English verbs in Hindi, no
+emoji). Data: `record_outcome` gains **not_tried** (+ a nullable **trigger**); the deterministic backstop
+tags rows `source='backstop'` vs `'model'` and now also covers positives (from the parent's words,
+blocked on venting); what-works stats exclude not_tried + backstop rows (and stay OFF in prod). Gold:
+5 new varied fictional families (no TV/two-books; 2 in Hindi/Hinglish, aap + no parent-gender). Migration
+**phase_71** (not_tried value + trigger col) with a down-migration; downs written for 68/69/70 too.
+Merge plan: **`docs/coach-merge-plan.md`** (write-only).
+
+### Results (dev, final round — 14 personas × 3 runs × trial+paid, judge temp 0, per-persona median)
+- **Tool-call checks (trial): 37/42.** Judge **median: trial 89% / paid 88%** (mean 88% / 86%).
+- New behavioural checks all strong: **no_unconfirmed_cause 0 fails**, parent_register_consistent 12/12,
+  no_gender_assumption 12/12, no_screen_reward 42/42, what_to_notice_present 38/39, hand_back_offered 3/3,
+  not_tried_recorded 3/3. no_idioms 3, right_language 0, correct_escalation 0.
+- **Model-missed positives:** the model recorded a positive outcome on only **1/3** worked_twice runs
+  (missed 2) — so the positive backstop IS now on (from the parent's own words, blocked on venting); the
+  outcome still lands via `source='backstop'`, kept separable in stats.
+- **no_repeats 16 (trial):** concentrated in the didnt_work→Hindi *sanctioned single re-ask* and a couple
+  of edge non-answers ("accha batao" not yet in the non-answer list); **deterministic lexical repeats 0**.
+- Residual judge misses are mostly: the didnt_work→Hindi re-ask (you allowed one brief re-ask),
+  the `unprompted_hindi`/`bored` edges, a once-off model choosing "missed" vs "not_tried", and an
+  eval-fixture name mismatch (a persona says "Aarav" while the sandbox child is Diya — the Coach
+  correctly flagged it, the judge penalised it). Trial and paid track within ~1%.
 
 ## What changed
 The Coach is now **fully conversational**: no scripted onboarding, no fixed step cards, no tap-chips,
