@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { hindiReplyIssues } from "@/lib/coach/hindi-check";
+import { detectLanguage } from "@/lib/coach/lang";
 
 // Fixtures modelled on the bad Hindi replies from the live click-through (child = Diya, a girl;
 // parent used neither "tu" nor emoji). Each BAD reply must produce ≥1 violation; each FIXED reply
@@ -50,5 +51,33 @@ describe("hindiReplyIssues — live-test fixtures fail before, pass after", () =
   it("for a boy, feminine child verbs are flagged (and masculine are clean)", () => {
     expect(hindiReplyIssues("Jab woh padhti hai toh ruk jaati hai.", { childGender: "boy", parentUsedTu: false, parentUsedEmoji: false }).length).toBeGreaterThan(0);
     expect(hindiReplyIssues("Jab woh padhta hai toh ruk jaata hai.", { childGender: "boy", parentUsedTu: false, parentUsedEmoji: false })).toEqual([]);
+  });
+
+  it('flags "manti" (→ maanti) and English "lead" in a Hindi reply', () => {
+    expect(hindiReplyIssues("woh zyada manti hai", girl).some((i) => i.includes("manti"))).toBe(true);
+    expect(hindiReplyIssues("Diya ko lead kar rahi hai", girl).some((i) => i.includes("lead"))).toBe(true);
+  });
+});
+
+describe("script matching — Roman↔Devanagari, and the English check never forces Devanagari", () => {
+  it("detects the parent's script: Roman-Hindi → hinglish, Devanagari → hi, English → en", () => {
+    expect(detectLanguage("theek hai, aaj kya karu")).toBe("hinglish");
+    expect(detectLanguage("आज क्या करूँ")).toBe("hi");
+    expect(detectLanguage("she argued again today")).toBe("en");
+  });
+
+  it("a Roman-Hindi (Hinglish) reply with loanwords is NOT flagged as English (won't be pushed to Devanagari)", () => {
+    const roman = 'Aaj homework se pehle kahiye: "Diya, tum decide karo." Phir thoda peechhe hat jaiye.';
+    expect(hindiReplyIssues(roman, girl)).toEqual([]);
+  });
+
+  it("romanized Hindi words (achha, yeh, chhupa, theek) are NOT mistaken for English", () => {
+    const roman = "Theek hai. Achha, jab usne copy chhupa di toh yeh samajh aaya ki use madad chahiye.";
+    expect(hindiReplyIssues(roman, girl).some((i) => i.toLowerCase().includes("english"))).toBe(false);
+  });
+
+  it("a reply with genuine English IS flagged (that's / win)", () => {
+    const dev = "यह उसके लिए अच्छा है। That's the real win।";
+    expect(hindiReplyIssues(dev, girl).some((i) => i.toLowerCase().includes("english"))).toBe(true);
   });
 });

@@ -124,7 +124,7 @@ const PERSONAS: Persona[] = [
   {
     id: "cant_not_wont",
     day: 2,
-    turns: ["Aarav just sits at maths and won't start. He's being lazy.", "I asked — he said he doesn't get how to do the division.", "ok"],
+    turns: ["Diya just sits at maths and won't start. She's being lazy.", "I asked — she said she doesn't get how to do the division.", "ok"],
     expect: () => [],
   },
   {

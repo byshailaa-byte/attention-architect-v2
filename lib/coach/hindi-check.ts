@@ -31,11 +31,16 @@ const CHILD_VERBS: Record<"masc" | "fem", string[]> = {
   masc: ["sunta", "karta", "padhta", "likhta", "baithta", "rukta", "ruka\\b", "karega", "sunega", "aayega", "padhega", "likhega", "uthega", "kar raha", "ho raha"],
   fem: ["sunti", "karti", "padhti", "likhti", "baithti", "rukti", "ruki\\b", "karegi", "sunegi", "aayegi", "padhegi", "likhegi", "uthegi", "kar rahi", "ho rahi"],
 };
-const LOANWORDS = new Set(["homework", "screen", "tv", "ok", "okay", "phone", "minute", "minutes", "test", "exam", "subject", "maths", "math", "english", "hindi", "book", "books", "tablet", "app", "class", "break", "pencil", "copy", "page"]);
+const LOANWORDS = new Set(["homework", "screen", "tv", "ok", "okay", "phone", "minute", "minutes", "test", "exam", "subject", "maths", "math", "english", "hindi", "book", "books", "tablet", "app", "class", "break", "pencil", "copy", "page", "reminder", "reminders"]);
+void LOANWORDS;
+// Clear English words/phrases that signal leakage into a Hindi reply — chosen to NOT match romanized
+// Hindi or common Hinglish loanwords. These are the real-world leaks from the live test ("That's the
+// real win", "zyada chances mein", "notice", …).
+const ENGLISH_DENY = /\b(that'?s|the real win|real win|\bwin\b|winning|chances?|notice|instead|good job|well done|try again)\b/gi;
 
 const has = (text: string, words: string[]) => words.filter((w) => new RegExp(`(^|[^a-z])${w}`, "i").test(text));
 
-export function hindiReplyIssues(reply: string, opts: { childGender: Gender; parentUsedTu: boolean; parentUsedEmoji: boolean }): string[] {
+export function hindiReplyIssues(reply: string, opts: { childGender: Gender; parentUsedTu: boolean; parentUsedEmoji: boolean; childName?: string }): string[] {
   const out: string[] = [];
   const text = reply || "";
   const outside = stripQuotes(text).toLowerCase();
@@ -58,14 +63,17 @@ export function hindiReplyIssues(reply: string, opts: { childGender: Gender; par
     if (tuInScript.length) out.push(`child script uses "tu" (default to "tum"): ${tuInScript[0].slice(0, 40)}`);
   }
 
-  // English words inside a Devanagari reply (beyond loanwords).
-  if (/[ऀ-ॿ]/.test(text)) {
-    const eng = [...stripQuotes(text).matchAll(/[A-Za-z][A-Za-z']{2,}/g)].map((m) => m[0].toLowerCase()).filter((w) => !LOANWORDS.has(w));
-    if (eng.length) out.push(`English word(s) in a Devanagari reply: ${[...new Set(eng)].slice(0, 4).join(", ")}`);
-  }
+  // Genuine English words leaking into a Hindi reply. A curated DENYLIST (not "any Latin word"), so
+  // romanized Hindi (achha, yeh, chhupa, theek) and common loanwords (homework, screen) are NOT flagged
+  // and a Roman-Hindi reply is never pushed toward Devanagari. Child's name staying Latin is fine.
+  const engHits = [...new Set((stripQuotes(text).toLowerCase().match(ENGLISH_DENY) ?? []))];
+  if (engHits.length) out.push(`English word(s) in a Hindi reply: ${engHits.slice(0, 5).join(", ")}`);
 
   if (!opts.parentUsedEmoji && /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/u.test(text)) out.push("emoji without the parent using one");
   if (/(^|[^a-z])ushe([^a-z]|$)/i.test(text)) out.push(`typo "ushe" (→ "use")`);
+  if (/(^|[^a-z])manti([^a-z]|$)/i.test(text)) out.push(`spelling "manti" (→ "maanti")`);
+  // English verb "lead" inside a Hindi reply — use "aage rehna" / "khud decide karna".
+  if (/(^|[^a-z])lead([^a-z]|$)/i.test(text)) out.push(`English "lead" in Hindi (use "aage rehna" / "khud decide karna")`);
 
   return out;
 }

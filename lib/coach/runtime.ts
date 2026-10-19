@@ -39,6 +39,14 @@ async function outcomeBackstop(key: OpenerKey, subject: CoachSubjectInput, userM
   else if (key.kind === "paid") await recordPaidOutcome(key.userId, subject.week, key.day, ex.outcome, ex.note, "backstop");
 }
 
+// On a streamed Hindi turn we can't regenerate (already sent), so flag the reply for the weekly review
+// (/admin/coach-review reads coach_messages with admin_flagged_at). Non-blocking.
+async function flagHindiForReview(messageId: string | null, issues: string[] | undefined): Promise<void> {
+  if (!messageId || !issues || !issues.length) return;
+  const sql = getSql();
+  await sql`UPDATE coach_messages SET admin_flagged_at = now(), admin_flag_note = ${"hindi: " + issues.join("; ").slice(0, 300)} WHERE id = ${messageId}::uuid`.catch(() => {});
+}
+
 // The Coach's previous reply + whether this is a repeat-risk turn — fed to the engine's no-repeat backstop.
 function repeatGuardFor(history: CoachTurn[], userMessage: string): { previousReply?: string; guardRepeat: boolean } {
   const previousReply = [...history].reverse().find((h) => h.role === "assistant")?.content;
@@ -51,7 +59,7 @@ function hindiGuardFor(subject: CoachSubjectInput, history: CoachTurn[], userMes
   const parentMsgs = [...history.filter((h) => h.role === "user").map((h) => h.content), userMessage];
   const parentUsedTu = parentMsgs.some((m) => /(^|[^a-z])(tu|tujhe|tera|teri|tere)([^a-z]|$)/i.test(m));
   const parentUsedEmoji = parentMsgs.some((m) => /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(m));
-  return { childGender: subject.childGender, parentUsedTu, parentUsedEmoji };
+  return { childGender: subject.childGender, parentUsedTu, parentUsedEmoji, childName: subject.child };
 }
 
 // ── Subject builders ───────────────────────────────────────────────────────────────
@@ -137,6 +145,7 @@ export async function getOrCreateOpener(subject: CoachSubjectInput, key: OpenerK
   const res = await runCoachTurn({
     system: ctx.system, history: ctx.history, userMessage: instruction, tools: [],
     toolSubject: ctx.toolSubject, language: ctx.language, maxTokens: 200,
+    hindiGuard: hindiGuardFor(subject, ctx.history, ""), // opener is non-streamed + cached → regenerate-once stays
   });
   const ins = key.trialId
     ? (await sql`INSERT INTO coach_messages (user_id, trial_id, role, content, source, origin, day, model, input_tokens, output_tokens, cost_paise)
@@ -170,6 +179,7 @@ export async function jsonCoachTurn(args: PersistArgs): Promise<{ reply: string;
   });
   const messageId = await persistTurn(args.key, args.userMessage, res);
   await outcomeBackstop(args.key, args.subject, args.userMessage, res.toolCalls).catch(() => {});
+        await flagHindiForReview(messageId, res.hindiIssues);
   if (args.onDone) await args.onDone({ text: res.text, errored: res.errored, toolNames: res.toolCalls.map((t) => t.name) });
   summariseParentMemory(args.key.kind, args.subject.subjectId).catch(() => {});
   return { reply: res.text, messageId, costPaise: res.costPaise, errored: res.errored };
@@ -202,6 +212,7 @@ export function streamCoachTurn(args: PersistArgs): Response {
         // Persist parent + coach messages.
         const messageId = await persistTurn(args.key, args.userMessage, res);
         await outcomeBackstop(args.key, args.subject, args.userMessage, res.toolCalls).catch(() => {});
+        await flagHindiForReview(messageId, res.hindiIssues);
         if (args.onDone) await args.onDone({ text: res.text, errored: res.errored, toolNames: res.toolCalls.map((t) => t.name) });
         send({ done: { messageId, costPaise: res.costPaise, errored: res.errored, tools: res.toolCalls.map((t) => ({ name: t.name, ok: t.ok })) } });
       } catch (e) {

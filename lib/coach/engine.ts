@@ -31,6 +31,7 @@ export type RunResult = {
   latencyMs: number;
   errored: boolean;
   repeatGuard?: "ok" | "regenerated" | "fallback"; // what the no-repeat backstop did (when it ran)
+  hindiIssues?: string[]; // deterministic Hindi-language violations found on the FINAL reply (for logging)
 };
 
 export function fallbackReply(language: Language): string {
@@ -76,7 +77,7 @@ export async function runCoachTurn(opts: {
   onDelta?: (text: string) => void;
   previousReply?: string;   // the Coach's last reply (for the no-repeat backstop)
   guardRepeat?: boolean;    // true on short non-answer turns → buffer + backstop
-  hindiGuard?: { childGender: Gender; parentUsedTu: boolean; parentUsedEmoji: boolean }; // Hindi-language backstop
+  hindiGuard?: { childGender: Gender; parentUsedTu: boolean; parentUsedEmoji: boolean; childName?: string }; // Hindi-language backstop
 }): Promise<RunResult> {
   const t0 = Date.now();
   const model = opts.model ?? coachReplyModel();
@@ -89,6 +90,7 @@ export async function runCoachTurn(opts: {
   const toolCalls: ToolCallRecord[] = [];
   let inputTokens = 0, outputTokens = 0, streamed = false, fullText = "";
   let repeatGuard: RunResult["repeatGuard"];
+  let hindiIssues: string[] | undefined;
 
   // One generation = the full tool-use loop. emit=onDelta streams live; omit it to buffer.
   async function generate(seed: MsgParam[], emit?: (t: string) => void): Promise<string> {
@@ -122,9 +124,12 @@ export async function runCoachTurn(opts: {
   try {
     await withTimeout(TURN_TIMEOUT_MS, (async () => {
       const hindiOn = !!opts.hindiGuard && (opts.language === "hi" || opts.language === "hinglish");
-      const needBuffer = (opts.guardRepeat && !!opts.previousReply) || hindiOn;
+      const streaming = !!opts.onDelta;
+      // Buffer ONLY for the no-repeat backstop, or for Hindi on a NON-streamed turn (opener / paid JSON
+      // — cached or non-visible, so a regenerate is free). On a STREAMED Hindi turn we stream live and
+      // check AFTER (logging violations), because buffering added ~6s to time-to-first-text at p50.
+      const needBuffer = (opts.guardRepeat && !!opts.previousReply) || (hindiOn && !streaming);
       if (needBuffer) {
-        // Buffer (don't stream live), then run the no-repeat + Hindi-language backstops.
         let text = await generate(baseMessages);
         if (opts.guardRepeat && opts.previousReply && tooSimilar(text, opts.previousReply)) {
           const retry = await generate([...baseMessages, { role: "assistant", content: text }, { role: "user", content: NUDGE }]);
@@ -137,13 +142,15 @@ export async function runCoachTurn(opts: {
           if (issues.length) {
             const nudge = `(Your Hindi reply had problems: ${issues.join("; ")}. Rewrite the SAME message fixing ONLY these — use aap-imperatives for the parent (kahiye/kijiye/baithiye), keep "tum" in the child's quoted words, never gender yourself, use the child's correct gender verbs, no emoji, no English words, spell "use".)`;
             const retry = await generate([...baseMessages, { role: "assistant", content: text }, { role: "user", content: nudge }]);
-            if (hindiReplyIssues(retry, opts.hindiGuard!).length < issues.length) text = retry; // keep the cleaner attempt
+            if (hindiReplyIssues(retry, opts.hindiGuard!).length < issues.length) text = retry;
           }
+          hindiIssues = hindiReplyIssues(text, opts.hindiGuard!);
         }
         fullText = text;
         if (opts.onDelta && text) emitChunked(text, opts.onDelta); // simulate streaming for the client
       } else {
-        fullText = await generate(baseMessages, opts.onDelta);
+        fullText = await generate(baseMessages, opts.onDelta); // live stream, no buffering
+        if (hindiOn) hindiIssues = hindiReplyIssues(fullText, opts.hindiGuard!); // check-after, log (no regen)
       }
     })());
   } catch (e) {
@@ -152,11 +159,11 @@ export async function runCoachTurn(opts: {
       fullText = fallbackReply(opts.language);
       if (opts.onDelta && !streamed) opts.onDelta(fullText);
     }
-    return { text: fullText, toolCalls, inputTokens, outputTokens, model, costPaise: costPaise(model, inputTokens, outputTokens), latencyMs: Date.now() - t0, errored: true, repeatGuard };
+    return { text: fullText, toolCalls, inputTokens, outputTokens, model, costPaise: costPaise(model, inputTokens, outputTokens), latencyMs: Date.now() - t0, errored: true, repeatGuard, hindiIssues };
   }
 
   if (!fullText) fullText = fallbackReply(opts.language);
-  return { text: fullText.trim(), toolCalls, inputTokens, outputTokens, model, costPaise: costPaise(model, inputTokens, outputTokens), latencyMs: Date.now() - t0, errored: false, repeatGuard };
+  return { text: fullText.trim(), toolCalls, inputTokens, outputTokens, model, costPaise: costPaise(model, inputTokens, outputTokens), latencyMs: Date.now() - t0, errored: false, repeatGuard, hindiIssues };
 }
 
 function emitChunked(text: string, onDelta: (t: string) => void) {
