@@ -36,9 +36,14 @@ export async function GET(req: NextRequest) {
   if (!trialId) return NextResponse.json({ error: "trialId required" }, { status: 400 });
   const access = await resolvePreviewAccess(trialId);
   if (access.role !== "trial") return NextResponse.json({ error: "no_preview" }, { status: 404 });
-  const subject = await buildTrialSubject(access.trial, access.userCtx, day);
-  const opener = await getOrCreateOpener(subject, { kind: "trial", userId: access.trial.user_id ?? "", trialId: access.trial.id, day });
-  return NextResponse.json({ reply: opener.text, messageId: opener.messageId, day });
+  try {
+    const subject = await buildTrialSubject(access.trial, access.userCtx, day);
+    const opener = await getOrCreateOpener(subject, { kind: "trial", userId: access.trial.user_id ?? "", trialId: access.trial.id, day });
+    return NextResponse.json({ reply: opener.text, messageId: opener.messageId, day });
+  } catch (e) {
+    console.error("[coach-preview] opener failed:", (e as Error).message);
+    return NextResponse.json({ reply: `Hi! I'm your Attention Coach. Tell me — what usually happens at homework time with ${access.userCtx.childName}?`, messageId: null, day, degraded: true });
+  }
 }
 
 export async function POST(req: NextRequest) {

@@ -37,9 +37,14 @@ export async function GET(req: NextRequest) {
   if (access.role !== "trial") return NextResponse.json({ error: "no_trial" }, { status: 403 });
   if (access.locked) return NextResponse.json({ error: "trial_ended" }, { status: 403 });
   const { trial, userCtx, day } = access;
-  const subject = await buildTrialSubject(trial, userCtx, day);
-  const opener = await getOrCreateOpener(subject, { kind: "trial", userId, trialId: trial.id, day });
-  return NextResponse.json({ reply: opener.text, messageId: opener.messageId, day });
+  try {
+    const subject = await buildTrialSubject(trial, userCtx, day);
+    const opener = await getOrCreateOpener(subject, { kind: "trial", userId, trialId: trial.id, day });
+    return NextResponse.json({ reply: opener.text, messageId: opener.messageId, day });
+  } catch (e) {
+    console.error("[coach-trial] opener failed:", (e as Error).message);
+    return NextResponse.json({ reply: `Hi! I'm your Attention Coach. Tell me — what usually happens at homework time with ${userCtx.childName}?`, messageId: null, day, degraded: true });
+  }
 }
 
 export async function POST(req: NextRequest) {

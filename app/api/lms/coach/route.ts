@@ -33,9 +33,14 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const ctx = await loadLmsUserContextById(userId);
   if (!ctx) return NextResponse.json({ error: "not_paid" }, { status: 403 });
-  const subject = await buildPaidSubject(ctx, "");
-  const opener = await getOrCreateOpener(subject, { kind: "paid", userId, trialId: null, day: subject.day });
-  return NextResponse.json({ reply: opener.text, messageId: opener.messageId, day: subject.day, week: subject.week });
+  try {
+    const subject = await buildPaidSubject(ctx, "");
+    const opener = await getOrCreateOpener(subject, { kind: "paid", userId, trialId: null, day: subject.day });
+    return NextResponse.json({ reply: opener.text, messageId: opener.messageId, day: subject.day, week: subject.week });
+  } catch (e) {
+    console.error("[coach] opener failed:", (e as Error).message);
+    return NextResponse.json({ reply: `Hi! I'm your Attention Coach. How did the last step go with ${ctx.childName}?`, messageId: null, degraded: true });
+  }
 }
 
 export async function POST(req: NextRequest) {

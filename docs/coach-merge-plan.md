@@ -26,8 +26,10 @@ until you say go. No `git push`/merge/prod/sends have happened.
 | phase_69 | `migrations/phase_69_gold_examples.sql` | `gold_examples` | `migrations/down/phase_69_down.sql` (DROP) |
 | phase_70 | `migrations/phase_70_call_flags.sql` | `coach_call_request` | `migrations/down/phase_70_down.sql` (DROP) |
 | phase_71 | `migrations/phase_71_outcome_not_tried_trigger.sql` (via `scripts/apply_phase_71.mjs`) | `not_tried` value + `trigger` col on both outcome tables | `migrations/down/phase_71_down.sql` (not_tried→missed, drop trigger, restore CHECK) |
+| phase_72 | `migrations/phase_72_coach_messages_opener_origin.sql` (via `scripts/apply_phase_72.mjs`) | allow `origin='opener'` on coach_messages (the cached opener row) | `migrations/down/phase_72_down.sql` (opener→llm, restore CHECK) |
 
-Run: `TARGET=prod node scripts/apply_phase_68_70.mjs` then `TARGET=prod node scripts/apply_phase_71.mjs`.
+Run: `TARGET=prod node scripts/apply_phase_68_70.mjs` then `TARGET=prod node scripts/apply_phase_71.mjs`
+then `TARGET=prod node scripts/apply_phase_72.mjs`.
 Each verifies the host is ep-green-truth and prints the ledger. These are additive/backward-compatible:
 the CURRENTLY-deployed (old) code keeps working with the widened CHECK and the extra columns, so the
 migrations can go BEFORE the code deploy without breaking prod.
@@ -47,13 +49,29 @@ Then seed the gold library: `TARGET=prod node scripts/seed_gold_examples.mjs` (i
 - `vercel deploy --prod` on attention-architect-v2 (NOT `the-human-decision`). Wait for READY.
 
 ## 5. Smoke tests (prod) — must all pass
-1. An existing PAID parent's coach: open `/lms` coach, send "how did it go?", get a streamed/JSON reply;
-   confirm a row lands in `coach_messages` and (if they report an outcome) in `lms_day_outcome`.
-2. A TRIAL parent: open `/coach`, Coach speaks first (cached opener), send a message, get a reply.
+Status codes alone are NOT a health check — you must load the Coach **authenticated, end-to-end**, and
+see a real reply. The opener GET and the message POST both touch the model + DB (and the opener INSERTs
+an `origin='opener'` row — the thing phase_72 fixed), so exercise both:
+
+0. **Authenticated end-to-end (the real check).** With the admin password in `$ADMIN_PASSWORD` (never
+   echo it):
+   - Opener: `curl -u "x:$ADMIN_PASSWORD" "<prodURL>/api/admin/coach-preview/message?trialId=<previewId>&day=0"`
+     → **HTTP 200** with a non-empty `"reply"` and a `"messageId"` (NOT `{"error":...}`, NOT 500).
+   - Message: `curl -u "x:$ADMIN_PASSWORD" -N -X POST "<prodURL>/api/admin/coach-preview/message"
+     -H 'Content-Type: application/json' -d '{"trialId":"<previewId>","message":"...","day":0}'`
+     → **HTTP 200**, `content-type: application/x-ndjson`, a stream of `{"delta":...}` lines ending in
+     `{"done":{"messageId":...,"errored":false}}`.
+   - Confirm in Vercel runtime logs there is **no** `coach_messages_origin_check` / NeonDbError on
+     `/api/admin/coach-preview/message`, and the opener request logged **200**.
+1. An existing PAID parent's coach: open `/lms` coach, send "how did it go?", get a JSON reply; confirm
+   a row lands in `coach_messages` and (if they report an outcome) in `lms_day_outcome`.
+2. A TRIAL parent: open `/coach`, Coach speaks first (cached opener renders — not "Couldn't load"),
+   send a message, get a streamed reply.
 3. `/admin/coach-review` returns **401** without Basic Auth; 200 with it; lists open call requests.
 4. A report URL still renders (unrelated-regression check).
-5. `select outcome,count(*) from lms_day_outcome group by 1` includes `not_tried` only going forward
-   (no backfill of old rows).
+5. `select outcome,count(*) from lms_day_outcome group by 1` includes `not_tried` only going forward.
+6. `select pg_get_constraintdef(oid) from pg_constraint where conname='coach_messages_origin_check'`
+   includes `'opener'` (phase_72 applied).
 
 ## 6. Watch for 30 minutes
 - `vercel logs` (or the dashboard) for the project: look for `[coach/engine] turn failed`,
