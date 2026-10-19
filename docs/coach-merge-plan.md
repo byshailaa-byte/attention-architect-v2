@@ -37,6 +37,14 @@ migrations can go BEFORE the code deploy without breaking prod.
 Then seed the gold library: `TARGET=prod node scripts/seed_gold_examples.mjs` (idempotent; upserts the
 18 seed rows; never touches admin-approved rows).
 
+### 2.5 Constraint audit gate (must pass BEFORE deploy)
+`TARGET=prod node scripts/audit_coach_constraints.mjs` (read-only) → must print **"✓ No mismatches"**.
+This compares every CHECK/enum on the coach tables against every value the code can write (origin,
+outcome incl. not_tried, source, trigger, flags) — the class of bug that broke the opener. On prod
+BEFORE these migrations it reports exactly: `coach_messages.origin` missing `opener` (phase_72),
+`lms_day_outcome`/`coach_trial_day_outcome.outcome` missing `not_tried` (phase_71), and the 4
+phase_68/69/70 tables missing. After phase_68–72 it must be clean. Do NOT deploy the code until it is.
+
 ## 3. parent_memory backfill (before parents hit the new Coach) — counts only, no PII
 `TARGET=prod node scripts/backfill_parent_memory.mts`
 - Summarises each current prod trial + paid parent's own past messages into `parent_memory` so no one
