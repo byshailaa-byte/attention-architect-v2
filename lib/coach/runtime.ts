@@ -16,7 +16,26 @@ import { assembleCoachContext, type CoachSubjectInput, type AssembledContext } f
 import { runCoachTurn } from "@/lib/coach/engine";
 import { summariseParentMemory } from "@/lib/coach/memory";
 import { isShortNonAnswer } from "@/lib/coach/lang";
+import { extractOutcome, readOutcomes, recordPaidOutcome, recordTrialOutcome } from "@/lib/lms/coach/outcomes";
+import type { ToolCallRecord } from "@/lib/coach/tools";
 import type { CoachTurn } from "@/lib/lms/coach/llm";
+
+// Deterministic backstop: if the parent's message reports how a step went but the model didn't call
+// record_outcome, record it server-side from the parent's OWN words (extractOutcome, never invented),
+// once per day. Guarantees an outcome report is never silently dropped.
+async function outcomeBackstop(key: OpenerKey, subject: CoachSubjectInput, userMessage: string, toolCalls: ToolCallRecord[]): Promise<void> {
+  if (toolCalls.some((t) => t.name === "record_outcome" && t.ok)) return;
+  const ex = extractOutcome(userMessage);
+  if (!ex) return;
+  // Be MORE conservative than the model: only backstop the negative/missed outcomes that matter for
+  // follow-up and are the real drop-risk. Never infer a positive ("worked"/"partly") from ambiguous
+  // words (e.g. "she started crying" must not become tried_worked) — that would mis-record on venting.
+  if (ex.outcome !== "tried_didnt_work" && ex.outcome !== "missed") return;
+  const prior = await readOutcomes(key.kind, subject.subjectId).catch(() => []);
+  if (prior.some((o) => o.day === key.day)) return;
+  if (key.kind === "trial" && key.trialId) await recordTrialOutcome(key.trialId, key.day, ex.outcome, ex.note, "chat");
+  else if (key.kind === "paid") await recordPaidOutcome(key.userId, subject.week, key.day, ex.outcome, ex.note, "chat");
+}
 
 // The Coach's previous reply + whether this is a repeat-risk turn — fed to the engine's no-repeat backstop.
 function repeatGuardFor(history: CoachTurn[], userMessage: string): { previousReply?: string; guardRepeat: boolean } {
@@ -138,6 +157,7 @@ export async function jsonCoachTurn(args: PersistArgs): Promise<{ reply: string;
     ...repeatGuardFor(args.ctx.history, args.userMessage),
   });
   const messageId = await persistTurn(args.key, args.userMessage, res);
+  await outcomeBackstop(args.key, args.subject, args.userMessage, res.toolCalls).catch(() => {});
   if (args.onDone) await args.onDone({ text: res.text, errored: res.errored, toolNames: res.toolCalls.map((t) => t.name) });
   summariseParentMemory(args.key.kind, args.subject.subjectId).catch(() => {});
   return { reply: res.text, messageId, costPaise: res.costPaise, errored: res.errored };
@@ -168,6 +188,7 @@ export function streamCoachTurn(args: PersistArgs): Response {
         });
         // Persist parent + coach messages.
         const messageId = await persistTurn(args.key, args.userMessage, res);
+        await outcomeBackstop(args.key, args.subject, args.userMessage, res.toolCalls).catch(() => {});
         if (args.onDone) await args.onDone({ text: res.text, errored: res.errored, toolNames: res.toolCalls.map((t) => t.name) });
         send({ done: { messageId, costPaise: res.costPaise, errored: res.errored, tools: res.toolCalls.map((t) => ({ name: t.name, ok: t.ok })) } });
       } catch (e) {

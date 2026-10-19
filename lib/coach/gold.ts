@@ -78,5 +78,5 @@ export function formatGoldForPrompt(examples: GoldExample[]): string {
     const lines = ex.conversation.map((t) => `${t.role === "coach" ? "Coach" : "Parent"}: ${t.text}`).join("\n");
     return `Example — ${ex.title} (${ex.situation})\n${lines}`;
   });
-  return `\n\n## Examples of the voice and method (reference only — match the STYLE and approach; do NOT copy the words, and use this family's own details)\n${blocks.join("\n\n")}`;
+  return `\n\n## Style reference ONLY — these are OTHER families\nMatch the STYLE and approach (listen, one plain step, a why, warm). NEVER reuse their facts, their causes (e.g. a TV being on), their numbers, or the specific reason a step failed — use ONLY what THIS parent told you. If your situation looks like one of these, still ask/confirm this family's own details.\n${blocks.join("\n\n")}`;
 }

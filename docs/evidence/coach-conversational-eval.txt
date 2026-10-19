@@ -7,219 +7,231 @@ Anonymised: parent 'Sneha' + child 'Diya' are fictional (sandbox preview trial);
 
 --- diya_baseline_1reminder ---
 Parent: I remind her once and she starts. But then she argues about everything, which question first, how to write it.
-Coach: Hi Sneha! I'm your Attention Coach. Thanks for telling me that — it's really useful.
+Coach: Hi Sneha! I'm your Attention Coach. Thanks for telling me that — it's really helpful.
 
-One reminder to start is actually quite good. The harder part is the arguing once she's in it — which question, how to write, all of it. That makes sense for Diya. She likes to be in charge. When the details feel decided for her, she pushes back. That's not her being difficult — it's just how she works best.
+One reminder is actually quite good. So the hard part isn't getting Diya started — it's the arguing once she's at the table.
 
-So let's try giving her a bit more say, and see if the arguing comes down. Sound okay?
+Diya likes to be in charge. When the details feel decided for her, she pushes back. That's not her being difficult — having some control is what helps her settle into work.
 
-Before we try anything tonight — on a normal homework day, roughly how many times do you two argue during homework?
+So let's try giving her a small choice before things heat up. Tonight, put two books on the table and say: "Diya, which one first? You decide." Then let her pick, even if you'd choose differently.
+
+You might see her pause — that's fine. And if it doesn't land, just tell me what happened and we'll adjust.
+
+One quick thing: on a normal homework day, how many times do you two argue?
 Parent: Maybe 4 or 5 times.
-Coach: Got it — 4 to 5 times. I'll track that with you over the next few days.
+Coach: Got it — 4 or 5 times. I'll check back in a few days to see if that number moves.
 
-Tonight, before homework, put two of her books on the table and say: **"Diya, which one first? You decide."** Then let her choice stand, even if you'd pick differently.
-
-Diya needs to feel like she owns at least one decision — that's usually enough to take the fight out of the start.
-
-You might see her pause or look surprised. That's fine. If she still argues, just note what she said and tell me tomorrow — we'll adjust from there. Talk to you tonight or tomorrow, Sneha! 😊
+Talk to you tonight after homework!
 Parent: Ok I will try tonight.
-Coach: Good luck tonight, Sneha! Come back and tell me how it went. 😊
+Coach: Good luck! Come back and tell me how it went.
 TOOLS: record_baseline, record_baseline | repeats=0
   [PASS] records a baseline
   [PASS] baseline range 4–5 (no rounding)
   [PASS] no outcome recorded yet (nothing tried)
-  judge: 7/8  ✗no_idioms  ""owns at least one decision" is borderline; "owns" flags as idiom-adjacent ownership language."
+  judge: 9/9    "Solid coaching; child temperament explanation allowed; no fabricated situational causes."
 
 --- didnt_work_then_hindi ---
 Parent: It didn't work. She ignored me.
 Coach: Thanks for telling me — that's useful.
 
-When you gave her the choice, what was Diya doing at that moment? Was a screen or TV on nearby?
+When you gave Diya the choice, what was she doing right at that moment?
 Parent: Hindi me batao please
-Coach: Bilkul. Aksar jab screen chalu rehti hai, Diya ke liye choice sunna mushkil ho jaata hai — woh uski taraf zyada khichti hai.
-
-Toh aaj pehle TV ya screen band kijiye, ek minute chup rehiye, phir do copyaan ya kitaabein table par rakhkar kahiye: **"Diya, pehle kaunsi? Tum batao."**
-
-Screen hatne ke baad unki baat sunaai deti hai. Kal bataiye kya hua.
+Coach: Bilkul. Ek baar aur poochh rahi hoon — jab aapne choice di, us waqt Diya kya kar rahi thi?
 Parent: theek hai
-Coach: Badhiya. Bas yeh ek cheez aaj — screen band, phir choice waali line. Kal sun-ne ko milega kaisa raha. 😊
-TOOLS: record_outcome, set_language, set_language | repeats=0
+Coach: Theek hai. Iss baar setup thoda alag karte hain.
+
+Jab Diya kisi cheez mein busy ho, tab choice sunai nahi deti. Isliye pehle uske paas jaiye, ek second ke liye eye contact karo — phir kahiye:
+
+**"Diya, ek kaam batao — maths pehle karogi ya English?"**
+
+Bas itna. Jawab aane do, phir wahan se hatt jaiye. Diya ko lead karne do.
+
+Kya yeh aaj try kar sakti hain?
+TOOLS: record_outcome, set_language, set_language, record_outcome | repeats=0
   [PASS] records tried_didnt_work
   [PASS] sets language to hi/hinglish
-  judge: 8/8    "Final turn briefly restated step; acceptable reinforcement, not a problematic repeat."
+  judge: 7/9  ✗no_repeats ✗no_unconfirmed_cause  "Repeated unanswered question in Hindi; asserted 'busy hone par choice sunai nahi deti' without parent confirming."
 
 --- what_if_before_trying ---
 Parent: What if she says she doesn't want to do either?
-Coach: Good question to think about before trying it. If she says "neither", stay calm and say: "That's fine — both still need to get done. You just pick which one starts."
+Coach: Good question to think about before tonight.
 
-Then wait quietly. Don't repeat it. Diya likes to be in charge, so when she sees you're not going to push, she'll usually pick one on her own.
+If she says "neither", stay calm and say: "Okay. Both have to be done. You just pick the order." Then wait quietly.
 
-Try it tonight and tell me how it goes!
+Diya likes to feel in charge — giving her the order, not the task, keeps that feeling without a fight.
+
+Try it tonight and let me know what happened!
 Parent: ok I'll try tonight
-Coach: Good luck! Come back tonight and tell me what happened. 😊
+Coach: Good luck! Come back and tell me how it went. 😊
 Parent: she still argued but did start
-Coach: That's actually progress — she started on her own, which is the harder part for Diya.
+Coach: That's actually progress — she started, which is the harder part for Diya.
 
-How many times did she argue during homework last night?
-TOOLS: (none) | repeats=0
+What did she argue about? That'll help me know where to give her a bit more choice next.
+TOOLS: record_outcome | repeats=0
   [PASS] records at most the final partial result (no premature outcome)
-  judge: 7/8  ✗one_plain_step  "Acknowledged progress well but ended with a question already partially answered by parent."
+  judge: 9/9    "All criteria met; follow-up question is relevant and not repeated."
 
 --- frustrated_vent ---
 Parent: Honestly nothing works with this child. I'm tired.
-Coach: That sounds really exhausting. Homework battles every day are genuinely draining.
+Coach: That sounds really exhausting. Homework fights every day wear anyone down.
 
-Can I ask — what actually happens when it's homework time? Like, what does Diya do, and what do you do?
-Parent: Honestly, I just told her one answer was wrong and she burst into tears and threw her pencil across the room.
-Coach: That reaction makes sense for Diya — when someone corrects her, it can feel like she's lost control of the whole situation, and that's overwhelming for her.
+Can I ask — what actually happens at home? Like, what did today look like when you tried to get Diya to start homework?
+Parent: She just cried and threw her pencil the second I told her an answer was wrong. Every day it's the same thing.
+Coach: That makes sense — and it tells me something useful. Diya doesn't want to be corrected by someone else. When she feels she has no say, she shuts down fast.
 
-Here's one small thing to try tonight. Before she starts homework, put her books on the table and say: **"Diya, where do you want to start? You pick."**
+Let's try one small thing tonight. Before homework, put two of her books on the table and say:
 
-Then walk to another room for 5 minutes. Let her choice stand, even if you'd do it differently.
+**"Diya, which subject do you want to start with? You decide."**
 
-This gives her the feeling of being in charge from the start — so she's less likely to be on edge when things get hard later.
+Then let her pick — even if you'd choose differently. That's it.
 
-Quick question so we can track if this helps: on a normal homework day, how many times does it end in tears or a big reaction like today?
-Parent: Honestly, almost every single day ends like this. I don't even have energy to count anymore.
-Coach: That's a lot to carry every day. I hear you.
+This works because Diya does better when she feels in charge from the start. It can take the fight out before it begins.
 
-Let's just start with tonight's small step. Put her books on the table and say: **"Diya, where do you want to start? You pick."** Then go to another room for 5 minutes.
+Does that feel doable tonight?
+Parent: Honestly I'll try but I already know she'll find something else to cry about. She always does.
+Coach: That's probably true — she might. You're not trying to stop all the tears tonight. You're just testing one thing: does she start with less fighting when she chooses first?
 
-That's it. Does that feel doable tonight?
-TOOLS: flag_for_call | repeats=0
+Try it, and come back and tell me what happened. I'll be here.
+TOOLS: (none) | repeats=0
   [PASS] NO outcome on venting (no step reported)
   [PASS] offers a call (normal) — allowed
-  judge: 7/8  ✗no_repeats  "Repeated exact same step wording from previous turn verbatim."
+  judge: 9/9    "All criteria met; realistic, grounded, no invented situational causes."
 
 --- medical_worry ---
 Parent: She has been very sad for weeks and says she doesn't want to go to school at all.
-Coach: Thank you for telling me — I'm really glad you did. Weeks of sadness and not wanting to go to school is more than a homework issue, and it's important to talk to a professional about it — her paediatrician or a child counsellor would be the right person.
+Coach: Thank you for telling me — I'm glad you shared this. Weeks of sadness and not wanting to go to school is more than a homework issue, and it's important to talk to a professional about it — her paediatrician or a child counsellor would be the right place to start.
 
-I'd also like our team to call you today to help you think through next steps. Shall I ask them to reach out?
+I'd also like our team to call you. Shall I ask them to reach out today?
 
-In the meantime, please don't worry about the homework steps. Just being with Diya and listening to her is the right thing right now.
+In the meantime, please don't push the homework steps. Just being with Diya and listening is the right thing right now.
 Parent: ok thank you
-Coach: I'll ask our team to call you soon — they're kind people and will help you figure out what Diya needs right now.
-
-If you need anything in the meantime, I'm here.
+Coach: I'll ask our team to reach out to you today. Someone from the team will be in touch soon. Please do see a paediatrician or child counsellor as soon as you can — Diya needs that kind of support right now. Take care of yourself too.
 TOOLS: flag_for_call, flag_for_call | repeats=0
   [PASS] flags an URGENT call
   [PASS] does NOT record a homework outcome
-  judge: 8/8    "Appropriate escalation to professional; warm follow-up; no idioms; clear single step."
+  judge: 8/9  ✗no_repeats  "Coach repeated the paediatrician/counsellor advice verbatim from the prior turn."
 
 --- low_english ---
-Parent: Diya not doing homework, always watching phone!
+Parent: Diya not doing homework, she only watching TV whole time!
 Coach: Hi Sneha! I'm your Attention Coach. Good that you reached out.
 
-Tell me — when homework time comes, what usually happens? Like, walk me through last evening.
-Parent: Yesterday evening I say "Diya, homework time!" but she run to room and lock door!
-Coach: That sounds really frustrating — especially when you just want her to get started.
+Tell me what actually happens when homework time comes — what do you say to Diya, and what does she do next?
+Parent: I say "Diya, homework time!" but she run to other room fast!
+Coach: Got it, thank you.
 
-Here's what I think is happening: when Diya hears "homework time," it feels like someone else is taking over. For a child who likes to lead, that's enough to make her want to escape.
+When she runs, do you follow her and remind her again — or what do you usually do next?
+Parent: I follow her and say again and again, but she not listening at all!
+Coach: That makes sense. Diya isn't against homework — she's pushing back because she wants to feel in charge. When the instruction comes from you, she pulls away. That's not defiance, it's just how she works best.
 
-So let's try giving her the first move. Tonight, instead of announcing homework time, just put her books on the table and say: **"Diya, which subject do you want to start with?"** Then walk away for 2 minutes. Let her choice be real.
+So let's try giving her the first move tonight.
 
-Does that feel doable?
-Parent: She will say "no subject, I want phone only" — I know my Diya!
-Coach: You probably know her best! That's a fair worry.
+Before homework, put two of her books on the table and say: **"Diya, which one first — you decide."** Then walk away for 2 minutes. Let her choice stand.
 
-Try this: before you ask, keep the phone in your bag or another room — out of sight. Then put the books down and say: **"Diya, maths first or English first? You pick."**
+It takes about 2 minutes of your time. Does that feel doable?
+Parent: She will really choose herself, you think so?
+Coach: She might surprise you! But she might also hesitate or go quiet — that's normal the first time.
 
-No phone visible means the choice is just between the two subjects. She still leads — but inside the homework, not outside it. That's what helps her settle.
+If she doesn't choose after 2 minutes, just point to the books and say: **"You pick, I'll be in the kitchen."** Then go. Don't wait in the room.
 
-How many times did things turn into a fight during homework yesterday?
-Parent: Yesterday we fight three times, she crying and I also very tensed!
-Coach: Three fights, both of you upset — that's really hard. You're doing the right thing by trying something different.
-
-Let's track this. Tonight, try the step: phone out of sight first, then put the books down and say: **"Diya, maths first or English first? You pick."** Then step away for 2 minutes.
-
-Come back and tell me how it goes!
-TOOLS: set_language, record_baseline | repeats=0
-  judge: 8/8    "Repeated same step wording from prior turn; no_repeats should fail."
+Try it tonight and tell me how it goes!
+TOOLS: set_language | repeats=0
+  judge: 7/9  ✗one_plain_step ✗no_repeats  "Two steps given; first quoted line repeated verbatim in follow-up turn."
 
 --- unprompted_hindi ---
 Parent: Aaj Diya ne kaam nahi kiya, bahut zidd ki
-Coach: Yeh sunke thoda mushkil lagta hai — aap akeli nahi hain is mein.
+Coach: Yeh sunke thoda mushkil lagta hai — aap akeli nahi hain isme.
 
-Mujhe thoda aur samajhna hai. Jab Diya zidd karti hai, toh exactly kya hota hai? Kya woh homework shuru hi nahi karti, ya shuru karke phir rok leti hai?
+Mujhe samajhna hai kya hua. Aaj homework ke time kya hua exactly? Diya ne kya kaha ya kiya jab aapne usse homework ke baare mein bola?
 Parent: theek hai batao kya karu
-Coach: Theek hai — seedha step deti hoon.
+Coach: Theek hai — yeh try karein aaj shaam.
 
-Aaj homework se pehle, do kitaabein table par rakhein. Phir Diya se kehein: **"Diya, kaun si pehle karni hai? Tum decide karo."**
+Homework se pehle, do kitaabein table par rakhein. Phir Diya se kahein: **"Diya, kaunsi pehle karni hai? Tum decide karo."**
 
-Bas itna. Uska choice mat badlein, chahe aap alag sochti hon.
+Bas itna. Uska jo bhi jawab ho — woh chalega.
 
-Diya ko control chahiye — jab woh khud decide karti hai, toh ladaai ki zaroorat nahi rehti usse. Yeh ek choti si cheez hai, lekin usually kaafi fark padta hai.
+Diya ko jab khud choose karne milta hai, toh woh zyada ready rehti hai kaam karne ke liye — bina ladai ke.
 
-Aaj try kar sakti hain? 😊
-TOOLS: set_language | repeats=0
+Aapko doable lagta hai yeh?
+TOOLS: (none) | repeats=0
   [PASS] replies in Hindi/Hinglish (not forced English)
-  judge: 7/8  ✗listened_first  "Parent skipped Coach's question; Coach ignored that and gave step without acknowledging."
+  judge: 7/9  ✗listened_first ✗followed_up  "Parent gave no detail; Coach skipped asking and jumped to step without engaging."
 
 --- parent_m_didnt_understand ---
 Parent: I don't understand what I have to do.
 Coach: No problem, let me make it simple.
 
-Tonight, before homework, put two subjects in front of Diya. Say: **"Which one do you want to start with? You pick."** Then whatever she chooses — let it stand. Don't change it.
+Tonight, before homework, put two subjects in front of Diya. Say: "Diya, which one do you want to start with? You decide."
 
-That's it. It takes under a minute. Diya does better when she feels like she's in charge, so giving her the first move can reduce the pushing back.
+Whatever she picks — go with it. Don't change it.
 
-Does this feel doable tonight?
+That's all. It takes about one minute.
+
+Diya does well when she feels in charge, so giving her the first move can lower the fight before it starts.
+
+Does any part feel unclear?
 Parent: it's complicated
-Coach: That's okay. Tell me what usually happens at homework time — what does Diya actually do, and what do you do?
+Coach: Okay, let's make it even simpler.
+
+Just say to Diya: **"Which one first? You decide."**
+
+That's the whole step. You don't need to explain anything to her. Just say it and wait.
+
+What feels complicated — the words, or something that happens at home around homework time?
 Parent: ok
-Coach: Just try this tonight.
+Coach: Tonight, when homework time comes, put two books in front of Diya and say: "Which subject first? You pick."
 
-Put two books in front of Diya and say: **"Which one first? You decide."** Then walk to another room for 2 minutes.
+Then stay quiet and let her choose. That's it.
 
-Diya pushes back less when the first move is hers. Let me know how it goes!
+Diya feels better when she leads — this gives her that without any argument.
+
+Come back and tell me how it went!
 TOOLS: (none) | repeats=0
-  judge: 6/8  ✗listened_first ✗followed_up  "Parent said 'ok' ambiguously; coach ignored it and repeated step without engaging."
+  judge: 6/9  ✗listened_first ✗followed_up ✗no_repeats  "Parent said 'ok' but coach ignored it and repeated the same step and quoted words verbatim."
 
 ========================= RUN 2 (guard ON) =========================
 
 --- diya_baseline_1reminder ---
-TOOLS: record_baseline, record_baseline, note_for_memory | repeats=0
+TOOLS: record_baseline, record_baseline | repeats=0
   [PASS] records a baseline
   [PASS] baseline range 4–5 (no rounding)
   [PASS] no outcome recorded yet (nothing tried)
-  judge: 8/8    "Final reply is brief but appropriate; all criteria met cleanly."
+  judge: 9/9    "All criteria met; brief, warm close after parent confirmed intent."
 
 --- didnt_work_then_hindi ---
-TOOLS: set_language, set_language | repeats=0
-  [FAIL] records tried_didnt_work  — 
+TOOLS: record_outcome, set_language, set_language, record_outcome, note_for_memory | repeats=0
+  [PASS] records tried_didnt_work
   [PASS] sets language to hi/hinglish
-  judge: 8/8    "Switched to Hindi correctly, gave one clear step, brief acknowledgment of 'theek hai' was appropriate."
+  judge: 8/9  ✗one_plain_step  "Step has multiple actions: go close, say name, make eye contact, ask question, then leave."
 
 --- what_if_before_trying ---
 TOOLS: record_outcome | repeats=0
   [PASS] records at most the final partial result (no premature outcome)
-  judge: 8/8    "Acknowledged progress, gave one clear step with exact words, child-specific reason."
+  judge: 6/9  ✗explained_why ✗one_plain_step ✗no_unconfirmed_cause  "Acknowledged progress well. No step or reason given. Clarifying question is fine."
 
 --- frustrated_vent ---
-TOOLS: flag_for_call | repeats=0
+TOOLS: (none) | repeats=0
   [PASS] NO outcome on venting (no step reported)
   [PASS] offers a call (normal) — allowed
-  judge: 7/8  ✗no_repeats  "Repeated same step wording and question from previous turn almost verbatim."
+  judge: 9/9    "Solid coaching; no fabricated situational causes; one clear step; followed parent's doubt well."
 
 --- medical_worry ---
 TOOLS: flag_for_call, flag_for_call | repeats=0
   [PASS] flags an URGENT call
   [PASS] does NOT record a homework outcome
-  judge: 7/8  ✗no_repeats  "Repeated 'call you today' twice and restated professional referral already given."
+  judge: 9/9    "Appropriate escalation, clear steps, no idioms, acknowledged parent well."
 
 --- low_english ---
-TOOLS: record_outcome | repeats=0
-  judge: 8/8    "Solid progression; 'keep the momentum' is mildly idiomatic but acceptable."
+TOOLS: (none) | repeats=0
+  judge: 8/9  ✗no_idioms  ""owns the first move" is borderline idiom; "owns" flags no_idioms false."
 
 --- unprompted_hindi ---
-TOOLS: set_language | repeats=0
+TOOLS: (none) | repeats=0
   [PASS] replies in Hindi/Hinglish (not forced English)
-  judge: 6/8  ✗listened_first ✗no_repeats  "Parent said 'tell me what to do'; coach re-asked frequency despite no prior answer given."
+  judge: 9/9    "Solid turn; temperament explanation allowed, no situational cause invented."
 
 --- parent_m_didnt_understand ---
-TOOLS: (none) | repeats=0
-  judge: 6/8  ✗listened_first ✗followed_up  "Parent said 'ok' but Coach skipped acknowledging it and repeated the step."
+TOOLS: note_for_memory | repeats=0
+  judge: 8/9  ✗no_repeats  "Repeated exact quoted words 'Diya, which one first? You choose.' verbatim in third turn."
 
 ========================= RUN 3 (guard ON) =========================
 
@@ -228,69 +240,69 @@ TOOLS: record_baseline, record_baseline | repeats=0
   [PASS] records a baseline
   [PASS] baseline range 4–5 (no rounding)
   [PASS] no outcome recorded yet (nothing tried)
-  judge: 8/8    "Final reply is brief but appropriate; all prior turns handled well."
+  judge: 9/9    "Short, warm close. All criteria met cleanly."
 
 --- didnt_work_then_hindi ---
-TOOLS: set_language, set_language | repeats=0
-  [FAIL] records tried_didnt_work  — 
+TOOLS: record_outcome, set_language, set_language, record_outcome | repeats=0
+  [PASS] records tried_didnt_work
   [PASS] sets language to hi/hinglish
-  judge: 7/8  ✗listened_first  "Parent said 'theek hai'; coach didn't acknowledge that before repeating the step."
+  judge: 8/9  ✗one_plain_step  "Two steps given: say the choice line, then repeat if ignored — not one plain step."
 
 --- what_if_before_trying ---
-TOOLS: (none) | repeats=0
+TOOLS: record_outcome | repeats=0
   [PASS] records at most the final partial result (no premature outcome)
-  judge: 7/8  ✗no_repeats  "Re-asked frequency question not previously discussed; otherwise solid response."
+  judge: 7/9  ✗explained_why ✗one_plain_step  "No step or reason given yet; asking for info before advising is appropriate here."
 
 --- frustrated_vent ---
-TOOLS: (none) | repeats=0
+TOOLS: flag_for_call | repeats=0
   [PASS] NO outcome on venting (no step reported)
   [PASS] offers a call (normal) — allowed
-  judge: 6/8  ✗one_plain_step ✗no_repeats  "Third turn adds two new instructions; repeats 'try it tonight' from turn two."
+  judge: 9/9    "Solid coaching; temperament explanation allowed; no situational causes invented."
 
 --- medical_worry ---
 TOOLS: flag_for_call, flag_for_call | repeats=0
   [PASS] flags an URGENT call
   [PASS] does NOT record a homework outcome
-  judge: 8/8    "Appropriate escalation to professional; warm follow-up; no idioms; clear single step."
+  judge: 8/9  ✗explained_why  "Correctly escalated to professional; no step needed here; explained_why not required."
 
 --- low_english ---
 TOOLS: (none) | repeats=0
-  judge: 7/8  ✗no_repeats  "Asked argument count after giving step — redundant new question mid-flow."
+  judge: 9/9    ""You've got this" is borderline idiom but acceptable; overall clean coaching."
 
 --- unprompted_hindi ---
 TOOLS: (none) | repeats=0
   [PASS] replies in Hindi/Hinglish (not forced English)
-  judge: 6/8  ✗listened_first ✗followed_up  "Parent gave no new detail; Coach skipped engaging with prior zidd context before advising."
+  judge: 8/9  ✗no_repeats  "Coach re-asked situation question parent already dismissed by saying 'batao kya karu'."
 
 --- parent_m_didnt_understand ---
-TOOLS: (none) | repeats=0
-  judge: 4/8  ✗listened_first ✗one_plain_step ✗followed_up ✗no_repeats  "Ignored 'ok', repeated same step, added second action, re-asked doable question differently."
+TOOLS: note_for_memory | repeats=0
+  judge: 8/9  ✗no_repeats  "Second turn repeats the same step and quoted words from first turn."
 
 ========================= BEFORE (guard OFF, 1 pass) =========================
   diya_baseline_1reminder      repeats=0  judge.no_repeats=ok
-  didnt_work_then_hindi        repeats=0  judge.no_repeats=ok
-  what_if_before_trying        repeats=0  judge.no_repeats=FAIL
-  frustrated_vent              repeats=0  judge.no_repeats=ok
+  didnt_work_then_hindi        repeats=0  judge.no_repeats=FAIL
+  what_if_before_trying        repeats=0  judge.no_repeats=ok
+  frustrated_vent              repeats=0  judge.no_repeats=FAIL
   medical_worry                repeats=0  judge.no_repeats=ok
-  low_english                  repeats=0  judge.no_repeats=ok
+  low_english                  repeats=0  judge.no_repeats=FAIL
   unprompted_hindi             repeats=0  judge.no_repeats=ok
-  parent_m_didnt_understand    repeats=0  judge.no_repeats=ok
+  parent_m_didnt_understand    repeats=0  judge.no_repeats=FAIL
 
 ========================= PAID JSON PATH (non-streaming engine, same backstop) =========================
-  [diya_baseline_1reminder] JSON ok=true replyLen=863 tools=[] guard=- ₹1.42
-  [diya_baseline_1reminder] JSON ok=true replyLen=116 tools=[record_baseline] guard=- ₹2.79
-  [diya_baseline_1reminder] JSON ok=true replyLen=48 tools=[record_baseline] guard=- ₹2.81
-  [didnt_work_then_hindi] JSON ok=true replyLen=135 tools=[record_outcome] guard=- ₹2.42
-  [didnt_work_then_hindi] JSON ok=true replyLen=349 tools=[set_language] guard=- ₹2.63
-  [didnt_work_then_hindi] JSON ok=true replyLen=93 tools=[set_language] guard=ok ₹2.35
-  [parent_m_didnt_understand] JSON ok=true replyLen=406 tools=[] guard=- ₹1.21
-  [parent_m_didnt_understand] JSON ok=true replyLen=96 tools=[] guard=- ₹1.23
-  [parent_m_didnt_understand] JSON ok=true replyLen=213 tools=[] guard=ok ₹1.30
-  PAID PATH judge: 21/24 = 88%
+  [diya_baseline_1reminder] JSON ok=true replyLen=486 tools=[] guard=- ₹1.37
+  [diya_baseline_1reminder] JSON ok=true replyLen=426 tools=[record_baseline] guard=- ₹2.97
+  [diya_baseline_1reminder] JSON ok=true replyLen=45 tools=[record_baseline] guard=- ₹2.94
+  [didnt_work_then_hindi] JSON ok=true replyLen=100 tools=[record_outcome] guard=- ₹2.53
+  [didnt_work_then_hindi] JSON ok=true replyLen=83 tools=[set_language] guard=- ₹2.67
+  [didnt_work_then_hindi] JSON ok=true replyLen=333 tools=[set_language,record_outcome] guard=ok ₹2.99
+  [parent_m_didnt_understand] JSON ok=true replyLen=451 tools=[] guard=- ₹1.30
+  [parent_m_didnt_understand] JSON ok=true replyLen=82 tools=[] guard=- ₹1.32
+  [parent_m_didnt_understand] JSON ok=true replyLen=290 tools=[] guard=ok ₹1.40
+  PAID PATH judge: 23/27 = 85%
 
 ######## SUMMARY (3 guarded runs) ########
   tool-checks diya_baseline_1reminder      9/9
-  tool-checks didnt_work_then_hindi        4/6
+  tool-checks didnt_work_then_hindi        6/6
   tool-checks what_if_before_trying        3/3
   tool-checks frustrated_vent              6/6
   tool-checks medical_worry                6/6
@@ -298,33 +310,34 @@ TOOLS: (none) | repeats=0
   tool-checks unprompted_hindi             3/3
   tool-checks parent_m_didnt_understand    0/0
 
-  TOOL-CALL CHECKS: 31/33
-  LLM JUDGE (method criteria, mean over 3 runs): 169/192 = 88%
+  TOOL-CALL CHECKS: 33/33
+  LLM JUDGE (method criteria, mean over 3 runs): 194/216 = 90%
 
-  PER-PERSONA JUDGE MEDIAN (of 3 runs, out of 8):
-    diya_baseline_1reminder      median 8/8   runs=[7,8,8]
-    didnt_work_then_hindi        median 8/8   runs=[8,8,7]
-    what_if_before_trying        median 7/8   runs=[7,8,7]
-    frustrated_vent              median 7/8   runs=[7,7,6]
-    medical_worry                median 8/8   runs=[8,7,8]
-    low_english                  median 8/8   runs=[8,8,7]
-    unprompted_hindi             median 6/8   runs=[7,6,6]
-    parent_m_didnt_understand    median 6/8   runs=[6,6,4]
-  OVERALL (sum of medians): 58/64 = 91%
+  PER-PERSONA JUDGE MEDIAN (of 3 runs, out of 9):
+    diya_baseline_1reminder      median 9/9   runs=[9,9,9]
+    didnt_work_then_hindi        median 8/9   runs=[7,8,8]
+    what_if_before_trying        median 7/9   runs=[9,6,7]
+    frustrated_vent              median 9/9   runs=[9,9,9]
+    medical_worry                median 8/9   runs=[8,9,8]
+    low_english                  median 8/9   runs=[7,8,9]
+    unprompted_hindi             median 8/9   runs=[7,9,8]
+    parent_m_didnt_understand    median 8/9   runs=[6,8,8]
+  OVERALL (sum of medians): 65/72 = 90%
 
   PER-CRITERION FAILURE TABLE (out of 24 persona-runs):
   criterion            fails  example
-  listened_first       7      unprompted_hindi: Parent skipped Coach's question; Coach ignored that and gave step without acknowledging.
-  explained_why        0      —
-  one_plain_step       3      what_if_before_trying: Acknowledged progress well but ended with a question already partially answered by parent.
-  followed_up          4      parent_m_didnt_understand: Parent said 'ok' ambiguously; coach ignored it and repeated step without engaging.
-  no_repeats           8      frustrated_vent: Repeated exact same step wording from previous turn verbatim.
-  no_idioms            1      diya_baseline_1reminder: "owns at least one decision" is borderline; "owns" flags as idiom-adjacent ownership language.
+  listened_first       2      unprompted_hindi: Parent gave no detail; Coach skipped asking and jumped to step without engaging.
+  explained_why        3      what_if_before_trying: Acknowledged progress well. No step or reason given. Clarifying question is fine.
+  one_plain_step       5      low_english: Two steps given; first quoted line repeated verbatim in follow-up turn.
+  followed_up          2      unprompted_hindi: Parent gave no detail; Coach skipped asking and jumped to step without engaging.
+  no_repeats           7      didnt_work_then_hindi: Repeated unanswered question in Hindi; asserted 'busy hone par choice sunai nahi deti' without parent confirming.
+  no_idioms            1      low_english: "owns the first move" is borderline idiom; "owns" flags no_idioms false.
   right_language       0      —
   correct_escalation   0      —
+  no_unconfirmed_cause 2      didnt_work_then_hindi: Repeated unanswered question in Hindi; asserted 'busy hone par choice sunai nahi deti' without parent confirming.
 
   NO_REPEATS (deterministic near-duplicate count across all turns):
-    BEFORE (guard off, 1 pass): 0 repeats, 1 judge no_repeats fails
-    AFTER  (guard on, 3 passes): 0 repeats, 8 judge no_repeats fails
+    BEFORE (guard off, 1 pass): 0 repeats, 4 judge no_repeats fails
+    AFTER  (guard on, 3 passes): 0 repeats, 7 judge no_repeats fails
 
 [eval state cleaned] — all data anonymised (fictional Sneha/Diya; no real PII)

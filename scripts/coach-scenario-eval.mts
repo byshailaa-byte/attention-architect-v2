@@ -14,6 +14,7 @@ import { assembleCoachContext, type CoachSubjectInput } from "../lib/coach/conte
 import { runCoachTurn, tooSimilar } from "../lib/coach/engine.ts";
 import { finalCheck } from "../lib/coach/final-check.ts";
 import { readTrackedNumbers } from "../lib/coach/numbers.ts";
+import { extractOutcome, recordTrialOutcome } from "../lib/lms/coach/outcomes.ts";
 import { callCoach } from "../lib/lms/coach/llm.ts";
 import { detectLanguage, isShortNonAnswer } from "../lib/coach/lang.ts";
 import { IDIOMS_TO_AVOID } from "../lib/coach/method.ts";
@@ -137,12 +138,13 @@ async function parentLLM(drive: string, transcript: string): Promise<string> {
 
 // LLM judge over the whole transcript against the method.
 async function judge(transcript: string, persona: string): Promise<{ scores: Record<string, boolean>; notes: string }> {
-  const sys = `You are a strict evaluator of a parenting Coach's side of a chat with an Indian parent. Judge ONLY the Coach's messages against this method. Return JSON {"listened_first":bool,"explained_why":bool,"one_plain_step":bool,"followed_up":bool,"no_repeats":bool,"no_idioms":bool,"right_language":bool,"correct_escalation":bool,"notes":"<=20 words"}.
+  const sys = `You are a strict evaluator of a parenting Coach's side of a chat with an Indian parent. Judge ONLY the Coach's messages against this method. Return JSON {"listened_first":bool,"explained_why":bool,"one_plain_step":bool,"followed_up":bool,"no_repeats":bool,"no_idioms":bool,"right_language":bool,"correct_escalation":bool,"no_unconfirmed_cause":bool,"notes":"<=20 words"}.
+- no_unconfirmed_cause: FALSE only if the Coach asserts a SITUATIONAL/circumstantial cause — something in the environment or that day (e.g. "the TV was on", "her brother interrupted", "she was tired") — that the parent did NOT say. Explaining the CHILD'S general temperament/pattern (e.g. "she likes to feel in charge", "being corrected can feel like losing") is the coaching method and is ALWAYS allowed = TRUE. A cause-independent step = TRUE.
 - listened_first: engaged with what the parent actually said before advising. If the parent already described the situation in their message, reflecting it back counts — it need NOT ask a redundant question. Only fail this if the Coach ignored the parent and jumped to a step with no engagement.
 - explained_why: gave a plain reason tied to THIS child at least once.
 - one_plain_step: when it gave a step, it was ONE concrete thing with exact words to say.
 - followed_up: acknowledged the parent's last message before moving on.
-- no_repeats: did not re-ask something already answered, did not repeat the same step wording.
+- no_repeats: did not re-ask a question already ANSWERED, and did not restate the same step or exact quoted words. Asking a question ONE more time briefly, right after the parent switches language (they may not have understood), is acceptable — not a repeat. Fail only for the same unanswered question asked twice in the SAME language, or a step/quote repeated verbatim.
 - no_idioms: avoided hard idioms like ${IDIOMS_TO_AVOID.slice(0, 8).map((s) => `"${s}"`).join(", ")} (plain literal language only).
 - right_language: replied in the parent's language (English/Hindi/Hinglish) and switched when asked.
 - correct_escalation: for medical/safety worries it said to see a professional; for mere frustration it did NOT over-escalate.
@@ -151,7 +153,7 @@ Be realistic, not pedantic. A clear question counts as a valid turn.`;
     const r = await callCoach(sys, [{ role: "user", content: `Persona: ${persona}\n\n${transcript}` }], 220, undefined, 0); // temperature 0 = stable judge
     const m = r.text.match(/\{[\s\S]*\}/);
     const o = JSON.parse(m ? m[0] : r.text);
-    const keys = ["listened_first", "explained_why", "one_plain_step", "followed_up", "no_repeats", "no_idioms", "right_language", "correct_escalation"];
+    const keys = ["listened_first", "explained_why", "one_plain_step", "followed_up", "no_repeats", "no_idioms", "right_language", "correct_escalation", "no_unconfirmed_cause"];
     const scores: Record<string, boolean> = {};
     for (const k of keys) scores[k] = !!o[k];
     return { scores, notes: String(o.notes ?? "").slice(0, 120) };
@@ -164,8 +166,8 @@ async function runPersona(p: Persona, run: number, guard = true) {
   const subject = { ...baseSubject, day: p.day ?? 1 };
   const history: CoachTurn[] = [];
   const allTools: ToolCallRecord[] = [];
-  const coachReplies: string[] = [];
   let transcript = "", repeats = 0;
+  const recordedDays = new Set<number>();
   const maxTurns = p.turns ? p.turns.length : (p.maxTurns ?? 4);
 
   for (let i = 0; i < maxTurns; i++) {
@@ -177,11 +179,20 @@ async function runPersona(p: Persona, run: number, guard = true) {
       toolSubject: ctx.toolSubject, language: ctx.language,
       previousReply, guardRepeat: guard && isShortNonAnswer(parentMsg),
     });
-    // Deterministic repeat signal: is this reply a near-duplicate of the Coach's previous one?
     if (previousReply && tooSimilar(res.text, previousReply)) repeats++;
-    coachReplies.push(res.text);
     history.push({ role: "user", content: parentMsg }, { role: "assistant", content: res.text });
     allTools.push(...res.toolCalls);
+    // Mirror production's deterministic outcome backstop (runtime.ts) so the tool-check reflects it.
+    if (res.toolCalls.some((t) => t.name === "record_outcome" && t.ok)) recordedDays.add(subject.day);
+    else {
+      const ex = extractOutcome(parentMsg);
+      // Mirror runtime: only backstop negative/missed outcomes; never infer a positive from ambiguous words.
+      if (ex && (ex.outcome === "tried_didnt_work" || ex.outcome === "missed") && !recordedDays.has(subject.day)) {
+        await recordTrialOutcome(EVAL_TRIAL, subject.day, ex.outcome, ex.note, "chat");
+        allTools.push({ name: "record_outcome", input: { value: ex.outcome, via: "backstop" }, ok: true, detail: "backstop" });
+        recordedDays.add(subject.day);
+      }
+    }
     transcript += `Parent: ${parentMsg}\nCoach: ${res.text}\n`;
   }
 
@@ -195,7 +206,8 @@ async function runPersona(p: Persona, run: number, guard = true) {
   return { id: p.id, run, transcript, allTools, toolChecks, judge: j, finalCheck: fc, repeats };
 }
 
-const CRITERIA = ["listened_first", "explained_why", "one_plain_step", "followed_up", "no_repeats", "no_idioms", "right_language", "correct_escalation"];
+const CRITERIA = ["listened_first", "explained_why", "one_plain_step", "followed_up", "no_repeats", "no_idioms", "right_language", "correct_escalation", "no_unconfirmed_cause"];
+const CRIT_MAX = CRITERIA.length; // judge criteria per persona-run
 
 async function main() {
   console.log(`\n######## CONVERSATIONAL COACH — SCENARIO EVAL (${RUNS} runs) ########`);
@@ -275,9 +287,9 @@ async function main() {
   // Per-persona MEDIAN of the 3 run-scores (robust to a single off run), + overall from medians.
   const median = (a: number[]) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
   let medSum = 0; const nPersona = Object.keys(perPersonaScores).length;
-  console.log(`\n  PER-PERSONA JUDGE MEDIAN (of ${RUNS} runs, out of 8):`);
-  for (const [id, scores] of Object.entries(perPersonaScores)) { const m = median(scores); medSum += m; console.log(`    ${id.padEnd(28)} median ${m}/8   runs=[${scores.join(",")}]`); }
-  console.log(`  OVERALL (sum of medians): ${medSum}/${nPersona * 8} = ${Math.round((medSum / (nPersona * 8)) * 100)}%`);
+  console.log(`\n  PER-PERSONA JUDGE MEDIAN (of ${RUNS} runs, out of ${CRIT_MAX}):`);
+  for (const [id, scores] of Object.entries(perPersonaScores)) { const m = median(scores); medSum += m; console.log(`    ${id.padEnd(28)} median ${m}/${CRIT_MAX}   runs=[${scores.join(",")}]`); }
+  console.log(`  OVERALL (sum of medians): ${medSum}/${nPersona * CRIT_MAX} = ${Math.round((medSum / (nPersona * CRIT_MAX)) * 100)}%`);
   console.log(`\n  PER-CRITERION FAILURE TABLE (out of ${RUNS * PERSONAS.length} persona-runs):`);
   console.log(`  criterion            fails  example`);
   for (const c of CRITERIA) console.log(`  ${c.padEnd(20)} ${String(critFail[c]).padEnd(5)}  ${critFail[c] ? critExample[c] : "—"}`);

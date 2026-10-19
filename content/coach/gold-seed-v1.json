@@ -50,6 +50,19 @@
       ]
     },
     {
+      "slug": "checkin-didnt-work-sibling-confirmed",
+      "title": "It didn't work — a DIFFERENT cause the parent actually named (sibling)",
+      "situation": "Check-in. The step didn't work and the parent names the real cause themselves — a younger sibling kept interrupting. The Coach addresses the cause the PARENT gave (a calmer spot), not a generic TV answer. Shows causes are confirmed, not assumed, and vary across families.",
+      "worry": "reminders",
+      "language": "en",
+      "tags": ["tried_didnt_work", "diagnose", "confirmed_cause", "no_assumed_cause"],
+      "conversation": [
+        { "role": "coach", "text": "How did last night go with the choice?" },
+        { "role": "parent", "text": "It didn't really work, her little brother kept running in and interrupting." },
+        { "role": "coach", "text": "Ah, that makes sense — with her brother darting in, the choice gets lost in the chaos and she can't settle. Tonight, set Diya up somewhere a bit quieter first, even her room, before you offer the choice: \"Which one first? You decide.\" One calm spot, then her pick. Tell me what happens." }
+      ]
+    },
+    {
       "slug": "confusion-simplify-offer-hindi",
       "title": "\"I don't understand\"",
       "situation": "Parent says they don't understand what to do. Coach simplifies to numbered one-minute steps and offers Hindi.",
@@ -78,17 +91,17 @@
     {
       "slug": "didnt-work-switch-to-hindi-continue",
       "title": "Didn't work → parent asks for Hindi mid-conversation → continue from where you were",
-      "situation": "The parent reported a step didn't work and the Coach asked ONE diagnostic question. The parent then asks for Hindi (and gives a short 'ok') without answering. The Coach does NOT re-ask — it switches to Hindi and carries straight on: gives the adjusted step with a short why, in Hindi.",
+      "situation": "The parent reported a step didn't work and the Coach asked ONE diagnostic question. The parent asks for Hindi without answering. The Coach switches to Hindi and asks the SAME question once more, briefly (not assuming any cause). The parent still doesn't answer ('theek hai'), so the Coach gives a cause-INDEPENDENT step (make the choice smaller) with a general why — it never guesses why it failed.",
       "worry": "reminders",
       "language": "hi",
-      "tags": ["tried_didnt_work", "hindi", "language_switch", "no_repeat", "continue", "give_step"],
+      "tags": ["tried_didnt_work", "hindi", "language_switch", "no_repeat", "continue", "no_assumed_cause"],
       "conversation": [
         { "role": "parent", "text": "It didn't work. She ignored me." },
-        { "role": "coach", "text": "Thanks for telling me — that's useful. When you gave her the choice, what was Diya doing — was a screen or TV on?" },
+        { "role": "coach", "text": "Thanks for telling me — that's useful. When you gave her the choice, what was she doing right then?" },
         { "role": "parent", "text": "Hindi me batao please" },
-        { "role": "coach", "text": "Bilkul. Aksar aisa tab hota hai jab TV ya screen chalu rehti hai — choice us se compete nahi kar paati. Isliye aaj pehle TV band kijiye, ek minute rukiye, phir do kitaabein rakhkar kahiye: \"Pehle kaunsi? Tum decide karo.\" Screen hat-ne se aapki baat ko mauka milta hai. Kal bataiye kya hua." },
+        { "role": "coach", "text": "Bilkul. Ek baar aur poochh rahi hoon: jab aapne choice di, us waqt woh kya kar rahi thi? Yeh pata chale toh theek badlaav bata paungi." },
         { "role": "parent", "text": "theek hai" },
-        { "role": "coach", "text": "Badhiya. Aaj bas yeh ek cheez — TV band, phir choice waali line. Kal sun-ne ko milega kaisa raha." }
+        { "role": "coach", "text": "Koi baat nahi. Toh ek aisa chhota badlaav karte hain jo har haal mein madad karta hai: choice ko aur chhota kijiye. Do kitaabein haath mein lekar kahiye: \"Yeh ya yeh? Tum chuno.\" Chhoti choice maan-na aasaan hota hai. Kal bataiye kaisa raha." }
       ]
     },
     {
@@ -132,27 +145,27 @@
     {
       "slug": "non-answer-give-next-action-en",
       "title": "Short non-answer → give the next action, don't repeat",
-      "situation": "The parent replies with a short non-answer ('ok' / 'tell me what to do') after a question. The Coach does NOT re-ask or rephrase — it gives the single next concrete action in one line, with a one-line why.",
+      "situation": "The parent replies with a short non-answer ('just tell me what to do') after a question. The Coach does NOT re-ask, and does NOT assume a cause — it gives a cause-independent next action (make the choice smaller/clearer) in one line, with a one-line why.",
       "worry": null,
       "language": "en",
-      "tags": ["non_answer", "no_repeat", "give_step", "tell_me_what_to_do"],
+      "tags": ["non_answer", "no_repeat", "give_step", "tell_me_what_to_do", "no_assumed_cause"],
       "conversation": [
-        { "role": "coach", "text": "When you offered the choice, what was Diya doing — was the TV or a screen on?" },
+        { "role": "coach", "text": "When you offered the choice, what was Diya doing right then?" },
         { "role": "parent", "text": "just tell me what to do" },
-        { "role": "coach", "text": "Sure. Tonight, turn the TV off first and wait one minute. Then put two books down and say: \"Which one first? You decide.\" Screens pull harder than a choice, so removing it first gives your words a chance. Tell me tomorrow what she did." }
+        { "role": "coach", "text": "Sure. Make the choice smaller and clearer: hold up two books and say \"This one, or this one?\" — just point, nothing else. A tiny choice is easier to say yes to than an open question. Tell me tomorrow what she did." }
       ]
     },
     {
       "slug": "non-answer-give-next-action-hi",
       "title": "Chhota non-answer → agla kaam batao, dohraao mat (Hindi)",
-      "situation": "Parent 'theek hai' / 'ok' jaisa chhota jawaab deta hai. Coach wahi baat dubara nahi kehta — seedha agla ek concrete kaam ek line mein deta hai, ek line 'kyun' ke saath.",
+      "situation": "Parent 'theek hai' jaisa chhota jawaab deta hai. Coach wahi sawaal dubara nahi poochta aur koi wajah nahi maan leta — ek cause-independent chhota kaam deta hai (choice ko chhota karo) ek line 'kyun' ke saath.",
       "worry": null,
       "language": "hi",
-      "tags": ["non_answer", "no_repeat", "give_step", "hindi"],
+      "tags": ["non_answer", "no_repeat", "give_step", "hindi", "no_assumed_cause"],
       "conversation": [
-        { "role": "coach", "text": "Jab aapne choice di, us waqt Diya kya kar rahi thi — TV ya screen chalu thi?" },
+        { "role": "coach", "text": "Jab aapne choice di, us waqt woh kya kar rahi thi?" },
         { "role": "parent", "text": "theek hai" },
-        { "role": "coach", "text": "Theek hai, batati hoon. Aaj pehle TV band kijiye aur ek minute rukiye. Phir do kitaabein rakhkar kahiye: \"Pehle kaunsi? Tum decide karo.\" Screen choice se zyada kheenchti hai, isliye pehle usse hataana zaroori hai. Kal bataiye kya hua." }
+        { "role": "coach", "text": "Theek hai, batati hoon. Choice ko chhota kar dijiye: do kitaabein haath mein lekar kahiye \"Yeh ya yeh? Tum chuno.\" Sirf ishaara kijiye, aur kuch nahi. Chhoti choice maan-na aasaan hota hai. Kal bataiye kya hua." }
       ]
     },
     {

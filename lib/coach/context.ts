@@ -94,11 +94,18 @@ function conversationSoFar(history: CoachTurn[], parent: string): string {
     }
   }
   const uniqQs = [...new Set(coachQs)].slice(-5);
-  if (!parentMsgs.length && !uniqQs.length) return "";
+  // Exact quoted lines already suggested (so the Coach doesn't repeat a step/quote verbatim).
+  const quoted: string[] = [];
+  for (const h of history.filter((h) => h.role === "assistant")) {
+    for (const m of h.content.matchAll(/[“"]([^”"]{6,})[”"]/g)) quoted.push(m[1].trim());
+  }
+  const uniqQuoted = [...new Set(quoted)].slice(-4);
+  if (!parentMsgs.length && !uniqQs.length && !uniqQuoted.length) return "";
   const out = ["\n\n## This conversation so far (carry it forward; NEVER re-ask or start over)"];
   if (parentMsgs.length) out.push(`${parent} has told you (oldest first): ${parentMsgs.map((m) => `"${m.slice(0, 140)}"`).join("  |  ")}`);
   if (uniqQs.length) out.push(`You have ALREADY asked these — do NOT ask any of them again: ${uniqQs.map((q) => `"${q}"`).join("  ")}`);
-  out.push(`If something you asked is still unanswered after one try — including when ${parent} only switches language or says "ok"/"theek hai" — stop asking and give the single next step with its why, in ${parent}'s language.`);
+  if (uniqQuoted.length) out.push(`Lines/steps you ALREADY gave — do NOT repeat these words; refer back briefly if the step still stands: ${uniqQuoted.map((q) => `"${q}"`).join("  ")}`);
+  out.push(`If something you asked is still unanswered after one try — including when ${parent} only switches language or says "ok"/"theek hai" — stop asking and give the single next step with its why, in ${parent}'s language. Do not assume a cause ${parent} didn't state.`);
   return out.join("\n");
 }
 

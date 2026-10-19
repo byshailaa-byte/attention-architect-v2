@@ -3,7 +3,7 @@
 Branch: `coach-quality` (dev/preview only — nothing merged or deployed to prod).
 
 ## Try it (preview on dev DB)
-Preview: https://attention-architect-v2-3muyto4kc-the-human-decision-s-projects.vercel.app  (commit 392b32b)
+Preview: https://attention-architect-v2-a9xo9ivcr-the-human-decision-s-projects.vercel.app  (commit 814100a)
 Coach (Diya / The Captain / reminders), start at Day 0:
 `/admin/coach-preview/fd5d006a-8905-45b3-ad58-2383bc31ca06?day=0`
 - The Coach **opens the chat itself** (speak-first). Type as the parent; replies **stream**.
@@ -45,7 +45,31 @@ are no longer in the live path (kept only for the legacy test suite; to be delet
 Cross-parent "what works" stats are **OFF in production** (env `COACH_CROSS_PARENT_STATS` unset) and
 stay off until you approve the policy line above. Cohorts smaller than 5 children are never surfaced.
 
-## Results (dev, latest run — with the no-repeat fix)
+## Results (dev, FINAL round — overfitting + outcome reliability + language polish)
+- **Tool-call checks: 33/33 (100%)** — the deterministic `record_outcome` backstop (records the
+  parent's own `didn't-work`/`missed` words if the model misses it; never infers a positive, so it
+  can't mis-fire on venting like "she **started** crying") hits the 33/33 target.
+- **Judge: mean 90% (194/216), median 90% (65/72)** — up from 84–86%. **Paid JSON-path judge: 85%.**
+- Per-criterion fails (24 persona-runs): listened_first 2, explained_why 3, one_plain_step 5,
+  followed_up 2, **no_repeats 7**, no_idioms 1, right_language 0, correct_escalation 0,
+  **no_unconfirmed_cause 2** (new check; 7→4→2 after calibration + gold fixes).
+- **Overfitting fix (item 1):** method rule "never act on a cause the parent hasn't confirmed; if a
+  question is unanswered, ask once more briefly in their language OR give a cause-independent step";
+  gold block relabelled "style reference ONLY — OTHER families; never reuse their facts/causes/numbers";
+  gold set varied (TV now only in the one example where the parent confirms it; added a sibling-cause
+  example); new `no_unconfirmed_cause` eval check (calibrated: child's known temperament is allowed;
+  only an invented *situational* cause fails).
+- **no_repeats (item 3):** frustrated_vent (the verbatim-step-repeat case) now **9/9** via a
+  "lines/steps you already gave — don't repeat verbatim" context block. Residual no_repeats=7 is the
+  judge flagging the *single brief re-ask after a language switch* that item 1 explicitly allows;
+  **deterministic lexical repeats stay 0**.
+- **Language polish (item 4):** no_idioms ~0, right_language 0; no emoji unless the parent uses them;
+  one consistent Hindi child-form ("woh/usne"); spelling ("sunne").
+- **Fixed didnt_work→Hindi transcript:** re-asks once briefly in Hindi → on "theek hai" gives a
+  cause-independent step — *"Iss baar setup thoda alag karte hain… pehle uske paas jaiye, eye contact…
+  «Diya, maths pehle karogi ya English?» … Diya ko lead karne do."*
+
+## Results (prior round — the no-repeat fix)
 **Scenario eval, 3 guarded runs through the production path** (`coach-conversational-eval.txt`):
 - Tool-call checks: **33/33 (100%)** — right tool, right value, ranges never rounded (4–5 kept as 4–5),
   no outcome on venting/what-if, urgent flag on medical, language switch on Hindi.
