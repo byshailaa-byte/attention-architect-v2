@@ -90,8 +90,9 @@ an `origin='opener'` row — the thing phase_72 fixed), so exercise both:
 - **Code bad, data fine:** `vercel rollback` (or `request_rollback`) to the previous production
   deployment. The additive migrations are backward-compatible, so the old code runs fine with them —
   no DB rollback needed.
-- **A migration is the problem:** run its down-migration in reverse order (phase_71 → 70 → 69 → 68)
-  with `psql "$DATABASE_URL_PROD" -f migrations/down/phase_XX_down.sql`. phase_68/69/70 downs are
+- **A migration is the problem:** run its down-migration in reverse order (phase_72 → 71 → 70 → 69 → 68)
+  with `psql "$DATABASE_URL_PROD" -f migrations/down/phase_XX_down.sql`. phase_72 down restores the
+  origin CHECK (opener→llm). phase_68/69/70 downs are
   DESTRUCTIVE (drop tables) — only if abandoning the feature; export `gold_examples` approved rows and
   any open `coach_call_request` first. phase_71 down converts `not_tried`→`missed` and drops `trigger`.
 - **Backfill wrong:** `parent_memory` is derived; `DELETE FROM parent_memory` (prod) and re-run, or

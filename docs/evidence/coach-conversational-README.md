@@ -3,7 +3,7 @@
 Branch: `coach-quality` (dev/preview only — nothing merged or deployed to prod).
 
 ## Try it (preview on dev DB)
-Preview: https://attention-architect-v2-io5v9cjwp-the-human-decision-s-projects.vercel.app  (commit cbdedde)
+Preview: https://attention-architect-v2-ew8qxpoqe-the-human-decision-s-projects.vercel.app  (commit 039504d)
 Coach (Diya / The Captain / reminders), start at Day 0:
 `/admin/coach-preview/fd5d006a-8905-45b3-ad58-2383bc31ca06?day=0`
 - The Coach **opens the chat itself** (speak-first). Type as the parent; replies **stream**.
