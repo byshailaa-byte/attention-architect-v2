@@ -11,8 +11,10 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { anthropic, coachReplyModel } from "@/lib/coach/client";
 import { costPaise } from "@/lib/lms/coach/llm";
 import { runCoachTool, type ToolSubject, type ToolCallRecord } from "@/lib/coach/tools";
+import { hindiReplyIssues } from "@/lib/coach/hindi-check";
 import type { CoachTurn } from "@/lib/lms/coach/llm";
 import type { Language } from "@/lib/coach/method";
+import type { Gender } from "@/lib/report/pronouns";
 
 const MAX_ROUNDS = 3;
 const DEFAULT_MAX_TOKENS = 520;
@@ -74,6 +76,7 @@ export async function runCoachTurn(opts: {
   onDelta?: (text: string) => void;
   previousReply?: string;   // the Coach's last reply (for the no-repeat backstop)
   guardRepeat?: boolean;    // true on short non-answer turns → buffer + backstop
+  hindiGuard?: { childGender: Gender; parentUsedTu: boolean; parentUsedEmoji: boolean }; // Hindi-language backstop
 }): Promise<RunResult> {
   const t0 = Date.now();
   const model = opts.model ?? coachReplyModel();
@@ -118,14 +121,24 @@ export async function runCoachTurn(opts: {
 
   try {
     await withTimeout(TURN_TIMEOUT_MS, (async () => {
-      if (opts.guardRepeat && opts.previousReply) {
-        // Buffer (don't stream live), then run the no-repeat backstop.
+      const hindiOn = !!opts.hindiGuard && (opts.language === "hi" || opts.language === "hinglish");
+      const needBuffer = (opts.guardRepeat && !!opts.previousReply) || hindiOn;
+      if (needBuffer) {
+        // Buffer (don't stream live), then run the no-repeat + Hindi-language backstops.
         let text = await generate(baseMessages);
-        repeatGuard = "ok";
-        if (tooSimilar(text, opts.previousReply)) {
+        if (opts.guardRepeat && opts.previousReply && tooSimilar(text, opts.previousReply)) {
           const retry = await generate([...baseMessages, { role: "assistant", content: text }, { role: "user", content: NUDGE }]);
-          if (tooSimilar(retry, opts.previousReply)) { text = fallbackStepReply(opts.language); repeatGuard = "fallback"; }
-          else { text = retry; repeatGuard = "regenerated"; }
+          const stillDup = tooSimilar(retry, opts.previousReply);
+          text = stillDup ? fallbackStepReply(opts.language) : retry;
+          repeatGuard = stillDup ? "fallback" : "regenerated";
+        }
+        if (hindiOn) {
+          const issues = hindiReplyIssues(text, opts.hindiGuard!);
+          if (issues.length) {
+            const nudge = `(Your Hindi reply had problems: ${issues.join("; ")}. Rewrite the SAME message fixing ONLY these — use aap-imperatives for the parent (kahiye/kijiye/baithiye), keep "tum" in the child's quoted words, never gender yourself, use the child's correct gender verbs, no emoji, no English words, spell "use".)`;
+            const retry = await generate([...baseMessages, { role: "assistant", content: text }, { role: "user", content: nudge }]);
+            if (hindiReplyIssues(retry, opts.hindiGuard!).length < issues.length) text = retry; // keep the cleaner attempt
+          }
         }
         fullText = text;
         if (opts.onDelta && text) emitChunked(text, opts.onDelta); // simulate streaming for the client

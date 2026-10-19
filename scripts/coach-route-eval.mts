@@ -5,6 +5,8 @@
 // Hits the admin preview endpoints (admin Basic Auth) against the sandbox demo trial on the dev DB.
 import * as dotenv from "dotenv";
 import path from "node:path";
+import { hindiReplyIssues } from "../lib/coach/hindi-check.ts";
+import { detectLanguage } from "../lib/coach/lang.ts";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 if (!process.env.COACH_ROUTE_EVAL) { console.log("set COACH_ROUTE_EVAL=1 (and run a dev server) to run the route eval"); process.exit(0); }
@@ -15,13 +17,16 @@ const AUTH = "Basic " + Buffer.from("x:" + PW).toString("base64");
 const TRIAL = "fd5d006a-8905-45b3-ad58-2383bc31ca06";
 const MSG = `${BASE}/api/admin/coach-preview/message`;
 
-type Persona = { id: string; day: number; turns: string[] };
+type Persona = { id: string; day: number; turns: string[]; hindi?: boolean; show?: boolean };
 const PERSONAS: Persona[] = [
   { id: "baseline", day: 0, turns: ["I remind her once and she starts but then argues about everything", "Maybe 4 or 5 times", "ok will try tonight"] },
-  { id: "didnt_work_hindi", day: 2, turns: ["It didn't work. She ignored me.", "Hindi me batao please", "theek hai"] },
-  { id: "not_tried", day: 2, turns: ["Kal time hi nahi mila, bahut kaam tha", "theek hai"] },
+  { id: "diya_hindi", day: 2, turns: ["It didn't work. She ignored me.", "Hindi me batao please", "theek hai"], hindi: true, show: true },
+  { id: "not_tried", day: 2, turns: ["Kal time hi nahi mila, bahut kaam tha", "theek hai"], hindi: true },
   { id: "worked_twice", day: 3, turns: ["Sitting beside her has worked two days running, she starts calmly now", "yes that's right", "ok will do"] },
+  // Father writing in Hindi about Diya (a girl) — tests no-parent-gender-assumption + feminine child verbs.
+  { id: "father_hindi", day: 2, turns: ["Main Diya ka papa. Woh likhne se bachti hai, kal usne copy chhupa di thi.", "pata nahi kyun", "accha batao"], hindi: true, show: true },
 ];
+const girlGuard = { childGender: "girl" as const, parentUsedTu: false, parentUsedEmoji: false };
 
 let failures = 0;
 const fail = (persona: string, what: string) => { failures++; console.log(`  ❌ ${persona}: ${what}`); };
@@ -43,9 +48,9 @@ async function postMessage(day: number, message: string) {
   const ct = r.headers.get("content-type") ?? "";
   if (!ct.includes("ndjson")) { const j = await r.json().catch(() => ({})); return { status: r.status, ct, deltas: 0, done: null as any, json: j }; }
   const text = await r.text();
-  let deltas = 0, done: any = null;
-  for (const line of text.split("\n")) { if (!line.trim()) continue; try { const o = JSON.parse(line); if (typeof o.delta === "string") deltas++; if (o.done) done = o.done; } catch { /* skip */ } }
-  return { status: r.status, ct, deltas, done, json: null };
+  let deltas = 0, done: any = null, reply = "";
+  for (const line of text.split("\n")) { if (!line.trim()) continue; try { const o = JSON.parse(line); if (typeof o.delta === "string") { deltas++; reply += o.delta; } if (o.done) done = o.done; } catch { /* skip */ } }
+  return { status: r.status, ct, deltas, done, reply, json: null };
 }
 
 async function main() {
@@ -63,11 +68,19 @@ async function main() {
     // Message POSTs (streamed)
     for (const m of p.turns) {
       const res = await postMessage(p.day, m);
-      if (res.status !== 200) fail(p.id, `POST "${m.slice(0, 24)}…" HTTP ${res.status}${res.json?.error ? " {error:" + res.json.error + "}" : ""}`);
-      else if (!res.ct.includes("ndjson")) fail(p.id, `POST not streamed (ct=${res.ct}) json=${JSON.stringify(res.json)}`);
-      else if (res.deltas < 1) fail(p.id, `POST streamed 0 deltas`);
-      else if (!res.done || res.done.errored) fail(p.id, `POST done missing/errored (${JSON.stringify(res.done)})`);
-      else console.log(`  ✓ POST "${m.slice(0, 24)}…" 200 ndjson ${res.deltas} deltas, done ok (msg ${String(res.done.messageId).slice(0, 8)})`);
+      if (res.status !== 200) { fail(p.id, `POST "${m.slice(0, 24)}…" HTTP ${res.status}${res.json?.error ? " {error:" + res.json.error + "}" : ""}`); continue; }
+      if (!res.ct.includes("ndjson")) { fail(p.id, `POST not streamed (ct=${res.ct}) json=${JSON.stringify(res.json)}`); continue; }
+      if (res.deltas < 1) { fail(p.id, `POST streamed 0 deltas`); continue; }
+      if (!res.done || res.done.errored) { fail(p.id, `POST done missing/errored (${JSON.stringify(res.done)})`); continue; }
+      // Deterministic Hindi-language check on every Hindi/Hinglish reply.
+      let hindiNote = "";
+      if (p.hindi || detectLanguage(res.reply) !== "en") {
+        const issues = hindiReplyIssues(res.reply, girlGuard);
+        if (issues.length) { fail(p.id, `HINDI issues in reply to "${m.slice(0, 20)}…": ${issues.join(" | ")}`); hindiNote = " ❌hindi"; }
+        else hindiNote = " ✓hindi-clean";
+      }
+      console.log(`  ✓ POST "${m.slice(0, 24)}…" 200 ndjson ${res.deltas} deltas, done ok${hindiNote} (msg ${String(res.done.messageId).slice(0, 8)})`);
+      if (p.show) console.log(`      ↳ Parent: ${m}\n      ↳ Coach:  ${res.reply.replace(/\n+/g, " ⏎ ")}`);
     }
   }
   await resetTrial();

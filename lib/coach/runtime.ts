@@ -45,6 +45,15 @@ function repeatGuardFor(history: CoachTurn[], userMessage: string): { previousRe
   return { previousReply, guardRepeat: isShortNonAnswer(userMessage) };
 }
 
+// Inputs for the engine's Hindi-language backstop: the child's gender (for verb agreement) + whether
+// the parent has ever used "tu" or an emoji (so the Coach may mirror them).
+function hindiGuardFor(subject: CoachSubjectInput, history: CoachTurn[], userMessage: string) {
+  const parentMsgs = [...history.filter((h) => h.role === "user").map((h) => h.content), userMessage];
+  const parentUsedTu = parentMsgs.some((m) => /(^|[^a-z])(tu|tujhe|tera|teri|tere)([^a-z]|$)/i.test(m));
+  const parentUsedEmoji = parentMsgs.some((m) => /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(m));
+  return { childGender: subject.childGender, parentUsedTu, parentUsedEmoji };
+}
+
 // ── Subject builders ───────────────────────────────────────────────────────────────
 export async function buildTrialSubject(trial: CoachTrial, userCtx: LmsUserContext, day: number): Promise<CoachSubjectInput> {
   const sql = getSql();
@@ -157,6 +166,7 @@ export async function jsonCoachTurn(args: PersistArgs): Promise<{ reply: string;
     system: args.ctx.system, history: args.ctx.history, userMessage: args.userMessage,
     tools: args.ctx.tools, toolSubject: args.ctx.toolSubject, language: args.ctx.language, model: args.model,
     ...repeatGuardFor(args.ctx.history, args.userMessage),
+    ...{ hindiGuard: hindiGuardFor(args.subject, args.ctx.history, args.userMessage) },
   });
   const messageId = await persistTurn(args.key, args.userMessage, res);
   await outcomeBackstop(args.key, args.subject, args.userMessage, res.toolCalls).catch(() => {});
@@ -187,6 +197,7 @@ export function streamCoachTurn(args: PersistArgs): Response {
           tools: args.ctx.tools, toolSubject: args.ctx.toolSubject, language: args.ctx.language,
           model: args.model, onDelta: (t) => send({ delta: t }),
           ...repeatGuardFor(args.ctx.history, args.userMessage),
+    ...{ hindiGuard: hindiGuardFor(args.subject, args.ctx.history, args.userMessage) },
         });
         // Persist parent + coach messages.
         const messageId = await persistTurn(args.key, args.userMessage, res);
