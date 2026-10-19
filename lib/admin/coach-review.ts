@@ -59,16 +59,35 @@ export async function rejectGold(id: string): Promise<void> {
   await sql`DELETE FROM gold_examples WHERE id=${id}::uuid AND status='pending'`;
 }
 
+// Strip identifying details before a real chat becomes a (shared) gold example: the child's and
+// parent's first names → neutral placeholders, and any email / phone-like number → a token. Gold
+// examples are retrieved into OTHER families' context, so they must never carry one family's details.
+function escapeRegex(s: string): string { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+export function scrubForGold(text: string, names: { childName?: string | null; parentName?: string | null }): string {
+  let t = text || "";
+  t = t.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "[email]");       // emails
+  t = t.replace(/\+?\d[\d\s-]{6,}\d/g, "[number]");            // phone-like runs (7+ digits; small counts like "4 or 5" are untouched)
+  const first = (n?: string | null) => (n ?? "").trim().split(/\s+/)[0];
+  const c = first(names.childName), p = first(names.parentName);
+  if (c && c.length >= 2) t = t.replace(new RegExp(`\\b${escapeRegex(c)}\\b`, "gi"), "the child");
+  if (p && p.length >= 2) t = t.replace(new RegExp(`\\b${escapeRegex(p)}\\b`, "gi"), "you");
+  return t;
+}
+
 // "Write a better reply" for a flagged coach message → a PENDING gold example (approved later).
+// All free text is PII-scrubbed here, so an unscrubbed row can never be written even if a caller forgets.
 export async function draftBetterReply(opts: {
   sourceMessageId: string; parentMessage: string; betterReply: string; situation: string; tags: string[]; createdBy: string;
+  childName?: string | null; parentName?: string | null;
 }): Promise<void> {
   const sql = getSql();
+  const scrub = (s: string) => scrubForGold(s, { childName: opts.childName, parentName: opts.parentName });
   const slug = `better-${opts.sourceMessageId.slice(0, 8)}-${Date.now().toString(36)}`;
-  const conversation = [{ role: "parent", text: opts.parentMessage }, { role: "coach", text: opts.betterReply }];
+  const situation = scrub(opts.situation);
+  const conversation = [{ role: "parent", text: scrub(opts.parentMessage) }, { role: "coach", text: scrub(opts.betterReply) }];
   await sql`
     INSERT INTO gold_examples (slug, title, situation, language, tags, conversation, status, source, source_message_id, created_by)
-    VALUES (${slug}, ${"Better reply (" + opts.situation.slice(0, 40) + ")"}, ${opts.situation}, 'en', ${opts.tags},
+    VALUES (${slug}, ${"Better reply (" + situation.slice(0, 40) + ")"}, ${situation}, 'en', ${opts.tags},
             ${JSON.stringify(conversation)}::jsonb, 'pending', 'admin', ${opts.sourceMessageId}::uuid, ${opts.createdBy})
   `;
 }

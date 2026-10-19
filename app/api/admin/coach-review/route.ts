@@ -43,10 +43,20 @@ export async function POST(req: NextRequest) {
               ORDER BY created_at DESC LIMIT 1
             `) as unknown as { content: string }[])[0]?.content ?? ""
           : "";
+        // Resolve this family's names so they can be scrubbed out of the (shared) gold example.
+        let childName: string | null = null, parentName: string | null = null;
+        if (m) {
+          const a = m.trial_id
+            ? (await sql`SELECT a.child_name, a.parent_name FROM coach_trials t JOIN assessments a ON a.session_id = t.session_id WHERE t.id = ${m.trial_id}::uuid LIMIT 1`)
+            : (await sql`SELECT a.child_name, a.parent_name FROM purchases p JOIN assessments a ON a.id = p.assessment_id WHERE p.user_id = ${m.user_id} AND p.status='paid' ORDER BY p.created_at DESC LIMIT 1`);
+          const row = (a as unknown as { child_name: string | null; parent_name: string | null }[])[0];
+          childName = row?.child_name ?? null; parentName = row?.parent_name ?? null;
+        }
         await draftBetterReply({
           sourceMessageId, parentMessage: prior, betterReply,
           situation: String(body.situation ?? "operator-improved reply"),
           tags: Array.isArray(body.tags) ? body.tags.map(String) : [], createdBy: by,
+          childName, parentName,
         });
         return NextResponse.json({ ok: true });
       }
