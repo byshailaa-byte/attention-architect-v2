@@ -131,6 +131,14 @@ export default function CoachScreen({
         </div>
         <div style={{ fontFamily: HEAD, fontSize: 24, fontWeight: 600 }}>Attention Coach</div>
         <div style={{ fontSize: 13, color: C.onNavy, lineHeight: 1.45 }}>Knows {data.child}&rsquo;s report and where you are in the plan. Ask anything about tonight&rsquo;s step or what happened today.</div>
+        {data.day >= 1 && (
+          <a
+            href={`/lms/week/${data.week}/day/${data.day}`}
+            style={{ alignSelf: "flex-start", fontSize: 13, fontWeight: 700, color: "#fff", textDecoration: "underline", textDecorationColor: C.amber, textUnderlineOffset: 3 }}
+          >
+            Read the step in detail
+          </a>
+        )}
       </header>
 
       <div ref={scrollRef} style={{ flex: 1, padding: "14px 16px 170px", display: "flex", flexDirection: "column", gap: 10, fontSize: 14.5, lineHeight: 1.5, overflowY: "auto" }}>

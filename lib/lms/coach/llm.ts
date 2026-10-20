@@ -40,9 +40,10 @@ export async function callCoach(
   messages: CoachTurn[],
   maxTokens = 400,
   model: string = COACH_REPLY_MODEL,
+  temperature?: number,
 ): Promise<CoachResult> {
   const t0 = Date.now();
-  const res = await client().messages.create({ model, max_tokens: maxTokens, system, messages });
+  const res = await client().messages.create({ model, max_tokens: maxTokens, system, messages, ...(temperature !== undefined ? { temperature } : {}) });
   const latencyMs = Date.now() - t0;
   const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
   const inputTokens = res.usage?.input_tokens ?? 0;

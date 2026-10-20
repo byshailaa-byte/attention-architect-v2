@@ -2,6 +2,7 @@
 // minimal "paused" state. This is intentionally basic: the final design is Stage 2. Design system
 // mirrors FlowShell / PlanV2 (cream ground, navy ink, gold accent, Newsreader headings).
 import type { JSX } from "react";
+import { ResultsPanel, type ResultsPanelProps } from "@/components/lms/coach/ResultsPanel";
 
 const C = {
   cream: "#FBF6EE", navy: "#1E3A5F", gold: "#E8A33D", goldSoft: "#F2C77E",
@@ -16,8 +17,9 @@ export function LockScreen(props: {
   calendlyUrl: string;
   baseline: string | null;
   days: { title: string }[];
+  results?: ResultsPanelProps;   // trial Day-4 results (what you logged + optional end-number)
 }): JSX.Element {
-  const { childName, reportHref, calendlyUrl, baseline, days } = props;
+  const { childName, reportHref, calendlyUrl, baseline, days, results } = props;
 
   return (
     <div style={{ minHeight: "100dvh", background: C.cream, display: "flex", justifyContent: "center", fontFamily: BODY, color: C.ink }}>
@@ -50,6 +52,13 @@ export function LockScreen(props: {
             </p>
           )}
         </div>
+
+        {/* Day-4 results — what you logged + optional "where are you now?" number (shown only if improved) */}
+        {results && (
+          <div style={{ marginBottom: 26 }}>
+            <ResultsPanel {...results} />
+          </div>
+        )}
 
         {/* Actions */}
         <a

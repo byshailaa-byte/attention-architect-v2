@@ -24,7 +24,11 @@ export async function loadCoachPageData(ctx: LmsUserContext): Promise<CoachPageD
   if ((cntRows[0]?.c ?? 0) === 0 && !currentImpersonation()) {
     const isDay1 = coachCtx.week === 1 && coachCtx.day === 1;
     const step = coachCtx.tonightStep.replace(/[.\s]+$/, "");
-    const opening = `Hi ${coachCtx.parent}. Tonight's step: ${step}. ${isDay1 ? "Ask me anything before you try it." : "How did yesterday go?"}`;
+    // Check-in first: on a returning day we ask what happened BEFORE introducing today's step
+    // (we never stack a new step on top of an un-reviewed one). Day 1 introduces the step.
+    const opening = isDay1
+      ? `Hi ${coachCtx.parent}. Tonight's step: ${step}. Ask me anything before you try it.`
+      : `Hi ${coachCtx.parent}. Before today's step — did you get to try yesterday's? What happened?`;
     await sql`INSERT INTO coach_messages (user_id, role, content, source, week, day)
               VALUES (${ctx.userId}, 'coach', ${opening}, 'coach', ${coachCtx.week}, ${coachCtx.day})`;
   }

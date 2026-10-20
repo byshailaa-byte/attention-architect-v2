@@ -5,6 +5,7 @@
 import { getSql } from "@/lib/db/client";
 import type { Gender } from "@/lib/report/pronouns";
 import { coachPronoun } from "@/lib/lms/coach/prompt";
+import { behaviourRules } from "@/lib/lms/coach/behaviour";
 import type { CoachTurn } from "@/lib/lms/coach/llm";
 
 export type TrialPromptVars = {
@@ -46,6 +47,8 @@ Our method:
 - Today's step (use it exactly, don't replace it): ${v.stepTitle}${v.stepBody ? ` — ${v.stepBody}` : ""}
 - What makes it hard for ${v.child}: ${v.hardPart}
 ${baselineLine}
+
+${behaviourRules(v.parent, v.child, pronoun)}
 
 What you do:
 - Help ${v.parent} with today's step and what happened today. If a step didn't work, change HOW it's offered (more choice, less talk, a different moment) — never get stricter. Keep the choice ${v.child}'s.

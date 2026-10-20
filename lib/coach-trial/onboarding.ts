@@ -112,7 +112,7 @@ export function baselineConfirm(worry: string, value: string, label: string): st
 
 // (d) Today's step card chrome (the step content comes from resolveTrialDays).
 export const STEP_CARD_EYEBROW = "TODAY'S STEP · 5 MIN";
-export const READ_FULL_STEP = "Read the full step (2 min)";
+export const READ_FULL_STEP = "Read the step in detail";
 
 // (e) Commit-to-a-time.
 export const COMMIT_QUESTION = "When will you try it today?";

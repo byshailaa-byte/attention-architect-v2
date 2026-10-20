@@ -1,5 +1,6 @@
 // The Coach system prompt (verbatim from spec, with placeholders filled) + the pronoun rule.
 import type { Gender } from "@/lib/report/pronouns";
+import { behaviourRules } from "./behaviour";
 
 export function coachPronoun(gender: Gender): "he" | "she" | "they" {
   if (gender === "boy") return "he";
@@ -23,7 +24,10 @@ export type PromptVars = {
   language: "en" | "hinglish" | "hi"; // decided in code from the parent's message (not by the model)
 };
 
-export function buildSystemPrompt(v: PromptVars): string {
+// opts.behaviour=false drops the shared quality-rules block — used ONLY by the eval harness to
+// produce "before" (legacy) transcripts. Production always uses the default (true).
+export function buildSystemPrompt(v: PromptVars, opts: { behaviour?: boolean } = {}): string {
+  const behaviourBlock = opts.behaviour === false ? "" : `\n${behaviourRules(v.parent, v.child, v.pronoun)}\n`;
   // Language is decided in code and injected as ONE explicit directive; the aap/verb rules apply
   // only to a Hindi/Hinglish thread.
   const langLine = v.language === "hi"
@@ -43,7 +47,7 @@ Our method:
 - What makes it hard for ${v.child}: ${v.hard_part}
 - Never suggest rewards, treats, bets, prizes or "something they want after" — even if the day's text implies it.
 Every suggestion must fit this method and this child. If a step didn't work, change HOW you offer it (more choice, less talk, a different moment) — never get stricter, and keep the choice ${v.child}'s (you offer options; ${v.child} picks — never decide it for ${v.pronoun}).
-
+${behaviourBlock}
 What you do:
 - Help ${v.parent} with tonight's step, what happened today, and how to adapt the step to ${v.child}.
 - Stay inside the plan: use ideas from week ${v.week} and earlier. Never teach techniques from later weeks; if asked, say that week opens soon and give one thing to do tonight.

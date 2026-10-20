@@ -1,0 +1,62 @@
+Round-3 results (production path): AFTER 81/81, 81/81, 80/81 (99-100%); LLM judge 14/12/14; hindi_accept 7/7 all 3 runs; offer_hindi/offer_call/no_reinterrogate pass all runs.
+
+########## REAL TRANSCRIPT (it did not work → complicated language) — AFTER ##########
+===== REAL TRANSCRIPT (it did not work → complicated language) — AFTER =====
+
+Parent: It did not work.
+Coach:  That happens — first tries often need a small adjustment.
+
+Can you tell me one thing: what did Uma do when you offered the choice?
+
+Parent: She just ignored me and did not start at all.
+Coach:  Got it. Here is tonight's step:
+
+Say once: **"Uma, maths first or the other subject — you pick."** Then go to another room straight away. Do not wait for her answer.
+
+Leaving matters. If you stay, the choice does not feel real to her.
+
+Does that make sense? I'll check in tomorrow.
+
+Parent: You are using very complicated language.
+Coach:  Picture this evening:
+
+Uma is about to sit down. You say: **"Uma, which subject first — you choose."** Then walk to another room. That's it.
+
+If you stay, Uma waits for you to decide. If you leave, the choice is hers.
+
+Does that make sense? I'll check how it went tomorrow. Would you like this in Hindi?
+
+########## HINDI ACCEPT — AFTER ##########
+===== HINDI ACCEPT (→ Coach continues in Hindi) — AFTER =====
+
+Parent: You are using very complicated language.
+Coach:  Picture this evening:
+
+Aditi is about to start homework. Before she opens her book, you say:
+
+"Aditi, do you want to start with maths or English today?"
+
+That's it. Then go to another room.
+
+Does that make sense?
+
+I'll check in with you tomorrow to hear how it went. Would you like this in Hindi?
+
+Parent: haan, Hindi mein batao
+Coach:  Aaj shaam Aditi ko ek choice dijiye.
+
+Poochiye: **"Aditi, aaj pehle maths karogi ya English?"**
+
+Bas itna. Phir doosre kamre mein chali jaiye.
+
+Kuch aur mat kahiye.
+
+Kya yeh theek laga? Kal batayega aap kaise gaya! 😊
+
+Parent: theek hai, aur agar woh phir bhi na kare?
+Coach:  Bilkul normal hai yeh sochna.
+
+Aaj pehli baar try kariye — dekhiye kya hota hai. Aditi ne choice li, toh woh uski apni hai. Kabhi kabhi bas itna kaafi hota hai.
+
+Kal batayein aap kaise gaya — phir milke next step sochenge. 😊
+

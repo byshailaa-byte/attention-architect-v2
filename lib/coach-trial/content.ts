@@ -73,17 +73,18 @@ export async function resolveTrialDays(opts: {
   // Day 1 — the parent's real report card-4 (grant is blocked when this is null, so a real trial
   // always has it; the fallback card is defensive only).
   const card4 = await readTrialCard4(sql, opts.sessionId).catch(() => null);
-  const reportHref = `/report/${opts.sessionId}?report=v2&card=4`;
+  // "Read the step in detail" opens the trial-safe step page for THIS day (not the report, not the
+  // paid LMS library — trial parents stay gated out of the rest of /lms).
   cards.push(card4
     ? {
         trialDay: 1, lmsDay: null, source: "report",
         title: card4.title, instead: card4.instead, say: card4.say, after: card4.after,
-        steps: card4.steps, fullHref: reportHref,
+        steps: card4.steps, fullHref: `/coach/step/1`,
       }
     : {
         trialDay: 1, lmsDay: null, source: "report", title: CARD4_HEADLINE,
         say: "Try one small change to how tonight starts, and notice what happens.",
-        steps: [], fullHref: reportHref,
+        steps: [], fullHref: `/coach/step/1`,
       });
 
   // Days 2–4 — from LMS Week 1.
@@ -97,7 +98,7 @@ export async function resolveTrialDays(opts: {
     cards.push({
       trialDay, lmsDay, source: "lms",
       title, body,
-      fullHref: `/lms`, // library (existing LMS page)
+      fullHref: `/coach/step/${trialDay}`, // trial-safe step detail page (NOT the gated LMS library)
     });
   }
   return cards;

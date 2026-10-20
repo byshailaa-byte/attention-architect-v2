@@ -1,0 +1,170 @@
+# Conversational Attention Coach — build evidence
+
+Branch: `coach-quality` (dev/preview only — nothing merged or deployed to prod).
+
+## Try it (preview on dev DB)
+Preview: https://attention-architect-v2-ew8qxpoqe-the-human-decision-s-projects.vercel.app  (commit 039504d)
+Coach (Diya / The Captain / reminders), start at Day 0:
+`/admin/coach-preview/fd5d006a-8905-45b3-ad58-2383bc31ca06?day=0`
+- The Coach **opens the chat itself** (speak-first). Type as the parent; replies **stream**.
+- Use the day switcher (`?day=1..4`) — on a later day the Coach asks how the last step went first.
+- **Reset** (admin bar) wipes the transcript + all conversational state → fresh Day 0.
+- Weekly review: `/admin/coach-review`.
+
+## FINAL ROUND — principles + data model (method A1–A10, tools B, gold C, evals D, merge plan E)
+Method now encodes (plain words): trust order (safety > parent-now > recent outcomes/memory > assessment
+> general advice; an old assessment never overrides today); **can't vs won't** (find WHY a child stopped
+— hard / boring / didn't-know / upset — before a step; didn't-know → do the first bit together, NOT a
+persistence step); every step ends with ONE "what to notice"; **hand it back gradually** after a step
+works twice; praise the comeback; change ONE thing at a time; a never-suggest list (no screen-as-reward,
+no "you always give up", no finishing-at-any-cost, no pushing through distress); honest progress (say
+what changed, never claim the plan caused it); escalate gently (give-up across settings / strong
+distress / school affected → teacher or professional + flag_for_call normal); language (no parent-gender
+assumption → neutral Hindi phrasing, aap register, consistent child form, no English verbs in Hindi, no
+emoji). Data: `record_outcome` gains **not_tried** (+ a nullable **trigger**); the deterministic backstop
+tags rows `source='backstop'` vs `'model'` and now also covers positives (from the parent's words,
+blocked on venting); what-works stats exclude not_tried + backstop rows (and stay OFF in prod). Gold:
+5 new varied fictional families (no TV/two-books; 2 in Hindi/Hinglish, aap + no parent-gender). Migration
+**phase_71** (not_tried value + trigger col) with a down-migration; downs written for 68/69/70 too.
+Merge plan: **`docs/coach-merge-plan.md`** (write-only).
+
+### Results (dev, final round — 14 personas × 3 runs × trial+paid, judge temp 0, per-persona median)
+- **Tool-call checks (trial): 37/42.** Judge **median: trial 89% / paid 88%** (mean 88% / 86%).
+- New behavioural checks all strong: **no_unconfirmed_cause 0 fails**, parent_register_consistent 12/12,
+  no_gender_assumption 12/12, no_screen_reward 42/42, what_to_notice_present 38/39, hand_back_offered 3/3,
+  not_tried_recorded 3/3. no_idioms 3, right_language 0, correct_escalation 0.
+- **Model-missed positives:** the model recorded a positive outcome on only **1/3** worked_twice runs
+  (missed 2) — so the positive backstop IS now on (from the parent's own words, blocked on venting); the
+  outcome still lands via `source='backstop'`, kept separable in stats.
+- **no_repeats 16 (trial):** concentrated in the didnt_work→Hindi *sanctioned single re-ask* and a couple
+  of edge non-answers ("accha batao" not yet in the non-answer list); **deterministic lexical repeats 0**.
+- Residual judge misses are mostly: the didnt_work→Hindi re-ask (you allowed one brief re-ask),
+  the `unprompted_hindi`/`bored` edges, a once-off model choosing "missed" vs "not_tried", and an
+  eval-fixture name mismatch (a persona says "Aarav" while the sandbox child is Diya — the Coach
+  correctly flagged it, the judge penalised it). Trial and paid track within ~1%.
+
+## What changed
+The Coach is now **fully conversational**: no scripted onboarding, no fixed step cards, no tap-chips,
+no regex regen-guard loop. One well-fed context + the coaching method + tools the model calls on
+purpose. Scripted modules (`lib/lms/coach/guards.ts`, `behaviour.ts`, onboarding chips, step cards)
+are no longer in the live path (kept only for the legacy test suite; to be deleted with the eval swap).
+
+## New pieces
+- **Method prompt** — `lib/coach/method.ts` (the 9-point method + hard rules + tool-use guidance + idiom list).
+- **Tools (no regex)** — `lib/coach/tools.ts`: `record_outcome`, `record_baseline`, `record_number`,
+  `set_language`, `flag_for_call(urgent|normal)`, `note_for_memory` — all server-validated.
+- **Context assembler** — `lib/coach/context.ts`: method + child profile + plain "why" (sanitised, no
+  internal terms) + parent_memory (read first) + tonight's step as SOURCE MATERIAL + 2–3 gold examples
+  + what-works stats (flag-gated OFF).
+- **Engine** — `lib/coach/engine.ts`: streaming tool-use loop + graceful fallback (the model speaks first).
+- **Numbers** — `lib/coach/numbers.ts`: ranges kept as [min,max] + parent's words; never rounded;
+  `rangeVerdict` judges progress honestly (overlap = "about the same").
+- **Memory** — `lib/coach/memory.ts`: per-parent (trial+paid), read-first, write-after-session, backfilled.
+- **Gold library + retrieval** — `lib/coach/gold.ts` + `content/coach/gold-seed-v1.json` (9 seeds).
+- **Thin final check** — `lib/coach/final-check.ts`: no promises, numbers match, language, no medical advice (logs; eval-gated).
+- **Admin weekly review** — `/admin/coach-review`: needs-a-call, flagged/low-rated replies, pending gold (approve / write-a-better-reply).
+
+## Migrations (additive, dev only; verify on ep-green-truth before prod)
+- `phase_68_parent_memory` — `parent_memory` (+ `language`) and `coach_tracked_number` (ranges).
+- `phase_69_gold_examples` — `gold_examples` (seeded with the 9 golds).
+- `phase_70_call_flags` — `coach_call_request` (Coach's own call queue; call_log is the sales list).
+
+## Privacy (draft line for the policy — before cross-parent learning goes live)
+> "To improve the Coach, we may use anonymised snippets of coaching conversations — with names,
+> contact details and anything that could identify your child removed. We never use your child's
+> information for advertising, and we never share it with ad platforms."
+
+Cross-parent "what works" stats are **OFF in production** (env `COACH_CROSS_PARENT_STATS` unset) and
+stay off until you approve the policy line above. Cohorts smaller than 5 children are never surfaced.
+
+## Results (dev, FINAL round — overfitting + outcome reliability + language polish)
+- **Tool-call checks: 33/33 (100%)** — the deterministic `record_outcome` backstop (records the
+  parent's own `didn't-work`/`missed` words if the model misses it; never infers a positive, so it
+  can't mis-fire on venting like "she **started** crying") hits the 33/33 target.
+- **Judge: mean 90% (194/216), median 90% (65/72)** — up from 84–86%. **Paid JSON-path judge: 85%.**
+- Per-criterion fails (24 persona-runs): listened_first 2, explained_why 3, one_plain_step 5,
+  followed_up 2, **no_repeats 7**, no_idioms 1, right_language 0, correct_escalation 0,
+  **no_unconfirmed_cause 2** (new check; 7→4→2 after calibration + gold fixes).
+- **Overfitting fix (item 1):** method rule "never act on a cause the parent hasn't confirmed; if a
+  question is unanswered, ask once more briefly in their language OR give a cause-independent step";
+  gold block relabelled "style reference ONLY — OTHER families; never reuse their facts/causes/numbers";
+  gold set varied (TV now only in the one example where the parent confirms it; added a sibling-cause
+  example); new `no_unconfirmed_cause` eval check (calibrated: child's known temperament is allowed;
+  only an invented *situational* cause fails).
+- **no_repeats (item 3):** frustrated_vent (the verbatim-step-repeat case) now **9/9** via a
+  "lines/steps you already gave — don't repeat verbatim" context block. Residual no_repeats=7 is the
+  judge flagging the *single brief re-ask after a language switch* that item 1 explicitly allows;
+  **deterministic lexical repeats stay 0**.
+- **Language polish (item 4):** no_idioms ~0, right_language 0; no emoji unless the parent uses them;
+  one consistent Hindi child-form ("woh/usne"); spelling ("sunne").
+- **Fixed didnt_work→Hindi transcript:** re-asks once briefly in Hindi → on "theek hai" gives a
+  cause-independent step — *"Iss baar setup thoda alag karte hain… pehle uske paas jaiye, eye contact…
+  «Diya, maths pehle karogi ya English?» … Diya ko lead karne do."*
+
+## Results (prior round — the no-repeat fix)
+**Scenario eval, 3 guarded runs through the production path** (`coach-conversational-eval.txt`):
+- Tool-call checks: **33/33 (100%)** — right tool, right value, ranges never rounded (4–5 kept as 4–5),
+  no outcome on venting/what-if, urgent flag on medical, language switch on Hindi.
+- LLM method judge (8 criteria × 24 persona-runs): **81% this run** (79–84% across passes — LLM-judge
+  run-to-run variance; tool-checks and the deterministic repeat count are the stable signals).
+- Personas: Diya baseline "1 reminder", didn't-work→Hindi, what-if, frustrated, medical, low-English,
+  unprompted Hindi, "I don't understand" (Parent-M). Every past failure included. Paid JSON path
+  (non-streaming engine + backstop) exercised separately — returns JSON, tools fire.
+
+### Language-switch "lost the thread" fix (root cause of the didnt_work→Hindi failures)
+Cause: the parent never answered the diagnostic question ("Hindi me batao" is a language request,
+"theek hai" is a non-answer), so the Coach kept re-asking instead of moving to the step + why.
+Verified: `set_language` only writes the language preference (no context reset/rebuild); history and
+parent_memory are never dropped; the method prompt is rebuilt in Hindi correctly. The gap was no
+explicit "a language switch changes only output language — continue where you were" rule and no
+server-side record of the live thread. Fix:
+- `method.ts`: a language request changes ONLY the output language — not a reason to restart or re-ask;
+  continue exactly where you were, give the step with its why in the new language.
+- `context.ts`: a "## This conversation so far" block (what the parent said + questions already asked)
+  so the Coach never re-asks; built from the same history the model sees (eval passes it too).
+- 1 gold example: didnt_work → parent asks Hindi mid-conversation → Coach continues in Hindi with the
+  adjusted step, no re-asking.
+- Judge made stable: temperature 0, fixed prompt, 3 runs, per-persona **median** reported.
+
+**Before → after:**
+- `didnt_work→Hindi` persona: median ~6/8 → **8/8** (runs 8,8,7). `explained_why` fails: **8 → 0**.
+- Overall judge: mean 81–84% → **88%** (169/192); **median 91%** (58/64). **Paid-path judge: 88%** (21/24).
+- Per-criterion fails (24 persona-runs) before→after: explained_why 8→0, one_plain_step 7→3,
+  followed_up 6→4, right_language 1→0; listened_first 7→7 and no_repeats 5→8 shifted to
+  frustrated_vent/parent_m (step reinforcement) — deterministic lexical repeats still 0.
+- Fixed transcript (run 1): Coach switches to Hindi and continues — *"Aksar jab screen chalu rehti hai,
+  Diya ke liye choice sunna mushkil… aaj pehle TV band kijiye… phir kahiye: «Diya, pehle kaunsi? Tum
+  batao.»"* — step + why, no re-ask.
+
+### no_repeats fix (method rule + 2 gold examples + engine backstop)
+- Method rule: on a short non-answer, never repeat/rephrase — give the single next action OR one NEW question.
+- 2 gold examples (EN + HI) for the non-answer situation (`content/coach/gold-seed-v1.json`).
+- Engine backstop: on non-answer turns, buffer → if the reply is lexically too similar to the previous
+  reply, regenerate once → else a short fallback line.
+- **Before vs after (deterministic lexical repeats): 0 → 0.** The Coach was never producing lexical
+  near-duplicates, so the backstop almost never fires (correct). The judge's residual `no_repeats`/
+  `listened_first` dings are **semantic** — re-asking the same question *reworded* after the parent
+  switches to Hindi (the didnt_work→Hindi persona) — plus some judge strictness. A lexical backstop
+  can't catch that; an LLM-based "did you just re-ask this?" check could, at ~1 extra call/turn. Flagged
+  for your call rather than silently added.
+
+**Model comparison** (`coach-model-compare.txt`, same judge + 4 hard scenarios):
+| model | quality | ₹/turn | ₹/trial parent (4 days) | ₹/paid parent/week |
+|---|---|---|---|---|
+| claude-sonnet-4-6 | 72% | ₹2.32 | ~₹56 | ~₹18.6 |
+| claude-opus-4-8 | 84% | ₹11.75 | ~₹282 | ~₹94 |
+
+(The compare's quick single-score judge is harsher than the 8-criteria judge; Sonnet scores 84% on the
+full judge above. Within the compare, same judge, Opus leads by 12 pts.)
+
+**Recommendation:** **Sonnet 4.6 for the free trial** — 84% on the full judge at ~₹56/trial parent is
+sustainable at volume; Opus at ~₹282/trial parent is hard to justify for a free funnel. Consider **Opus
+for paid parents** (far fewer, higher value; ~₹94/week is fine) or only for the opener + hard turns.
+
+**Cost caps (suggested):** trial ≈ ₹56/parent over 4 days on Sonnet (cap at 20 msgs/day already live);
+paid ≈ ₹19/week on Sonnet (cap 30/day already live). Alert if a single parent's daily Coach spend
+exceeds ₹30 (trial) / ₹50 (paid).
+
+## Evidence files
+- `coach-conversational-eval.txt` — scenario eval, 3 runs, transcripts + tool-call checks + judge.
+- `coach-model-compare.txt` — Sonnet 4.6 vs Opus 4.8: quality + ₹/turn + ₹/parent.

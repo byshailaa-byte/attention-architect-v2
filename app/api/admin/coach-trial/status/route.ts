@@ -7,6 +7,7 @@ import { getTrialByParentKey, getPreviewByParentKey } from "@/lib/coach-trial/tr
 import { getTrialAdminView } from "@/lib/coach-trial/admin";
 import { readTrialCard4 } from "@/lib/coach-trial/content";
 import { trialLinkFor } from "@/lib/coach-trial/link";
+import { readOutcomes, needsCall } from "@/lib/lms/coach/outcomes";
 
 assertBootGuards();
 
@@ -40,6 +41,11 @@ export async function GET(req: NextRequest) {
       : preview ? "previewed"
       : "not_previewed";
 
+    // Day-by-day outcome strip (from what the parent logged only) + the needs-a-call flag.
+    const outcomes = trial ? await readOutcomes("trial", trial.id) : [];
+    const outcomeStrip = outcomes.map((o) => ({ day: o.day, outcome: o.outcome, note: o.note }));
+    const call = needsCall(outcomes);
+
     return NextResponse.json({
       enabled: coachTrialEnabled(),
       paid,
@@ -52,6 +58,9 @@ export async function GET(req: NextRequest) {
       previewUrl: preview ? `/admin/coach-preview/${preview.id}` : null,
       approved: !!trial?.approved_at,
       chip,
+      outcomeStrip,
+      needsCall: call.flag,
+      needsCallReason: call.reason,
     });
   } catch (e) {
     console.error("[api/admin/coach-trial/status]", e);

@@ -32,6 +32,22 @@ export const BANNED_PATTERNS: { label: string; re: RegExp }[] = [
   { label: "testing you", re: /\btesting\s+you\b/i },
   { label: "consequence", re: /\bconsequences?\b/i },
   { label: "punish", re: /\bpunish\w*/i },
+  // ── Metaphors / jargon — plain language only (grade-6). A coach reply never literally needs these,
+  // so a whole-word ban is safe; the regen instruction asks for a concrete, literal rewrite. ──
+  { label: "locks into", re: /\block(?:s|ed|ing)?\s+(?:in|into)\b/i },
+  { label: "plant", re: /\bplant(?:s|ed|ing)?\b/i },        // "plant the idea/seed"
+  { label: "anchor", re: /\banchor(?:s|ed|ing)?\b/i },      // "anchor the habit"
+  { label: "lean into", re: /\blean(?:s|ed|ing)?\s+into\b/i },
+  { label: "audience", re: /\baudiences?\b/i },             // "give her an audience"
+  // ── Idioms a parent with basic English may not follow (from a real transcript). "call" meaning a
+  //    DECISION is banned; "call with our team" (a phone call) is NOT matched by these. ──
+  { label: "your/the call (decision)", re: /\b(your|his|her|their|one real|a real|the real)\s+call\b/i },
+  { label: "make the call", re: /\b(makes?|made|making)\s+the\s+call\b/i },
+  { label: "own it", re: /\bown\s+it\b/i },
+  { label: "switch on/off", re: /\bswitch(?:es|ed|ing)?\s+(?:on|off)\b/i },
+  { label: "step back", re: /\bstep(?:s|ped|ping)?\s+back\b/i },   // use "go to another room" instead
+  { label: "step in", re: /\bstep(?:s|ped|ping)?\s+in\b/i },       // use "help" instead
+  { label: "drive (metaphor)", re: /\bdrive\b/i },                 // "her drive" — not driveway
 ];
 
 // Returns the first banned label in `text`, or null. "treat" is allowed ONLY when the parent's own
@@ -113,6 +129,51 @@ export function wordCount(s: string): number {
   return (s || "").trim().split(/\s+/).filter(Boolean).length;
 }
 
+// Does the parent's message ask us to GIVE/explain the step? Those turns are a 5-part step delivery,
+// which is allowed to run longer than a normal conversational reply (the length cap is raised).
+const STEP_REQUEST_RE = /\b(step|what\s+(?:do|should|can)\s+i|what'?s\s+(?:today|the\s+step)|how\s+do\s+i\s+(?:start|begin|do)|walk\s+me\s+through|give\s+me\s+(?:the|today)|remind\s+me|explain\s+(?:it|the\s+step|again))\b/i;
+export function looksLikeStepRequest(message: string): boolean {
+  return STEP_REQUEST_RE.test(message || "");
+}
+// Normal conversational cap vs a 5-part step-delivery cap.
+export const REPLY_MAX_WORDS = 90;
+export const STEP_DELIVERY_MAX_WORDS = 160;
+
+// ── Check-in-first ──
+// Does the reply ask what happened (the required check-in question)? Shared by the guard AND the eval
+// scorer so they stay aligned.
+const ASKS_WHAT_HAPPENED_RE = /\b(did you (get (a )?(chance|to)|get to)? ?try|were you able to try|what happened|how did (it|that|yesterday|the step|last night) go|what got in the way|what stopped|did you get to it)\b/i;
+export function asksWhatHappened(text: string): boolean {
+  return ASKS_WHAT_HAPPENED_RE.test(text || "");
+}
+// Is the parent's message a check-in trigger — they're reporting on (or skipping) the last step:
+// missed / didn't work / partly worked / "I tried…". The caller also requires that the day's outcome
+// isn't recorded yet before forcing the check-in.
+const CHECKIN_TRIGGER_RE = /\b(missed|didn'?t (get|try|work|manage)|did not (work|try)|couldn'?t (try|get)|forgot|no time|skipped|it (didn'?t|did not) work|sort of|kind of|partly|half( way)?|started but|began but|i tried|we tried|tried it|gave up|still (wouldn'?t|won'?t|didn'?t)|no change|nothing changed)\b/i;
+export function isCheckinTrigger(message: string): boolean {
+  return CHECKIN_TRIGGER_RE.test(message || "");
+}
+// Deterministic fallback check-in line, per language, if regeneration can't produce one.
+export const CHECKIN_FALLBACK: Record<Language, string> = {
+  en: "Did you get a chance to try it? What happened?",
+  hinglish: "Aap ise try kar paaye? Kya huaa?",
+  hi: "क्या आप इसे आज़मा पाए? क्या हुआ?",
+};
+
+// ── Plain language: short sentences + "offer Hindi" when the parent says the language is hard ──
+// Longest NARRATION sentence (words). The exact words to say (a quoted span) are collapsed to one
+// token first — a parent reads the quote aloud as a unit, so its length isn't a readability problem.
+export function longestSentenceWords(text: string): number {
+  const stripped = (text || "").replace(/["“][^"”]*["”]/g, '"q"');
+  const sentences = stripped.split(/(?<=[.!?])\s+/).map((s) => wordCount(s));
+  return sentences.length ? Math.max(...sentences) : 0;
+}
+export const MAX_SENTENCE_WORDS = 22;
+// Did the parent complain that the LANGUAGE is hard (so the reply should offer Hindi)?
+export function isLanguageComplaint(message: string): boolean {
+  return /\b(complicated|difficult|hard|tough|confusing)\s+(language|words|english|to understand)\b|too\s+complicated|can'?t understand the (words|language)|\bin hindi\b|samajh nahi/i.test(message || "");
+}
+
 // All quoted spans (straight or curly quotes), length ≥2, trimmed.
 export function extractQuotes(text: string): string[] {
   const out: string[] = [];
@@ -146,6 +207,10 @@ export function quotePlusQuestion(text: string): boolean {
   const t = (text || "").trim();
   if (!t.endsWith("?")) return false;
   if (!hasQuotedSentence(t)) return false;
+  // A comprehension RE-ASK ("Which part is still unclear?", "Does that make sense?") is the INTENDED
+  // ending of a concrete-scene / step-delivery reply — it's not the "two asks" violation, even when
+  // the reply also quotes a line. Don't fire on it.
+  if (/(which part|still unclear|any part unclear|does that make sense|is any part|make sense)[^?]*\?\s*$/i.test(t)) return false;
   const lastClose = Math.max(t.lastIndexOf('"'), t.lastIndexOf("”"));
   return t.lastIndexOf("?") > lastClose;
 }
@@ -164,7 +229,29 @@ export function groupsChild(text: string): boolean {
   return GROUP_RE.test(text) || TYPE_WORDS.test(text);
 }
 
-export type GuardFired = { long: number; question: number; banned: number; repeat: number; group: number; script: number; aap: number; lang: number };
+export type GuardFired = { long: number; question: number; banned: number; repeat: number; group: number; script: number; aap: number; lang: number; checkin: number; advise: number; sentence: number; hindi: number; call: number; reinterrogate: number };
+
+// Behavioural flags for enforceReplyQuality (grouped so call sites stay readable).
+export type GuardOpts = {
+  maxWords?: number;
+  requireCheckin?: boolean;      // genuine check-in turn → must ask what happened, no new technique
+  mustAdvise?: boolean;          // after 2 questions → must give the step
+  requireHindiOffer?: boolean;   // parent said the language is hard → must offer Hindi
+  requireOfferCall?: boolean;    // 2nd confusion → must offer a call with the team
+  forbidReinterrogate?: boolean; // parent already answered → must NOT ask "what happened" again
+};
+// Append-on-failure lines (per language) so Hindi/call offers are deterministic.
+const HINDI_LINE: Record<Language, string> = {
+  en: " Would you like this in Hindi?",
+  hinglish: " Kya aap ise Hindi mein chahenge?",
+  hi: " क्या आप इसे हिंदी में चाहेंगे?",
+};
+const CALL_LINE: Record<Language, string> = {
+  en: " If it helps, let's hop on a quick call with our team and go through it together.",
+  hinglish: " Agar aasaan ho, hum apni team ke saath ek chhoti call par ise saath mein dekh sakte hain.",
+  hi: " अगर आसान हो, तो हम अपनी टीम के साथ एक छोटी कॉल पर इसे साथ में देख सकते हैं।",
+};
+const offersCall = (t: string) => /\b(call with (us|our team|the team)|hop on a (quick )?call|book a call|jump on a call|quick call|chhoti call|छोटी कॉल)\b/i.test(t || "");
 
 // Run the reply guards. `regenerate(correction)` must produce a fresh reply built on the previous
 // one + the correction, returning its text ("" on failure keeps the current text). `priorQuotes`
@@ -178,16 +265,70 @@ export async function enforceReplyQuality(
   priorQuotes: string[] = [],
   parentMessage = "",
   language?: Language,
+  opts: GuardOpts = {},
 ): Promise<{ text: string; fired: GuardFired }> {
+  const { maxWords = REPLY_MAX_WORDS, requireCheckin = false, mustAdvise = false, requireHindiOffer = false, requireOfferCall = false, forbidReinterrogate = false } = opts;
   let text = firstText;
   const lang: Language = language ?? decideLanguage(parentMessage);
-  const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0 };
+  const fired: GuardFired = { long: 0, question: 0, banned: 0, repeat: 0, group: 0, script: 0, aap: 0, lang: 0, checkin: 0, advise: 0, sentence: 0, hindi: 0, call: 0, reinterrogate: 0 };
 
-  if (wordCount(text) > 90) {
+  // NO RE-INTERROGATION: the parent already told us how it went → the reply must not ask the generic
+  // "what happened?" again. Regenerate up to twice.
+  if (forbidReinterrogate) {
+    for (let attempt = 0; attempt < 2 && (asksWhatHappened(text) || /\bwhat happened\b/i.test(text)); attempt++) {
+      fired.reinterrogate++;
+      log(`[coach-guard] parent already answered — reply must not re-ask "what happened"`);
+      const t = await regenerate("They already told you how it went. Do NOT ask 'what happened' or 'did you try' again. Give one short warm line, then one specific question OR the adjusted step.");
+      if (!t) break;
+      text = t;
+    }
+  }
+
+  // CHECK-IN FIRST (runs before everything): on a check-in turn, the reply MUST ask what happened and
+  // MUST NOT hand over a new technique (a "say this" quote). Regenerate up to twice; if it still
+  // fails, fall back to the fixed line so this is deterministic, never prompt-dependent.
+  if (requireCheckin) {
+    for (let attempt = 0; attempt < 2 && (!asksWhatHappened(text) || !!primarySayThis(text)); attempt++) {
+      fired.checkin++;
+      log(`[coach-guard] check-in-first: reply must ask what happened and give NO new technique — regenerating`);
+      const t = await regenerate('First ask ONLY what happened — e.g. "Did you get a chance to try it? What happened?" Do NOT give any new step, technique, or sentence-to-say this turn. One short question, nothing else.');
+      if (!t) break;
+      text = t;
+    }
+    if (!asksWhatHappened(text) || primarySayThis(text)) {
+      fired.checkin++;
+      log(`[coach-guard] check-in-first: regeneration still off — using the fixed check-in line`);
+      text = CHECKIN_FALLBACK[lang];
+    }
+  }
+
+  // MUST ADVISE: after enough diagnostic questions, the Coach has to GIVE the adjusted step (exact
+  // words in quotes), not ask yet another question. Regenerate until the reply has a concrete step.
+  // No deterministic fallback (we can't fabricate the step), so this is best-effort over 2 retries.
+  if (mustAdvise && !requireCheckin) {
+    for (let attempt = 0; attempt < 2 && !primarySayThis(text); attempt++) {
+      fired.advise++;
+      log(`[coach-guard] max diagnostic questions reached — reply must give the adjusted step now`);
+      const t = await regenerate("Stop asking questions — you have enough to help. Give the adjusted step now, in short plain parts: when to do it, the exact words to say in quotes, how long it takes, one short line on why, what you might see, then ask \"Does that make sense?\" and say you'll check how it went tomorrow. No new question before the step.");
+      if (!t) break;
+      text = t;
+    }
+  }
+
+  if (wordCount(text) > maxWords) {
     fired.long++;
-    log(`[coach-guard] reply ${wordCount(text)} words > 90 — regenerating shorter`);
-    const t = await regenerate("Shorter: max 60 words. Keep tonight's step and the one sentence to say.");
+    const target = Math.round(maxWords * 0.67);
+    log(`[coach-guard] reply ${wordCount(text)} words > ${maxWords} — regenerating shorter`);
+    const t = await regenerate(`Shorter: max ${target} words. Keep tonight's step and the one sentence to say.`);
     if (t) text = t;
+  }
+  // Short sentences (plain English for a second-language reader): no sentence over MAX_SENTENCE_WORDS.
+  for (let attempt = 0; attempt < 3 && longestSentenceWords(text) > MAX_SENTENCE_WORDS; attempt++) {
+    fired.sentence++;
+    log(`[coach-guard] a sentence is ${longestSentenceWords(text)} words — regenerating with shorter sentences`);
+    const t = await regenerate("Use short sentences — about 10 words each, never more than 18. Split any long sentence into two. Keep the exact words to say.");
+    if (!t) break;
+    text = t;
   }
   if (quotePlusQuestion(text)) {
     fired.question++;
@@ -259,6 +400,18 @@ export async function enforceReplyQuality(
     const t = await regenerate(`Address the parent ONLY in the respectful 'aap' form. Re-read your draft and fix EVERY verb aimed at the parent: any command ending in "-o" becomes "-iye" (bolo→boliye, karo→kariye, dekho→dekhiye, suno→suniye, socho→sochiye), raho→rahiye, do→dijiye, and "...ho"→"...hain" ("kar rahe ho"→"kar rahe hain"). Never tum/tu. The sentence the parent SAYS to the child (inside quotes) may stay informal.`);
     if (!t) break;
     text = t;
+  }
+
+  // ── Deterministic APPENDS last (after all regenerating guards, so nothing strips them) ──
+  // Offer Hindi when the parent said the language is hard.
+  if (requireHindiOffer && !/\bhindi\b/i.test(text) && !/हिंदी/.test(text)) {
+    fired.hindi++;
+    text = text.trimEnd() + HINDI_LINE[lang];
+  }
+  // Offer a call on the 2nd confusion.
+  if (requireOfferCall && !offersCall(text)) {
+    fired.call++;
+    text = text.trimEnd() + CALL_LINE[lang];
   }
   return { text, fired };
 }

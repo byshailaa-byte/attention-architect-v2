@@ -1,190 +1,127 @@
 "use client";
 
-// Attention Coach — mobile-first trial chat UI (coach-trial branch). Pure client island; the
-// server page (app/coach/page.tsx) resolves all copy/cards and passes them as props. We never
-// invent parent-facing sentences — only tiny UI labels ("Send", "Day N"). Design system mirrors
-// FlowShell / PlanV2: cream ground, navy ink, gold accent, Newsreader headings, Figtree body.
+// Attention Coach — fully conversational chat UI. The Coach speaks first (a cached opener fetched on
+// open), replies stream token-by-token, and there are NO onboarding chips or step cards: everything
+// happens in conversation. Pure client island; endpoints/ids come from props so Preview Coach reuses
+// this exact UI. Design system mirrors FlowShell / PlanV2: cream ground, navy ink, gold accent.
 import { useEffect, useRef, useState } from "react";
-import { baselineConfirm } from "@/lib/coach-trial/onboarding";
 import { splitBold } from "@/lib/coach-trial/markdown";
 
 const C = {
-  cream: "#FBF6EE", navy: "#1E3A5F", navyLt: "#2C4A70", gold: "#E8A33D", goldSoft: "#F2C77E",
-  ink: "#2E3A4B", dim: "#5B6577", white: "#FFFFFF", line: "#E7E0D2", sel: "#FFF8EC", onNavy: "#CFE0F2",
+  cream: "#FBF6EE", navy: "#1E3A5F", gold: "#E8A33D", goldSoft: "#F2C77E",
+  ink: "#2E3A4B", dim: "#5B6577", white: "#FFFFFF", line: "#E7E0D2", onNavy: "#CFE0F2",
 } as const;
 const HEAD = "var(--font-newsreader), Georgia, serif";
 const BODY = "var(--font-figtree), system-ui, sans-serif";
 
-type Chip = { label: string; value: string };
-type TrialDayCard = {
-  trialDay: number; lmsDay: number | null; source: "report" | "lms"; title: string;
-  instead?: string; say?: string; after?: string; steps?: string[]; body?: string; fullHref: string;
-};
 type Props = {
-  childName: string; trialDay: number; endsAt: string; messagesLeft: number;
-  onboardingDone: boolean; worry: string;
-  intro: string; howItWorks: string[];
-  baselineQuestion: string; baselineChips: Chip[];
-  commitQuestion: string; commitChips: Chip[]; commitDone: string;
-  stepEyebrow: string; readFullLabel: string;
-  days: TrialDayCard[]; // 4 cards, index 0 = trial day 1
-  // Optional overrides so Preview Coach can reuse this EXACT UI. Defaults = the live parent endpoints,
-  // so parent-facing behaviour is unchanged when these are omitted.
-  messageEndpoint?: string;
-  onboardingEndpoint?: string;
-  flagEndpoint?: string;                 // when set, each Coach reply shows a ⚑ Flag control (admin preview)
-  extraBody?: Record<string, unknown>;   // merged into message + onboarding POST bodies (e.g. { trialId, day })
+  childName: string;
+  trialDay: number;
+  messagesLeft: number;
+  stepHref?: string;                     // link to the kept /coach/step/[day] detail page
+  messageEndpoint?: string;              // POST (stream) + GET (opener). Defaults to the live trial endpoint.
+  flagEndpoint?: string;                 // admin preview: show a ⚑ Flag control under each reply
+  extraBody?: Record<string, unknown>;   // merged into POST body + GET query (e.g. { trialId, day })
 };
 
-// A single transcript entry. "card" renders the highlighted step card for a given day.
-type Bubble =
-  | { kind: "coach"; text: string; id?: string }
-  | { kind: "parent"; text: string }
-  | { kind: "card"; day: TrialDayCard };
-
-// ── Message API shapes ────────────────────────────────────────────────────────
-type MessageOk = { reply: string; role: "coach" | "safety"; messagesLeft: number; messageId?: string };
-type MessageErr = { error: string; reply?: string; messagesLeft?: number };
+type Bubble = { kind: "coach" | "parent"; text: string; id?: string };
 
 export default function CoachClient(props: Props) {
-  const {
-    childName, trialDay, onboardingDone, worry, intro, howItWorks,
-    baselineQuestion, baselineChips, commitQuestion, commitChips, commitDone,
-    stepEyebrow, readFullLabel, days,
-  } = props;
-  void childName;
-
+  const { trialDay } = props;
   const messageEndpoint = props.messageEndpoint ?? "/api/coach/message";
-  const onboardingEndpoint = props.onboardingEndpoint ?? "/api/coach/onboarding";
   const flagEndpoint = props.flagEndpoint;
   const extraBody = props.extraBody ?? {};
 
-  const todayCard = days[Math.min(Math.max(trialDay, 1), days.length) - 1] ?? days[0];
-
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [messagesLeft, setMessagesLeft] = useState<number>(props.messagesLeft);
-  // Onboarding gating: which chip sets are still open, and whether the input bar is revealed.
-  const [baselineOpen, setBaselineOpen] = useState<boolean>(!onboardingDone);
-  const [commitOpen, setCommitOpen] = useState<boolean>(false);
-  const [inputReady, setInputReady] = useState<boolean>(onboardingDone);
   const [draft, setDraft] = useState<string>("");
   const [sending, setSending] = useState<boolean>(false);
+  const [thinking, setThinking] = useState<boolean>(true); // opener loading / coach composing
   const [notice, setNotice] = useState<string>("");
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const seeded = useRef<boolean>(false);
+  const openedFor = useRef<number | null>(null);
 
-  // Seed the transcript once. Onboarding reveals bubbles sequentially (a small staged feel);
-  // the returning-day path shows a short opener + today's card and opens input immediately.
+  // Speak-first: fetch the cached opener when the chat opens (and whenever the day changes in preview).
   useEffect(() => {
-    if (seeded.current) return;
-    seeded.current = true;
-
-    if (onboardingDone) {
-      const queue: Bubble[] = [
-        { kind: "coach", text: `Day ${trialDay}` },
-        { kind: "card", day: todayCard },
-      ];
-      revealSequentially(queue);
-      return;
-    }
-
-    // Fresh onboarding: intro, each how-it-works line, the baseline question. Chips open after.
-    const queue: Bubble[] = [
-      { kind: "coach", text: intro },
-      ...howItWorks.map((t): Bubble => ({ kind: "coach", text: t })),
-      { kind: "coach", text: baselineQuestion },
-    ];
-    revealSequentially(queue);
+    if (openedFor.current === trialDay) return;
+    openedFor.current = trialDay;
+    setBubbles([]);
+    setThinking(true);
+    const qs = new URLSearchParams(Object.entries(extraBody).map(([k, v]) => [k, String(v)])).toString();
+    const url = qs ? `${messageEndpoint}?${qs}` : messageEndpoint;
+    fetch(url, { method: "GET" })
+      .then((r) => r.json())
+      .then((d: { reply?: string }) => { if (d.reply) setBubbles([{ kind: "coach", text: d.reply }]); })
+      .catch(() => setNotice("Couldn't load the Coach — refresh to try again."))
+      .finally(() => setThinking(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [trialDay]);
 
-  // Reveal bubbles one-by-one on a short timer so they read as distinct, staged messages.
-  function revealSequentially(queue: Bubble[], gap = 420) {
-    queue.forEach((b, i) => {
-      window.setTimeout(() => setBubbles((prev) => [...prev, b]), i * gap);
-    });
-  }
-
-  // Keep the transcript pinned to the latest message.
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [bubbles, inputReady, baselineOpen, commitOpen, notice]);
+  }, [bubbles, thinking, notice]);
 
-  // ── Onboarding step c: baseline chip tapped ──
-  async function onBaseline(chip: Chip) {
-    setBaselineOpen(false);
-    setBubbles((prev) => [...prev, { kind: "parent", text: chip.label }]);
-    try {
-      await fetch(onboardingEndpoint, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...extraBody, baselineValue: chip.value }),
-      });
-    } catch {
-      /* non-blocking: the confirm bubble + flow still proceed */
-    }
-    const confirm = baselineConfirm(worry, chip.value, chip.label);
-    // d) today's step card, then e) the commit question + chips.
-    revealSequentially([
-      { kind: "coach", text: confirm },
-      { kind: "card", day: days[0] ?? todayCard },
-      { kind: "coach", text: commitQuestion },
-    ]);
-    window.setTimeout(() => setCommitOpen(true), 3 * 420);
-  }
-
-  // ── Onboarding step e: commit chip tapped ──
-  async function onCommit(chip: Chip) {
-    setCommitOpen(false);
-    setBubbles((prev) => [...prev, { kind: "parent", text: chip.label }]);
-    try {
-      await fetch(onboardingEndpoint, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...extraBody, commitSlot: chip.value }),
-      });
-    } catch {
-      /* non-blocking */
-    }
-    setBubbles((prev) => [...prev, { kind: "coach", text: commitDone }]);
-    window.setTimeout(() => setInputReady(true), 420);
-  }
-
-  // ── Input bar: send a typed message ──
   async function onSend() {
     const text = draft.trim();
     if (!text || sending || messagesLeft <= 0) return;
     setNotice("");
     setDraft("");
     setSending(true);
+    setThinking(true);
     setBubbles((prev) => [...prev, { kind: "parent", text }]);
+    setMessagesLeft((n) => Math.max(0, n - 1));
+
     try {
       const res = await fetch(messageEndpoint, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...extraBody, message: text }),
       });
-      const data: MessageOk | MessageErr = await res.json().catch(() => ({ error: "failed" }));
+      const ct = res.headers.get("content-type") ?? "";
 
-      if (res.ok && "reply" in data && data.reply) {
-        setBubbles((prev) => [...prev, { kind: "coach", text: data.reply ?? "", id: (data as MessageOk).messageId }]);
-        if (typeof (data as MessageOk).messagesLeft === "number") setMessagesLeft((data as MessageOk).messagesLeft);
+      // Non-streaming responses: safety replies + errors come back as plain JSON.
+      if (!ct.includes("ndjson")) {
+        const data = await res.json().catch(() => ({ error: "failed" }));
+        setThinking(false);
+        if (res.ok && data.reply) { setBubbles((prev) => [...prev, { kind: "coach", text: data.reply }]); }
+        else if (res.status === 429 || data.error === "daily_limit") { setMessagesLeft(0); setNotice("No messages left today — back tomorrow"); }
+        else if (res.status === 403) { setMessagesLeft(0); setNotice("Your Quick Start has ended. Your report stays open."); }
+        else if (data.reply) { setBubbles((prev) => [...prev, { kind: "coach", text: data.reply }]); }
+        else { setNotice("Something went wrong. Please try again."); }
         setSending(false);
         return;
       }
 
-      const err = data as MessageErr;
-      if (res.status === 429 || err.error === "daily_limit") {
-        setMessagesLeft(0);
-        setNotice("No messages left today — back tomorrow");
-      } else if (res.status === 403 || err.error === "trial_ended") {
-        setMessagesLeft(0);
-        setNotice("Your Quick Start has ended. Your report stays open.");
-      } else if ((res.status === 502 || err.error === "model_failed") && err.reply) {
-        setBubbles((prev) => [...prev, { kind: "coach", text: err.reply ?? "" }]);
-      } else {
-        setNotice("Something went wrong. Please try again.");
+      // Streaming reply: one coach bubble that fills in as deltas arrive.
+      const idx = await new Promise<number>((resolve) => {
+        setBubbles((prev) => { resolve(prev.length); return [...prev, { kind: "coach", text: "" }]; });
+      });
+      const reader = res.body!.getReader();
+      const dec = new TextDecoder();
+      let buf = "", acc = "", first = true;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+          if (!line) continue;
+          let obj: { delta?: string; done?: { messageId?: string } };
+          try { obj = JSON.parse(line); } catch { continue; }
+          if (typeof obj.delta === "string") {
+            if (first) { setThinking(false); first = false; }
+            acc += obj.delta;
+            setBubbles((prev) => { const next = [...prev]; if (next[idx]) next[idx] = { ...next[idx], text: acc }; return next; });
+          } else if (obj.done) {
+            setBubbles((prev) => { const next = [...prev]; if (next[idx]) next[idx] = { ...next[idx], id: obj.done?.messageId }; return next; });
+          }
+        }
       }
+      setThinking(false);
     } catch {
+      setThinking(false);
       setNotice("Something went wrong. Please try again.");
     } finally {
       setSending(false);
@@ -196,9 +133,11 @@ export default function CoachClient(props: Props) {
   return (
     <div style={{ minHeight: "100dvh", background: C.cream, display: "flex", justifyContent: "center", fontFamily: BODY, color: C.ink }}>
       <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", minHeight: "100dvh", boxSizing: "border-box" }}>
-        {/* HEADER (sticky) */}
         <header style={{ position: "sticky", top: 0, zIndex: 10, background: C.navy, color: "#fff", padding: "14px 18px 12px" }}>
-          <div style={{ fontFamily: HEAD, fontSize: 19, fontWeight: 600, lineHeight: 1.2 }}>Attention Coach</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <div style={{ fontFamily: HEAD, fontSize: 19, fontWeight: 600, lineHeight: 1.2 }}>Attention Coach</div>
+            {props.stepHref && <a href={props.stepHref} style={{ fontSize: 12.5, color: C.goldSoft, textDecoration: "underline", textUnderlineOffset: 3 }}>Today&rsquo;s step</a>}
+          </div>
           <div style={{ fontSize: 12.5, color: C.onNavy, marginTop: 2 }}>Free Quick Start · Day {trialDay} of 4</div>
           <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
             {[1, 2, 3, 4].map((seg) => (
@@ -207,70 +146,57 @@ export default function CoachClient(props: Props) {
           </div>
         </header>
 
-        {/* TRANSCRIPT */}
         <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "18px 16px 10px", display: "flex", flexDirection: "column", gap: 12 }}>
-          {bubbles.map((b, i) => <BubbleRow key={i} bubble={b} stepEyebrow={stepEyebrow} readFullLabel={readFullLabel} flagEndpoint={flagEndpoint} />)}
-
-          {/* baseline chips (onboarding step c) */}
-          {baselineOpen && <ChipRow chips={baselineChips} onPick={onBaseline} />}
-          {/* commit chips (onboarding step e) */}
-          {commitOpen && <ChipRow chips={commitChips} onPick={onCommit} />}
+          {bubbles.map((b, i) => <BubbleRow key={i} bubble={b} flagEndpoint={flagEndpoint} />)}
+          {thinking && <TypingDots />}
         </div>
 
-        {/* INPUT BAR (sticky bottom) — only once onboarding has handed off */}
-        {inputReady && (
-          <div style={{ position: "sticky", bottom: 0, background: C.cream, borderTop: `1px solid ${C.line}`, padding: "10px 14px 14px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontSize: 12, color: C.dim, fontWeight: 600 }}>
-                {noneLeft ? "No messages left today — back tomorrow" : `${messagesLeft} left today`}
-              </span>
-              {notice && <span style={{ fontSize: 12, color: "#8C3F22", fontWeight: 600, textAlign: "right" }}>{notice}</span>}
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void onSend(); } }}
-                placeholder={noneLeft ? "Back tomorrow" : "Ask the Coach…"}
-                rows={1}
-                disabled={noneLeft || sending}
-                style={{
-                  flex: 1, resize: "none", minHeight: 44, maxHeight: 120, padding: "11px 13px", borderRadius: 12,
-                  border: `1.5px solid ${C.line}`, background: C.white, color: C.ink, fontFamily: BODY, fontSize: 15,
-                  lineHeight: 1.4, outline: "none", boxSizing: "border-box",
-                }}
-              />
-              <button
-                onClick={() => void onSend()}
-                disabled={noneLeft || sending || !draft.trim()}
-                style={{
-                  flexShrink: 0, minHeight: 44, padding: "0 18px", borderRadius: 12, border: "none",
-                  background: (noneLeft || sending || !draft.trim()) ? C.goldSoft : C.gold, color: "#1a1a1a",
-                  fontWeight: 700, fontSize: 15, cursor: (noneLeft || sending || !draft.trim()) ? "default" : "pointer",
-                  fontFamily: BODY,
-                }}
-              >
-                {sending ? "…" : "Send"}
-              </button>
-            </div>
+        <div style={{ position: "sticky", bottom: 0, background: C.cream, borderTop: `1px solid ${C.line}`, padding: "10px 14px 14px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontSize: 12, color: C.dim, fontWeight: 600 }}>
+              {noneLeft ? "No messages left today — back tomorrow" : `${messagesLeft} left today`}
+            </span>
+            {notice && <span style={{ fontSize: 12, color: "#8C3F22", fontWeight: 600, textAlign: "right" }}>{notice}</span>}
           </div>
-        )}
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void onSend(); } }}
+              placeholder={noneLeft ? "Back tomorrow" : "Message the Coach…"}
+              rows={1}
+              disabled={noneLeft || sending}
+              style={{
+                flex: 1, resize: "none", minHeight: 44, maxHeight: 120, padding: "11px 13px", borderRadius: 12,
+                border: `1.5px solid ${C.line}`, background: C.white, color: C.ink, fontFamily: BODY, fontSize: 15,
+                lineHeight: 1.4, outline: "none", boxSizing: "border-box",
+              }}
+            />
+            <button
+              onClick={() => void onSend()}
+              disabled={noneLeft || sending || !draft.trim()}
+              style={{
+                flexShrink: 0, minHeight: 44, padding: "0 18px", borderRadius: 12, border: "none",
+                background: (noneLeft || sending || !draft.trim()) ? C.goldSoft : C.gold, color: "#1a1a1a",
+                fontWeight: 700, fontSize: 15, cursor: (noneLeft || sending || !draft.trim()) ? "default" : "pointer", fontFamily: BODY,
+              }}
+            >
+              {sending ? "…" : "Send"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-// Render **bold** only — safe markdown (no HTML, no other tags), via the shared splitBold helper.
 function renderBold(text: string): React.ReactNode[] {
   return splitBold(text).map((p, i) =>
     p.bold ? <strong key={i} style={{ fontWeight: 700 }}>{p.text}</strong> : <span key={i}>{p.text}</span>,
   );
 }
 
-// ── A transcript row: coach bubble (left/white), parent bubble (right/gold), or step card ──
-function BubbleRow({ bubble, stepEyebrow, readFullLabel, flagEndpoint }: { bubble: Bubble; stepEyebrow: string; readFullLabel: string; flagEndpoint?: string }) {
-  if (bubble.kind === "card") return <StepCard day={bubble.day} stepEyebrow={stepEyebrow} readFullLabel={readFullLabel} />;
-
+function BubbleRow({ bubble, flagEndpoint }: { bubble: Bubble; flagEndpoint?: string }) {
   const isParent = bubble.kind === "parent";
   const canFlag = !isParent && !!flagEndpoint && !!bubble.id;
   return (
@@ -279,11 +205,8 @@ function BubbleRow({ bubble, stepEyebrow, readFullLabel, flagEndpoint }: { bubbl
         style={{
           maxWidth: "82%", padding: "10px 14px", fontSize: 15, lineHeight: 1.5,
           borderRadius: isParent ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
-          background: isParent ? C.gold : C.white,
-          color: isParent ? "#1a1a1a" : C.ink,
-          border: isParent ? "none" : `1px solid ${C.line}`,
-          fontWeight: isParent ? 600 : 400,
-          whiteSpace: "pre-wrap",
+          background: isParent ? C.gold : C.white, color: isParent ? "#1a1a1a" : C.ink,
+          border: isParent ? "none" : `1px solid ${C.line}`, fontWeight: isParent ? 600 : 400, whiteSpace: "pre-wrap",
         }}
       >
         {isParent ? bubble.text : renderBold(bubble.text)}
@@ -293,102 +216,31 @@ function BubbleRow({ bubble, stepEyebrow, readFullLabel, flagEndpoint }: { bubbl
   );
 }
 
-// Admin-only (Preview Coach): flag a single Coach reply with a note for later review.
+function TypingDots() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "8px 14px", alignSelf: "flex-start", background: C.white, border: `1px solid ${C.line}`, borderRadius: "14px 14px 14px 4px" }}>
+      {[0, 1, 2].map((i) => (
+        <span key={i} style={{ width: 6, height: 6, borderRadius: 999, background: C.dim, opacity: 0.5, animation: `coachdot 1s ${i * 0.15}s infinite` }} />
+      ))}
+      <style>{`@keyframes coachdot{0%,60%,100%{opacity:.25}30%{opacity:.8}}`}</style>
+    </div>
+  );
+}
+
 function FlagReply({ messageId, flagEndpoint }: { messageId: string; flagEndpoint: string }) {
   const [state, setState] = useState<"idle" | "done">("idle");
   async function onFlag() {
     const note = window.prompt("Flag this reply — add a note for review (optional):", "");
-    if (note === null) return; // cancelled
+    if (note === null) return;
     try {
-      const res = await fetch(flagEndpoint, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageId, note }),
-      });
+      const res = await fetch(flagEndpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messageId, note }) });
       if (res.ok) setState("done");
     } catch { /* non-blocking */ }
   }
   return (
-    <button
-      onClick={onFlag}
-      disabled={state === "done"}
-      style={{
-        marginTop: 3, marginLeft: 2, background: "none", border: "none", cursor: state === "done" ? "default" : "pointer",
-        fontSize: 11.5, fontWeight: 700, color: state === "done" ? "#8C3F22" : C.dim, padding: "2px 2px",
-      }}
-    >
+    <button onClick={onFlag} disabled={state === "done"}
+      style={{ marginTop: 3, marginLeft: 2, background: "none", border: "none", cursor: state === "done" ? "default" : "pointer", fontSize: 11.5, fontWeight: 700, color: state === "done" ? "#8C3F22" : C.dim, padding: "2px" }}>
       {state === "done" ? "⚑ Flagged" : "⚑ Flag this reply"}
     </button>
-  );
-}
-
-// ── Tappable chips shown under a coach question (parent side, gold-tinted) ──
-function ChipRow({ chips, onPick }: { chips: Chip[]; onPick: (c: Chip) => void }) {
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end", paddingTop: 2 }}>
-      {chips.map((chip) => (
-        <button
-          key={chip.value}
-          onClick={() => onPick(chip)}
-          style={{
-            minHeight: 40, padding: "8px 14px", borderRadius: 999, cursor: "pointer",
-            border: `1.5px solid ${C.gold}`, background: C.sel, color: C.navy, fontWeight: 600,
-            fontSize: 14, fontFamily: BODY,
-          }}
-        >
-          {chip.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ── The highlighted "TODAY'S STEP" card ──
-function StepCard({ day, stepEyebrow, readFullLabel }: { day: TrialDayCard; stepEyebrow: string; readFullLabel: string }) {
-  return (
-    <div
-      style={{
-        background: C.white, border: `1.5px solid ${C.line}`, borderLeft: `4px solid ${C.gold}`,
-        borderRadius: "0 14px 14px 0", padding: "16px 18px", margin: "2px 0",
-      }}
-    >
-      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".1em", color: C.gold, textTransform: "uppercase", marginBottom: 8 }}>
-        {stepEyebrow}
-      </div>
-      <div style={{ fontFamily: HEAD, fontSize: 18, color: C.navy, lineHeight: 1.3, marginBottom: 10 }}>{day.title}</div>
-
-      {day.source === "report" ? (
-        <>
-          {day.instead && <p style={{ fontSize: 14.5, color: C.dim, lineHeight: 1.5, margin: "0 0 8px" }}>Instead of {day.instead}</p>}
-          {day.say && (
-            <p style={{ fontFamily: HEAD, fontSize: 16.5, color: C.navy, lineHeight: 1.5, margin: "0 0 10px" }}>
-              “{day.say}”
-            </p>
-          )}
-          {day.steps && day.steps.length > 0 && (
-            <ol style={{ margin: "0 0 12px", paddingLeft: 20 }}>
-              {day.steps.map((s, i) => (
-                <li key={i} style={{ fontSize: 15, lineHeight: 1.5, color: C.ink, marginBottom: 6 }}>{s}</li>
-              ))}
-            </ol>
-          )}
-        </>
-      ) : (
-        day.body && <p style={{ fontSize: 15.5, lineHeight: 1.55, color: C.ink, margin: "0 0 12px", whiteSpace: "pre-wrap" }}>{day.body}</p>
-      )}
-
-      {/* "Read the full step" only on Day 1 (the report) — trial users can't open the paid LMS
-          library, so Days 2–4 show the inline step text only. */}
-      {day.source === "report" && (
-        <a
-          href={day.fullHref}
-          style={{
-            display: "inline-block", fontSize: 14, fontWeight: 700, color: C.navy,
-            textDecoration: "underline", textDecorationColor: C.gold, textUnderlineOffset: 3,
-          }}
-        >
-          {readFullLabel}
-        </a>
-      )}
-    </div>
   );
 }
