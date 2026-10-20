@@ -13,7 +13,7 @@ import type { LmsUserContext } from "@/lib/lms/user-context";
 import type { CoachTrial } from "@/lib/coach-trial/trial";
 import type { AgeBand } from "@/content/types";
 import { assembleCoachContext, type CoachSubjectInput, type AssembledContext } from "@/lib/coach/context";
-import { runCoachTurn } from "@/lib/coach/engine";
+import { runCoachTurn, withTimeout } from "@/lib/coach/engine";
 import { summariseParentMemory } from "@/lib/coach/memory";
 import { isShortNonAnswer } from "@/lib/coach/lang";
 import { extractOutcome, readOutcomes, recordPaidOutcome, recordTrialOutcome } from "@/lib/lms/coach/outcomes";
@@ -47,10 +47,18 @@ async function flagHindiForReview(messageId: string | null, issues: string[] | u
   await sql`UPDATE coach_messages SET admin_flagged_at = now(), admin_flag_note = ${"hindi: " + issues.join("; ").slice(0, 300)} WHERE id = ${messageId}::uuid`.catch(() => {});
 }
 
-// The Coach's previous reply + whether this is a repeat-risk turn — fed to the engine's no-repeat backstop.
-function repeatGuardFor(history: CoachTurn[], userMessage: string): { previousReply?: string; guardRepeat: boolean } {
+// The Coach's previous reply + whether this is a repeat-risk turn + how many short non-answers in a row
+// end at this turn — fed to the engine's preventive anti-repeat directive (escalates on the 2nd+).
+function repeatGuardFor(history: CoachTurn[], userMessage: string): { previousReply?: string; guardRepeat: boolean; repeatStreak: number } {
   const previousReply = [...history].reverse().find((h) => h.role === "assistant")?.content;
-  return { previousReply, guardRepeat: isShortNonAnswer(userMessage) };
+  const curShort = isShortNonAnswer(userMessage);
+  let repeatStreak = curShort ? 1 : 0;
+  if (curShort) {
+    for (const m of history.filter((h) => h.role === "user").map((h) => h.content).reverse()) {
+      if (isShortNonAnswer(m)) repeatStreak++; else break;
+    }
+  }
+  return { previousReply, guardRepeat: curShort, repeatStreak };
 }
 
 // Inputs for the engine's Hindi-language backstop: the child's gender (for verb agreement) + whether
@@ -195,33 +203,63 @@ export type PersistArgs = {
   onDone?: (info: { text: string; errored: boolean; toolNames: string[] }) => Promise<void> | void;
 };
 
-// Returns a streaming Response: JSON lines {"delta":"…"} then a final {"done":{…}}.
-export function streamCoachTurn(args: PersistArgs): Response {
+// Budgets that keep a streamed turn safely inside the route's maxDuration (120s). The engine self-caps
+// generation at 45s; these are backstops so a hung model/DB can never run to the function limit without
+// the client getting a terminal {done}. budgetMs covers generation; POST_BUDGET_MS each post-gen step.
+const TURN_BUDGET_MS = 55_000;
+const POST_BUDGET_MS = 12_000;
+
+// Injectable seams so the done-within-budget invariant is testable without the model or the DB.
+export type StreamDeps = {
+  runTurn?: typeof runCoachTurn;
+  persist?: typeof persistTurn;
+  budgetMs?: number;
+  sideEffects?: boolean; // outcomeBackstop + memory summarisation (default true; off in unit tests)
+};
+
+// Returns a streaming Response: JSON lines {"delta":"…"} then a final {"done":{…}}. A {done} is
+// GUARANTEED — on success, on a caught error, or on blowing the budget — so the client never spins
+// forever. All post-generation work (persist/backstop/onDone) is time-boxed so it can't push the turn
+// past the function limit.
+export function streamCoachTurn(args: PersistArgs, deps: StreamDeps = {}): Response {
+  const runTurn = deps.runTurn ?? runCoachTurn;
+  const persist = deps.persist ?? persistTurn;
+  const budgetMs = deps.budgetMs ?? TURN_BUDGET_MS;
+  const sideEffects = deps.sideEffects ?? true;
   const enc = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (obj: unknown) => controller.enqueue(enc.encode(JSON.stringify(obj) + "\n"));
+      let closed = false;
+      const send = (obj: unknown) => { if (!closed) controller.enqueue(enc.encode(JSON.stringify(obj) + "\n")); };
+      let doneSent = false;
+      const sendDone = (d: Record<string, unknown>) => { if (!doneSent) { doneSent = true; send({ done: d }); } };
+      const close = () => { if (!closed) { closed = true; try { controller.close(); } catch { /* already closed */ } } };
+      // Absolute last-resort guarantee: even if every await above somehow stalls, emit a {done} and close.
+      const guard = setTimeout(() => { sendDone({ messageId: null, errored: true, timedOut: true }); close(); }, budgetMs + POST_BUDGET_MS + 2_000);
       try {
-        const res = await runCoachTurn({
+        const res = await withTimeout(budgetMs, Promise.resolve(runTurn({
           system: args.ctx.system, history: args.ctx.history, userMessage: args.userMessage,
           tools: args.ctx.tools, toolSubject: args.ctx.toolSubject, language: args.ctx.language,
           model: args.model, onDelta: (t) => send({ delta: t }),
           ...repeatGuardFor(args.ctx.history, args.userMessage),
-    ...{ hindiGuard: hindiGuardFor(args.subject, args.ctx.history, args.userMessage) },
-        });
-        // Persist parent + coach messages.
-        const messageId = await persistTurn(args.key, args.userMessage, res);
-        await outcomeBackstop(args.key, args.subject, args.userMessage, res.toolCalls).catch(() => {});
-        await flagHindiForReview(messageId, res.hindiIssues);
-        if (args.onDone) await args.onDone({ text: res.text, errored: res.errored, toolNames: res.toolCalls.map((t) => t.name) });
-        send({ done: { messageId, costPaise: res.costPaise, errored: res.errored, tools: res.toolCalls.map((t) => ({ name: t.name, ok: t.ok })) } });
+          hindiGuard: hindiGuardFor(args.subject, args.ctx.history, args.userMessage),
+        })));
+        // Post-generation work, each time-boxed so it can never push the turn past the function limit.
+        const messageId = await withTimeout(POST_BUDGET_MS, Promise.resolve(persist(args.key, args.userMessage, res))).catch(() => null);
+        if (sideEffects) {
+          await withTimeout(POST_BUDGET_MS, outcomeBackstop(args.key, args.subject, args.userMessage, res.toolCalls)).catch(() => {});
+          await flagHindiForReview(messageId, res.hindiIssues).catch(() => {});
+        }
+        if (args.onDone) await withTimeout(POST_BUDGET_MS, Promise.resolve(args.onDone({ text: res.text, errored: res.errored, toolNames: res.toolCalls.map((t) => t.name) }))).catch(() => {});
+        sendDone({ messageId, costPaise: res.costPaise, errored: res.errored, tools: res.toolCalls.map((t) => ({ name: t.name, ok: t.ok })) });
       } catch (e) {
         console.error("[coach/runtime] stream failed:", (e as Error).message);
-        send({ done: { messageId: null, errored: true } });
+        sendDone({ messageId: null, errored: true });
       } finally {
-        controller.close();
+        clearTimeout(guard);
+        close();
         // Memory summarisation after the turn (best-effort, never blocks the reply).
-        summariseParentMemory(args.key.kind, args.subject.subjectId).catch(() => {});
+        if (sideEffects) summariseParentMemory(args.key.kind, args.subject.subjectId).catch(() => {});
       }
     },
   });

@@ -13,7 +13,8 @@ import { readTrackedNumbers } from "@/lib/coach/numbers";
 
 assertBootGuards();
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// Same streamed-turn budget as the live trial route — keep maxDuration above the internal {done} guard.
+export const maxDuration = 120;
 
 // Preview Coach — admin-authed (/api/admin/* Basic Auth upstream), resolves a sandbox trial by id,
 // takes a simulated `day` from the admin day switcher, and NEVER fires analytics. Same engine, same
