@@ -38,6 +38,7 @@ export default function CoachClient(props: Props) {
   const [sending, setSending] = useState<boolean>(false);
   const [thinking, setThinking] = useState<boolean>(true); // opener loading / coach composing
   const [notice, setNotice] = useState<string>("");
+  const [retryText, setRetryText] = useState<string | null>(null); // last message to re-send on a stall/error
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const openedFor = useRef<number | null>(null);
@@ -63,32 +64,53 @@ export default function CoachClient(props: Props) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [bubbles, thinking, notice]);
 
-  async function onSend() {
-    const text = draft.trim();
+  // If the stream goes quiet for this long with no delta/done, we stop waiting, drop the spinner, and
+  // offer a retry — the parent never sees an endless typing indicator if the server stalls.
+  const STALL_MS = 20_000;
+
+  async function onSend(retryOf?: string) {
+    const text = (retryOf ?? draft).trim();
     if (!text || sending || messagesLeft <= 0) return;
     setNotice("");
-    setDraft("");
+    setRetryText(null);
+    if (!retryOf) setDraft("");
     setSending(true);
     setThinking(true);
-    setBubbles((prev) => [...prev, { kind: "parent", text }]);
-    setMessagesLeft((n) => Math.max(0, n - 1));
+    if (!retryOf) {
+      setBubbles((prev) => [...prev, { kind: "parent", text }]);
+      setMessagesLeft((n) => Math.max(0, n - 1));
+    }
+
+    const ac = new AbortController();
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    const armWatchdog = () => { if (watchdog) clearTimeout(watchdog); watchdog = setTimeout(() => ac.abort(), STALL_MS); };
+    // On a stall/error: drop the spinner, restore the consumed message (the turn didn't complete), and
+    // show a tap-to-retry notice. Never leave the parent on an endless spinner.
+    const failRetry = (msg: string) => {
+      setThinking(false);
+      setRetryText(text);
+      setNotice(msg);
+      if (!retryOf) setMessagesLeft((n) => n + 1);
+    };
 
     try {
+      armWatchdog();
       const res = await fetch(messageEndpoint, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...extraBody, message: text }),
+        body: JSON.stringify({ ...extraBody, message: text }), signal: ac.signal,
       });
       const ct = res.headers.get("content-type") ?? "";
 
       // Non-streaming responses: safety replies + errors come back as plain JSON.
       if (!ct.includes("ndjson")) {
+        if (watchdog) clearTimeout(watchdog);
         const data = await res.json().catch(() => ({ error: "failed" }));
         setThinking(false);
         if (res.ok && data.reply) { setBubbles((prev) => [...prev, { kind: "coach", text: data.reply }]); }
-        else if (res.status === 429 || data.error === "daily_limit") { setMessagesLeft(0); setNotice("No messages left today — back tomorrow"); }
+        else if (res.status === 429 || data.error === "daily_limit") { setMessagesLeft(0); setNotice("That's all your messages for today — the Coach is back tomorrow."); }
         else if (res.status === 403) { setMessagesLeft(0); setNotice("Your Quick Start has ended. Your report stays open."); }
         else if (data.reply) { setBubbles((prev) => [...prev, { kind: "coach", text: data.reply }]); }
-        else { setNotice("Something went wrong. Please try again."); }
+        else { failRetry("Something went wrong — tap to retry."); }
         setSending(false);
         return;
       }
@@ -99,10 +121,11 @@ export default function CoachClient(props: Props) {
       });
       const reader = res.body!.getReader();
       const dec = new TextDecoder();
-      let buf = "", acc = "", first = true;
+      let buf = "", acc = "", first = true, sawDone = false;
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
+        armWatchdog(); // progress → reset the stall timer
         buf += dec.decode(value, { stream: true });
         let nl: number;
         while ((nl = buf.indexOf("\n")) >= 0) {
@@ -115,14 +138,22 @@ export default function CoachClient(props: Props) {
             acc += obj.delta;
             setBubbles((prev) => { const next = [...prev]; if (next[idx]) next[idx] = { ...next[idx], text: acc }; return next; });
           } else if (obj.done) {
+            sawDone = true;
             setBubbles((prev) => { const next = [...prev]; if (next[idx]) next[idx] = { ...next[idx], id: obj.done?.messageId }; return next; });
           }
         }
       }
+      if (watchdog) clearTimeout(watchdog);
       setThinking(false);
+      // Stream closed without a terminal {done}: the reply is incomplete. If nothing streamed, drop the
+      // empty bubble; either way, let the parent retry rather than stare at a half/blank reply.
+      if (!sawDone) {
+        if (!acc) setBubbles((prev) => prev.filter((_, i) => i !== idx));
+        failRetry("Reply took too long — tap to retry.");
+      }
     } catch {
-      setThinking(false);
-      setNotice("Something went wrong. Please try again.");
+      if (watchdog) clearTimeout(watchdog);
+      failRetry("Reply took too long — tap to retry.");
     } finally {
       setSending(false);
     }
@@ -156,7 +187,12 @@ export default function CoachClient(props: Props) {
             <span style={{ fontSize: 12, color: C.dim, fontWeight: 600 }}>
               {noneLeft ? "No messages left today — back tomorrow" : `${messagesLeft} left today`}
             </span>
-            {notice && <span style={{ fontSize: 12, color: "#8C3F22", fontWeight: 600, textAlign: "right" }}>{notice}</span>}
+            {notice && (retryText
+              ? <button onClick={() => void onSend(retryText)} disabled={sending}
+                  style={{ fontSize: 12, color: "#8C3F22", fontWeight: 700, textAlign: "right", background: "none", border: "none", cursor: sending ? "default" : "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 2 }}>
+                  {notice}
+                </button>
+              : <span style={{ fontSize: 12, color: "#8C3F22", fontWeight: 600, textAlign: "right" }}>{notice}</span>)}
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
             <textarea
