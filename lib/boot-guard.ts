@@ -6,6 +6,15 @@
 const PRODUCTION_HOST = "neon.tech";
 
 export function assertBootGuards() {
+  // During `next build`, Next.js evaluates route modules to collect page data. Secrets such as
+  // ADMIN_PASSWORD are intentionally absent from the BUILD environment (e.g. Sensitive env vars,
+  // which Vercel only injects at runtime), so running these checks at build time would throw and
+  // fail the build — that is exactly how a missing build-time variable froze prod for ~10 days.
+  // Skip the guards during the build phase only. They still run (and fail closed) at request time
+  // on the server, where NEXT_PHASE is not set, so a truly-missing ADMIN_PASSWORD still refuses
+  // to serve /admin.
+  if (process.env.NEXT_PHASE === "phase-production-build") return;
+
   const dbUrl = process.env.DATABASE_URL ?? "";
   // VERCEL_ENV is set automatically by Vercel to "production" | "preview" | "development".
   // On a real production deploy the DB endpoint will legitimately point at the production
