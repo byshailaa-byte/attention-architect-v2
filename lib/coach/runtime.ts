@@ -245,7 +245,12 @@ export function streamCoachTurn(args: PersistArgs, deps: StreamDeps = {}): Respo
           hindiGuard: hindiGuardFor(args.subject, args.ctx.history, args.userMessage),
         })));
         // Post-generation work, each time-boxed so it can never push the turn past the function limit.
-        const messageId = await withTimeout(POST_BUDGET_MS, Promise.resolve(persist(args.key, args.userMessage, res))).catch(() => null);
+        // A persist timeout/failure means the parent saw a reply that was NOT saved — a lost turn. Never
+        // swallow it: log loudly with the subject/trial id so it is visible in the runtime error logs.
+        const messageId = await withTimeout(POST_BUDGET_MS, Promise.resolve(persist(args.key, args.userMessage, res))).catch((e) => {
+          console.error(`[coach/runtime] persist failed/timed out — LOST TURN kind=${args.key.kind} subject=${args.subject.subjectId} trial=${args.key.trialId ?? "-"} day=${args.key.day}: ${(e as Error).message}`);
+          return null;
+        });
         if (sideEffects) {
           await withTimeout(POST_BUDGET_MS, outcomeBackstop(args.key, args.subject, args.userMessage, res.toolCalls)).catch(() => {});
           await flagHindiForReview(messageId, res.hindiIssues).catch(() => {});

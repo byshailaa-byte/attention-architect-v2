@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { streamCoachTurn, type StreamDeps } from "@/lib/coach/runtime";
 import type { RunResult } from "@/lib/coach/engine";
 
@@ -80,6 +80,24 @@ describe("streamCoachTurn — always terminates with {done}, within budget", () 
     const out = await drain(streamCoachTurn(makeArgs("ok"), deps));
     expect(out.done).not.toBeNull();
     expect(out.done!.errored).toBe(true);
+  });
+
+  it("persist failure is logged loudly (never silent), with the subject id, and done still arrives", async () => {
+    const errs: string[] = [];
+    const spy = vi.spyOn(console, "error").mockImplementation((...a: unknown[]) => { errs.push(a.join(" ")); });
+    try {
+      const deps: StreamDeps = {
+        sideEffects: false,
+        runTurn: (async (o: { onDelta?: (t: string) => void }) => { o.onDelta?.("hi"); return fakeResult("hi"); }) as unknown as StreamDeps["runTurn"],
+        persist: (async () => { throw new Error("db down"); }) as unknown as StreamDeps["persist"],
+      };
+      const out = await drain(streamCoachTurn(makeArgs("ok"), deps));
+      expect(out.done).not.toBeNull();
+      expect(out.done!.messageId).toBeNull();
+      expect(errs.some((e) => /LOST TURN/.test(e) && /subject=s1/.test(e))).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("slow post-generation work cannot withhold {done}: persist that hangs is time-boxed", async () => {
