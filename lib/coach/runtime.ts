@@ -256,7 +256,9 @@ export function streamCoachTurn(args: PersistArgs, deps: StreamDeps = {}): Respo
           await flagHindiForReview(messageId, res.hindiIssues).catch(() => {});
         }
         if (args.onDone) await withTimeout(POST_BUDGET_MS, Promise.resolve(args.onDone({ text: res.text, errored: res.errored, toolNames: res.toolCalls.map((t) => t.name) }))).catch(() => {});
-        sendDone({ messageId, costPaise: res.costPaise, errored: res.errored, tools: res.toolCalls.map((t) => ({ name: t.name, ok: t.ok })) });
+        // Include the final reply text in {done}: the client renders it if no deltas were applied, so a
+        // reply that generated server-side is shown even when live streaming delivered nothing visible.
+        sendDone({ messageId, text: res.text, costPaise: res.costPaise, errored: res.errored, tools: res.toolCalls.map((t) => ({ name: t.name, ok: t.ok })) });
       } catch (e) {
         console.error("[coach/runtime] stream failed:", (e as Error).message);
         sendDone({ messageId: null, errored: true });

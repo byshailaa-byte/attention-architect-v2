@@ -6,6 +6,7 @@
 // this exact UI. Design system mirrors FlowShell / PlanV2: cream ground, navy ink, gold accent.
 import { useEffect, useRef, useState } from "react";
 import { splitBold } from "@/lib/coach-trial/markdown";
+import { createNdjsonReader } from "@/lib/coach/ndjson";
 
 const C = {
   cream: "#FBF6EE", navy: "#1E3A5F", gold: "#E8A33D", goldSoft: "#F2C77E",
@@ -120,28 +121,34 @@ export default function CoachClient(props: Props) {
         setBubbles((prev) => { resolve(prev.length); return [...prev, { kind: "coach", text: "" }]; });
       });
       const reader = res.body!.getReader();
-      const dec = new TextDecoder();
-      let buf = "", acc = "", first = true, sawDone = false;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        armWatchdog(); // progress → reset the stall timer
-        buf += dec.decode(value, { stream: true });
-        let nl: number;
-        while ((nl = buf.indexOf("\n")) >= 0) {
-          const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
-          if (!line) continue;
-          let obj: { delta?: string; done?: { messageId?: string } };
-          try { obj = JSON.parse(line); } catch { continue; }
+      let acc = "", first = true, sawDone = false;
+      const applyText = (t: string) => setBubbles((prev) => { const next = [...prev]; if (next[idx]) next[idx] = { ...next[idx], text: t }; return next; });
+      // Shared, fragmentation-safe NDJSON reader (lib/coach/ndjson) — a line split across chunks or a
+      // multibyte char split mid-sequence is reassembled; a malformed line is logged and skipped, never
+      // throwing out of the read loop (which would strand a reply that actually arrived).
+      const parser = createNdjsonReader(
+        (o) => {
+          const obj = o as { delta?: string; done?: { messageId?: string; text?: string } };
           if (typeof obj.delta === "string") {
             if (first) { setThinking(false); first = false; }
             acc += obj.delta;
-            setBubbles((prev) => { const next = [...prev]; if (next[idx]) next[idx] = { ...next[idx], text: acc }; return next; });
+            applyText(acc);
           } else if (obj.done) {
             sawDone = true;
-            setBubbles((prev) => { const next = [...prev]; if (next[idx]) next[idx] = { ...next[idx], id: obj.done?.messageId }; return next; });
+            // Render the final text from {done} when streaming delivered nothing visible — the reply
+            // exists server-side, so never show a blank bubble. Otherwise keep the streamed text.
+            const finalText = !acc && typeof obj.done.text === "string" ? obj.done.text : acc;
+            if (finalText && first) { setThinking(false); first = false; }
+            setBubbles((prev) => { const next = [...prev]; if (next[idx]) next[idx] = { ...next[idx], text: finalText || next[idx].text, id: obj.done?.messageId }; return next; });
           }
-        }
+        },
+        (line, e) => console.warn("[coach] skipped malformed NDJSON line:", line.slice(0, 80), e),
+      );
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) { parser.end(); break; }
+        armWatchdog(); // progress → reset the stall timer
+        if (value) parser.push(value);
       }
       if (watchdog) clearTimeout(watchdog);
       setThinking(false);
