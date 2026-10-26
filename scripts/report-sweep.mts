@@ -33,8 +33,9 @@ async function pool<T>(items: T[], n: number, fn: (t: T, i: number) => Promise<v
   }));
 }
 
+const FRESH_ONLY = process.env.FRESH_ONLY === "1";
 const fbRuns: Run[] = [];
-await pool(fallback, 4, async (s, i) => {
+await pool(FRESH_ONLY ? [] : fallback, 4, async (s, i) => {
   const outs: string[] = []; let arch = "?", worry = "?";
   for (let r = 0; r < 3; r++) { const g = await genOnce(s); if (g) { outs.push(g.outcome); arch = g.arch; worry = g.worry; } }
   fbRuns.push({ session: s, arch, worry, outcomes: outs });

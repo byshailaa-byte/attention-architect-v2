@@ -78,8 +78,13 @@ Q4 (no parent-blame): FAIL if anything implies the parent–child relationship, 
     messages: [{ role: "user", content: prompt }],
   });
   const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
-  const q = (n: number) => /FAIL/i.test((text.match(new RegExp(`Q${n}[^\\n]*`, "i")) || [""])[0]) ? "FAIL"
-    : /PASS/i.test((text.match(new RegExp(`Q${n}[^\\n]*`, "i")) || [""])[0]) ? "PASS" : "FAIL";
+  // Read ONLY the verdict token immediately after "Qn:" — not /FAIL/i across the whole line, which
+  // matched the word "failure" in a reason like "…after the first failure…" and wrongly failed giveup
+  // reports (the worry's moment literally contains "failure"). Default to FAIL if the token is missing.
+  const q = (n: number): "PASS" | "FAIL" => {
+    const m = text.match(new RegExp(`Q${n}\\s*[:：\\-]?\\s*\\*{0,2}\\s*(PASS|FAIL)`, "i"));
+    return m ? (m[1].toUpperCase() as "PASS" | "FAIL") : "FAIL";
+  };
   const names = ["coherence", "usability", "seenIt", "relationship"];
   const failed = [1, 2, 3, 4].filter((n) => q(n) === "FAIL").map((n) => names[n - 1]);
   const verdict: "PASS" | "FAIL" = failed.length === 0 ? "PASS" : "FAIL";
