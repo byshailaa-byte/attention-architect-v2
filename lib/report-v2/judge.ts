@@ -88,3 +88,19 @@ Q4 (no parent-blame): FAIL if anything implies the parent–child relationship, 
   // raw = the judge's full four-line verdict (per-question PASS/FAIL + reason) for diagnostics/instrumentation.
   return { verdict, reason, failed, raw: text, inTok: res.usage?.input_tokens ?? 0, outTok: res.usage?.output_tokens ?? 0 };
 }
+
+// Q1 majority-of-3: run the judge three times (temperature 0) and take a 2-of-3 majority FOR Q1
+// (coherence) ONLY — the question that flipped on identical drafts. Q2/Q3/Q4 come from run 1 (temp 0
+// keeps them stable). Costs 2 extra judge calls per generation; tokens are summed. (All-four majority
+// is free given the 3 calls and would further stabilise Q3/Q4 — left off per the Q1-only spec.)
+export async function judgeCoherenceVoted(args: Parameters<typeof judgeCoherence>[0]): Promise<JudgeVerdict> {
+  const runs = await Promise.all([judgeCoherence(args), judgeCoherence(args), judgeCoherence(args)]);
+  const q1Fails = runs.filter((r) => r.failed.includes("coherence")).length;
+  const base = runs[0];
+  const failed = [...(q1Fails >= 2 ? ["coherence"] : []), ...base.failed.filter((f) => f !== "coherence")];
+  const verdict: "PASS" | "FAIL" = failed.length === 0 ? "PASS" : "FAIL";
+  const inTok = runs.reduce((s, r) => s + r.inTok, 0);
+  const outTok = runs.reduce((s, r) => s + r.outTok, 0);
+  const reason = verdict === "PASS" ? `all pass (Q1 ${q1Fails}/3 FAIL)` : `${failed.join(", ")} FAIL — Q1 ${q1Fails}/3; ${base.raw.replace(/\s+/g, " ").slice(0, 200)}`;
+  return { verdict, reason, failed, raw: `[Q1 votes ${q1Fails}/3 FAIL]\n${base.raw}`, inTok, outTok };
+}

@@ -21,7 +21,7 @@ import {
 } from "./evidence";
 import { validateGenerated, isRepairable, fieldsFromErrors } from "./validator";
 import { programFor, type ProgramAnchor } from "./program";
-import { judgeCoherence, type JudgeVerdict } from "./judge";
+import { judgeCoherenceVoted, type JudgeVerdict } from "./judge";
 import { composeFallback, archetypeDesc } from "@/content/report-v2/fallbacks";
 import { WHY_BOXES, bareArchetype } from "./v3-copy";
 import { REPORT_V2_VERSION, type ReportV2Content, type ReportV2Generated, type EvidenceItem } from "./types";
@@ -725,7 +725,7 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
         if (reason === "validator") console.log(`[report-v2] FALLBACK (validator, non-repairable after budget): ${v.errors.join("; ")}`);
         break; // → fallback
       }
-      const j = await judgeCoherence({
+      const j = await judgeCoherenceVoted({
         childName: ctx.name, worryLabel: ctx.worryLabel, moment: ctx.moment,
         archetype: ctx.archetype, program: ctx.program, evidenceQuotes: ctx.evidenceQuotes, generated: current,
       });
