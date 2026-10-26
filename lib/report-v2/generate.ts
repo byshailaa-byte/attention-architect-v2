@@ -182,7 +182,23 @@ type Context = {
   bareArch: string;
   momentFraming: string; // where the worry bites — the hardPart "real reason" is framed here
   autonomyArch: boolean; // true → switch must hand over a say (never "sit with you / do it together")
+  afterLine: string;     // the switch.after line for a real-choice case (varied across reports)
+  reentryOK: boolean;    // re-entry framing allowed ONLY for All-In × homework/giveup/finish
 };
+
+// switch.after variants for the real-choice case — varied per report so no single line dominates
+// (validator does not pin this line; only the prompt did). Chosen deterministically from the child name.
+const AFTER_LINES = [
+  "The choice only works if it’s real.",
+  "It only works if the choice is truly theirs.",
+  "Mean it — let whatever they pick stand.",
+  "Give the choice, then stay out of it.",
+  "The say has to be real, or it won’t land.",
+];
+function pickAfter(name: string): string {
+  let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return AFTER_LINES[h % AFTER_LINES.length];
+}
 
 function fillTokens(tmpl: string, name: string, gender: Gender): string {
   const nm = name.trim() ? displayChildName(name) : "your child";
@@ -290,6 +306,8 @@ export function buildContext(a: AssessmentInput): Context {
     evidence, evidenceQuotes: evidence.map((e) => e.quote), instinctMove, realReason, bareArch,
     momentFraming: MOMENT_FRAMING[concern] ?? MOMENT_FRAMING.other,
     autonomyArch: AUTONOMY_ARCH.has(bareArch),
+    afterLine: pickAfter(a.childName ?? archetype),
+    reentryOK: bareArch === "All-In Kid" && ["homework", "giveup", "finish"].includes(concern),
     archStrengths: strengthsFor(archetype).join(" "),
     evidenceTie: `Put together, these three answers are what pointed us to ${name}’s pattern.`,
     disclaimer:
@@ -342,6 +360,24 @@ hardPart: "Ishaan isn't ignoring you. Being told what to do switches him off."
 
 function buildPrompt(ctx: Context, priorFeedback?: string[]): string {
   const p = ctx.program;
+  // The real reason must be THIS archetype's mechanism AT THIS worry's moment. "Re-entry / getting
+  // back in" is the All-In Kid's mechanism and fits ONLY homework/giveup/finish — it must never be
+  // used for screens (moment = stopping), confidence (before trying), or for another archetype.
+  const momentMech: Record<string, string> = {
+    screens: `the real reason is about STOPPING — once ${ctx.name} is into it, switching off is the hard part.`,
+    confidence: `the real reason is BEFORE trying — the fear of getting it wrong or being judged.`,
+    reminders: `the real reason is about STARTING — getting going at all.`,
+    homework: `the real reason is about STARTING — getting going at all.`,
+    giveup: `the real reason is right AFTER a mistake — what happens the moment it goes wrong.`,
+    finish: `the real reason is NEAR THE END — the last stretch, not the start.`,
+    other: `the real reason is at the start of the task.`,
+  };
+  const reentryRule = ctx.reentryOK
+    ? `"Getting back in after being pulled out" is the correct mechanism here (All-In Kid, mid-task worry).`
+    : `Do NOT say "getting back in" / "hard to get back in" / "re-entry" — that is ONLY for an All-In Kid pulled out of homework. Here, ${momentMech[ctx.concern] ?? momentMech.other}`;
+  const archNote = ctx.bareArch === "Captain"
+    ? `This child is a Captain: the real reason is needing a real SAY / ownership (no say → drive switches off). NEVER frame it as re-entry.`
+    : `The real reason must be ${ctx.archetype}'s own mechanism, not another archetype's.`;
   const retry = priorFeedback?.length
     ? `\n\nYour previous attempt was REJECTED. Fix every point, keep everything else:\n- ${priorFeedback.join("\n- ")}\n`
     : "";
@@ -371,6 +407,7 @@ PRONOUNS — use ONLY: ${pronounRule(ctx.gender)}
 ${ctx.instinctMove ? `THE PARENT'S USUAL MOVE AT THIS MOMENT (write switch.instead FROM this, in the parent's voice; NEVER name it): ${ctx.instinctMove}` : ""}
 
 THE REAL REASON (hardPart's SECOND sentence): describe ${ctx.name}'s pattern AS IT SHOWS ${ctx.momentFraming} — the SAME trait below, but placed at THAT moment, in plain words (not the generic line). The archetype trait to draw on: ${ctx.realReason}
+MOMENT RULE: ${reentryRule} ${archNote} The hardPart's second sentence must clearly sit at this worry's moment (stopping / starting / after a mistake / near the end / before being judged).
 
 Write JSON ONLY, exactly these keys:
 {
@@ -398,7 +435,9 @@ ${ctx.autonomyArch ? `- ${ctx.name} needs a real SAY. switch.try MUST hand over 
 - The switch AND tonight MUST take place at ${ctx.moment}, using our Week 1 principle there — NOT re-skinned homework advice.
 - switch.try IS our Week 1 core move above, put into the parent's exact words at ${ctx.moment}. It must BE that move — not a generic nudge ("keep going", "five more minutes", "you can do it"). If switch.try is not our core move, it is wrong.
 - switch.instead and switch.try are WORDS A PARENT SAYS, each wrapped in double quotes.${ctx.instinctMove ? ` switch.instead must be the parent's usual move above, said out loud.` : ""}
-- If switch.try offers a real choice, switch.after must be exactly: "The choice only works if it’s real."
+- switch.instead is the BLUNT line a tired, frustrated parent REALLY says at this moment ("Finish it.", "Off. Now.", "Stop messing about."). NEVER a kind or encouraging line ("You're doing so well", "Keep going, you've got this") — that is not the instinct we're replacing.
+- switch.try is a CONCRETE thing the parent says word-for-word — a real choice or an exact instruction. Do NOT use an abstract meta-question like "What would make this feel real?" (especially for ages 8+); give the actual choice/words instead (e.g. "Two more minutes, or stop now? You pick.").
+- If switch.try offers a real choice, switch.after must be exactly: "${ctx.afterLine}"
 - NO abstract nouns: method, ownership, process, transition, thread, approach, autonomy, structure, engagement, belongs.
 - BANNED words: system, re-entry, brain, neuro, exile, dopamine, regulate, off-ramp, upstairs, diagnose, ADHD, disorder, may, might, could.
 - NEVER BARGAIN. The stop time is fixed and stated plainly. BANNED bargaining words: stakes, bet, consequence, punish, firm, worth it, stake, reward, treat, treats, deal, earn, earned.

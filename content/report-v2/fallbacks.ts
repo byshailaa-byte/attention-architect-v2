@@ -210,12 +210,20 @@ export function composeFallback(
   const meta = ARCH_META[archetype] ?? ARCH_META_FALLBACK;
   const cell = (CELL[archetype] ?? CELL["The All-In Kid"])[worry];
   const nm = name.trim() ? displayChildName(name) : "Your child";
+  // All-In Kid's "get back in" mechanism is re-entry — correct for homework/giveup/finish, WRONG at
+  // the screens moment (stopping) and the confidence moment (before trying). Override hardY there so
+  // the static fallback names the right moment instead of bleeding re-entry everywhere.
+  const ALLIN_HARDY: Record<string, string> = {
+    screens: "once {he}{'s} deep in, stopping is the hard part.",
+    confidence: "starting something {he} might get wrong is the hard part.",
+  };
+  const hardY = archetype === "The All-In Kid" && ALLIN_HARDY[worry] ? ALLIN_HARDY[worry] : meta.hardY;
   return {
     // v3 shapes. seenIt: strength moment (per archetype), ONE sentence starting "When …".
     // hardPart: "{Name} isn’t X. {He}’s Y." (Y aligned to WHY_BOXES red line). whyParas/
     // shortGood/shortWhy/shortFix are OMITTED — card 2 is now fixed per archetype (WHY_BOXES).
     seenIt: f(meta.seenIt),
-    hardPart: f(`${nm} isn’t ${HARD_X[worry]}. ${meta.hardY}`),
+    hardPart: f(`${nm} isn’t ${HARD_X[worry]}. ${hardY}`),
     switch: { instead: f(cell.instead), try: f(cell.try), after: f(cell.after) },
     // tonight's 3rd step is a "Notice:" check of the worry's outcome — the generic one per
     // worry, unless the cell authored its own Notice line (e.g. Live Wire × screens).

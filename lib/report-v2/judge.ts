@@ -75,11 +75,14 @@ PASS examples (these are COHERENT — Q1 PASS):
  • "Riya isn't giving up. She's fighting being told." + try "Table or floor? Easy bit or hard bit first?" (a real small choice = the Week 1 move), at the moment after a mistake.
  • "Kai isn't giving up. He drifts to the next idea." + try "Put that idea on the pad, then come back to this."
  • "Aria isn't giving up. Getting back in after a stumble is hard." + try "25 minutes, no interruptions."
+THE HARD PART MUST NAME THIS WORRY'S MOMENT: stopping (screens), before trying / being judged (confidence), right after a mistake (giveup), near the end (finish), or starting (homework/reminders). "Getting back in / hard to get back in / re-entry" is valid ONLY for an All-In Kid pulled out mid-task (homework/giveup/finish) — it is WRONG for screens, confidence, or any other archetype, and must FAIL.
 FAIL examples (these are INCOHERENT — Q1 FAIL):
  • try "Let me sit with you and we'll start it together" for a child whose method is a real say → contradicts the Week 1 autonomy move.
  • "He's waiting to start his own way" for a FINISHING worry → diagnoses starting; the worry is finishing (mismatch of reason and moment).
- • "She's drifting when her side-ideas get shut down" → blames the parent, not the child's own wiring, and contradicts the mechanism.
-Otherwise FAIL only if it genuinely drifts to generic advice, contradicts the mechanism, the switch is not the Week 1 move, the switch/tonight do not happen at ${moment}, or the third tonight step is not a Notice check.
+ • "She's drifting when her side-ideas get shut down" → blames the parent, not the child's own wiring.
+ • "She's finding it hard to get back in" for a SCREENS worry → re-entry at the wrong moment; the screens moment is STOPPING / switching off, not getting back in.
+ • "He's finding it hard to get back in" for a CAPTAIN child → wrong archetype mechanism; a Captain's real reason is having no real say/ownership, never re-entry.
+Otherwise FAIL only if it genuinely drifts to generic advice, contradicts the mechanism, the switch is not the Week 1 move, the switch/tonight do not happen at ${moment}, the third tonight step is not a Notice check, or the hard part's real reason does not sit at this worry's moment.
 Q2 (usability): Could a busy parent picture exactly what to do and say, in one read? FAIL if it is vague, abstract, or needs re-reading to act on.
 Q3 (seenIt): Does seenIt show the child FOCUSING WELL, not struggling? FAIL if it mentions the worry, the problem, reminders, fights, quitting, or anything the child does badly.
 Q4 (no parent-blame): FAIL if anything implies the parent–child relationship, or something "off between you", is the problem. ALSO FAIL if any line makes the PARENT the cause — e.g. "you push", "every reminder you give", "because you…". The child's wiring is the reason, never the parent.`;
