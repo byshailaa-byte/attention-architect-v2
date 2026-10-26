@@ -56,7 +56,17 @@ Q2: <PASS or FAIL> — <short reason>
 Q3: <PASS or FAIL> — <short reason>
 Q4: <PASS or FAIL> — <short reason>
 
-Q1 (coherence): Does hardPart's real reason follow from this archetype mechanism, AND does the switch match the Week 1 core move, AND do the switch and tonight's steps take place at ${moment}, AND is tonight's THIRD step a "Notice:" check of the worry's outcome? FAIL if it drifts to generic advice, contradicts the mechanism, the switch is not the Week 1 move, the switch/tonight do not happen at ${moment}, or the third tonight step is not a Notice check.
+Q1 (coherence): Judge FOUR things — (a) hardPart's SECOND sentence (the real reason) follows from the archetype mechanism AS IT SHOWS AT ${moment}; (b) switch.try IS the Week 1 core move (not generic encouragement); (c) switch + tonight 1–2 happen AT ${moment}; (d) tonight's THIRD step is a "Notice:" check of the worry's outcome.
+IMPORTANT: the hardPart MUST use the format "{Name} isn't <wrong read>. <real reason>." Do NOT fail it for "reframing the worry away" or for saying "isn't giving up / isn't refusing" — that contrast is REQUIRED and correct. Judge ONLY whether the SECOND sentence is coherent at the moment; never penalise the mandated "isn't X" shape itself.
+PASS examples (these are COHERENT — Q1 PASS):
+ • "Riya isn't giving up. She's fighting being told." + try "Table or floor? Easy bit or hard bit first?" (a real small choice = the Week 1 move), at the moment after a mistake.
+ • "Kai isn't giving up. He drifts to the next idea." + try "Put that idea on the pad, then come back to this."
+ • "Aria isn't giving up. Getting back in after a stumble is hard." + try "25 minutes, no interruptions."
+FAIL examples (these are INCOHERENT — Q1 FAIL):
+ • try "Let me sit with you and we'll start it together" for a child whose method is a real say → contradicts the Week 1 autonomy move.
+ • "He's waiting to start his own way" for a FINISHING worry → diagnoses starting; the worry is finishing (mismatch of reason and moment).
+ • "She's drifting when her side-ideas get shut down" → blames the parent, not the child's own wiring, and contradicts the mechanism.
+Otherwise FAIL only if it genuinely drifts to generic advice, contradicts the mechanism, the switch is not the Week 1 move, the switch/tonight do not happen at ${moment}, or the third tonight step is not a Notice check.
 Q2 (usability): Could a busy parent picture exactly what to do and say, in one read? FAIL if it is vague, abstract, or needs re-reading to act on.
 Q3 (seenIt): Does seenIt show the child FOCUSING WELL, not struggling? FAIL if it mentions the worry, the problem, reminders, fights, quitting, or anything the child does badly.
 Q4 (no parent-blame): FAIL if anything implies the parent–child relationship, or something "off between you", is the problem. ALSO FAIL if any line makes the PARENT the cause — e.g. "you push", "every reminder you give", "because you…". The child's wiring is the reason, never the parent.`;
@@ -64,6 +74,7 @@ Q4 (no parent-blame): FAIL if anything implies the parent–child relationship, 
   const res = await getClient().messages.create({
     model: MODEL,
     max_tokens: 400,
+    temperature: 0, // deterministic verdicts — stop the PASS↔FAIL flips on identical drafts
     messages: [{ role: "user", content: prompt }],
   });
   const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();

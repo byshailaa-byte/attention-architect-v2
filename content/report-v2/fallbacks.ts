@@ -68,11 +68,11 @@ const ARCH_META: Record<string, ArchMeta> = {
   },
   "The Inventor": {
     seenIt: "When {Name} builds something {his} own way, {he} {s:keeps|keep} at the hard parts.",
-    hardY: "{He}{'s} losing interest when {his} way gets corrected.",
+    hardY: "{He}{'s} losing interest when {he} can't do it {his} own way.",
   },
   "The Explorer": {
     seenIt: "When one thing sparks another, {Name} connects the ideas fast.",
-    hardY: "{He}{'s} drifting off when every side-idea is stopped.",
+    hardY: "{He}{'s} drifting off to chase the next idea.",
   },
   "The Magnet": {
     seenIt: "When you sit at the table too, {Name} tries that bit harder.",

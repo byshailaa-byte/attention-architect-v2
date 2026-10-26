@@ -38,6 +38,23 @@ const INSTINCT_MOVE: Record<string, string> = {
 
 const MODEL = "claude-sonnet-4-6";
 
+// The worry's MOMENT, as a framing phrase for the hardPart's "real reason": the SAME archetype trait,
+// described where the worry actually bites — not the canned, moment-agnostic red line. Keyed by the
+// canonical concern.
+const MOMENT_FRAMING: Record<string, string> = {
+  giveup: "right after a mistake — when it has just got hard",
+  finish: "near the end — on the last steps",
+  homework: "at the very start — getting going",
+  reminders: "at the very start — getting going",
+  screens: "at the moment of switching the screen off",
+  confidence: "before trying — when it might be judged",
+  other: "at the start of the task",
+};
+// Archetypes whose method is giving the child a real SAY/choice — their switch must hand over control,
+// never "let me sit with you / we'll start it together" (that removes the say). Magnet/Glue/All-In are
+// presence/protected-block archetypes where sitting alongside IS the method.
+const AUTONOMY_ARCH = new Set(["Storm", "Inventor", "Captain", "Explorer"]);
+
 // Per-call token usage, accumulated across one generation for report_generation_log (phase 52).
 type Usage = { inTok: number; outTok: number };
 const usageOf = (res: { usage?: { input_tokens?: number; output_tokens?: number } | null }): Usage =>
@@ -76,22 +93,22 @@ const HARD_PART_EXAMPLES: Record<string, [string, string]> = {
     "Aarav isn’t fighting the task. He’s fighting being told.",
     "Aarav isn’t being difficult. He’s pushing back on losing the say.",
   ],
-  // Explorer red line: "{He} drifts off completely."
+  // Explorer red line: "{He} drifts off completely." (child-internal — no "you/parent shut it down")
   "Explorer": [
-    "Aarav isn’t losing interest. He’s drifting when his side-ideas get shut down.",
-    "Aarav isn’t being lazy. He’s wandering off with nowhere to park an idea.",
+    "Aarav isn’t losing interest. He’s chasing the next idea before finishing.",
+    "Aarav isn’t being lazy. His mind jumps on with nowhere to park an idea.",
   ],
   // Captain red line: "{His} drive switches off."
   // ex[1] is a GOLD example of the shape (c) cause-clause ("<thing> switches {him} off") — so the
   // model can produce "{Name} isn't ignoring you. Being told what to do switches {him} off."
   "Captain": [
-    "Aarav isn’t ignoring you. He’s switched off from being handed instructions.",
-    "Aarav isn’t ignoring you. Being told what to do switches him off.",
+    "Aarav isn’t ignoring you. His drive switches off with no say in it.",
+    "Aarav isn’t ignoring you. With no say in the plan, his drive switches off.",
   ],
-  // Inventor red line: "{He} loses interest fast."
+  // Inventor red line: "{He} loses interest fast." (child-internal — no "his way gets corrected")
   "Inventor": [
     "Aarav isn’t ignoring you. He’s waiting to start his own way.",
-    "Aarav isn’t being stubborn. He’s losing interest when his way gets corrected.",
+    "Aarav isn’t being stubborn. He loses interest when he can’t do it his own way.",
   ],
   // All-In Kid red line: "It's hard for {him} to get back in."
   "All-In Kid": [
@@ -163,6 +180,8 @@ type Context = {
   realReason: string;
   // v3: bare archetype key ("Storm", "All-In Kid", …) for per-archetype gold hardPart examples.
   bareArch: string;
+  momentFraming: string; // where the worry bites — the hardPart "real reason" is framed here
+  autonomyArch: boolean; // true → switch must hand over a say (never "sit with you / do it together")
 };
 
 function fillTokens(tmpl: string, name: string, gender: Gender): string {
@@ -248,7 +267,7 @@ function pronounRule(gender: Gender): string {
   return "singular they — they/them/their/themselves, with plural verbs (they start, they do). NEVER he/she, never the word themself, and never repeat the name in place of a pronoun";
 }
 
-function buildContext(a: AssessmentInput): Context {
+export function buildContext(a: AssessmentInput): Context {
   const gender = (a.childGender ?? null) as Gender;
   const name = a.childName?.trim() ? displayChildName(a.childName) : "your child";
   const concern = canonicalConcern(a.concerns?.[0]);
@@ -269,6 +288,8 @@ function buildContext(a: AssessmentInput): Context {
   return {
     gender, name, concern, worryLabel, moment, notice, archetype, archDesc, headline, goal, program,
     evidence, evidenceQuotes: evidence.map((e) => e.quote), instinctMove, realReason, bareArch,
+    momentFraming: MOMENT_FRAMING[concern] ?? MOMENT_FRAMING.other,
+    autonomyArch: AUTONOMY_ARCH.has(bareArch),
     archStrengths: strengthsFor(archetype).join(" "),
     evidenceTie: `Put together, these three answers are what pointed us to ${name}’s pattern.`,
     disclaimer:
@@ -349,7 +370,7 @@ ${ctx.name}'S STRENGTHS (seenIt draws on these — a moment of FOCUSING WELL): $
 PRONOUNS — use ONLY: ${pronounRule(ctx.gender)}
 ${ctx.instinctMove ? `THE PARENT'S USUAL MOVE AT THIS MOMENT (write switch.instead FROM this, in the parent's voice; NEVER name it): ${ctx.instinctMove}` : ""}
 
-THE REAL REASON (hardPart's SECOND sentence must say this, in your own words): ${ctx.realReason}
+THE REAL REASON (hardPart's SECOND sentence): describe ${ctx.name}'s pattern AS IT SHOWS ${ctx.momentFraming} — the SAME trait below, but placed at THAT moment, in plain words (not the generic line). The archetype trait to draw on: ${ctx.realReason}
 
 Write JSON ONLY, exactly these keys:
 {
@@ -372,7 +393,8 @@ VOICE RULES (rejected otherwise):
 
 MORE HARD RULES:
 - Each tonight step is ONE short sentence, TWO at most.
-- Never make the PARENT the cause of the problem. Do NOT write "you push", "every reminder you give", "because you…". Describe what happens for the child, not what the parent does wrong.
+- Never make the PARENT the cause of the problem. Do NOT write "you push", "every reminder you give", "because you…", and do NOT frame the real reason as something DONE TO the child ("when his way gets corrected", "when his ideas get shut down", "being handed instructions"). The real reason is ${ctx.name}'s OWN wiring — describe what happens inside ${ctx.name}, not what the parent does.
+${ctx.autonomyArch ? `- ${ctx.name} needs a real SAY. switch.try MUST hand over a genuine choice or control at ${ctx.moment}. NEVER "Let me sit with you", "we'll start it together", "I'll do the first bit with you", "let me show you" — those remove the say and contradict the method for this child.` : "- switch.try must match this child's method exactly as the Week 1 move describes it."}
 - The switch AND tonight MUST take place at ${ctx.moment}, using our Week 1 principle there — NOT re-skinned homework advice.
 - switch.try IS our Week 1 core move above, put into the parent's exact words at ${ctx.moment}. It must BE that move — not a generic nudge ("keep going", "five more minutes", "you can do it"). If switch.try is not our core move, it is wrong.
 - switch.instead and switch.try are WORDS A PARENT SAYS, each wrapped in double quotes.${ctx.instinctMove ? ` switch.instead must be the parent's usual move above, said out loud.` : ""}
