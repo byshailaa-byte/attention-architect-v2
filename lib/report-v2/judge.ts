@@ -19,6 +19,19 @@ function getClient(): Anthropic {
 
 export type JudgeVerdict = { verdict: "PASS" | "FAIL"; reason: string; failed: string[]; raw: string; inTok: number; outTok: number };
 
+const JUDGE_QNAMES = ["coherence", "usability", "seenIt", "relationship"] as const;
+// Parse the judge's four-line verdict into the list of FAILED question names. Reads ONLY the PASS/FAIL
+// token immediately after "Qn:" — NOT /FAIL/i across the whole line, which matched the word "failure"
+// (or "failed") in a reason like "…after the first failure…" and wrongly failed giveup/finish reports
+// even when the judge wrote "Q1: PASS". A missing/unparseable line defaults to FAIL (fail-closed).
+export function parseJudgeFailed(text: string): string[] {
+  const q = (n: number): "PASS" | "FAIL" => {
+    const m = text.match(new RegExp(`Q${n}\\s*[:：\\-]?\\s*\\*{0,2}\\s*(PASS|FAIL)`, "i"));
+    return m ? (m[1].toUpperCase() as "PASS" | "FAIL") : "FAIL";
+  };
+  return [1, 2, 3, 4].filter((n) => q(n) === "FAIL").map((n) => JUDGE_QNAMES[n - 1]);
+}
+
 export async function judgeCoherence(args: {
   childName: string;
   worryLabel: string;
@@ -78,15 +91,7 @@ Q4 (no parent-blame): FAIL if anything implies the parent–child relationship, 
     messages: [{ role: "user", content: prompt }],
   });
   const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
-  // Read ONLY the verdict token immediately after "Qn:" — not /FAIL/i across the whole line, which
-  // matched the word "failure" in a reason like "…after the first failure…" and wrongly failed giveup
-  // reports (the worry's moment literally contains "failure"). Default to FAIL if the token is missing.
-  const q = (n: number): "PASS" | "FAIL" => {
-    const m = text.match(new RegExp(`Q${n}\\s*[:：\\-]?\\s*\\*{0,2}\\s*(PASS|FAIL)`, "i"));
-    return m ? (m[1].toUpperCase() as "PASS" | "FAIL") : "FAIL";
-  };
-  const names = ["coherence", "usability", "seenIt", "relationship"];
-  const failed = [1, 2, 3, 4].filter((n) => q(n) === "FAIL").map((n) => names[n - 1]);
+  const failed = parseJudgeFailed(text);
   const verdict: "PASS" | "FAIL" = failed.length === 0 ? "PASS" : "FAIL";
   const reason = verdict === "PASS" ? "all four PASS"
     : failed.join(", ") + " FAIL — " + text.replace(/\s+/g, " ").slice(0, 240);

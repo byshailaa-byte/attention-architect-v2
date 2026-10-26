@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
 import { loadAssessmentInput } from "@/lib/report-v2/service";
 import { buildContext } from "@/lib/report-v2/generate";
-import { judgeCoherenceVoted } from "@/lib/report-v2/judge";
+import { judgeCoherence } from "@/lib/report-v2/judge"; // single temp-0 call — matches production
 
 const sql = neon(process.env.DATABASE_URL_PROD!);
 const good: string[] = JSON.parse(readFileSync("/tmp/calib-good.json", "utf8"));
@@ -37,7 +37,7 @@ async function judgeSession(session: string, gen: Gen) {
   if (!input) return null;
   const ctx = buildContext(input);
   const g = fillName(gen, ctx.name);
-  const v = await judgeCoherenceVoted({ childName: ctx.name, worryLabel: ctx.worryLabel, moment: ctx.moment, archetype: ctx.archetype, program: ctx.program, evidenceQuotes: ctx.evidenceQuotes, generated: g as never });
+  const v = await judgeCoherence({ childName: ctx.name, worryLabel: ctx.worryLabel, moment: ctx.moment, archetype: ctx.archetype, program: ctx.program, evidenceQuotes: ctx.evidenceQuotes, generated: g as never });
   return { arch: ctx.archetype, worry: ctx.concern, verdict: v.verdict, failed: v.failed };
 }
 
