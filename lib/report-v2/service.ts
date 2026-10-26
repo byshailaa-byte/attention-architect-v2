@@ -54,7 +54,7 @@ export async function generateAndStoreReportV2(sessionId: string): Promise<void>
   }
   const input = await loadAssessmentInput(sql, sessionId);
   if (!input) return;
-  const { content, cost } = await generateReportV2(input);
+  const { content, cost, draft, judges } = await generateReportV2(input);
   try {
     // DO UPDATE (not DO NOTHING): a stale-version row must be overwritten by the regenerate.
     await sql`
@@ -66,11 +66,22 @@ export async function generateAndStoreReportV2(sessionId: string): Promise<void>
     console.warn("[report-v2] store content:", (e as Error).message);
   }
   // Phase 52: one cost/outcome row per generation (model, calls, tokens, cost, outcome + reason).
+  // Phase 74 instrumentation: on a FALLBACK, also persist the rejected DRAFT and the judge's
+  // per-question verdicts/reasons, so a future fallback is diagnosable without an offline re-run.
+  // 30-day retention: each write nulls out draft/judge_detail older than 30 days (the lightweight
+  // cost row is kept indefinitely; only the heavier draft/verdict payload is pruned).
+  const isFallback = cost.outcome === "fallback";
+  const draftJson = isFallback && draft ? JSON.stringify(draft) : null;
+  const judgeJson = isFallback && judges.length
+    ? JSON.stringify(judges.map((j) => ({ verdict: j.verdict, failed: j.failed, reason: j.raw })))
+    : null;
   try {
     await sql`
-      INSERT INTO report_generation_log (session_id, model, calls, input_tokens, output_tokens, cost_paise, outcome, reason)
-      VALUES (${sessionId}::uuid, ${cost.model}, ${cost.calls}, ${cost.inputTokens}, ${cost.outputTokens}, ${cost.costPaise}, ${cost.outcome}, ${cost.reason})
+      INSERT INTO report_generation_log (session_id, model, calls, input_tokens, output_tokens, cost_paise, outcome, reason, draft, judge_detail)
+      VALUES (${sessionId}::uuid, ${cost.model}, ${cost.calls}, ${cost.inputTokens}, ${cost.outputTokens}, ${cost.costPaise}, ${cost.outcome}, ${cost.reason}, ${draftJson}::jsonb, ${judgeJson}::jsonb)
     `;
+    await sql`UPDATE report_generation_log SET draft = NULL, judge_detail = NULL
+              WHERE created_at < now() - interval '30 days' AND (draft IS NOT NULL OR judge_detail IS NOT NULL)`;
   } catch (e) {
     console.warn("[report-v2] cost log:", (e as Error).message);
   }

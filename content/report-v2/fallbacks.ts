@@ -68,11 +68,11 @@ const ARCH_META: Record<string, ArchMeta> = {
   },
   "The Inventor": {
     seenIt: "When {Name} builds something {his} own way, {he} {s:keeps|keep} at the hard parts.",
-    hardY: "{He}{'s} losing interest when {his} way gets corrected.",
+    hardY: "{He}{'s} losing interest when {he} can't do it {his} own way.",
   },
   "The Explorer": {
     seenIt: "When one thing sparks another, {Name} connects the ideas fast.",
-    hardY: "{He}{'s} drifting off when every side-idea is stopped.",
+    hardY: "{He}{'s} drifting off to chase the next idea.",
   },
   "The Magnet": {
     seenIt: "When you sit at the table too, {Name} tries that bit harder.",
@@ -97,14 +97,16 @@ const ARCH_META_FALLBACK = ARCH_META["The All-In Kid"];
 
 // card 1 hardPart (v3) = "{Name} isn’t {HARD_X[worry]}. {ARCH_META[arch].hardY}" — two sentences,
 // each ≤10 words. HARD_X = the wrong read of the worry (first sentence tail, after "isn’t").
+// X = the WRONG READ (a blame label the parent fears) — lazy, stubborn, defiant, a quitter, ignoring
+// you — NEVER something the parent can plainly SEE (hooked on the screen, giving up, losing interest).
 const HARD_X: Record<string, string> = {
-  reminders:  "ignoring you",
-  homework:   "being lazy",
-  screens:    "hooked on the screen",
-  confidence: "unable to do it",
-  giveup:     "giving up easily",
-  finish:     "losing interest",
-  other:      "refusing to try",
+  reminders:  "ignoring you",               // blame read (dismissive), not plainly visible
+  homework:   "being lazy",                 // blame
+  screens:    "choosing the screen over you", // not "hooked on the screen" (plainly visible → argues)
+  confidence: "unable to do it",            // a wrong read of capability (inferred, not seen)
+  giveup:     "a quitter",                  // not "giving up easily" (the visible behaviour)
+  finish:     "being careless",             // not "losing interest" (the visible drift)
+  other:      "refusing to try",            // blame read (defiant)
 };
 
 type Cell = { instead: string; try: string; after: string; tonight: [string, string, string] };
@@ -210,12 +212,20 @@ export function composeFallback(
   const meta = ARCH_META[archetype] ?? ARCH_META_FALLBACK;
   const cell = (CELL[archetype] ?? CELL["The All-In Kid"])[worry];
   const nm = name.trim() ? displayChildName(name) : "Your child";
+  // All-In Kid's "get back in" mechanism is re-entry — correct for homework/giveup/finish, WRONG at
+  // the screens moment (stopping) and the confidence moment (before trying). Override hardY there so
+  // the static fallback names the right moment instead of bleeding re-entry everywhere.
+  const ALLIN_HARDY: Record<string, string> = {
+    screens: "Once {he}{'s} deep in, stopping is the hard part.",
+    confidence: "Starting something {he} might get wrong is the hard part.",
+  };
+  const hardY = archetype === "The All-In Kid" && ALLIN_HARDY[worry] ? ALLIN_HARDY[worry] : meta.hardY;
   return {
     // v3 shapes. seenIt: strength moment (per archetype), ONE sentence starting "When …".
     // hardPart: "{Name} isn’t X. {He}’s Y." (Y aligned to WHY_BOXES red line). whyParas/
     // shortGood/shortWhy/shortFix are OMITTED — card 2 is now fixed per archetype (WHY_BOXES).
     seenIt: f(meta.seenIt),
-    hardPart: f(`${nm} isn’t ${HARD_X[worry]}. ${meta.hardY}`),
+    hardPart: f(`${nm} isn’t ${HARD_X[worry]}. ${hardY}`),
     switch: { instead: f(cell.instead), try: f(cell.try), after: f(cell.after) },
     // tonight's 3rd step is a "Notice:" check of the worry's outcome — the generic one per
     // worry, unless the cell authored its own Notice line (e.g. Live Wire × screens).

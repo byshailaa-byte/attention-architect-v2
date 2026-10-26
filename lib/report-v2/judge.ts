@@ -17,7 +17,20 @@ function getClient(): Anthropic {
   return _client;
 }
 
-export type JudgeVerdict = { verdict: "PASS" | "FAIL"; reason: string; failed: string[]; inTok: number; outTok: number };
+export type JudgeVerdict = { verdict: "PASS" | "FAIL"; reason: string; failed: string[]; raw: string; inTok: number; outTok: number };
+
+const JUDGE_QNAMES = ["coherence", "usability", "seenIt", "relationship"] as const;
+// Parse the judge's four-line verdict into the list of FAILED question names. Reads ONLY the PASS/FAIL
+// token immediately after "Qn:" — NOT /FAIL/i across the whole line, which matched the word "failure"
+// (or "failed") in a reason like "…after the first failure…" and wrongly failed giveup/finish reports
+// even when the judge wrote "Q1: PASS". A missing/unparseable line defaults to FAIL (fail-closed).
+export function parseJudgeFailed(text: string): string[] {
+  const q = (n: number): "PASS" | "FAIL" => {
+    const m = text.match(new RegExp(`Q${n}\\s*[:：\\-]?\\s*\\*{0,2}\\s*(PASS|FAIL)`, "i"));
+    return m ? (m[1].toUpperCase() as "PASS" | "FAIL") : "FAIL";
+  };
+  return [1, 2, 3, 4].filter((n) => q(n) === "FAIL").map((n) => JUDGE_QNAMES[n - 1]);
+}
 
 export async function judgeCoherence(args: {
   childName: string;
@@ -56,7 +69,20 @@ Q2: <PASS or FAIL> — <short reason>
 Q3: <PASS or FAIL> — <short reason>
 Q4: <PASS or FAIL> — <short reason>
 
-Q1 (coherence): Does hardPart's real reason follow from this archetype mechanism, AND does the switch match the Week 1 core move, AND do the switch and tonight's steps take place at ${moment}, AND is tonight's THIRD step a "Notice:" check of the worry's outcome? FAIL if it drifts to generic advice, contradicts the mechanism, the switch is not the Week 1 move, the switch/tonight do not happen at ${moment}, or the third tonight step is not a Notice check.
+Q1 (coherence): Judge FOUR things — (a) hardPart's SECOND sentence (the real reason) follows from the archetype mechanism AS IT SHOWS AT ${moment}; (b) switch.try IS the Week 1 core move (not generic encouragement); (c) switch + tonight 1–2 happen AT ${moment}; (d) tonight's THIRD step is a "Notice:" check of the worry's outcome.
+IMPORTANT: the hardPart MUST use the format "{Name} isn't <wrong read>. <real reason>." Do NOT fail it for "reframing the worry away" or for saying "isn't giving up / isn't refusing" — that contrast is REQUIRED and correct. Judge ONLY whether the SECOND sentence is coherent at the moment; never penalise the mandated "isn't X" shape itself.
+PASS examples (these are COHERENT — Q1 PASS):
+ • "Riya isn't giving up. She's fighting being told." + try "Table or floor? Easy bit or hard bit first?" (a real small choice = the Week 1 move), at the moment after a mistake.
+ • "Kai isn't giving up. He drifts to the next idea." + try "Put that idea on the pad, then come back to this."
+ • "Aria isn't giving up. Getting back in after a stumble is hard." + try "25 minutes, no interruptions."
+THE HARD PART MUST NAME THIS WORRY'S MOMENT: stopping (screens), before trying / being judged (confidence), right after a mistake (giveup), near the end (finish), or starting (homework/reminders). "Getting back in / hard to get back in / re-entry" is valid ONLY for an All-In Kid pulled out mid-task (homework/giveup/finish) — it is WRONG for screens, confidence, or any other archetype, and must FAIL.
+FAIL examples (these are INCOHERENT — Q1 FAIL):
+ • try "Let me sit with you and we'll start it together" for a child whose method is a real say → contradicts the Week 1 autonomy move.
+ • "He's waiting to start his own way" for a FINISHING worry → diagnoses starting; the worry is finishing (mismatch of reason and moment).
+ • "She's drifting when her side-ideas get shut down" → blames the parent, not the child's own wiring.
+ • "She's finding it hard to get back in" for a SCREENS worry → re-entry at the wrong moment; the screens moment is STOPPING / switching off, not getting back in.
+ • "He's finding it hard to get back in" for a CAPTAIN child → wrong archetype mechanism; a Captain's real reason is having no real say/ownership, never re-entry.
+Otherwise FAIL only if it genuinely drifts to generic advice, contradicts the mechanism, the switch is not the Week 1 move, the switch/tonight do not happen at ${moment}, the third tonight step is not a Notice check, or the hard part's real reason does not sit at this worry's moment.
 Q2 (usability): Could a busy parent picture exactly what to do and say, in one read? FAIL if it is vague, abstract, or needs re-reading to act on.
 Q3 (seenIt): Does seenIt show the child FOCUSING WELL, not struggling? FAIL if it mentions the worry, the problem, reminders, fights, quitting, or anything the child does badly.
 Q4 (no parent-blame): FAIL if anything implies the parent–child relationship, or something "off between you", is the problem. ALSO FAIL if any line makes the PARENT the cause — e.g. "you push", "every reminder you give", "because you…". The child's wiring is the reason, never the parent.`;
@@ -64,15 +90,30 @@ Q4 (no parent-blame): FAIL if anything implies the parent–child relationship, 
   const res = await getClient().messages.create({
     model: MODEL,
     max_tokens: 400,
+    temperature: 0, // deterministic verdicts — stop the PASS↔FAIL flips on identical drafts
     messages: [{ role: "user", content: prompt }],
   });
   const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("").trim();
-  const q = (n: number) => /FAIL/i.test((text.match(new RegExp(`Q${n}[^\\n]*`, "i")) || [""])[0]) ? "FAIL"
-    : /PASS/i.test((text.match(new RegExp(`Q${n}[^\\n]*`, "i")) || [""])[0]) ? "PASS" : "FAIL";
-  const names = ["coherence", "usability", "seenIt", "relationship"];
-  const failed = [1, 2, 3, 4].filter((n) => q(n) === "FAIL").map((n) => names[n - 1]);
+  const failed = parseJudgeFailed(text);
   const verdict: "PASS" | "FAIL" = failed.length === 0 ? "PASS" : "FAIL";
   const reason = verdict === "PASS" ? "all four PASS"
     : failed.join(", ") + " FAIL — " + text.replace(/\s+/g, " ").slice(0, 240);
-  return { verdict, reason, failed, inTok: res.usage?.input_tokens ?? 0, outTok: res.usage?.output_tokens ?? 0 };
+  // raw = the judge's full four-line verdict (per-question PASS/FAIL + reason) for diagnostics/instrumentation.
+  return { verdict, reason, failed, raw: text, inTok: res.usage?.input_tokens ?? 0, outTok: res.usage?.output_tokens ?? 0 };
+}
+
+// Q1 majority-of-3: run the judge three times (temperature 0) and take a 2-of-3 majority FOR Q1
+// (coherence) ONLY — the question that flipped on identical drafts. Q2/Q3/Q4 come from run 1 (temp 0
+// keeps them stable). Costs 2 extra judge calls per generation; tokens are summed. (All-four majority
+// is free given the 3 calls and would further stabilise Q3/Q4 — left off per the Q1-only spec.)
+export async function judgeCoherenceVoted(args: Parameters<typeof judgeCoherence>[0]): Promise<JudgeVerdict> {
+  const runs = await Promise.all([judgeCoherence(args), judgeCoherence(args), judgeCoherence(args)]);
+  const q1Fails = runs.filter((r) => r.failed.includes("coherence")).length;
+  const base = runs[0];
+  const failed = [...(q1Fails >= 2 ? ["coherence"] : []), ...base.failed.filter((f) => f !== "coherence")];
+  const verdict: "PASS" | "FAIL" = failed.length === 0 ? "PASS" : "FAIL";
+  const inTok = runs.reduce((s, r) => s + r.inTok, 0);
+  const outTok = runs.reduce((s, r) => s + r.outTok, 0);
+  const reason = verdict === "PASS" ? `all pass (Q1 ${q1Fails}/3 FAIL)` : `${failed.join(", ")} FAIL — Q1 ${q1Fails}/3; ${base.raw.replace(/\s+/g, " ").slice(0, 200)}`;
+  return { verdict, reason, failed, raw: `[Q1 votes ${q1Fails}/3 FAIL]\n${base.raw}`, inTok, outTok };
 }

@@ -38,6 +38,23 @@ const INSTINCT_MOVE: Record<string, string> = {
 
 const MODEL = "claude-sonnet-4-6";
 
+// The worry's MOMENT, as a framing phrase for the hardPart's "real reason": the SAME archetype trait,
+// described where the worry actually bites — not the canned, moment-agnostic red line. Keyed by the
+// canonical concern.
+const MOMENT_FRAMING: Record<string, string> = {
+  giveup: "right after a mistake — when it has just got hard",
+  finish: "near the end — on the last steps",
+  homework: "at the very start — getting going",
+  reminders: "at the very start — getting going",
+  screens: "at the moment of switching the screen off",
+  confidence: "before trying — when it might be judged",
+  other: "at the start of the task",
+};
+// Archetypes whose method is giving the child a real SAY/choice — their switch must hand over control,
+// never "let me sit with you / we'll start it together" (that removes the say). Magnet/Glue/All-In are
+// presence/protected-block archetypes where sitting alongside IS the method.
+const AUTONOMY_ARCH = new Set(["Storm", "Inventor", "Captain", "Explorer"]);
+
 // Per-call token usage, accumulated across one generation for report_generation_log (phase 52).
 type Usage = { inTok: number; outTok: number };
 const usageOf = (res: { usage?: { input_tokens?: number; output_tokens?: number } | null }): Usage =>
@@ -76,22 +93,22 @@ const HARD_PART_EXAMPLES: Record<string, [string, string]> = {
     "Aarav isn’t fighting the task. He’s fighting being told.",
     "Aarav isn’t being difficult. He’s pushing back on losing the say.",
   ],
-  // Explorer red line: "{He} drifts off completely."
+  // Explorer red line: "{He} drifts off completely." (child-internal — no "you/parent shut it down")
   "Explorer": [
-    "Aarav isn’t losing interest. He’s drifting when his side-ideas get shut down.",
-    "Aarav isn’t being lazy. He’s wandering off with nowhere to park an idea.",
+    "Aarav isn’t losing interest. He’s chasing the next idea before finishing.",
+    "Aarav isn’t being lazy. His mind jumps on with nowhere to park an idea.",
   ],
   // Captain red line: "{His} drive switches off."
   // ex[1] is a GOLD example of the shape (c) cause-clause ("<thing> switches {him} off") — so the
   // model can produce "{Name} isn't ignoring you. Being told what to do switches {him} off."
   "Captain": [
-    "Aarav isn’t ignoring you. He’s switched off from being handed instructions.",
-    "Aarav isn’t ignoring you. Being told what to do switches him off.",
+    "Aarav isn’t ignoring you. His drive switches off with no say in it.",
+    "Aarav isn’t ignoring you. With no say in the plan, his drive switches off.",
   ],
-  // Inventor red line: "{He} loses interest fast."
+  // Inventor red line: "{He} loses interest fast." (child-internal — no "his way gets corrected")
   "Inventor": [
     "Aarav isn’t ignoring you. He’s waiting to start his own way.",
-    "Aarav isn’t being stubborn. He’s losing interest when his way gets corrected.",
+    "Aarav isn’t being stubborn. He loses interest when he can’t do it his own way.",
   ],
   // All-In Kid red line: "It's hard for {him} to get back in."
   "All-In Kid": [
@@ -163,7 +180,25 @@ type Context = {
   realReason: string;
   // v3: bare archetype key ("Storm", "All-In Kid", …) for per-archetype gold hardPart examples.
   bareArch: string;
+  momentFraming: string; // where the worry bites — the hardPart "real reason" is framed here
+  autonomyArch: boolean; // true → switch must hand over a say (never "sit with you / do it together")
+  afterLine: string;     // the switch.after line for a real-choice case (varied across reports)
+  reentryOK: boolean;    // re-entry framing allowed ONLY for All-In × homework/giveup/finish
 };
+
+// switch.after variants for the real-choice case — varied per report so no single line dominates
+// (validator does not pin this line; only the prompt did). Chosen deterministically from the child name.
+const AFTER_LINES = [
+  "The choice only works if it’s real.",
+  "It only works if the choice is truly theirs.",
+  "Mean it — let whatever they pick stand.",
+  "Give the choice, then stay out of it.",
+  "The say has to be real, or it won’t land.",
+];
+function pickAfter(name: string): string {
+  let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return AFTER_LINES[h % AFTER_LINES.length];
+}
 
 function fillTokens(tmpl: string, name: string, gender: Gender): string {
   const nm = name.trim() ? displayChildName(name) : "your child";
@@ -248,7 +283,7 @@ function pronounRule(gender: Gender): string {
   return "singular they — they/them/their/themselves, with plural verbs (they start, they do). NEVER he/she, never the word themself, and never repeat the name in place of a pronoun";
 }
 
-function buildContext(a: AssessmentInput): Context {
+export function buildContext(a: AssessmentInput): Context {
   const gender = (a.childGender ?? null) as Gender;
   const name = a.childName?.trim() ? displayChildName(a.childName) : "your child";
   const concern = canonicalConcern(a.concerns?.[0]);
@@ -269,6 +304,10 @@ function buildContext(a: AssessmentInput): Context {
   return {
     gender, name, concern, worryLabel, moment, notice, archetype, archDesc, headline, goal, program,
     evidence, evidenceQuotes: evidence.map((e) => e.quote), instinctMove, realReason, bareArch,
+    momentFraming: MOMENT_FRAMING[concern] ?? MOMENT_FRAMING.other,
+    autonomyArch: AUTONOMY_ARCH.has(bareArch),
+    afterLine: pickAfter(a.childName ?? archetype),
+    reentryOK: bareArch === "All-In Kid" && ["homework", "giveup", "finish"].includes(concern),
     archStrengths: strengthsFor(archetype).join(" "),
     evidenceTie: `Put together, these three answers are what pointed us to ${name}’s pattern.`,
     disclaimer:
@@ -321,6 +360,24 @@ hardPart: "Ishaan isn't ignoring you. Being told what to do switches him off."
 
 function buildPrompt(ctx: Context, priorFeedback?: string[]): string {
   const p = ctx.program;
+  // The real reason must be THIS archetype's mechanism AT THIS worry's moment. "Re-entry / getting
+  // back in" is the All-In Kid's mechanism and fits ONLY homework/giveup/finish — it must never be
+  // used for screens (moment = stopping), confidence (before trying), or for another archetype.
+  const momentMech: Record<string, string> = {
+    screens: `the real reason is about STOPPING — once ${ctx.name} is into it, switching off is the hard part.`,
+    confidence: `the real reason is BEFORE trying — the fear of getting it wrong or being judged.`,
+    reminders: `the real reason is about STARTING — getting going at all.`,
+    homework: `the real reason is about STARTING — getting going at all.`,
+    giveup: `the real reason is right AFTER a mistake — what happens the moment it goes wrong.`,
+    finish: `the real reason is NEAR THE END — the last stretch, not the start.`,
+    other: `the real reason is at the start of the task.`,
+  };
+  const reentryRule = ctx.reentryOK
+    ? `"Getting back in after being pulled out" is the correct mechanism here (All-In Kid, mid-task worry).`
+    : `Do NOT say "getting back in" / "hard to get back in" / "re-entry" — that is ONLY for an All-In Kid pulled out of homework. Here, ${momentMech[ctx.concern] ?? momentMech.other}`;
+  const archNote = ctx.bareArch === "Captain"
+    ? `This child is a Captain: the real reason is needing a real SAY / ownership (no say → drive switches off). NEVER frame it as re-entry.`
+    : `The real reason must be ${ctx.archetype}'s own mechanism, not another archetype's.`;
   const retry = priorFeedback?.length
     ? `\n\nYour previous attempt was REJECTED. Fix every point, keep everything else:\n- ${priorFeedback.join("\n- ")}\n`
     : "";
@@ -349,7 +406,8 @@ ${ctx.name}'S STRENGTHS (seenIt draws on these — a moment of FOCUSING WELL): $
 PRONOUNS — use ONLY: ${pronounRule(ctx.gender)}
 ${ctx.instinctMove ? `THE PARENT'S USUAL MOVE AT THIS MOMENT (write switch.instead FROM this, in the parent's voice; NEVER name it): ${ctx.instinctMove}` : ""}
 
-THE REAL REASON (hardPart's SECOND sentence must say this, in your own words): ${ctx.realReason}
+THE REAL REASON (hardPart's SECOND sentence): describe ${ctx.name}'s pattern AS IT SHOWS ${ctx.momentFraming} — the SAME trait below, but placed at THAT moment, in plain words (not the generic line). The archetype trait to draw on: ${ctx.realReason}
+MOMENT RULE: ${reentryRule} ${archNote} The hardPart's second sentence must clearly sit at this worry's moment (stopping / starting / after a mistake / near the end / before being judged).
 
 Write JSON ONLY, exactly these keys:
 {
@@ -362,7 +420,7 @@ The THIRD tonight step must be exactly this Notice check of the outcome: "${ctx.
 
 VOICE RULES (rejected otherwise):
 1. seenIt shows ${ctx.name} FOCUSING WELL (a strength moment). It is ONE sentence that STARTS with "When ${ctx.name}", ≤18 words, and must NOT mention the worry, reminders, fights, quitting or any problem. Never the phrase "You've seen". Use plainly POSITIVE focus words ("stays with it for a long time", "keeps going", "sticks with it"). AVOID phrasings that can sound like a loss even when they mean focus — do NOT write "loses track of time", "forgets everything else", "shuts the world out".
-2. hardPart is EXACTLY two short sentences: "${ctx.name} isn't X. ${hardPartSubject(ctx.gender)} Y." X = the wrong read (won't, can't, the task itself). Y = the real reason (THE REAL REASON above). Each sentence ≤12 words. No other full stops inside X or Y.
+2. hardPart is EXACTLY two short sentences: "${ctx.name} isn't X. ${hardPartSubject(ctx.gender)} Y." X = the WRONG READ — a blame label the parent fears ("lazy", "stubborn", "defiant", "a quitter", "ignoring you", "being difficult"). NEVER something the parent can plainly SEE ("hooked on the screen", "giving up", "losing interest", "on the phone") — that just argues with what they're watching. Y = the real reason (THE REAL REASON above). Each sentence ≤12 words. No other full stops inside X or Y.
 3. Use ${ctx.name}. NEVER the words type, pattern, trait or profile, and never name the attention type — that appears elsewhere.
 4. Quotation marks ONLY around the parent's own stored answers or the exact words a parent/child says. Not around your own phrases.
 5. Never blame the parent. Never bargain. Never promise an outcome. Never imply the parent–child relationship, or something being "off between you", is the problem. BANNED: fix, fixes, "nothing is wrong".
@@ -372,11 +430,14 @@ VOICE RULES (rejected otherwise):
 
 MORE HARD RULES:
 - Each tonight step is ONE short sentence, TWO at most.
-- Never make the PARENT the cause of the problem. Do NOT write "you push", "every reminder you give", "because you…". Describe what happens for the child, not what the parent does wrong.
+- Never make the PARENT the cause of the problem. Do NOT write "you push", "every reminder you give", "because you…", and do NOT frame the real reason as something DONE TO the child ("when his way gets corrected", "when his ideas get shut down", "being handed instructions"). The real reason is ${ctx.name}'s OWN wiring — describe what happens inside ${ctx.name}, not what the parent does.
+${ctx.autonomyArch ? `- ${ctx.name} needs a real SAY. switch.try MUST hand over a genuine choice or control at ${ctx.moment}. NEVER "Let me sit with you", "we'll start it together", "I'll do the first bit with you", "let me show you" — those remove the say and contradict the method for this child.` : "- switch.try must match this child's method exactly as the Week 1 move describes it."}
 - The switch AND tonight MUST take place at ${ctx.moment}, using our Week 1 principle there — NOT re-skinned homework advice.
 - switch.try IS our Week 1 core move above, put into the parent's exact words at ${ctx.moment}. It must BE that move — not a generic nudge ("keep going", "five more minutes", "you can do it"). If switch.try is not our core move, it is wrong.
 - switch.instead and switch.try are WORDS A PARENT SAYS, each wrapped in double quotes.${ctx.instinctMove ? ` switch.instead must be the parent's usual move above, said out loud.` : ""}
-- If switch.try offers a real choice, switch.after must be exactly: "The choice only works if it’s real."
+- switch.instead is what a tired, frustrated parent REALLY says at this moment — a blunt command ("Finish it.", "Off. Now.", "Stop messing about.") OR a pushy nudge ("Just keep trying, you were so close."). ONLY ban a soft, hands-off, reassuring line a frustrated parent would NOT say ("You're doing so well", "No pressure, take your time").
+- switch.try is a CONCRETE thing the parent says word-for-word — a real choice or an exact instruction. Do NOT use an abstract meta-question like "What would make this feel real?" (especially for ages 8+); give the actual choice/words instead (e.g. "Two more minutes, or stop now? You pick.").
+- If switch.try offers a real choice, switch.after must be exactly: "${ctx.afterLine}"
 - NO abstract nouns: method, ownership, process, transition, thread, approach, autonomy, structure, engagement, belongs.
 - BANNED words: system, re-entry, brain, neuro, exile, dopamine, regulate, off-ramp, upstairs, diagnose, ADHD, disorder, may, might, could.
 - NEVER BARGAIN. The stop time is fixed and stated plainly. BANNED bargaining words: stakes, bet, consequence, punish, firm, worth it, stake, reward, treat, treats, deal, earn, earned.
@@ -632,6 +693,7 @@ export type GenerateResult = {
   judges: JudgeVerdict[];
   rejections: string[];   // every validator error + judge-FAIL reason, across attempts
   cost: ReportCost;       // phase 52: tokens/cost/outcome/reason for report_generation_log
+  draft: ReportV2Generated | null; // the last generated draft evaluated (the REJECTED one on a fallback)
 };
 
 export function fallbackContentFor(a: AssessmentInput): ReportV2Content {
@@ -644,6 +706,7 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
   const vopts = { childName: ctx.name, gender: ctx.gender };
 
   let g: ReportV2Generated | null = null;
+  let lastDraft: ReportV2Generated | null = null; // the most-recent generated draft (rejected one on fallback)
   let source: "llm" | "fallback" = "fallback";
   let attempts = 0, repairs = 0, retries = 0;
   let seenItSwapped = false; // judge-q3 seenIt swap is done at most once per generation
@@ -658,6 +721,7 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
     current.tonight[2] = ctx.notice; // tonight's 3rd step is always the deterministic Notice check
     // Budget: 6 repairs (length + targeted seenIt/hardPart format, which can co-occur) + 1 full retry.
     for (;;) {
+      lastDraft = current; // remember the draft under evaluation (the rejected one if we fall back)
       const v = validateGenerated(current, vopts);
       if (!v.ok) {
         rejections.push(...v.errors);
@@ -762,5 +826,5 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
     costPaise: reportCostPaise(inTok, outTok),
     outcome: source, reason: source === "llm" ? null : (reason ?? "unknown"),
   };
-  return { content: assemble(ctx, g, source), attempts, repairs, judges, rejections, cost };
+  return { content: assemble(ctx, g, source), attempts, repairs, judges, rejections, cost, draft: source === "llm" ? g : lastDraft };
 }
