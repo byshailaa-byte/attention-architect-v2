@@ -97,14 +97,16 @@ const ARCH_META_FALLBACK = ARCH_META["The All-In Kid"];
 
 // card 1 hardPart (v3) = "{Name} isn’t {HARD_X[worry]}. {ARCH_META[arch].hardY}" — two sentences,
 // each ≤10 words. HARD_X = the wrong read of the worry (first sentence tail, after "isn’t").
+// X = the WRONG READ (a blame label the parent fears) — lazy, stubborn, defiant, a quitter, ignoring
+// you — NEVER something the parent can plainly SEE (hooked on the screen, giving up, losing interest).
 const HARD_X: Record<string, string> = {
-  reminders:  "ignoring you",
-  homework:   "being lazy",
-  screens:    "hooked on the screen",
-  confidence: "unable to do it",
-  giveup:     "giving up easily",
-  finish:     "losing interest",
-  other:      "refusing to try",
+  reminders:  "ignoring you",               // blame read (dismissive), not plainly visible
+  homework:   "being lazy",                 // blame
+  screens:    "choosing the screen over you", // not "hooked on the screen" (plainly visible → argues)
+  confidence: "unable to do it",            // a wrong read of capability (inferred, not seen)
+  giveup:     "a quitter",                  // not "giving up easily" (the visible behaviour)
+  finish:     "being careless",             // not "losing interest" (the visible drift)
+  other:      "refusing to try",            // blame read (defiant)
 };
 
 type Cell = { instead: string; try: string; after: string; tonight: [string, string, string] };
