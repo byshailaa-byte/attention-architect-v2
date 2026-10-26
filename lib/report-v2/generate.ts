@@ -632,6 +632,7 @@ export type GenerateResult = {
   judges: JudgeVerdict[];
   rejections: string[];   // every validator error + judge-FAIL reason, across attempts
   cost: ReportCost;       // phase 52: tokens/cost/outcome/reason for report_generation_log
+  draft: ReportV2Generated | null; // the last generated draft evaluated (the REJECTED one on a fallback)
 };
 
 export function fallbackContentFor(a: AssessmentInput): ReportV2Content {
@@ -644,6 +645,7 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
   const vopts = { childName: ctx.name, gender: ctx.gender };
 
   let g: ReportV2Generated | null = null;
+  let lastDraft: ReportV2Generated | null = null; // the most-recent generated draft (rejected one on fallback)
   let source: "llm" | "fallback" = "fallback";
   let attempts = 0, repairs = 0, retries = 0;
   let seenItSwapped = false; // judge-q3 seenIt swap is done at most once per generation
@@ -658,6 +660,7 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
     current.tonight[2] = ctx.notice; // tonight's 3rd step is always the deterministic Notice check
     // Budget: 6 repairs (length + targeted seenIt/hardPart format, which can co-occur) + 1 full retry.
     for (;;) {
+      lastDraft = current; // remember the draft under evaluation (the rejected one if we fall back)
       const v = validateGenerated(current, vopts);
       if (!v.ok) {
         rejections.push(...v.errors);
@@ -762,5 +765,5 @@ export async function generateReportV2(a: AssessmentInput): Promise<GenerateResu
     costPaise: reportCostPaise(inTok, outTok),
     outcome: source, reason: source === "llm" ? null : (reason ?? "unknown"),
   };
-  return { content: assemble(ctx, g, source), attempts, repairs, judges, rejections, cost };
+  return { content: assemble(ctx, g, source), attempts, repairs, judges, rejections, cost, draft: source === "llm" ? g : lastDraft };
 }
