@@ -1,8 +1,16 @@
 # Report fallback fix — deploy plan (WRITE ONLY — do not run until you say)
 
+> **STANDING RULE (2026-10-27).** Auto-deploy from `main` is **ON**: **pushing to `main` IS a production
+> deploy** (auto-build + auto-promote to the custom domain). **NEVER push or merge to `main` without the
+> user's explicit "go".** Local commits and branch work are always fine. Before stating any platform
+> state (auto-promotion, which deployment is live, alias target), VERIFY via the API first — never assume.
+
+> **DEPLOYED 2026-10-27** — `main @ de72ce8` auto-promoted to prod (`dpl_8W6QAkGg2kBWyhurzk6h5ZKxVoc9`);
+> alias confirmed via API. This plan is now a record, not a pending action.
+
 Branch `fix/report-fallback` → `main`, prod project **attention-architect-v2** (`prj_qT1IJK7HoIAkdqwbQENgbAoPy1oo`),
-prod DB endpoint **ep-green-truth-aqxygaj2**. Auto-promotion is currently **paused** (from the coach-v2 rollback),
-so promotion is manual. Nothing below runs until your word.
+prod DB endpoint **ep-green-truth-aqxygaj2**. Auto-deploy from `main` is **ON** (a push to `main` builds AND
+promotes to the custom domain automatically — confirmed 2026-10-27; the earlier "paused" note was wrong).
 
 ## 0. Pre-flight
 - Current prod = `badf9a0` (coach-v2), serving `attentionparents.thehumandecision.in`. `fix/report-fallback` head = latest commit on the branch.

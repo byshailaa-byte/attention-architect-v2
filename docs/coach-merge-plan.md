@@ -1,5 +1,12 @@
 # Conversational Coach — merge + prod deploy plan (WRITE ONLY — do not run without explicit "go")
 
+> **STANDING RULE (2026-10-27).** Auto-deploy from `main` is **ON**: **pushing to `main` IS a production
+> deploy** (it auto-builds AND auto-promotes the custom domain). Therefore **NEVER push or merge to
+> `main` without the user's explicit "go".** Committing locally and working on branches is always fine.
+> Before STATING any platform state (e.g. auto-promotion paused/active, which deployment is live),
+> VERIFY it via the API (get_alias / get_project / list_deployments) — do not assume. (On 2026-10-27 a
+> reported "auto-promotion paused" was wrong; the push had auto-promoted.)
+
 Branch `coach-quality` → `main`, then prod deploy of project **attention-architect-v2**
 (`prj_qT1IJK7HoIAkdqwbQENgbAoPy1oo`). Prod DB endpoint **ep-green-truth-aqxygaj2**. Nothing here runs
 until you say go. No `git push`/merge/prod/sends have happened.
