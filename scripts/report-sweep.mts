@@ -10,20 +10,26 @@ import { generateReportV2 } from "@/lib/report-v2/generate";
 import { canonicalConcern } from "@/lib/report-v2/goal-mapping";
 
 const sql = neon(process.env.DATABASE_URL_PROD!);
-const CAP_PAISE = 80_000; // ₹800
+const CAP_PAISE = Number(process.env.CAP_PAISE ?? 60_000); // ₹600 cap
 const fallback: string[] = JSON.parse(readFileSync("/tmp/fallback-sessions.json", "utf8")).map((x: { sessionId: string }) => x.sessionId);
 const fresh: string[] = JSON.parse(readFileSync("/tmp/fresh-sessions.json", "utf8"));
 
 let paise = 0, gens = 0, capped = false;
 type Run = { session: string; arch: string; worry: string; outcomes: string[] };
 
+const hardYByArch: Record<string, Set<string>> = {}; // normalised "real reason" → archetypes using it
 async function genOnce(session: string): Promise<{ outcome: string; arch: string; worry: string } | null> {
   if (paise >= CAP_PAISE) { capped = true; return null; }
   const input = await loadAssessmentInput(sql as never, session);
   if (!input) return null;
   const res = await generateReportV2(input);
   paise += res.cost.costPaise; gens++;
-  return { outcome: res.cost.outcome, arch: input.archetype ?? "?", worry: canonicalConcern(input.concerns?.[0]) };
+  const arch = input.archetype ?? "?";
+  // the hardPart's 2nd sentence (the "real reason"), normalised + name-stripped — for reuse detection
+  const hp = String((res.content as unknown as { hardPart?: string }).hardPart ?? "");
+  const y = (hp.split(/\.\s+/)[1] ?? "").toLowerCase().replace(new RegExp((input.childName ?? "").split(/\s+/)[0] ?? "zzz", "gi"), "").replace(/[^a-z\s]/g, "").replace(/\b(he|she|they|his|her|their|him|them)\b/g, "").replace(/\s+/g, " ").trim();
+  if (y.length > 8) (hardYByArch[y] ||= new Set()).add(arch);
+  return { outcome: res.cost.outcome, arch, worry: canonicalConcern(input.concerns?.[0]) };
 }
 
 async function pool<T>(items: T[], n: number, fn: (t: T, i: number) => Promise<void>) {
@@ -66,6 +72,10 @@ L.push(`Model spend: **₹${(paise / 100).toFixed(2)}** over ${gens} generations
 L.push(`## Fallback rate`, `- **Known-fallback set (25×3):** before = 100% (all were fallbacks) → **after = ${fbFallback}/${fbTotal.length} = ${Math.round((fbFallback / fbTotal.length) * 100)}%**.`, `- **Fresh representative sample (30×1):** baseline ~40% → **after = ${freshFallback}/${freshRuns.length} = ${Math.round((freshFallback / freshRuns.length) * 100)}%** (target <15%).`, `- **Judge flip rate on identical drafts (25×3):** ${flips}/${fbRuns.length} sessions flipped.`, "");
 L.push(`## Per archetype × worry (fallback / total)`);
 for (const k of Object.keys(byCombo).sort()) { const v = byCombo[k]; L.push(`- ${k}: ${v.fb}/${v.n}${v.fb ? "  ⚠️" : ""}`); }
+L.push("", `## hardPart "real reason" reused across >2 archetypes (bleed check)`);
+const bleed = Object.entries(hardYByArch).filter(([, s]) => s.size > 2);
+if (!bleed.length) L.push("- none ✅");
+for (const [y, s] of bleed) L.push(`- "…${y}" → ${[...s].join(", ")} ⚠️`);
 writeFileSync("docs/evidence/report-fallback-sweep-2026-10-26.md", L.join("\n"));
 console.log("\n" + L.slice(2).join("\n"));
 process.exit(0);

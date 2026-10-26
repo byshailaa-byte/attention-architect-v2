@@ -214,8 +214,8 @@ export function composeFallback(
   // the screens moment (stopping) and the confidence moment (before trying). Override hardY there so
   // the static fallback names the right moment instead of bleeding re-entry everywhere.
   const ALLIN_HARDY: Record<string, string> = {
-    screens: "once {he}{'s} deep in, stopping is the hard part.",
-    confidence: "starting something {he} might get wrong is the hard part.",
+    screens: "Once {he}{'s} deep in, stopping is the hard part.",
+    confidence: "Starting something {he} might get wrong is the hard part.",
   };
   const hardY = archetype === "The All-In Kid" && ALLIN_HARDY[worry] ? ALLIN_HARDY[worry] : meta.hardY;
   return {
