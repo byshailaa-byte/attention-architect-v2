@@ -279,7 +279,7 @@ export function streamCoachTurn(args: PersistArgs, deps: StreamDeps = {}): Respo
   return new Response(stream, {
     headers: {
       "Content-Type": "application/x-ndjson; charset=utf-8",
-      "Cache-Control": "no-store",
+      "Cache-Control": "no-store, no-transform", // no-transform: forbid any proxy from buffering/altering the stream
       "X-Accel-Buffering": "no", // tell any proxy not to buffer the stream
     },
   });

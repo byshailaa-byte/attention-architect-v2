@@ -1,6 +1,6 @@
 // Weekly Coach review — 15 minutes a week: who needs a call, which replies were flagged or
 // thumbs-downed, and pending gold examples to approve. Admin-authed upstream (/admin/* Basic Auth).
-import { openCallRequests, flaggedReplies, pendingGold } from "@/lib/admin/coach-review";
+import { openCallRequests, flaggedReplies, pendingGold, clientStalls } from "@/lib/admin/coach-review";
 import { CallActions, GoldActions, BetterReply } from "./ReviewActions";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ const h2 = { fontSize: 16, fontWeight: 700, margin: "22px 0 10px", color: "#1E3A
 const when = (s: string | null) => (s ? new Date(s).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }) : "");
 
 export default async function CoachReviewPage() {
-  const [calls, flagged, gold] = await Promise.all([openCallRequests(), flaggedReplies(), pendingGold()]);
+  const [calls, flagged, gold, stalls] = await Promise.all([openCallRequests(), flaggedReplies(), pendingGold(), clientStalls()]);
 
   return (
     <div style={{ padding: "22px 26px", maxWidth: 860, fontFamily: "var(--font-figtree), system-ui, sans-serif", color: "#2E3A4B" }}>
@@ -40,6 +40,21 @@ export default async function CoachReviewPage() {
           {f.note && <div style={{ fontSize: 13, color: "#8C3F22", marginBottom: 6 }}>Note: {f.note}</div>}
           <div style={{ fontSize: 14, whiteSpace: "pre-wrap", background: "#FBF6EE", borderRadius: 8, padding: "8px 10px" }}>{f.content}</div>
           <div style={{ marginTop: 8 }}><BetterReply messageId={f.id} /></div>
+        </div>
+      ))}
+
+      <h2 style={h2}>Client stalls ({stalls.length})</h2>
+      {stalls.length === 0 && <p style={{ color: "#5B6577", fontSize: 14 }}>None — no reply left a parent on a stuck screen. 🎉</p>}
+      {stalls.map((s) => (
+        <div key={s.id} style={{ ...card, borderLeft: "4px solid #A23A2E" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+            <strong>{s.reason || "stall"} · {s.kind || "?"} · {s.subjectId ? s.subjectId.slice(0, 8) : "anon"}</strong>
+            <span style={{ fontSize: 12, color: "#5B6577" }}>{when(s.createdAt)}</span>
+          </div>
+          <div style={{ fontSize: 13, color: "#5B6577", marginTop: 4 }}>
+            {s.ms ?? "?"}ms · {s.bytes ?? "?"} bytes · {s.deltas ?? "?"} deltas · done={String(s.done)} · last={s.lastEvent || "?"} · turn {s.turnId ? s.turnId.slice(0, 8) : "?"}
+          </div>
+          {s.userAgent && <div style={{ fontSize: 11.5, color: "#8A93A3", marginTop: 3 }}>{s.userAgent}</div>}
         </div>
       ))}
 
