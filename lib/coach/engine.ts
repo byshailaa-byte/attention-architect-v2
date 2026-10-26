@@ -52,6 +52,27 @@ function repeatDirective(streak: number): string {
     : `\n\n## This turn\nThe parent gave a brief acknowledgement ("ok"/"theek hai"/"hmm"). Do NOT repeat or rephrase your last message — give the single next concrete action in one line with the exact words to say; or, if you already gave that step, ask ONE new, different question.`;
 }
 
+// Separator between text from different tool-use rounds — used BOTH in the buffered join and in the
+// live stream, so what the parent sees matches what is persisted.
+export const ROUND_SEP = " ";
+
+// Wraps the per-round onDelta so the first text token of any round AFTER text has already streamed is
+// prefixed with ROUND_SEP. Prevents "…without a fight?" + "Let me know…" streaming as one run-on word.
+export function makeRoundEmitter(emit: (t: string) => void) {
+  let streamedAny = false; // any text emitted in a prior round
+  let roundHasText = false; // text emitted in the current round yet
+  return {
+    startRound() { roundHasText = false; },
+    emit(t: string) {
+      if (!t) return;
+      if (streamedAny && !roundHasText) emit(ROUND_SEP);
+      roundHasText = true;
+      streamedAny = true;
+      emit(t);
+    },
+  };
+}
+
 function norm(s: string): string[] {
   return (s || "").toLowerCase().replace(/[^a-z0-9ऀ-ॿ\s]/g, " ").split(/\s+/).filter(Boolean);
 }
@@ -106,17 +127,22 @@ export async function runCoachTurn(opts: {
   async function generate(seed: MsgParam[], emit?: (t: string) => void, sys: string = systemForTurn): Promise<string> {
     const messages = [...seed];
     let text = "";
+    // When text spans more than one tool-use round, the rounds are joined with ROUND_SEP in `text`.
+    // The emitter injects the SAME separator into the live stream before a later round's first token,
+    // so the streamed text matches the final text exactly (no "…fight?Let me know…" join).
+    const roundEmitter = emit ? makeRoundEmitter(emit) : null;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const stream = anthropic().messages.stream({
         model, max_tokens: maxTokens, system: sys, messages,
         ...(opts.tools.length ? { tools: opts.tools } : {}),
       });
-      if (emit) stream.on("text", (t) => { emit(t); streamed = true; });
+      roundEmitter?.startRound();
+      if (roundEmitter) stream.on("text", (t) => { roundEmitter.emit(t); streamed = true; });
       const msg = await stream.finalMessage();
       inputTokens += msg.usage?.input_tokens ?? 0;
       outputTokens += msg.usage?.output_tokens ?? 0;
       const roundText = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("").trim();
-      if (roundText) text = text ? `${text} ${roundText}` : roundText;
+      if (roundText) text = text ? `${text}${ROUND_SEP}${roundText}` : roundText;
       const toolUses = msg.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
       if (msg.stop_reason !== "tool_use" || toolUses.length === 0) break;
       messages.push({ role: "assistant", content: msg.content });

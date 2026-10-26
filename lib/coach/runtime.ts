@@ -208,6 +208,7 @@ export type PersistArgs = {
 // the client getting a terminal {done}. budgetMs covers generation; POST_BUDGET_MS each post-gen step.
 const TURN_BUDGET_MS = 55_000;
 const POST_BUDGET_MS = 12_000;
+const BEAT_MS = 10_000; // stall-beacon interval (< the client's 20s watchdog)
 
 // Injectable seams so the done-within-budget invariant is testable without the model or the DB.
 export type StreamDeps = {
@@ -236,6 +237,10 @@ export function streamCoachTurn(args: PersistArgs, deps: StreamDeps = {}): Respo
       const close = () => { if (!closed) { closed = true; try { controller.close(); } catch { /* already closed */ } } };
       // Absolute last-resort guarantee: even if every await above somehow stalls, emit a {done} and close.
       const guard = setTimeout(() => { sendDone({ messageId: null, errored: true, timedOut: true }); close(); }, budgetMs + POST_BUDGET_MS + 2_000);
+      // Stall beacon: a no-op line every BEAT_MS keeps bytes flowing while the model is still thinking —
+      // it defeats proxy idle-buffering and resets the client's 20s stall watchdog so a long-but-alive
+      // first token never looks stuck. The client ignores any object that is neither delta nor done.
+      const beacon = setInterval(() => { if (!doneSent) send({ beat: 1 }); }, BEAT_MS);
       try {
         const res = await withTimeout(budgetMs, Promise.resolve(runTurn({
           system: args.ctx.system, history: args.ctx.history, userMessage: args.userMessage,
@@ -263,6 +268,7 @@ export function streamCoachTurn(args: PersistArgs, deps: StreamDeps = {}): Respo
         console.error("[coach/runtime] stream failed:", (e as Error).message);
         sendDone({ messageId: null, errored: true });
       } finally {
+        clearInterval(beacon);
         clearTimeout(guard);
         close();
         // Memory summarisation after the turn (best-effort, never blocks the reply).
@@ -270,5 +276,11 @@ export function streamCoachTurn(args: PersistArgs, deps: StreamDeps = {}): Respo
       }
     },
   });
-  return new Response(stream, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" } });
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Accel-Buffering": "no", // tell any proxy not to buffer the stream
+    },
+  });
 }
