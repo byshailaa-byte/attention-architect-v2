@@ -13,6 +13,17 @@ export function detectLanguage(text: string): Language {
   return "en";
 }
 
+// Decide the reply language for a turn. The parent's LATEST message wins — its language AND script —
+// so an English message gets an English reply even when a Hindi preference is stored. A stored pref
+// only seeds the OPENER (no message yet). A trivial acknowledgement ("ok"/"hmm") is not a language
+// switch, so it keeps the stored/prior language instead of flipping the whole thread to English.
+export function resolveReplyLanguage(stored: Language | null, latestMessage: string): Language {
+  const msg = (latestMessage || "").trim();
+  if (!msg) return stored ?? "en";                        // opener: the stored preference seeds it
+  if (isShortNonAnswer(msg)) return stored ?? detectLanguage(msg); // "ok"/"theek hai"/"hmm" don't switch
+  return detectLanguage(msg);                             // a real message → reply in ITS language + script
+}
+
 // A short non-answer ("ok", "theek hai", "hmm", "tell me what to do") — the high-risk turn for the
 // Coach to repeat itself. On these turns the engine buffers + runs the no-repeat backstop.
 export function isShortNonAnswer(text: string): boolean {

@@ -17,7 +17,9 @@ import { trackServer } from "@/lib/analytics/track.server";
 
 assertBootGuards();
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// Streamed turns carry an internal budget (generation 55s + post-gen 12s + guard) that guarantees a
+// terminal {done}; maxDuration must sit comfortably above it so the function is never killed mid-turn.
+export const maxDuration = 120;
 
 async function trialParentCountToday(sql: ReturnType<typeof getSql>, trialId: string): Promise<number> {
   const rows = (await sql`

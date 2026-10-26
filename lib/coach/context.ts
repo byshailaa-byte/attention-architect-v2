@@ -12,7 +12,7 @@ import { retrieveGold, situationSignals, formatGoldForPrompt } from "@/lib/coach
 import { whatWorksFor, formatWorksStat } from "@/lib/coach/stats";
 import { readTrackedNumbers, getBaseline, fmtRange } from "@/lib/coach/numbers";
 import { readOutcomes } from "@/lib/lms/coach/outcomes";
-import { detectLanguage } from "@/lib/coach/lang";
+import { resolveReplyLanguage } from "@/lib/coach/lang";
 import type { CoachTurn } from "@/lib/lms/coach/llm";
 import type { Gender } from "@/lib/report/pronouns";
 
@@ -113,9 +113,10 @@ export async function assembleCoachContext(input: CoachSubjectInput, latestMessa
   const pronoun = coachPronoun(input.childGender);
   const history = historyOverride ?? await loadHistory(input.kind, input.subjectId);
 
-  // Language: stored preference wins; else detect from the latest message; else English.
+  // Language: the parent's LATEST message wins (its language + script); a stored preference only seeds
+  // the opener. So English after a Hindi preference gets an English reply. (See resolveReplyLanguage.)
   const stored = await getLanguagePref(input.kind, input.subjectId);
-  const language: Language = stored ?? (latestMessage ? detectLanguage(latestMessage) : "en");
+  const language: Language = resolveReplyLanguage(stored, latestMessage);
 
   const system0 = buildMethodPrompt({
     mode: input.mode, parent: input.parentFirst, child: input.child, pronoun, language, supportEmail: input.supportEmail,

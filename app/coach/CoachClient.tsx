@@ -6,6 +6,7 @@
 // this exact UI. Design system mirrors FlowShell / PlanV2: cream ground, navy ink, gold accent.
 import { useEffect, useRef, useState } from "react";
 import { splitBold } from "@/lib/coach-trial/markdown";
+import { createNdjsonReader } from "@/lib/coach/ndjson";
 
 const C = {
   cream: "#FBF6EE", navy: "#1E3A5F", gold: "#E8A33D", goldSoft: "#F2C77E",
@@ -38,6 +39,7 @@ export default function CoachClient(props: Props) {
   const [sending, setSending] = useState<boolean>(false);
   const [thinking, setThinking] = useState<boolean>(true); // opener loading / coach composing
   const [notice, setNotice] = useState<string>("");
+  const [retryText, setRetryText] = useState<string | null>(null); // last message to re-send on a stall/error
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const openedFor = useRef<number | null>(null);
@@ -63,32 +65,67 @@ export default function CoachClient(props: Props) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [bubbles, thinking, notice]);
 
-  async function onSend() {
-    const text = draft.trim();
+  // If the stream goes quiet for this long with no delta/done, we stop waiting, drop the spinner, and
+  // offer a retry — the parent never sees an endless typing indicator if the server stalls.
+  const STALL_MS = 20_000;
+
+  async function onSend(retryOf?: string) {
+    const text = (retryOf ?? draft).trim();
     if (!text || sending || messagesLeft <= 0) return;
     setNotice("");
-    setDraft("");
+    setRetryText(null);
+    if (!retryOf) setDraft("");
     setSending(true);
     setThinking(true);
-    setBubbles((prev) => [...prev, { kind: "parent", text }]);
-    setMessagesLeft((n) => Math.max(0, n - 1));
+    if (!retryOf) {
+      setBubbles((prev) => [...prev, { kind: "parent", text }]);
+      setMessagesLeft((n) => Math.max(0, n - 1));
+    }
+
+    const ac = new AbortController();
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    const armWatchdog = () => { if (watchdog) clearTimeout(watchdog); watchdog = setTimeout(() => ac.abort(), STALL_MS); };
+    // On a stall/error: drop the spinner, restore the consumed message (the turn didn't complete), and
+    // show a tap-to-retry notice. Never leave the parent on an endless spinner.
+    const failRetry = (msg: string) => {
+      setThinking(false);
+      setRetryText(text);
+      setNotice(msg);
+      if (!retryOf) setMessagesLeft((n) => n + 1);
+    };
+
+    // Stall telemetry (metrics only — NEVER the message text). Reported when the watchdog fires or the
+    // stream closes with no {done}, so a stuck screen is visible in /admin/coach-review + the error logs.
+    const turnId = globalThis.crypto?.randomUUID?.() ?? `t-${Date.now()}`;
+    const sendT0 = Date.now();
+    let bytes = 0, deltas = 0, sawDone = false, lastEvent = "none";
+    const reportStall = (reason: string) => {
+      try {
+        fetch("/api/coach/client-stall", {
+          method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
+          body: JSON.stringify({ ...extraBody, turnId, ms: Date.now() - sendT0, bytes, deltas, done: sawDone, lastEvent, reason }),
+        }).catch(() => {});
+      } catch { /* best effort — telemetry must never affect the parent */ }
+    };
 
     try {
+      armWatchdog();
       const res = await fetch(messageEndpoint, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...extraBody, message: text }),
+        body: JSON.stringify({ ...extraBody, message: text }), signal: ac.signal,
       });
       const ct = res.headers.get("content-type") ?? "";
 
       // Non-streaming responses: safety replies + errors come back as plain JSON.
       if (!ct.includes("ndjson")) {
+        if (watchdog) clearTimeout(watchdog);
         const data = await res.json().catch(() => ({ error: "failed" }));
         setThinking(false);
         if (res.ok && data.reply) { setBubbles((prev) => [...prev, { kind: "coach", text: data.reply }]); }
-        else if (res.status === 429 || data.error === "daily_limit") { setMessagesLeft(0); setNotice("No messages left today — back tomorrow"); }
+        else if (res.status === 429 || data.error === "daily_limit") { setMessagesLeft(0); setNotice("That's all your messages for today — the Coach is back tomorrow."); }
         else if (res.status === 403) { setMessagesLeft(0); setNotice("Your Quick Start has ended. Your report stays open."); }
         else if (data.reply) { setBubbles((prev) => [...prev, { kind: "coach", text: data.reply }]); }
-        else { setNotice("Something went wrong. Please try again."); }
+        else { failRetry("Something went wrong — tap to retry."); }
         setSending(false);
         return;
       }
@@ -98,31 +135,51 @@ export default function CoachClient(props: Props) {
         setBubbles((prev) => { resolve(prev.length); return [...prev, { kind: "coach", text: "" }]; });
       });
       const reader = res.body!.getReader();
-      const dec = new TextDecoder();
-      let buf = "", acc = "", first = true;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        let nl: number;
-        while ((nl = buf.indexOf("\n")) >= 0) {
-          const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
-          if (!line) continue;
-          let obj: { delta?: string; done?: { messageId?: string } };
-          try { obj = JSON.parse(line); } catch { continue; }
+      let acc = "", first = true;
+      const applyText = (t: string) => setBubbles((prev) => { const next = [...prev]; if (next[idx]) next[idx] = { ...next[idx], text: t }; return next; });
+      // Shared, fragmentation-safe NDJSON reader (lib/coach/ndjson) — a line split across chunks or a
+      // multibyte char split mid-sequence is reassembled; a malformed line is logged and skipped, never
+      // throwing out of the read loop (which would strand a reply that actually arrived).
+      const parser = createNdjsonReader(
+        (o) => {
+          const obj = o as { delta?: string; done?: { messageId?: string; text?: string } };
           if (typeof obj.delta === "string") {
+            deltas++; lastEvent = "delta";
             if (first) { setThinking(false); first = false; }
             acc += obj.delta;
-            setBubbles((prev) => { const next = [...prev]; if (next[idx]) next[idx] = { ...next[idx], text: acc }; return next; });
+            applyText(acc);
           } else if (obj.done) {
-            setBubbles((prev) => { const next = [...prev]; if (next[idx]) next[idx] = { ...next[idx], id: obj.done?.messageId }; return next; });
+            sawDone = true; lastEvent = "done";
+            // Render the final text from {done} when streaming delivered nothing visible — the reply
+            // exists server-side, so never show a blank bubble. Otherwise keep the streamed text.
+            const finalText = !acc && typeof obj.done.text === "string" ? obj.done.text : acc;
+            if (finalText && first) { setThinking(false); first = false; }
+            setBubbles((prev) => { const next = [...prev]; if (next[idx]) next[idx] = { ...next[idx], text: finalText || next[idx].text, id: obj.done?.messageId }; return next; });
+          } else {
+            lastEvent = "beat"; // keepalive beacon — ignored visually, but proves the server was alive
           }
-        }
+        },
+        (line, e) => console.warn("[coach] skipped malformed NDJSON line:", line.slice(0, 80), e),
+      );
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) { parser.end(); break; }
+        armWatchdog(); // progress → reset the stall timer
+        if (value) { bytes += value.byteLength; parser.push(value); }
       }
+      if (watchdog) clearTimeout(watchdog);
       setThinking(false);
+      // Stream closed without a terminal {done}: the reply is incomplete. If nothing streamed, drop the
+      // empty bubble; either way, let the parent retry rather than stare at a half/blank reply.
+      if (!sawDone) {
+        if (!acc) setBubbles((prev) => prev.filter((_, i) => i !== idx));
+        reportStall("no-done");
+        failRetry("Reply took too long — tap to retry.");
+      }
     } catch {
-      setThinking(false);
-      setNotice("Something went wrong. Please try again.");
+      if (watchdog) clearTimeout(watchdog);
+      reportStall(ac.signal.aborted ? "watchdog" : "fetch-error");
+      failRetry("Reply took too long — tap to retry.");
     } finally {
       setSending(false);
     }
@@ -156,7 +213,12 @@ export default function CoachClient(props: Props) {
             <span style={{ fontSize: 12, color: C.dim, fontWeight: 600 }}>
               {noneLeft ? "No messages left today — back tomorrow" : `${messagesLeft} left today`}
             </span>
-            {notice && <span style={{ fontSize: 12, color: "#8C3F22", fontWeight: 600, textAlign: "right" }}>{notice}</span>}
+            {notice && (retryText
+              ? <button onClick={() => void onSend(retryText)} disabled={sending}
+                  style={{ fontSize: 12, color: "#8C3F22", fontWeight: 700, textAlign: "right", background: "none", border: "none", cursor: sending ? "default" : "pointer", padding: 0, textDecoration: "underline", textUnderlineOffset: 2 }}>
+                  {notice}
+                </button>
+              : <span style={{ fontSize: 12, color: "#8C3F22", fontWeight: 600, textAlign: "right" }}>{notice}</span>)}
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
             <textarea

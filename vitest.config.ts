@@ -7,6 +7,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),
+      // `server-only` is a Next bundler marker (not an installed package); stub it so server modules
+      // can be imported under vitest's plain-node runner.
+      "server-only": path.resolve(__dirname, "__tests__/_stubs/server-only.ts"),
     },
   },
   test: {

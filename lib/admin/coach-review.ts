@@ -34,6 +34,19 @@ export async function flaggedReplies(limit = 50): Promise<FlaggedReply[]> {
   return rows.map((r) => ({ id: r.id, content: r.content, note: r.note, flaggedAt: r.flagged_at, feedback: r.feedback, day: r.day, kind: r.kind }));
 }
 
+export type ClientStall = { id: string; kind: string | null; subjectId: string | null; turnId: string | null; ms: number | null; bytes: number | null; deltas: number | null; done: boolean | null; lastEvent: string | null; reason: string | null; userAgent: string | null; createdAt: string };
+
+// Client-side stall reports (the chat UI's 20s watchdog fired, or a stream closed with no {done}).
+// Tolerant of the table not existing yet (pre-migration) — returns [] so the page still renders.
+export async function clientStalls(limit = 50): Promise<ClientStall[]> {
+  const sql = getSql();
+  const rows = (await sql`
+    SELECT id, kind, subject_id, turn_id, ms, bytes, deltas, done, last_event, reason, user_agent, created_at
+    FROM coach_client_stall ORDER BY created_at DESC LIMIT ${limit}
+  `.catch(() => [])) as unknown as { id: string; kind: string | null; subject_id: string | null; turn_id: string | null; ms: number | null; bytes: number | null; deltas: number | null; done: boolean | null; last_event: string | null; reason: string | null; user_agent: string | null; created_at: string }[];
+  return rows.map((r) => ({ id: r.id, kind: r.kind, subjectId: r.subject_id, turnId: r.turn_id, ms: r.ms, bytes: r.bytes, deltas: r.deltas, done: r.done, lastEvent: r.last_event, reason: r.reason, userAgent: r.user_agent, createdAt: r.created_at }));
+}
+
 export async function pendingGold(): Promise<PendingGold[]> {
   const sql = getSql();
   const rows = (await sql`
