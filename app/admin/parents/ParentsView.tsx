@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "../crm-theme";
 import { BUCKET_LABEL, type Bucket, type ParentRow, type PanelCall, type PanelReport, type PanelAnswers } from "@/lib/admin/parents/types";
@@ -181,11 +181,11 @@ export function ParentsView({ rows, counts, commit }: { rows: ParentRow[]; count
           row={selected}
           position={(() => { const i = filtered.findIndex((r) => r.key === selected.key); return { n: i + 1, total: filtered.length }; })()}
           onClose={() => setSelected(null)}
-          onSavedNext={() => {
+          onListRefresh={() => router.refresh()} // re-pull server data so buckets/counts reflect the saved call
+          onNext={() => {
             const i = filtered.findIndex((r) => r.key === selected.key);
-            const next = i >= 0 ? filtered[i + 1] : undefined;
+            const next = i >= 0 ? filtered[i + 1] : filtered[0];
             setSelected(next ?? null);
-            router.refresh(); // re-pull server data so buckets/counts reflect the logged call
           }}
         />
       )}
@@ -225,9 +225,10 @@ const OUTCOME_BUCKET_C: Record<string, Bucket> = {
   trial_in_progress: "trial_in_progress", purchased: "purchased", other_course: "other_course", wrong_number: "no_phone",
 };
 
-function ParentPanel({ row, position, onClose, onSavedNext }: { row: ParentRow; position: { n: number; total: number }; onClose: () => void; onSavedNext: () => void }) {
+function ParentPanel({ row, position, onClose, onListRefresh, onNext }: { row: ParentRow; position: { n: number; total: number }; onClose: () => void; onListRefresh: () => void; onNext: () => void }) {
   const [detail, setDetail] = useState<{ calls: PanelCall[]; reports: Record<string, PanelReport>; answers: PanelAnswers } | null>(null);
   const [loadErr, setLoadErr] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
   const [tab, setTab] = useState<"call" | "timeline" | "answers">("call");
   const [target, setTarget] = useState(row.children[0]?.assessmentId ?? "");
   const [outcome, setOutcome] = useState<string | null>(null);
@@ -237,6 +238,7 @@ function ParentPanel({ row, position, onClose, onSavedNext }: { row: ParentRow; 
   const [followTime, setFollowTime] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [confirmNext, setConfirmNext] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -247,15 +249,19 @@ function ParentPanel({ row, position, onClose, onSavedNext }: { row: ParentRow; 
       .then((d) => { if (live) setDetail(d); })
       .catch(() => { if (live) setLoadErr(true); });
     return () => { live = false; };
-  }, [row]);
+  }, [row, reloadTick]);
 
   const head = row.children[0];
   const targetChild = row.children.find((c) => c.assessmentId === target) ?? head;
   const childNames = row.children.map((c) => c.childName).join(" + ");
 
-  const submit = async () => {
-    if (!outcome) { setSaveMsg("Pick an outcome first."); return; }
-    if (NEEDS_FOLLOWUP.has(outcome) && !followDate) { setSaveMsg("Pick a follow-up date for this outcome."); return; }
+  const dirty = outcome !== null || !!note.trim() || !!nextSteps.trim() || !!followDate || !!followTime;
+  const clearForm = () => { setOutcome(null); setNote(""); setNextSteps(""); setFollowDate(""); setFollowTime(""); };
+
+  // Save the call: stays on this parent, new entry appears at the top of the call log, list refreshes.
+  const save = async (): Promise<boolean> => {
+    if (!outcome) { setSaveMsg("Pick an outcome first."); return false; }
+    if (NEEDS_FOLLOWUP.has(outcome) && !followDate) { setSaveMsg("Pick a follow-up date for this outcome."); return false; }
     setSaving(true); setSaveMsg(null);
     const followUpAt = followDate ? new Date(`${followDate}T${followTime || "10:00"}`).toISOString() : undefined;
     try {
@@ -264,15 +270,25 @@ function ParentPanel({ row, position, onClose, onSavedNext }: { row: ParentRow; 
         body: JSON.stringify({ assessmentId: target, outcome, note: note || undefined, nextSteps: nextSteps || undefined, followUpAt }),
       });
       const j = await res.json().catch(() => ({}));
-      if (res.ok && j.ok) { onSavedNext(); }
-      else {
-        setSaveMsg(j.reason === "followup_required" ? "Pick a follow-up date for this outcome."
-          : j.reason === "not_enabled" ? "Call logging isn’t enabled on this environment."
-          : j.error || "Couldn’t log the call.");
+      if (res.ok && j.ok) {
+        clearForm(); setSaveMsg("Saved ✓");
+        setReloadTick((t) => t + 1); // refetch call log → new entry at top
+        onListRefresh();             // refresh list counts/buckets
         setSaving(false);
+        return true;
       }
-    } catch { setSaveMsg("Network error — try again."); setSaving(false); }
+      setSaveMsg(j.reason === "followup_required" ? "Pick a follow-up date for this outcome."
+        : j.reason === "not_enabled" ? "Call logging isn’t enabled on this environment."
+        : j.error || "Couldn’t log the call.");
+      setSaving(false);
+      return false;
+    } catch { setSaveMsg("Network error — try again."); setSaving(false); return false; }
   };
+
+  // Next: if the form has unsaved input, ask before leaving so a note is never lost.
+  const next = () => { if (dirty) setConfirmNext(true); else onNext(); };
+  const saveThenNext = async () => { const ok = await save(); if (ok) { setConfirmNext(false); onNext(); } };
+  const discardThenNext = () => { setConfirmNext(false); onNext(); };
 
   const fmt = (s: string) => new Date(s).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
   const dur = (sec: number | null) => (sec == null ? "" : sec < 60 ? `${sec}s` : `${Math.round(sec / 60)} min`);
@@ -361,20 +377,25 @@ function ParentPanel({ row, position, onClose, onSavedNext }: { row: ParentRow; 
               <input value={nextSteps} onChange={(e) => setNextSteps(e.target.value)} style={inputCss} />
             </div>
 
-            <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginBottom: 14, flexWrap: "wrap" }}>
-              <div style={{ flex: "1 1 120px" }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginBottom: 10, flexWrap: "wrap" }}>
+              <div style={{ flex: "1 1 130px" }}>
                 <label style={label}>Follow-up{outcome && NEEDS_FOLLOWUP.has(outcome) ? " (required)" : ""}</label>
                 <input type="date" value={followDate} onChange={(e) => setFollowDate(e.target.value)} style={inputCss} />
               </div>
-              <div style={{ flex: "1 1 100px" }}>
+              <div style={{ flex: "1 1 110px" }}>
                 <label style={label}>&nbsp;</label>
                 <input type="time" value={followTime} onChange={(e) => setFollowTime(e.target.value)} style={inputCss} />
               </div>
-              <button onClick={submit} disabled={saving} style={{ background: T.navy, color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13.5, fontWeight: 600, cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1, whiteSpace: "nowrap" }}>
-                {saving ? "Saving…" : "Save & next →"}
-              </button>
             </div>
-            {saveMsg && <div style={{ fontSize: 12.5, color: T.dangerText, marginBottom: 12 }}>{saveMsg}</div>}
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14 }}>
+              <button onClick={save} disabled={saving} style={{ background: T.navy, color: "#fff", border: "none", borderRadius: 8, padding: "9px 20px", fontSize: 13.5, fontWeight: 600, cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1 }}>
+                {saving ? "Saving…" : "Save"}
+              </button>
+              <button onClick={next} disabled={saving} style={{ background: T.card, color: T.navy, border: `1px solid ${T.inputBorder}`, borderRadius: 8, padding: "9px 18px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+                Next →
+              </button>
+              {saveMsg && <span style={{ fontSize: 12.5, color: saveMsg.includes("✓") ? T.successText : T.dangerText }}>{saveMsg}</span>}
+            </div>
 
             {/* Call log */}
             <div style={{ ...label, marginBottom: 8 }}>Call log · newest first</div>
@@ -421,15 +442,32 @@ function ParentPanel({ row, position, onClose, onSavedNext }: { row: ParentRow; 
           <div>
             {!detail && <div style={{ color: T.muted, fontSize: 12.5 }}>Loading…</div>}
             {detail && (detail.answers[target]?.length ? (
-              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", fontSize: 12.5 }}>
-                {detail.answers[target].map((a, i) => (
-                  <Fragment key={i}>
-                    <div style={{ color: T.muted, fontWeight: 600 }}>{a.label}</div>
-                    <div style={{ color: T.textRow }}>{a.value}</div>
-                  </Fragment>
-                ))}
-              </div>
+              detail.answers[target].map((sec, si) => (
+                <div key={si} style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "0.1em", color: T.label, textTransform: "uppercase", marginBottom: 8 }}>{sec.section}</div>
+                  {sec.items.map((it, ii) => (
+                    <div key={ii} style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 12.5, color: T.textRow, lineHeight: 1.4 }}>{it.q}</div>
+                      <div style={{ fontSize: 13, color: T.navy, fontWeight: 600, marginTop: 2 }}>{it.a}</div>
+                    </div>
+                  ))}
+                </div>
+              ))
             ) : <div style={{ color: T.muted, fontSize: 12.5 }}>No stored answers for this child.</div>)}
+          </div>
+        )}
+
+        {confirmNext && (
+          <div onClick={(e) => e.stopPropagation()} style={{ position: "fixed", inset: 0, background: "rgba(20,25,35,0.4)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ background: T.card, borderRadius: 12, padding: "18px 20px", width: 320, maxWidth: "90%", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
+              <div style={{ fontFamily: T.FONT_HEAD, fontSize: 17, fontWeight: 600, marginBottom: 6 }}>Save this call first?</div>
+              <div style={{ fontSize: 13, color: T.text2, marginBottom: 16, lineHeight: 1.45 }}>You have an unsaved call on this parent. Save it before moving to the next one?</div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <button onClick={() => setConfirmNext(false)} style={{ background: T.card, color: T.text2, border: `1px solid ${T.inputBorder}`, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                <button onClick={discardThenNext} style={{ background: T.card, color: T.dangerText, border: `1px solid ${T.inputBorder}`, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Discard</button>
+                <button onClick={saveThenNext} disabled={saving} style={{ background: T.navy, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>Save</button>
+              </div>
+            </div>
           </div>
         )}
       </div>

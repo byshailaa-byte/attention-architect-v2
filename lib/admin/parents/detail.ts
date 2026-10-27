@@ -1,6 +1,38 @@
 import "server-only";
 import { getSql } from "@/lib/db/client";
-import type { PanelCall, PanelReport, PanelAnswers } from "./types";
+import { ALL_QUESTIONS } from "@/lib/engine/questions";
+import type { PanelCall, PanelReport, PanelAnswers, AnswerSection } from "./types";
+
+// Friendly section headings per question dimension (fallback: prettified dimension).
+const DIM_LABEL: Record<string, string> = {
+  attention_shape: "How they focus",
+  attention_competition: "What pulls them away",
+  parent_instinct: "Your instinct",
+  reward_driver: "What motivates them",
+  friction_response: "When it gets hard",
+  recovery_response: "Getting back on track",
+  recharge_type: "How they recharge",
+};
+const prettify = (d: string) => d.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+// Map a stored answers object ({qid: value}) → sectioned, human-readable Q&A in assessment order.
+function buildAnswerSections(raw: Record<string, unknown>, childName: string): AnswerSection[] {
+  const name = childName && childName !== "—" ? childName : "your child";
+  const sections: AnswerSection[] = [];
+  const idx = new Map<string, number>();
+  for (const q of ALL_QUESTIONS) {
+    if (!(q.id in raw)) continue;
+    const val = raw[q.id];
+    const opt = q.options.find((o) => o.value === val);
+    const a = opt ? opt.label : val == null ? "—" : String(val);
+    const qtext = q.text.replace(/\{name\}/g, name);
+    const secLabel = DIM_LABEL[q.dimension] ?? prettify(q.dimension);
+    let si = idx.get(secLabel);
+    if (si === undefined) { si = sections.length; idx.set(secLabel, si); sections.push({ section: secLabel, items: [] }); }
+    sections[si].items.push({ q: qtext, a });
+  }
+  return sections;
+}
 
 // Detail for one parent's side panel: each child's report talking-points + the full call history.
 // All inputs are IDs the list already holds (assessment + session ids for this parent's children);
@@ -57,18 +89,14 @@ export async function getParentDetail(
     }
   }
 
-  // Raw assessment answers per child (keyed question ids → value), for the Answers tab.
+  // Assessment answers per child → full question text + plain-word answer, sectioned, for the Answers tab.
   const answers: PanelAnswers = {};
   if (aids.length) {
     const rows = (await withRetry(() => sql`
-      SELECT id::text, answers FROM assessments WHERE id = ANY(${aids}::uuid[])
-    `)) as unknown as { id: string; answers: Record<string, unknown> | null }[];
+      SELECT id::text, child_name, answers FROM assessments WHERE id = ANY(${aids}::uuid[])
+    `)) as unknown as { id: string; child_name: string | null; answers: Record<string, unknown> | null }[];
     for (const r of rows) {
-      const a = r.answers ?? {};
-      answers[r.id] = Object.entries(a).map(([k, v]) => ({
-        label: k,
-        value: v == null ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v),
-      }));
+      answers[r.id] = buildAnswerSections(r.answers ?? {}, r.child_name ?? "");
     }
   }
   return { calls, reports, answers };

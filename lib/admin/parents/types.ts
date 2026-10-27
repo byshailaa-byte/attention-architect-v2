@@ -51,8 +51,10 @@ export type PanelReport = {
   tonightStep: string;
   goal: string;
 };
-// Raw assessment answers per child (keyed by question id), for the Answers tab.
-export type PanelAnswers = Record<string, { label: string; value: string }[]>;
+// Assessment answers per child for the Answers tab: full question text (with {name} → child name)
+// + the chosen answer in plain words, grouped into sections in assessment order.
+export type AnswerSection = { section: string; items: { q: string; a: string }[] };
+export type PanelAnswers = Record<string, AnswerSection[]>;
 
 export const BUCKETS = [
   "all", "new", "no_pickup", "callback", "interested", "trial_offered",
