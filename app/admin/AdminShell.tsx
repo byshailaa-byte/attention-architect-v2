@@ -120,6 +120,11 @@ export function AdminShell({ children, callsDue, needsReply, coachNeedsLook = 0 
           })}
         </div>
       ))}
+      {/* One-tap: mark THIS device internal (2yr) so opening a parent's report/plan/roadmap from it
+          — e.g. a WhatsApp link on your phone — never writes funnel_events/analytics. */}
+      <a href="/admin/mark-internal" onClick={onNavigate} style={{ marginTop: "auto", padding: "8px", borderRadius: 8, textDecoration: "none", color: "#8FA6C2", fontSize: 12.5 }}>
+        📵 Mark this device internal
+      </a>
     </>
   );
 

@@ -13,6 +13,7 @@
 import { fireGtag } from "@/lib/gtag";
 import { getAnonId } from "@/lib/flow/anon";
 import { CATALOG, OPENAI_SEND, pickAdParams, consentAllowsAds, metaEventId } from "./catalog";
+import { cookieHeaderHasOperator } from "./operator";
 
 declare global {
   interface Window {
@@ -21,9 +22,9 @@ declare global {
   }
 }
 
-// Internal test traffic (aa_internal=1 cookie): never reaches an ad platform.
+// Internal/operator traffic (aa_internal=1 cookie): never writes funnel_events, never reaches an ad platform.
 function isInternalClient(): boolean {
-  return typeof document !== "undefined" && /(?:^|;\s*)aa_internal=1(?:;|$)/.test(document.cookie);
+  return typeof document !== "undefined" && cookieHeaderHasOperator(document.cookie);
 }
 
 // ── Adapters ─────────────────────────────────────────────────────────────────────
@@ -82,8 +83,9 @@ export function track(
   sessionId?: string | null,
   opts: TrackOpts = {},
 ): void {
-  // 1) DB first.
-  if (opts.db !== false) postFunnelEvent(name, sessionId, params);
+  // 1) DB first — but NEVER for an operator/admin browser (would pollute the parent's funnel on a
+  // report/plan/roadmap the operator opened). Operator views are logged server-side to admin_view_log.
+  if (opts.db !== false && !isInternalClient()) postFunnelEvent(name, sessionId, params);
 
   // 2) Ad adapters — allow-listed params only, gated by consent + internal-traffic.
   const spec = CATALOG[name];

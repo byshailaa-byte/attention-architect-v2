@@ -5,6 +5,7 @@
 import { after } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { trackServer } from "@/lib/analytics/track.server";
+import { isOperatorRequest, logAdminView } from "@/lib/admin/admin-view";
 import { viewReportV2, generateAndStoreReportV2 } from "@/lib/report-v2/service";
 import { allGoals, CONCERN_GOAL, CONCERN_ALIAS, canonicalConcern, goalForConcern } from "@/lib/report-v2/goal-mapping";
 import { buildCardsCopy } from "@/lib/report-v2/cards-copy";
@@ -69,8 +70,12 @@ export default async function ReportV2({ session, card, plan }: { session: strin
     evidence: childEvidence.map((e) => ({ quote: e.quote, dim: e.dim })),
   });
 
+  // Operator (admin) opens are logged to admin_view_log, NEVER the funnel. Resolved here in request
+  // scope (cookies()); the boolean is captured for use inside after().
+  const operator = await isOperatorRequest();
   after(async () => {
     await generateAndStoreReportV2(session).catch((e: unknown) => console.warn("[report-v2] bg generate:", (e as Error).message));
+    if (operator) { await logAdminView("report", session, `/report/${session}?report=v2`); return; }
     // Unified report_view with variant (old report_v2_view name stays in history; admin reads both).
     await trackServer("report_view", { variant: "v2", archetype: content.archetype, source: content.source }, { sessionId: session });
   });

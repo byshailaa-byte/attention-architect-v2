@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { trackServer } from "@/lib/analytics/track.server";
+import { isOperatorRequest, logAdminView } from "@/lib/admin/admin-view";
 import {
   PATTERN_LINE, MEANING, FRICTION_POINTS, TONIGHT_SAY, TONIGHT_WATCH,
   INSTINCT_LINE, NOW_LINES, THEN_LINES, TESTIMONIAL_POOL,
@@ -185,7 +186,9 @@ export async function SimplifiedReportBody({
   // Record that this parent viewed their report — moved OFF the render path via after()
   // so the analytics write never adds a round-trip to TTFB. Reaches here only when:
   // session valid, parent_name set, published report exists.
+  const operator = await isOperatorRequest();
   after(async () => {
+    if (operator) { await logAdminView("report-simplified", session, `/preview/simplified-v1?session=${session}`); return; }
     // Unified report_view with variant (old simplified_report_view name stays in history).
     await trackServer("report_view", { variant: "simplified" }, { sessionId: session });
   });

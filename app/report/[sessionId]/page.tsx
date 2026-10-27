@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { getSql } from "@/lib/db/client";
 import { trackServer } from "@/lib/analytics/track.server";
+import { isOperatorRequest, logAdminView } from "@/lib/admin/admin-view";
 import { SimplifiedReportBody } from "@/app/preview/simplified-v1/page";
 import ReportGate from "./ReportGate";
 import GatedReportFlow from "./GatedReportFlow";
@@ -165,7 +166,8 @@ export default async function ReportPage({
   } else {
     // Control arm (or pre-migration session with no variant): existing parent_name gate
     if (!row.parent_name) {
-      await trackServer("report_gate_view", {}, { sessionId });
+      if (await isOperatorRequest()) await logAdminView("report-gate", sessionId, `/report/${sessionId}`);
+      else await trackServer("report_gate_view", {}, { sessionId });
 
       return (
         <>
@@ -215,8 +217,11 @@ export default async function ReportPage({
   }
 
   if (nr !== null) {
-    // Analytics write moved OFF the render path via after() — never adds to TTFB.
+    // Analytics write moved OFF the render path via after() — never adds to TTFB. Operator opens go to
+    // admin_view_log, never the funnel (operator resolved in request scope, captured for after()).
+    const operator = await isOperatorRequest();
     after(async () => {
+      if (operator) { await logAdminView("report", sessionId, `/report/${sessionId}`); return; }
       await trackServer("report_view", { variant: "v1", archetype: row.archetype }, { sessionId });
     });
 
