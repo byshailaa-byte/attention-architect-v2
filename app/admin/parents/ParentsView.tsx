@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { T } from "../crm-theme";
-import { BUCKET_LABEL, type Bucket, type ParentRow, type PanelCall, type PanelReport } from "@/lib/admin/parents/types";
+import { BUCKET_LABEL, type Bucket, type ParentRow, type PanelCall, type PanelReport, type PanelAnswers } from "@/lib/admin/parents/types";
 
 // Pill colour per bucket, reusing the theme tokens.
 const PILL: Record<Bucket, { bg: string; fg: string }> = {
@@ -33,7 +34,7 @@ export function ParentsView({ rows, counts, commit }: { rows: ParentRow[]; count
   const [bucket, setBucket] = useState<Bucket>("all");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<ParentRow | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const router = useRouter();
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -176,10 +177,16 @@ export function ParentsView({ rows, counts, commit }: { rows: ParentRow[]; count
 
       {selected && (
         <ParentPanel
-          key={`${selected.key}:${refreshKey}`}
+          key={selected.key}
           row={selected}
+          position={(() => { const i = filtered.findIndex((r) => r.key === selected.key); return { n: i + 1, total: filtered.length }; })()}
           onClose={() => setSelected(null)}
-          onLogged={() => setRefreshKey((k) => k + 1)}
+          onSavedNext={() => {
+            const i = filtered.findIndex((r) => r.key === selected.key);
+            const next = i >= 0 ? filtered[i + 1] : undefined;
+            setSelected(next ?? null);
+            router.refresh(); // re-pull server data so buckets/counts reflect the logged call
+          }}
         />
       )}
 
@@ -193,35 +200,41 @@ export function ParentsView({ rows, counts, commit }: { rows: ParentRow[]; count
   );
 }
 
-// ── Side panel ────────────────────────────────────────────────────────────────────────────────────
-const OUTCOME_OPTIONS: { v: string; label: string }[] = [
-  { v: "interested", label: "Interested (needs follow-up)" },
-  { v: "callback", label: "Call back later (needs follow-up)" },
-  { v: "trial_offered", label: "Trial offered" },
+// ── Side panel (matches docs/mockups/admin/1-Parents-calling-desk.png) ──────────────────────────────
+// The 8 one-tap outcomes, in mockup order. Each maps to a call_log outcome and moves the parent to its
+// bucket on save. "danger"/"purple" tint the text when unselected (per the mockup).
+const OUTCOMES: { v: string; label: string; tone?: "danger" | "purple"; caret?: boolean }[] = [
+  { v: "no_answer", label: "Did not pick up", tone: "danger" },
+  { v: "callback", label: "Callback" },
+  { v: "interested", label: "Interested" },
   { v: "not_interested", label: "Not interested" },
-  { v: "do_not_call", label: "Do not call" },
-  { v: "no_answer", label: "No answer" },
-  { v: "busy", label: "Busy" },
-  { v: "wrong_number", label: "Wrong number" },
-  { v: "other_course", label: "Doing another course" },
+  { v: "trial_offered", label: "Trial offered" },
+  { v: "trial_in_progress", label: "Trial in progress" },
   { v: "purchased", label: "Purchased" },
-];
-const OBJECTIONS = [
-  { v: "", label: "—" }, { v: "price", label: "Price" }, { v: "time", label: "No time" },
-  { v: "ask_spouse", label: "Ask spouse" }, { v: "will_it_work", label: "Will it work?" },
-  { v: "later", label: "Maybe later" }, { v: "other", label: "Other" },
+  { v: "other_course", label: "Other course", tone: "purple", caret: true },
 ];
 const NEEDS_FOLLOWUP = new Set(["interested", "callback"]);
+const OUTCOME_LABEL: Record<string, string> = {
+  no_answer: "Did not pick up", busy: "Did not pick up", callback: "Callback", interested: "Interested",
+  not_interested: "Not interested", do_not_call: "Not interested", trial_offered: "Trial offered",
+  trial_in_progress: "Trial in progress", purchased: "Purchased", other_course: "Other course", wrong_number: "Wrong number",
+};
+const OUTCOME_BUCKET_C: Record<string, Bucket> = {
+  no_answer: "no_pickup", busy: "no_pickup", callback: "callback", interested: "interested",
+  not_interested: "not_interested", do_not_call: "not_interested", trial_offered: "trial_offered",
+  trial_in_progress: "trial_in_progress", purchased: "purchased", other_course: "other_course", wrong_number: "no_phone",
+};
 
-function ParentPanel({ row, onClose, onLogged }: { row: ParentRow; onClose: () => void; onLogged: () => void }) {
-  const [detail, setDetail] = useState<{ calls: PanelCall[]; reports: Record<string, PanelReport> } | null>(null);
+function ParentPanel({ row, position, onClose, onSavedNext }: { row: ParentRow; position: { n: number; total: number }; onClose: () => void; onSavedNext: () => void }) {
+  const [detail, setDetail] = useState<{ calls: PanelCall[]; reports: Record<string, PanelReport>; answers: PanelAnswers } | null>(null);
   const [loadErr, setLoadErr] = useState(false);
+  const [tab, setTab] = useState<"call" | "timeline" | "answers">("call");
   const [target, setTarget] = useState(row.children[0]?.assessmentId ?? "");
-  const [outcome, setOutcome] = useState("interested");
+  const [outcome, setOutcome] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [nextSteps, setNextSteps] = useState("");
-  const [objection, setObjection] = useState("");
-  const [followUp, setFollowUp] = useState("");
+  const [followDate, setFollowDate] = useState("");
+  const [followTime, setFollowTime] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
@@ -236,130 +249,189 @@ function ParentPanel({ row, onClose, onLogged }: { row: ParentRow; onClose: () =
     return () => { live = false; };
   }, [row]);
 
+  const head = row.children[0];
+  const targetChild = row.children.find((c) => c.assessmentId === target) ?? head;
+  const childNames = row.children.map((c) => c.childName).join(" + ");
+
   const submit = async () => {
+    if (!outcome) { setSaveMsg("Pick an outcome first."); return; }
+    if (NEEDS_FOLLOWUP.has(outcome) && !followDate) { setSaveMsg("Pick a follow-up date for this outcome."); return; }
     setSaving(true); setSaveMsg(null);
+    const followUpAt = followDate ? new Date(`${followDate}T${followTime || "10:00"}`).toISOString() : undefined;
     try {
       const res = await fetch("/api/admin/parents/call", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          assessmentId: target, outcome,
-          note: note || undefined, nextSteps: nextSteps || undefined,
-          objection: objection || undefined,
-          followUpAt: followUp ? new Date(followUp).toISOString() : undefined,
-        }),
+        body: JSON.stringify({ assessmentId: target, outcome, note: note || undefined, nextSteps: nextSteps || undefined, followUpAt }),
       });
       const j = await res.json().catch(() => ({}));
-      if (res.ok && j.ok) {
-        setSaveMsg("Call logged ✓"); setNote(""); setNextSteps(""); setObjection(""); setFollowUp("");
-        onLogged();
-      } else {
-        const reason = j.reason === "followup_required" ? "Pick a follow-up date for this outcome."
+      if (res.ok && j.ok) { onSavedNext(); }
+      else {
+        setSaveMsg(j.reason === "followup_required" ? "Pick a follow-up date for this outcome."
           : j.reason === "not_enabled" ? "Call logging isn’t enabled on this environment."
-          : j.error || "Couldn’t log the call.";
-        setSaveMsg(reason);
+          : j.error || "Couldn’t log the call.");
+        setSaving(false);
       }
-    } catch { setSaveMsg("Network error — try again."); }
-    finally { setSaving(false); }
+    } catch { setSaveMsg("Network error — try again."); setSaving(false); }
   };
 
   const fmt = (s: string) => new Date(s).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
-  const outcomeLabel = (v: string) => OUTCOME_OPTIONS.find((o) => o.v === v)?.label.replace(/ \(needs follow-up\)/, "") ?? v;
+  const dur = (sec: number | null) => (sec == null ? "" : sec < 60 ? `${sec}s` : `${Math.round(sec / 60)} min`);
   const label: React.CSSProperties = { fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: T.muted, textTransform: "uppercase", display: "block", marginBottom: 4 };
   const inputCss: React.CSSProperties = { width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.inputBorder}`, background: "#fff", fontSize: 13.5, color: T.text, fontFamily: T.FONT_BODY };
 
+  const OutcomePill = ({ o }: { o: string }) => {
+    const c = PILL[OUTCOME_BUCKET_C[o] ?? "all"];
+    return <span style={{ background: c.bg, color: c.fg, borderRadius: 999, padding: "2px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>{OUTCOME_LABEL[o] ?? o}</span>;
+  };
+
+  const TabBtn = ({ id, children }: { id: "call" | "timeline" | "answers"; children: React.ReactNode }) => (
+    <button onClick={() => setTab(id)} style={{ border: "none", background: "none", padding: "6px 2px", marginRight: 14, fontSize: 13, fontWeight: tab === id ? 700 : 500, color: tab === id ? T.navy : T.text2, borderBottom: tab === id ? `2px solid ${T.navy}` : "2px solid transparent", cursor: "pointer", fontFamily: T.FONT_BODY }}>{children}</button>
+  );
+
+  const callCount = detail?.calls.length ?? 0;
+
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(20,25,35,0.28)", zIndex: 50, display: "flex", justifyContent: "flex-end" }}>
-      <div data-parent-panel onClick={(e) => e.stopPropagation()} style={{ width: 440, maxWidth: "100%", height: "100%", overflowY: "auto", background: T.page, borderLeft: `1px solid ${T.cardBorder}`, boxShadow: "-8px 0 24px rgba(0,0,0,0.12)", padding: "18px 20px 40px" }}>
+      <div data-parent-panel onClick={(e) => e.stopPropagation()} style={{ width: 460, maxWidth: "100%", height: "100%", overflowY: "auto", background: T.page, borderLeft: `1px solid ${T.cardBorder}`, boxShadow: "-8px 0 24px rgba(0,0,0,0.12)", padding: "18px 22px 48px" }}>
+        {/* Header: parent · parent of child, age band ; archetype · worry · assessed */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
           <div>
-            <div style={{ fontFamily: T.FONT_HEAD, fontSize: 22, fontWeight: 600 }}>{row.parentName}</div>
-            <div style={{ color: T.muted, fontSize: 12.5, marginTop: 2 }}>{row.phoneMasked ?? "no phone on file"}</div>
+            <div style={{ fontFamily: T.FONT_HEAD, fontSize: 22, fontWeight: 600, lineHeight: 1.2 }}>{row.parentName} <span style={{ fontFamily: T.FONT_BODY, fontSize: 13, fontWeight: 400, color: T.text2 }}>· parent of {childNames}{head ? `, ${head.ageBand}` : ""}</span></div>
+            {head && (head.archetype || head.worry) && (
+              <div style={{ color: T.muted, fontSize: 12.5, marginTop: 3 }}>
+                {[head.archetype, head.worry ? `worry: ${head.worry}` : "", head.assessedAt ? `assessed ${fmt(head.assessedAt)}` : ""].filter(Boolean).join(" · ")}
+              </div>
+            )}
+            <div style={{ color: T.muted, fontSize: 11.5, marginTop: 2 }}>Parent {position.n} of {position.total} in this tab</div>
           </div>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", fontSize: 22, color: T.muted, cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
 
-        <div style={{ display: "flex", gap: 8, margin: "12px 0 6px" }}>
-          {row.telHref ? <a href={row.telHref} style={{ background: T.navy, color: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Call</a>
-            : <span style={{ background: T.greyBg, color: T.greyText, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600 }}>No phone on file</span>}
+        {/* Action row */}
+        <div style={{ display: "flex", gap: 8, margin: "12px 0 10px", flexWrap: "wrap" }}>
+          {row.telHref ? <a href={row.telHref} style={{ background: T.navy, color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Call {row.phoneMasked}</a>
+            : <span style={{ background: T.greyBg, color: T.greyText, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600 }}>No phone on file</span>}
           {row.waHref && <a href={row.waHref} target="_blank" rel="noreferrer" style={{ background: T.wa, color: T.waText, borderRadius: 8, padding: "8px 14px", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, textDecoration: "none" }}><WaGlyph /> WhatsApp</a>}
+          <span title="Coming soon" style={{ background: T.greyBg, color: T.muted, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "not-allowed", display: "inline-flex", alignItems: "center", gap: 6 }}>Follow-up script <span style={{ fontSize: 10.5, fontWeight: 700, background: "#E6DECF", color: T.label, borderRadius: 999, padding: "0 6px" }}>coming soon</span></span>
         </div>
 
-        {/* Children + report talking points */}
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "0.1em", color: T.label, textTransform: "uppercase", marginBottom: 8 }}>Children</div>
-          {row.children.map((c) => {
-            const rep = detail?.reports[c.sessionId];
-            return (
-              <div key={c.assessmentId} style={{ background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 10, padding: "11px 13px", marginBottom: 8 }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{c.childName} <span style={{ color: T.muted, fontWeight: 400 }}>· {c.ageBand}{c.worry ? ` · ${c.worry}` : ""}</span></div>
-                <div style={{ fontSize: 12, color: T.text2, marginTop: 2 }}>{c.journey}</div>
-                {rep?.worry && <div style={{ fontSize: 12.5, color: T.textRow, marginTop: 7, lineHeight: 1.4 }}><span style={{ color: T.muted }}>What they saw: </span>{rep.worry}</div>}
-                {rep?.hardPart && <div style={{ fontSize: 12.5, color: T.textRow, marginTop: 4, lineHeight: 1.4 }}><span style={{ color: T.muted }}>Hard part: </span>{rep.hardPart}</div>}
-                {rep?.tonightStep && <div style={{ fontSize: 12.5, color: T.textRow, marginTop: 4, lineHeight: 1.4 }}><span style={{ color: T.muted }}>Tonight: </span>{rep.tonightStep}</div>}
-                <a href={`/report/${c.sessionId}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ display: "inline-block", marginTop: 8, fontSize: 12.5, color: T.navy, fontWeight: 600, textDecoration: "none" }}>Open report ↗</a>
-              </div>
-            );
-          })}
+        {/* Tabs */}
+        <div style={{ borderBottom: `1px solid ${T.divider}`, marginBottom: 8, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+          <TabBtn id="call">Call &amp; notes</TabBtn>
+          <TabBtn id="timeline">Timeline</TabBtn>
+          <TabBtn id="answers">Answers</TabBtn>
+          <a href={`/report/${targetChild?.sessionId}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 500, color: T.navy, textDecoration: "none", marginRight: 14 }}>Report ↗</a>
+          <a href={`/simplified/roadmap?session=${targetChild?.sessionId}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 500, color: T.navy, textDecoration: "none" }}>Roadmap ↗</a>
         </div>
+        <div style={{ fontSize: 11.5, color: T.muted, background: T.chipFill, borderRadius: 8, padding: "6px 10px", marginBottom: 14 }}>Admin view: opening these never adds events to {row.parentName}’s timeline.</div>
 
-        {/* Call history */}
-        <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "0.1em", color: T.label, textTransform: "uppercase", marginBottom: 8 }}>Call history</div>
-          {loadErr && <div style={{ color: T.dangerText, fontSize: 12.5 }}>Couldn’t load call history.</div>}
-          {!loadErr && !detail && <div style={{ color: T.muted, fontSize: 12.5 }}>Loading…</div>}
-          {detail && detail.calls.length === 0 && <div style={{ color: T.muted, fontSize: 12.5 }}>No calls logged yet.</div>}
-          {detail?.calls.map((cl) => (
-            <div key={cl.id} style={{ borderLeft: `3px solid ${T.amber}`, paddingLeft: 10, marginBottom: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: T.textRow }}>{outcomeLabel(cl.outcome)} <span style={{ color: T.muted, fontWeight: 400, fontSize: 12 }}>· {fmt(cl.created_at)}{cl.called_by ? ` · ${cl.called_by}` : ""}</span></div>
-              {cl.notes && <div style={{ fontSize: 12.5, color: T.text2, marginTop: 2 }}>{cl.notes}</div>}
-              {cl.next_steps && <div style={{ fontSize: 12.5, color: T.text2, marginTop: 2 }}><span style={{ color: T.muted }}>Next: </span>{cl.next_steps}</div>}
-              {cl.follow_up_at && <div style={{ fontSize: 12, color: T.warmText, marginTop: 2 }}>Follow-up: {fmt(cl.follow_up_at)}</div>}
-            </div>
-          ))}
-        </div>
-
-        {/* Log a call */}
-        <div style={{ marginTop: 16, background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 10, padding: "13px 14px" }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "0.1em", color: T.label, textTransform: "uppercase", marginBottom: 10 }}>Log a call</div>
-          {row.children.length > 1 && (
-            <div style={{ marginBottom: 10 }}>
-              <label style={label}>About which child</label>
-              <select value={target} onChange={(e) => setTarget(e.target.value)} style={inputCss}>
-                {row.children.map((c) => <option key={c.assessmentId} value={c.assessmentId}>{c.childName}</option>)}
-              </select>
-            </div>
-          )}
-          <div style={{ marginBottom: 10 }}>
-            <label style={label}>Outcome</label>
-            <select value={outcome} onChange={(e) => setOutcome(e.target.value)} style={inputCss}>
-              {OUTCOME_OPTIONS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
-            </select>
-          </div>
-          {NEEDS_FOLLOWUP.has(outcome) && (
-            <div style={{ marginBottom: 10 }}>
-              <label style={label}>Follow-up (required)</label>
-              <input type="datetime-local" value={followUp} onChange={(e) => setFollowUp(e.target.value)} style={inputCss} />
-            </div>
-          )}
-          <div style={{ marginBottom: 10 }}>
-            <label style={label}>Objection (optional)</label>
-            <select value={objection} onChange={(e) => setObjection(e.target.value)} style={inputCss}>
-              {OBJECTIONS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
-            </select>
-          </div>
-          <div style={{ marginBottom: 10 }}>
-            <label style={label}>Note (optional)</label>
-            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} style={{ ...inputCss, resize: "vertical" }} />
-          </div>
+        {/* Child selector (multi-child) */}
+        {row.children.length > 1 && (
           <div style={{ marginBottom: 12 }}>
-            <label style={label}>Next steps (optional)</label>
-            <input value={nextSteps} onChange={(e) => setNextSteps(e.target.value)} style={inputCss} />
+            <label style={label}>Which child</label>
+            <select value={target} onChange={(e) => setTarget(e.target.value)} style={inputCss}>
+              {row.children.map((c) => <option key={c.assessmentId} value={c.assessmentId}>{c.childName} · {c.ageBand}</option>)}
+            </select>
           </div>
-          <button onClick={submit} disabled={saving || !target} style={{ background: T.navy, color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13.5, fontWeight: 600, cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1 }}>
-            {saving ? "Saving…" : "Save call"}
-          </button>
-          {saveMsg && <span style={{ marginLeft: 12, fontSize: 12.5, color: saveMsg.includes("✓") ? T.successText : T.dangerText }}>{saveMsg}</span>}
-        </div>
+        )}
+
+        {tab === "call" && (
+          <>
+            <div style={{ ...label, marginBottom: 8 }}>Call {callCount + 1} · outcome → moves to bucket</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
+              {OUTCOMES.map((o) => {
+                const sel = outcome === o.v;
+                const tint = o.tone === "danger" ? T.dangerText : o.tone === "purple" ? "#7A4FB0" : T.textRow;
+                return (
+                  <button key={o.v} onClick={() => setOutcome(o.v)} style={{
+                    border: `1px solid ${sel ? T.navy : T.inputBorder}`, background: sel ? T.navy : T.card,
+                    color: sel ? "#fff" : tint, borderRadius: 9, padding: "7px 12px", fontSize: 12.5, fontWeight: 600,
+                    cursor: "pointer", fontFamily: T.FONT_BODY,
+                  }}>{sel ? "✓ " : ""}{o.label}{o.caret ? " ▾" : ""}</button>
+                );
+              })}
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={label}>What happened on this call</label>
+              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} style={{ ...inputCss, resize: "vertical" }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={label}>Next steps</label>
+              <input value={nextSteps} onChange={(e) => setNextSteps(e.target.value)} style={inputCss} />
+            </div>
+
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginBottom: 14, flexWrap: "wrap" }}>
+              <div style={{ flex: "1 1 120px" }}>
+                <label style={label}>Follow-up{outcome && NEEDS_FOLLOWUP.has(outcome) ? " (required)" : ""}</label>
+                <input type="date" value={followDate} onChange={(e) => setFollowDate(e.target.value)} style={inputCss} />
+              </div>
+              <div style={{ flex: "1 1 100px" }}>
+                <label style={label}>&nbsp;</label>
+                <input type="time" value={followTime} onChange={(e) => setFollowTime(e.target.value)} style={inputCss} />
+              </div>
+              <button onClick={submit} disabled={saving} style={{ background: T.navy, color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13.5, fontWeight: 600, cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1, whiteSpace: "nowrap" }}>
+                {saving ? "Saving…" : "Save & next →"}
+              </button>
+            </div>
+            {saveMsg && <div style={{ fontSize: 12.5, color: T.dangerText, marginBottom: 12 }}>{saveMsg}</div>}
+
+            {/* Call log */}
+            <div style={{ ...label, marginBottom: 8 }}>Call log · newest first</div>
+            {loadErr && <div style={{ color: T.dangerText, fontSize: 12.5 }}>Couldn’t load call history.</div>}
+            {!loadErr && !detail && <div style={{ color: T.muted, fontSize: 12.5 }}>Loading…</div>}
+            {detail && detail.calls.length === 0 && <div style={{ color: T.muted, fontSize: 12.5 }}>No calls logged yet.</div>}
+            {detail?.calls.map((cl, i) => (
+              <div key={cl.id} style={{ borderLeft: `3px solid ${T.amber}`, paddingLeft: 11, marginBottom: 11 }}>
+                <div style={{ fontSize: 13, color: T.textRow, display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 600 }}>Call {callCount - i}</span>
+                  <span style={{ color: T.muted, fontSize: 12 }}>· {fmt(cl.created_at)}{dur(cl.duration_sec) ? ` · ${dur(cl.duration_sec)}` : ""}</span>
+                  <OutcomePill o={cl.outcome} />
+                </div>
+                {cl.notes && <div style={{ fontSize: 12.5, color: T.text2, marginTop: 2 }}><span style={{ color: T.muted }}>Note: </span>{cl.notes}</div>}
+                {cl.next_steps && <div style={{ fontSize: 12.5, color: T.text2, marginTop: 2 }}><span style={{ color: T.muted }}>Next: </span>{cl.next_steps}</div>}
+                {cl.follow_up_at && <div style={{ fontSize: 12, color: T.warmText, marginTop: 2 }}>Follow-up: {fmt(cl.follow_up_at)}</div>}
+              </div>
+            ))}
+          </>
+        )}
+
+        {tab === "timeline" && (
+          <div>
+            {(() => {
+              const events: { t: string; text: string; sub?: string }[] = [];
+              for (const c of row.children) {
+                events.push({ t: c.assessedAt, text: `Assessed · ${c.childName}${c.archetype ? ` · ${c.archetype}` : ""}`, sub: c.journey });
+              }
+              for (const cl of detail?.calls ?? []) {
+                events.push({ t: cl.created_at, text: OUTCOME_LABEL[cl.outcome] ?? cl.outcome, sub: cl.notes ?? undefined });
+              }
+              events.sort((a, b) => +new Date(b.t) - +new Date(a.t));
+              return events.length ? events.map((e, i) => (
+                <div key={i} style={{ borderLeft: `3px solid ${T.cardBorder}`, paddingLeft: 11, marginBottom: 11 }}>
+                  <div style={{ fontSize: 13, color: T.textRow }}><span style={{ fontWeight: 600 }}>{e.text}</span> <span style={{ color: T.muted, fontSize: 12 }}>· {fmt(e.t)}</span></div>
+                  {e.sub && <div style={{ fontSize: 12.5, color: T.text2, marginTop: 2 }}>{e.sub}</div>}
+                </div>
+              )) : <div style={{ color: T.muted, fontSize: 12.5 }}>No timeline yet.</div>;
+            })()}
+          </div>
+        )}
+
+        {tab === "answers" && (
+          <div>
+            {!detail && <div style={{ color: T.muted, fontSize: 12.5 }}>Loading…</div>}
+            {detail && (detail.answers[target]?.length ? (
+              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 12px", fontSize: 12.5 }}>
+                {detail.answers[target].map((a, i) => (
+                  <Fragment key={i}>
+                    <div style={{ color: T.muted, fontWeight: 600 }}>{a.label}</div>
+                    <div style={{ color: T.textRow }}>{a.value}</div>
+                  </Fragment>
+                ))}
+              </div>
+            ) : <div style={{ color: T.muted, fontSize: 12.5 }}>No stored answers for this child.</div>)}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -7,7 +7,9 @@ export type ParentChild = {
   childName: string;
   ageBand: string;
   worry: string;          // display label
-  journey: string;        // "Report read · plan opened ×2 · Week 1 Day 3"
+  journey: string;        // "Report read · plan opened on 2 days · Week 1 Day 3"
+  archetype: string;      // display name, e.g. "The All-In Kid"
+  assessedAt: string;     // ISO of the assessment
 };
 export type ParentRow = {
   key: string;
@@ -39,6 +41,7 @@ export type PanelCall = {
   notes: string | null;
   next_steps: string | null;
   follow_up_at: string | null;
+  duration_sec: number | null;
   called_by: string | null;
   created_at: string;
 };
@@ -48,6 +51,8 @@ export type PanelReport = {
   tonightStep: string;
   goal: string;
 };
+// Raw assessment answers per child (keyed by question id), for the Answers tab.
+export type PanelAnswers = Record<string, { label: string; value: string }[]>;
 
 export const BUCKETS = [
   "all", "new", "no_pickup", "callback", "interested", "trial_offered",

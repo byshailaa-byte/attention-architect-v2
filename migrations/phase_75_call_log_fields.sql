@@ -8,7 +8,7 @@ ALTER TABLE call_log ADD COLUMN IF NOT EXISTS objection text;
 ALTER TABLE call_log DROP CONSTRAINT IF EXISTS call_log_outcome_check;
 ALTER TABLE call_log ADD CONSTRAINT call_log_outcome_check CHECK (outcome = ANY (ARRAY[
   'interested','callback','not_interested','purchased','no_answer','busy','wrong_number','do_not_call',
-  'trial_offered','other_course'
+  'trial_offered','trial_in_progress','other_course'
 ]));
 
 INSERT INTO schema_migrations (phase) VALUES ('phase_75_call_log_fields') ON CONFLICT DO NOTHING;

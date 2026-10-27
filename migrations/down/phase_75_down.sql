@@ -1,5 +1,5 @@
 -- ROLLBACK phase_75. Restore the narrower outcome CHECK (only if no new-value rows exist) + drop columns.
-UPDATE call_log SET outcome = 'not_interested' WHERE outcome IN ('trial_offered','other_course');
+UPDATE call_log SET outcome = 'not_interested' WHERE outcome IN ('trial_offered','trial_in_progress','other_course');
 ALTER TABLE call_log DROP CONSTRAINT IF EXISTS call_log_outcome_check;
 ALTER TABLE call_log ADD CONSTRAINT call_log_outcome_check CHECK (outcome = ANY (ARRAY[
   'interested','callback','not_interested','purchased','no_answer','busy','wrong_number','do_not_call']));

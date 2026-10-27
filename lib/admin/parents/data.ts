@@ -14,6 +14,7 @@ import { BUCKETS, type Bucket, type ParentRow } from "./types";
 type ARow = {
   id: string; session_id: string; parent_name: string | null; child_name: string | null;
   email: string | null; phone: string | null; age_band: string | null; concerns: string[] | null;
+  archetype: string | null;
   created_at: string; report_sent_at: string | null; purchased: boolean; trial_active: boolean;
   lms_week: number | null; lms_day: number | null; plan_days: number; report_viewed: boolean;
   coach_flag: boolean;
@@ -27,7 +28,9 @@ const istDateTime = (s: string) => new Date(s).toLocaleString("en-IN", { timeZon
 const OUTCOME_BUCKET: Record<string, { bucket: Bucket; label: string }> = {
   no_answer: { bucket: "no_pickup", label: "Did not pick up" }, busy: { bucket: "no_pickup", label: "Did not pick up" },
   callback: { bucket: "callback", label: "Callback" }, interested: { bucket: "interested", label: "Interested" },
-  trial_offered: { bucket: "trial_offered", label: "Trial offered" }, other_course: { bucket: "other_course", label: "Other course" },
+  trial_offered: { bucket: "trial_offered", label: "Trial offered" },
+  trial_in_progress: { bucket: "trial_in_progress", label: "Trial in progress" },
+  other_course: { bucket: "other_course", label: "Other course" },
   not_interested: { bucket: "not_interested", label: "Not interested" }, do_not_call: { bucket: "not_interested", label: "Not interested" },
   wrong_number: { bucket: "no_phone", label: "Wrong number" }, purchased: { bucket: "purchased", label: "Purchased" },
 };
@@ -57,7 +60,7 @@ export async function getParents(): Promise<{ rows: ParentRow[]; counts: Record<
   // Non-internal assessments + per-session signals (purchase, trial, lms, plan-opens, report-view, coach flag).
   const arows = (await withRetry(() => sql`
     SELECT a.id::text, a.session_id::text, a.parent_name, a.child_name, a.email, a.phone, a.age_band,
-           a.concerns, a.created_at, a.whatsapp_report_sent_at AS report_sent_at,
+           a.concerns, a.archetype, a.created_at, a.whatsapp_report_sent_at AS report_sent_at,
            (EXISTS (SELECT 1 FROM purchases p WHERE p.assessment_id = a.id AND p.status='paid')) AS purchased,
            (EXISTS (SELECT 1 FROM coach_trials t WHERE t.session_id = a.session_id AND t.status='active')) AS trial_active,
            lp.max_week AS lms_week, lp.max_day AS lms_day,
@@ -131,6 +134,7 @@ export async function getParents(): Promise<{ rows: ParentRow[]; counts: Record<
       children: group.map((a) => ({
         assessmentId: a.id, sessionId: a.session_id, childName: a.child_name || "—",
         ageBand: a.age_band || "—", worry: worryLabel(a.concerns?.[0] ?? ""), journey: journeyLine(a),
+        archetype: a.archetype ?? "", assessedAt: a.created_at,
       })),
       leadAt: istDate(head.created_at), leadAtMs: +new Date(head.created_at),
       bucket, statusLabel,

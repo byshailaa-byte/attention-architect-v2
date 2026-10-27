@@ -1,6 +1,6 @@
 import "server-only";
 import { getSql } from "@/lib/db/client";
-import type { PanelCall, PanelReport } from "./types";
+import type { PanelCall, PanelReport, PanelAnswers } from "./types";
 
 // Detail for one parent's side panel: each child's report talking-points + the full call history.
 // All inputs are IDs the list already holds (assessment + session ids for this parent's children);
@@ -8,7 +8,7 @@ import type { PanelCall, PanelReport } from "./types";
 
 const ALLOWED_OUTCOMES = [
   "interested", "callback", "not_interested", "purchased", "no_answer", "busy",
-  "wrong_number", "do_not_call", "trial_offered", "other_course",
+  "wrong_number", "do_not_call", "trial_offered", "trial_in_progress", "other_course",
 ] as const;
 export type ParentCallOutcome = (typeof ALLOWED_OUTCOMES)[number];
 // interested/callback promise a next contact — a follow-up date is mandatory (mirrors the Calls rule).
@@ -26,7 +26,7 @@ async function withRetry<T>(fn: () => Promise<T>, tries = 6): Promise<T> {
 export async function getParentDetail(
   assessmentIds: string[],
   sessionIds: string[],
-): Promise<{ calls: PanelCall[]; reports: Record<string, PanelReport> }> {
+): Promise<{ calls: PanelCall[]; reports: Record<string, PanelReport>; answers: PanelAnswers }> {
   const sql = getSql();
   const aids = assessmentIds.filter((s) => /^[0-9a-f-]{36}$/i.test(s));
   const sids = sessionIds.filter((s) => /^[0-9a-f-]{36}$/i.test(s));
@@ -34,7 +34,7 @@ export async function getParentDetail(
   const calls = aids.length
     ? ((await withRetry(() => sql`
         SELECT id::text, assessment_id::text, outcome, status, objection, notes, next_steps,
-               follow_up_at, called_by, created_at
+               follow_up_at, duration_sec, called_by, created_at
         FROM call_log WHERE assessment_id = ANY(${aids}::uuid[]) ORDER BY created_at DESC
       `)) as unknown as PanelCall[])
     : [];
@@ -56,7 +56,22 @@ export async function getParentDetail(
       };
     }
   }
-  return { calls, reports };
+
+  // Raw assessment answers per child (keyed question ids → value), for the Answers tab.
+  const answers: PanelAnswers = {};
+  if (aids.length) {
+    const rows = (await withRetry(() => sql`
+      SELECT id::text, answers FROM assessments WHERE id = ANY(${aids}::uuid[])
+    `)) as unknown as { id: string; answers: Record<string, unknown> | null }[];
+    for (const r of rows) {
+      const a = r.answers ?? {};
+      answers[r.id] = Object.entries(a).map(([k, v]) => ({
+        label: k,
+        value: v == null ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v),
+      }));
+    }
+  }
+  return { calls, reports, answers };
 }
 
 export async function logParentCall(input: {
