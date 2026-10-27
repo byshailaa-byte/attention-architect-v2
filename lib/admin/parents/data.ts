@@ -134,7 +134,7 @@ export async function getParents(): Promise<{ rows: ParentRow[]; counts: Record<
       })),
       leadAt: istDate(head.created_at), leadAtMs: +new Date(head.created_at),
       bucket, statusLabel,
-      followUpAt: fu ? istDateTime(fu) : null, followUpOverdue: !!fu && +new Date(fu) < now,
+      followUpAt: fu ? istDateTime(fu) : null, followUpMs: fu ? +new Date(fu) : null, followUpOverdue: !!fu && +new Date(fu) < now,
       tries: groupCalls.length, lastNote: latest?.notes?.slice(0, 60) ?? null,
       coachFlag: group.some((g) => g.coach_flag),
     });

@@ -37,13 +37,23 @@ export function ParentsView({ rows, counts, commit }: { rows: ParentRow[]; count
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return rows.filter((r) => {
+    const list = rows.filter((r) => {
       if (bucket !== "all" && r.bucket !== bucket) return false;
       if (!needle) return true;
       return (
         r.parentName.toLowerCase().includes(needle) ||
         r.children.some((c) => c.childName.toLowerCase().includes(needle) || c.worry.toLowerCase().includes(needle))
       );
+    });
+    // Sort for the calling workflow: on follow-up buckets, soonest/overdue due first; everywhere else
+    // (incl. "New" and "All") newest assessment first, so the most recent parents get called first.
+    const FOLLOWUP_BUCKETS = new Set<Bucket>(["callback", "interested", "no_pickup"]);
+    return list.sort((a, b) => {
+      if (FOLLOWUP_BUCKETS.has(bucket)) {
+        const am = a.followUpMs ?? Infinity, bm = b.followUpMs ?? Infinity;
+        if (am !== bm) return am - bm;
+      }
+      return b.leadAtMs - a.leadAtMs;
     });
   }, [rows, bucket, q]);
 

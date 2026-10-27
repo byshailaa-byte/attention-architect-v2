@@ -22,6 +22,7 @@ export type ParentRow = {
   bucket: Bucket;
   statusLabel: string;    // the pill text
   followUpAt: string | null;
+  followUpMs: number | null;
   followUpOverdue: boolean;
   tries: number;
   lastNote: string | null;
