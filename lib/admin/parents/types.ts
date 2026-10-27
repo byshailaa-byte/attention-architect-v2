@@ -14,7 +14,7 @@ export type ParentChild = {
 export type ParentRow = {
   key: string;
   parentName: string;
-  phoneMasked: string | null;
+  phoneDisplay: string | null;   // full number (admin shows real numbers, no masking)
   telHref: string | null;
   waHref: string | null;
   hasPhone: boolean;
@@ -29,6 +29,7 @@ export type ParentRow = {
   tries: number;
   lastNote: string | null;
   coachFlag: boolean;     // the Coach flagged a call for this parent
+  isInternal: boolean;    // test/ZZ account (only shown when "Show internal" is on)
 };
 
 // Side-panel detail shapes (client-safe).

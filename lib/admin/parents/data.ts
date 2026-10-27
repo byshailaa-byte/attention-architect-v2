@@ -1,7 +1,7 @@
 import "server-only";
 import { getSql } from "@/lib/db/client";
 import { personKey } from "@/lib/admin/call-queue";
-import { maskPhone, telLink, waLink, worryLabel } from "@/lib/admin/crm/logic";
+import { telLink, waLink, worryLabel } from "@/lib/admin/crm/logic";
 import { BUCKETS, type Bucket, type ParentRow } from "./types";
 
 // ── Parents screen data layer ────────────────────────────────────────────────────────────────────
@@ -14,12 +14,22 @@ import { BUCKETS, type Bucket, type ParentRow } from "./types";
 type ARow = {
   id: string; session_id: string; parent_name: string | null; child_name: string | null;
   email: string | null; phone: string | null; age_band: string | null; concerns: string[] | null;
-  archetype: string | null;
+  archetype: string | null; is_internal: boolean;
   created_at: string; report_sent_at: string | null; purchased: boolean; trial_active: boolean;
   lms_week: number | null; lms_day: number | null; plan_days: number; report_viewed: boolean;
   coach_flag: boolean;
 };
 type CRow = { assessment_id: string; outcome: string; status: string | null; notes: string | null; follow_up_at: string | null; created_at: string };
+
+// Full phone, grouped for readability (admin shows the real number — no masking). The Call/WhatsApp
+// hrefs already carry the full number; this is the on-screen display.
+function formatPhone(raw: string): string {
+  const d = raw.replace(/\D/g, "");
+  if (d.length === 12 && d.startsWith("91")) return `+91 ${d.slice(2, 7)} ${d.slice(7)}`;
+  if (d.length === 10) return `+91 ${d.slice(0, 5)} ${d.slice(5)}`;
+  if (d.length === 11 && d.startsWith("0")) return `+91 ${d.slice(1, 6)} ${d.slice(6)}`;
+  return raw;
+}
 
 const istDate = (s: string) => new Date(s).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
 const istDateTime = (s: string) => new Date(s).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -55,12 +65,13 @@ function journeyLine(a: ARow): string {
   return parts.join(" · ");
 }
 
-export async function getParents(): Promise<{ rows: ParentRow[]; counts: Record<Bucket, number> }> {
+export async function getParents(opts: { includeInternal?: boolean } = {}): Promise<{ rows: ParentRow[]; counts: Record<Bucket, number> }> {
   const sql = getSql();
-  // Non-internal assessments + per-session signals (purchase, trial, lms, plan-opens, report-view, coach flag).
-  const arows = (await withRetry(() => sql`
+  // Real (non-internal) assessments by default; includeInternal adds test/ZZ accounts for smoke tests.
+  const internalFilter = opts.includeInternal ? "" : "AND a.is_internal = false";
+  const arows = (await withRetry(() => sql.query(`
     SELECT a.id::text, a.session_id::text, a.parent_name, a.child_name, a.email, a.phone, a.age_band,
-           a.concerns, a.archetype, a.created_at, a.whatsapp_report_sent_at AS report_sent_at,
+           a.concerns, a.archetype, a.is_internal, a.created_at, a.whatsapp_report_sent_at AS report_sent_at,
            (EXISTS (SELECT 1 FROM purchases p WHERE p.assessment_id = a.id AND p.status='paid')) AS purchased,
            (EXISTS (SELECT 1 FROM coach_trials t WHERE t.session_id = a.session_id AND t.status='active')) AS trial_active,
            lp.max_week AS lms_week, lp.max_day AS lms_day,
@@ -85,9 +96,9 @@ export async function getParents(): Promise<{ rows: ParentRow[]; counts: Record<
         AND COALESCE(fs.is_internal, false) = false
         AND NOT EXISTS (SELECT 1 FROM admin_view_log av WHERE av.session_id = fe.session_id AND av.kind = 'plan')
     ) pv ON true
-    WHERE a.is_internal = false AND a.archetype IS NOT NULL
+    WHERE a.archetype IS NOT NULL ${internalFilter}
     ORDER BY a.created_at DESC
-  `)) as unknown as ARow[];
+  `))) as unknown as ARow[];
 
   const ids = arows.map((a) => a.id);
   const calls = new Map<string, CRow[]>();
@@ -129,7 +140,7 @@ export async function getParents(): Promise<{ rows: ParentRow[]; counts: Record<
     const fu = groupCalls.find((c) => c.follow_up_at)?.follow_up_at ?? null;
     rows.push({
       key, parentName,
-      phoneMasked: phone ? maskPhone(phone) : null, telHref: phone ? telLink(phone) : null, waHref: phone ? waLink(phone) : null,
+      phoneDisplay: phone ? formatPhone(phone) : null, telHref: phone ? telLink(phone) : null, waHref: phone ? waLink(phone) : null,
       hasPhone: !!phone,
       children: group.map((a) => ({
         assessmentId: a.id, sessionId: a.session_id, childName: a.child_name || "—",
@@ -141,6 +152,7 @@ export async function getParents(): Promise<{ rows: ParentRow[]; counts: Record<
       followUpAt: fu ? istDateTime(fu) : null, followUpMs: fu ? +new Date(fu) : null, followUpOverdue: !!fu && +new Date(fu) < now,
       tries: groupCalls.length, lastNote: latest?.notes?.slice(0, 60) ?? null,
       coachFlag: group.some((g) => g.coach_flag),
+      isInternal: group.some((g) => g.is_internal),
     });
   }
   rows.sort((a, b) => b.leadAtMs - a.leadAtMs);

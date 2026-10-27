@@ -7,10 +7,11 @@ export const dynamic = "force-dynamic";
 // The running commit, surfaced in the footer so a stale/old deploy is obvious at a glance.
 const COMMIT = (process.env.VERCEL_GIT_COMMIT_SHA ?? "local").slice(0, 7);
 
-export default async function ParentsPage() {
+export default async function ParentsPage({ searchParams }: { searchParams: Promise<{ internal?: string }> }) {
+  const showInternal = (await searchParams).internal === "1";
   try {
-    const { rows, counts } = await getParents();
-    return <ParentsView rows={rows} counts={counts} commit={COMMIT} />;
+    const { rows, counts } = await getParents({ includeInternal: showInternal });
+    return <ParentsView rows={rows} counts={counts} commit={COMMIT} showInternal={showInternal} />;
   } catch (e) {
     // Live data only — never silently fall back to fixtures (a broken deploy must look broken).
     console.error("[admin/parents] live data load failed", e);
