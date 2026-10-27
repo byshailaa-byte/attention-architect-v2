@@ -40,7 +40,8 @@ export function PreviewAdminBar(props: {
   }
   async function onApprove() {
     if (busy) return;
-    if (!window.confirm("Approve & offer: grant the REAL 4-day trial to this parent with this focus? This sends nothing — you'll copy a WhatsApp message to send by hand.")) return;
+    // Same confirm as the Parents panel "Offer trial".
+    if (!window.confirm("Start this parent's 4-day trial now? This activates it immediately and logs 'Trial offered'. You'll copy a WhatsApp message to send by hand.")) return;
     setBusy(true);
     try {
       const res = await post("/api/admin/coach-preview/approve", { trialId });

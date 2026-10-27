@@ -1,7 +1,7 @@
 import "server-only";
 import { getSql } from "@/lib/db/client";
 import { personKey } from "@/lib/admin/call-queue";
-import { maskPhone, telLink, waLink, worryLabel } from "@/lib/admin/crm/logic";
+import { telLink, waLink, worryLabel } from "@/lib/admin/crm/logic";
 import { BUCKETS, type Bucket, type ParentRow } from "./types";
 
 // ── Parents screen data layer ────────────────────────────────────────────────────────────────────
@@ -20,6 +20,16 @@ type ARow = {
   coach_flag: boolean;
 };
 type CRow = { assessment_id: string; outcome: string; status: string | null; notes: string | null; follow_up_at: string | null; created_at: string };
+
+// Full phone, grouped for readability (admin shows the real number — no masking). The Call/WhatsApp
+// hrefs already carry the full number; this is the on-screen display.
+function formatPhone(raw: string): string {
+  const d = raw.replace(/\D/g, "");
+  if (d.length === 12 && d.startsWith("91")) return `+91 ${d.slice(2, 7)} ${d.slice(7)}`;
+  if (d.length === 10) return `+91 ${d.slice(0, 5)} ${d.slice(5)}`;
+  if (d.length === 11 && d.startsWith("0")) return `+91 ${d.slice(1, 6)} ${d.slice(6)}`;
+  return raw;
+}
 
 const istDate = (s: string) => new Date(s).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
 const istDateTime = (s: string) => new Date(s).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -130,7 +140,7 @@ export async function getParents(opts: { includeInternal?: boolean } = {}): Prom
     const fu = groupCalls.find((c) => c.follow_up_at)?.follow_up_at ?? null;
     rows.push({
       key, parentName,
-      phoneMasked: phone ? maskPhone(phone) : null, telHref: phone ? telLink(phone) : null, waHref: phone ? waLink(phone) : null,
+      phoneDisplay: phone ? formatPhone(phone) : null, telHref: phone ? telLink(phone) : null, waHref: phone ? waLink(phone) : null,
       hasPhone: !!phone,
       children: group.map((a) => ({
         assessmentId: a.id, sessionId: a.session_id, childName: a.child_name || "—",

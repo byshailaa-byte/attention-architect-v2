@@ -116,7 +116,7 @@ export function ParentsView({ rows, counts, commit, showInternal }: { rows: Pare
                   {r.coachFlag && <span title="Coach flagged a call" style={{ background: T.warmBg, color: T.warmText, borderRadius: 999, padding: "1px 7px", fontSize: 10.5, fontWeight: 700 }}>📞 Coach</span>}
                   {r.isInternal && <span title="Test / internal account" style={{ background: T.greyBg, color: T.greyText, borderRadius: 999, padding: "1px 7px", fontSize: 10.5, fontWeight: 700 }}>internal</span>}
                 </div>
-                <div style={{ color: T.muted, fontSize: 12.5, marginTop: 2 }}>{r.phoneMasked ?? "no phone on file"}</div>
+                <div style={{ color: T.muted, fontSize: 12.5, marginTop: 2 }}>{r.phoneDisplay ? <span data-phone>{r.phoneDisplay}</span> : "no phone on file"}</div>
                 <div style={{ color: T.muted, fontSize: 11.5, marginTop: 1 }}>Lead {r.leadAt}{r.tries ? ` · ${r.tries} ${r.tries === 1 ? "try" : "tries"}` : ""}</div>
               </div>
               <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -160,7 +160,7 @@ export function ParentsView({ rows, counts, commit, showInternal }: { rows: Pare
                   {r.coachFlag && <span style={{ background: T.warmBg, color: T.warmText, borderRadius: 999, padding: "1px 7px", fontSize: 10, fontWeight: 700 }}>📞</span>}
                   {r.isInternal && <span style={{ background: T.greyBg, color: T.greyText, borderRadius: 999, padding: "1px 7px", fontSize: 9.5, fontWeight: 700 }}>internal</span>}
                 </div>
-                <div style={{ color: T.muted, fontSize: 12.5, marginTop: 2 }}>{r.phoneMasked ?? "no phone on file"}</div>
+                <div style={{ color: T.muted, fontSize: 12.5, marginTop: 2 }}>{r.phoneDisplay ? <span data-phone>{r.phoneDisplay}</span> : "no phone on file"}</div>
               </div>
               <Pill b={r.bucket} label={r.statusLabel} />
             </div>
@@ -235,7 +235,7 @@ const OUTCOME_BUCKET_C: Record<string, Bucket> = {
   trial_in_progress: "trial_in_progress", purchased: "purchased", other_course: "other_course", wrong_number: "no_phone",
 };
 
-function ParentPanel({ row, position, onClose, onListRefresh, onNext }: { row: ParentRow; position: { n: number; total: number }; onClose: () => void; onListRefresh: () => void; onNext: () => void }) {
+export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: { row: ParentRow; position: { n: number; total: number }; onClose: () => void; onListRefresh: () => void; onNext: () => void }) {
   const [detail, setDetail] = useState<{ calls: PanelCall[]; reports: Record<string, PanelReport>; answers: PanelAnswers } | null>(null);
   const [loadErr, setLoadErr] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
@@ -271,6 +271,7 @@ function ParentPanel({ row, position, onClose, onListRefresh, onNext }: { row: P
   const [trialBusy, setTrialBusy] = useState(false);
   const [trialMsg, setTrialMsg] = useState<string | null>(null);
   const [offer, setOffer] = useState<{ link: string; msg: string; already: boolean } | null>(null);
+  const [confirmTrial, setConfirmTrial] = useState<null | "offer" | "resend">(null);
   const [copied, setCopied] = useState(false);
 
   const refetchTrial = async () => {
@@ -301,7 +302,8 @@ function ParentPanel({ row, position, onClose, onListRefresh, onNext }: { row: P
     no_contact: "No phone or email on file to send the link.", disabled: "Coach trials are turned off.",
     bad_session: "Can’t identify this child’s session.",
   };
-  const offerTrial = async () => {
+  const doOfferTrial = async () => {
+    setConfirmTrial(null);
     setTrialBusy(true); setTrialMsg(null);
     try {
       const res = await fetch("/api/admin/parents/offer-trial", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ sessionId: targetChild.sessionId, assessmentId: target }) });
@@ -392,7 +394,7 @@ function ParentPanel({ row, position, onClose, onListRefresh, onNext }: { row: P
 
         {/* Action row */}
         <div style={{ display: "flex", gap: 8, margin: "12px 0 10px", flexWrap: "wrap" }}>
-          {row.telHref ? <a href={row.telHref} style={{ background: T.navy, color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Call {row.phoneMasked}</a>
+          {row.telHref ? <a href={row.telHref} style={{ background: T.navy, color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Call <span data-phone>{row.phoneDisplay}</span></a>
             : <span style={{ background: T.greyBg, color: T.greyText, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600 }}>No phone on file</span>}
           {row.waHref && <a href={row.waHref} target="_blank" rel="noreferrer" style={{ background: T.wa, color: T.waText, borderRadius: 8, padding: "8px 14px", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, textDecoration: "none" }}><WaGlyph /> WhatsApp</a>}
           <span title="Coming soon" style={{ background: T.greyBg, color: T.muted, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "not-allowed", display: "inline-flex", alignItems: "center", gap: 6 }}>Follow-up script <span style={{ fontSize: 10.5, fontWeight: 700, background: "#E6DECF", color: T.label, borderRadius: 999, padding: "0 6px" }}>coming soon</span></span>
@@ -400,7 +402,7 @@ function ParentPanel({ row, position, onClose, onListRefresh, onNext }: { row: P
             <>
               <button onClick={previewCoach} style={{ background: T.card, color: T.navy, border: `1px solid ${T.inputBorder}`, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: T.FONT_BODY }}>Preview Coach</button>
               {!trial.paid && (
-                <button onClick={offerTrial} disabled={trialBusy} style={{ background: T.amber, color: T.navy, border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: trialBusy ? "default" : "pointer", opacity: trialBusy ? 0.7 : 1, fontFamily: T.FONT_BODY }}>{trialBusy ? "Offering…" : trial.alreadyTrialed ? "Re-send trial link" : "Offer trial"}</button>
+                <button onClick={() => setConfirmTrial(trial.alreadyTrialed ? "resend" : "offer")} disabled={trialBusy} style={{ background: T.amber, color: T.navy, border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: trialBusy ? "default" : "pointer", opacity: trialBusy ? 0.7 : 1, fontFamily: T.FONT_BODY }}>{trialBusy ? "Offering…" : trial.alreadyTrialed ? "Re-send trial link" : "Offer trial"}</button>
               )}
             </>
           )}
@@ -538,6 +540,19 @@ function ParentPanel({ row, position, onClose, onListRefresh, onNext }: { row: P
                 </div>
               ))
             ) : <div style={{ color: T.muted, fontSize: 12.5 }}>No stored answers for this child.</div>)}
+          </div>
+        )}
+
+        {confirmTrial && (
+          <div onClick={(e) => e.stopPropagation()} style={{ position: "fixed", inset: 0, background: "rgba(20,25,35,0.4)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ background: T.card, borderRadius: 12, padding: "18px 20px", width: 340, maxWidth: "90%", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
+              <div style={{ fontFamily: T.FONT_HEAD, fontSize: 17, fontWeight: 600, marginBottom: 6 }}>{confirmTrial === "offer" ? `Start ${row.parentName}’s 4-day trial now?` : `Re-send ${row.parentName}’s trial link?`}</div>
+              <div style={{ fontSize: 13, color: T.text2, marginBottom: 16, lineHeight: 1.45 }}>{confirmTrial === "offer" ? "This activates it immediately and logs “Trial offered.”" : "This re-opens the sign-in link and WhatsApp message — it doesn’t create a new trial."}</div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button onClick={() => setConfirmTrial(null)} style={{ background: T.card, color: T.text2, border: `1px solid ${T.inputBorder}`, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                <button onClick={doOfferTrial} disabled={trialBusy} style={{ background: T.navy, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: trialBusy ? 0.7 : 1 }}>{confirmTrial === "offer" ? "Start" : "Re-send"}</button>
+              </div>
+            </div>
           </div>
         )}
 

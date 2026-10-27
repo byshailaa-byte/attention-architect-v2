@@ -14,7 +14,7 @@ export type ParentChild = {
 export type ParentRow = {
   key: string;
   parentName: string;
-  phoneMasked: string | null;
+  phoneDisplay: string | null;   // full number (admin shows real numbers, no masking)
   telHref: string | null;
   waHref: string | null;
   hasPhone: boolean;

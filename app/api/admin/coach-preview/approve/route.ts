@@ -38,6 +38,17 @@ export async function POST(req: NextRequest) {
     });
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
 
+    // Log the offer in the CRM (same as the Parents panel "Offer trial") so the call history shows it.
+    try {
+      const { getSql } = await import("@/lib/db/client");
+      const sql = getSql();
+      const arow = (await sql`SELECT id::text FROM assessments WHERE session_id = ${preview.session_id}::uuid LIMIT 1`) as unknown as { id: string }[];
+      if (arow[0]) {
+        await sql`INSERT INTO call_log (assessment_id, segment, outcome, notes, called_by)
+                  VALUES (${arow[0].id}::uuid, 'parents', 'trial_offered', 'Offered the 4-day Coach trial (from Preview Coach).', 'admin')`;
+      }
+    } catch (e) { console.error("[approve] trial_offered log failed", e); }
+
     return NextResponse.json({
       ok: true,
       trialId: r.trialId,
