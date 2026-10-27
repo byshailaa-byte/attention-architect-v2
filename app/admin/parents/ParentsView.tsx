@@ -30,11 +30,13 @@ function WaGlyph() {
   );
 }
 
-export function ParentsView({ rows, counts, commit }: { rows: ParentRow[]; counts: Record<Bucket, number>; commit: string }) {
+export function ParentsView({ rows, counts, commit, showInternal }: { rows: ParentRow[]; counts: Record<Bucket, number>; commit: string; showInternal: boolean }) {
   const [bucket, setBucket] = useState<Bucket>("all");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<ParentRow | null>(null);
   const router = useRouter();
+
+  const toggleInternal = () => router.push(showInternal ? "/admin/parents" : "/admin/parents?internal=1");
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -88,11 +90,17 @@ export function ParentsView({ rows, counts, commit }: { rows: ParentRow[]; count
         })}
       </div>
 
-      {/* Search */}
-      <input
-        value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search parent or child name…"
-        style={{ width: 320, maxWidth: "100%", padding: "8px 12px", borderRadius: 9, border: `1px solid ${T.inputBorder}`, background: T.card, fontSize: 13.5, color: T.text, marginBottom: 14, fontFamily: T.FONT_BODY }}
-      />
+      {/* Search + show-internal toggle */}
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
+        <input
+          value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search parent or child name…"
+          style={{ width: 320, maxWidth: "100%", padding: "8px 12px", borderRadius: 9, border: `1px solid ${T.inputBorder}`, background: T.card, fontSize: 13.5, color: T.text, fontFamily: T.FONT_BODY }}
+        />
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, color: T.text2, cursor: "pointer", userSelect: "none" }}>
+          <input type="checkbox" checked={showInternal} onChange={toggleInternal} style={{ cursor: "pointer" }} />
+          Show internal (test accounts)
+        </label>
+      </div>
 
       {/* Desktop table */}
       <div className="aa-parents-desktop">
@@ -106,6 +114,7 @@ export function ParentsView({ rows, counts, commit }: { rows: ParentRow[]; count
                 <div style={{ fontWeight: 600, color: T.text, fontSize: 14.5, display: "flex", alignItems: "center", gap: 6 }}>
                   {r.parentName}
                   {r.coachFlag && <span title="Coach flagged a call" style={{ background: T.warmBg, color: T.warmText, borderRadius: 999, padding: "1px 7px", fontSize: 10.5, fontWeight: 700 }}>📞 Coach</span>}
+                  {r.isInternal && <span title="Test / internal account" style={{ background: T.greyBg, color: T.greyText, borderRadius: 999, padding: "1px 7px", fontSize: 10.5, fontWeight: 700 }}>internal</span>}
                 </div>
                 <div style={{ color: T.muted, fontSize: 12.5, marginTop: 2 }}>{r.phoneMasked ?? "no phone on file"}</div>
                 <div style={{ color: T.muted, fontSize: 11.5, marginTop: 1 }}>Lead {r.leadAt}{r.tries ? ` · ${r.tries} ${r.tries === 1 ? "try" : "tries"}` : ""}</div>
@@ -149,6 +158,7 @@ export function ParentsView({ rows, counts, commit }: { rows: ParentRow[]; count
                 <div style={{ fontWeight: 600, fontSize: 15, display: "flex", alignItems: "center", gap: 6 }}>
                   {r.parentName}
                   {r.coachFlag && <span style={{ background: T.warmBg, color: T.warmText, borderRadius: 999, padding: "1px 7px", fontSize: 10, fontWeight: 700 }}>📞</span>}
+                  {r.isInternal && <span style={{ background: T.greyBg, color: T.greyText, borderRadius: 999, padding: "1px 7px", fontSize: 9.5, fontWeight: 700 }}>internal</span>}
                 </div>
                 <div style={{ color: T.muted, fontSize: 12.5, marginTop: 2 }}>{r.phoneMasked ?? "no phone on file"}</div>
               </div>
@@ -255,6 +265,63 @@ function ParentPanel({ row, position, onClose, onListRefresh, onNext }: { row: P
   const targetChild = row.children.find((c) => c.assessmentId === target) ?? head;
   const childNames = row.children.map((c) => c.childName).join(" + ");
 
+  // Coach trial state for the selected child (reuses the existing trial system via its status API).
+  type TrialStatus = { enabled: boolean; paid: boolean; alreadyTrialed: boolean; trialId: string | null; trialLink: string | null; previewId: string | null; previewUrl: string | null; approved: boolean; chip: string; view: { day: number; status: string; endsAt: string; locked: boolean } | null };
+  const [trial, setTrial] = useState<TrialStatus | null>(null);
+  const [trialBusy, setTrialBusy] = useState(false);
+  const [trialMsg, setTrialMsg] = useState<string | null>(null);
+  const [offer, setOffer] = useState<{ link: string; msg: string; already: boolean } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const refetchTrial = async () => {
+    const sid = targetChild?.sessionId;
+    if (!sid) return;
+    // Retry a few times — the status API touches the DB and can hit a transient Neon blip.
+    for (let i = 0; i < 4; i++) {
+      try {
+        const r = await fetch(`/api/admin/coach-trial/status?sessionId=${encodeURIComponent(sid)}`);
+        if (r.ok) { const d = await r.json(); setTrial(d); return; }
+      } catch { /* retry */ }
+      await new Promise((res) => setTimeout(res, 400 * (i + 1)));
+    }
+  };
+  useEffect(() => { setTrial(null); refetchTrial(); /* eslint-disable-next-line */ }, [targetChild?.sessionId]);
+
+  const previewCoach = async () => {
+    setTrialMsg(null);
+    try {
+      const res = await fetch("/api/admin/coach-preview/create", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ sessionId: targetChild.sessionId }) });
+      const j = await res.json().catch(() => ({}));
+      if (j.previewUrl) window.open(j.previewUrl, "_blank");
+      else setTrialMsg(j.error === "no_report" ? "Report not ready for a preview yet." : "Couldn’t open the preview.");
+    } catch { setTrialMsg("Network error — try again."); }
+  };
+  const OFFER_ERR: Record<string, string> = {
+    already_paid: "Already purchased.", no_report: "Report isn’t ready for a trial yet.",
+    no_contact: "No phone or email on file to send the link.", disabled: "Coach trials are turned off.",
+    bad_session: "Can’t identify this child’s session.",
+  };
+  const offerTrial = async () => {
+    setTrialBusy(true); setTrialMsg(null);
+    try {
+      const res = await fetch("/api/admin/parents/offer-trial", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ sessionId: targetChild.sessionId, assessmentId: target }) });
+      const j = await res.json().catch(() => ({}));
+      if (j.ok) { setOffer({ link: j.trialLink, msg: j.waMessage, already: !!j.alreadyActive }); refetchTrial(); onListRefresh(); }
+      else setTrialMsg(OFFER_ERR[j.error] ?? "Couldn’t offer the trial.");
+    } catch { setTrialMsg("Network error — try again."); }
+    finally { setTrialBusy(false); }
+  };
+  const trialStateText = (): string | null => {
+    if (!trial || !trial.enabled) return null;
+    if (trial.paid) return "Purchased";
+    if (!trial.alreadyTrialed) return trial.previewId ? "Previewed (sandbox) — not offered" : "Not offered";
+    const v = trial.view;
+    if (v?.status === "converted") return "Trial → purchased";
+    if (v && (v.status === "ended" || v.locked)) return `Trial ended → ${trial.paid ? "purchased" : "not purchased"}`;
+    if (v) return `Day ${v.day} of 4${trial.approved ? " · offered" : ""}`;
+    return "Trial active";
+  };
+
   const dirty = outcome !== null || !!note.trim() || !!nextSteps.trim() || !!followDate || !!followTime;
   const clearForm = () => { setOutcome(null); setNote(""); setNextSteps(""); setFollowDate(""); setFollowTime(""); };
 
@@ -329,7 +396,24 @@ function ParentPanel({ row, position, onClose, onListRefresh, onNext }: { row: P
             : <span style={{ background: T.greyBg, color: T.greyText, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600 }}>No phone on file</span>}
           {row.waHref && <a href={row.waHref} target="_blank" rel="noreferrer" style={{ background: T.wa, color: T.waText, borderRadius: 8, padding: "8px 14px", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, textDecoration: "none" }}><WaGlyph /> WhatsApp</a>}
           <span title="Coming soon" style={{ background: T.greyBg, color: T.muted, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "not-allowed", display: "inline-flex", alignItems: "center", gap: 6 }}>Follow-up script <span style={{ fontSize: 10.5, fontWeight: 700, background: "#E6DECF", color: T.label, borderRadius: 999, padding: "0 6px" }}>coming soon</span></span>
+          {trial?.enabled && (
+            <>
+              <button onClick={previewCoach} style={{ background: T.card, color: T.navy, border: `1px solid ${T.inputBorder}`, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: T.FONT_BODY }}>Preview Coach</button>
+              {!trial.paid && (
+                <button onClick={offerTrial} disabled={trialBusy} style={{ background: T.amber, color: T.navy, border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: trialBusy ? "default" : "pointer", opacity: trialBusy ? 0.7 : 1, fontFamily: T.FONT_BODY }}>{trialBusy ? "Offering…" : trial.alreadyTrialed ? "Re-send trial link" : "Offer trial"}</button>
+              )}
+            </>
+          )}
         </div>
+
+        {/* Trial state */}
+        {trial?.enabled && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 12.5, color: T.text2, flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 700, color: T.muted, letterSpacing: "0.06em", fontSize: 11, textTransform: "uppercase" }}>Coach trial</span>
+            <span style={{ background: trialStateText() === "Purchased" || trialStateText()?.includes("purchased") ? T.successBg : trialStateText()?.startsWith("Day") ? T.readBg : T.greyBg, color: trialStateText() === "Purchased" || trialStateText()?.includes("purchased") ? T.successText : trialStateText()?.startsWith("Day") ? T.readText : T.greyText, borderRadius: 999, padding: "2px 10px", fontWeight: 600 }}>{trialStateText()}</span>
+            {trialMsg && <span style={{ color: T.dangerText }}>{trialMsg}</span>}
+          </div>
+        )}
 
         {/* Tabs */}
         <div style={{ borderBottom: `1px solid ${T.divider}`, marginBottom: 8, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
@@ -454,6 +538,21 @@ function ParentPanel({ row, position, onClose, onListRefresh, onNext }: { row: P
                 </div>
               ))
             ) : <div style={{ color: T.muted, fontSize: 12.5 }}>No stored answers for this child.</div>)}
+          </div>
+        )}
+
+        {offer && (
+          <div onClick={(e) => e.stopPropagation()} style={{ position: "fixed", inset: 0, background: "rgba(20,25,35,0.4)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ background: T.card, borderRadius: 12, padding: "18px 20px", width: 400, maxWidth: "92%", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
+              <div style={{ fontFamily: T.FONT_HEAD, fontSize: 18, fontWeight: 600, marginBottom: 4 }}>{offer.already ? "Trial already active" : "Trial started ✓"}</div>
+              <div style={{ fontSize: 12.5, color: T.text2, marginBottom: 12, lineHeight: 1.45 }}>{offer.already ? "This parent already has a live trial — here’s the link to re-send." : "The 4-day Coach is live. Send this on WhatsApp — the link signs them straight in."}</div>
+              <textarea readOnly value={offer.msg} rows={5} style={{ ...inputCss, resize: "vertical", marginBottom: 10 }} />
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <button onClick={() => { navigator.clipboard?.writeText(offer.msg); setCopied(true); }} style={{ background: T.card, color: T.navy, border: `1px solid ${T.inputBorder}`, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{copied ? "Copied ✓" : "Copy message"}</button>
+                {row.waHref && <a href={`${row.waHref}?text=${encodeURIComponent(offer.msg)}`} target="_blank" rel="noreferrer" style={{ background: T.wa, color: T.waText, borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}><WaGlyph /> Open WhatsApp</a>}
+                <button onClick={() => { setOffer(null); setCopied(false); }} style={{ background: T.navy, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Done</button>
+              </div>
+            </div>
           </div>
         )}
 

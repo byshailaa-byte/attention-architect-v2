@@ -29,6 +29,7 @@ export type ParentRow = {
   tries: number;
   lastNote: string | null;
   coachFlag: boolean;     // the Coach flagged a call for this parent
+  isInternal: boolean;    // test/ZZ account (only shown when "Show internal" is on)
 };
 
 // Side-panel detail shapes (client-safe).
