@@ -11,44 +11,52 @@ type NavItem = {
   badgeKind?: "amber" | "wa" | "danger";
   noActive?: boolean;       // placeholder item that never highlights (e.g. Purchases)
 };
-type NavGroup = { label: string; items: NavItem[] };
+type NavGroup = { label: string; items: NavItem[]; collapsible?: boolean };
 
-// Single source of truth for the whole /admin nav. Each item routes to the destination it had
-// before this pass: CRM/standalone pages go to their own routes; the old dashboard's internal
-// sections become ?tab= on /admin (AdminDashboard reads ?tab= and renders that section).
+// Single source of truth for the whole /admin nav. Reorganised to TODAY / GROWTH / SETUP around the
+// day's work, with the lower-traffic pages tucked under a collapsible "More". No page was removed —
+// every destination that existed before still has an entry (CRM/standalone pages keep their own
+// routes; the old dashboard's internal sections stay as ?tab= on /admin).
 function buildGroups(callsDue: number, needsReply: number, coachNeedsLook: number): NavGroup[] {
   return [
     {
-      label: "Sell",
+      label: "Today",
       items: [
-        { label: "Calls", href: "/admin/calls", key: "/admin/calls", badge: callsDue, badgeKind: "amber" },
+        { label: "Parents", href: "/admin/parents", key: "/admin/parents", badge: callsDue, badgeKind: "amber" },
         { label: "WhatsApp inbox", href: "/admin/whatsapp", key: "/admin/whatsapp", badge: needsReply, badgeKind: "wa" },
-        { label: "Templates and drip", href: "/admin/whatsapp/templates", key: "/admin/whatsapp/templates" },
-        { label: "Leads", href: "/admin/leads", key: "/admin/leads" },
-        { label: "Purchases", href: "/admin", key: "purchases", noActive: true },
+        { label: "Coach chats", href: "/admin/coach", key: "/admin/coach", badge: coachNeedsLook, badgeKind: "danger" },
       ],
     },
     {
-      label: "Funnel",
+      label: "Growth",
       items: [
         { label: "Overview", href: "/admin", key: "tab:overview" },
         { label: "Funnel", href: "/admin?tab=funnel", key: "tab:funnel" },
-        { label: "Start flow", href: "/admin/start-flow", key: "/admin/start-flow" },
         { label: "Drop-offs", href: "/admin?tab=dropoffs", key: "tab:dropoffs" },
         { label: "User journeys", href: "/admin?tab=journeys", key: "tab:journeys" },
-        { label: "Events", href: "/admin?tab=events", key: "tab:events" },
+        { label: "Leads", href: "/admin/leads", key: "/admin/leads" },
       ],
     },
     {
-      label: "Product",
+      label: "Setup",
       items: [
-        { label: "Coach chats", href: "/admin/coach", key: "/admin/coach", badge: coachNeedsLook, badgeKind: "danger" },
+        { label: "Start flow", href: "/admin/start-flow", key: "/admin/start-flow" },
+        { label: "Templates and drip", href: "/admin/whatsapp/templates", key: "/admin/whatsapp/templates" },
+        { label: "Report previews", href: "/admin/report-preview", key: "/admin/report-preview" },
+        { label: "View as user", href: "/admin/lms-user", key: "/admin/lms-user" },
+      ],
+    },
+    {
+      label: "More",
+      collapsible: true,
+      items: [
+        { label: "Calls (queue)", href: "/admin/calls", key: "/admin/calls" },
         { label: "Users", href: "/admin?tab=users", key: "tab:users" },
         { label: "LMS activity", href: "/admin?tab=lms", key: "tab:lms" },
         { label: "Archetypes", href: "/admin?tab=archetypes", key: "tab:archetypes" },
-        { label: "Report previews", href: "/admin/report-preview", key: "/admin/report-preview" },
+        { label: "Events", href: "/admin?tab=events", key: "tab:events" },
         { label: "Handbook", href: "/admin?tab=handbook", key: "tab:handbook" },
-        { label: "View as user", href: "/admin/lms-user", key: "/admin/lms-user" },
+        { label: "Purchases", href: "/admin", key: "purchases", noActive: true },
       ],
     },
   ];
@@ -60,6 +68,7 @@ function activeKeyFor(pathname: string, tab: string | null): string {
   if (pathname === "/admin") return `tab:${tab || "overview"}`;
   if (pathname.startsWith("/admin/whatsapp/templates")) return "/admin/whatsapp/templates";
   if (pathname.startsWith("/admin/whatsapp")) return "/admin/whatsapp";
+  if (pathname.startsWith("/admin/parents")) return "/admin/parents";
   if (pathname.startsWith("/admin/calls")) return "/admin/calls";
   if (pathname.startsWith("/admin/leads")) return "/admin/leads";
   if (pathname.startsWith("/admin/start-flow")) return "/admin/start-flow";
@@ -78,6 +87,7 @@ export function AdminShell({ children, callsDue, needsReply, coachNeedsLook = 0 
   const pathname = usePathname() || "/admin";
   const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const groups = buildGroups(callsDue, needsReply, coachNeedsLook);
   const activeKey = activeKeyFor(pathname, searchParams.get("tab"));
@@ -101,10 +111,19 @@ export function AdminShell({ children, callsDue, needsReply, coachNeedsLook = 0 
       <div style={{ fontFamily: T.FONT_HEAD, fontSize: 18, fontWeight: 600, color: "#FFFFFF", padding: "0 8px 8px" }}>
         Attention Architect
       </div>
-      {groups.map((group) => (
+      {groups.map((group) => {
+        const groupHasActive = group.items.some((it) => !it.noActive && it.key === activeKey);
+        const expanded = !group.collapsible || moreOpen || groupHasActive;
+        return (
         <div key={group.label}>
-          <div style={GROUP_LABEL}>{group.label}</div>
-          {group.items.map((it) => {
+          {group.collapsible ? (
+            <button onClick={() => setMoreOpen((o) => !o)} style={{ ...GROUP_LABEL, display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left" }}>
+              {group.label} <span style={{ fontSize: 9 }}>{expanded ? "▾" : "▸"}</span>
+            </button>
+          ) : (
+            <div style={GROUP_LABEL}>{group.label}</div>
+          )}
+          {expanded && group.items.map((it) => {
             const active = !it.noActive && it.key === activeKey;
             const hasBadge = it.badge !== undefined && it.badge > 0;
             return (
@@ -119,7 +138,8 @@ export function AdminShell({ children, callsDue, needsReply, coachNeedsLook = 0 
             );
           })}
         </div>
-      ))}
+        );
+      })}
       {/* One-tap: mark THIS device internal (2yr) so opening a parent's report/plan/roadmap from it
           — e.g. a WhatsApp link on your phone — never writes funnel_events/analytics. */}
       <a href="/admin/mark-internal" onClick={onNavigate} style={{ marginTop: "auto", padding: "8px", borderRadius: 8, textDecoration: "none", color: "#8FA6C2", fontSize: 12.5 }}>
