@@ -28,6 +28,26 @@ export type ParentRow = {
   coachFlag: boolean;     // the Coach flagged a call for this parent
 };
 
+// Side-panel detail shapes (client-safe).
+export type PanelCall = {
+  id: string;
+  assessment_id: string;
+  outcome: string;
+  status: string | null;
+  objection: string | null;
+  notes: string | null;
+  next_steps: string | null;
+  follow_up_at: string | null;
+  called_by: string | null;
+  created_at: string;
+};
+export type PanelReport = {
+  worry: string;
+  hardPart: string;
+  tonightStep: string;
+  goal: string;
+};
+
 export const BUCKETS = [
   "all", "new", "no_pickup", "callback", "interested", "trial_offered",
   "trial_in_progress", "purchased", "other_course", "not_interested", "no_phone",
