@@ -292,6 +292,12 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
     } catch { setSErr(true); } finally { setSLoading(false); }
   };
   useEffect(() => { if (tab === "script") { setScriptData(null); fetchScript(sLang); } /* eslint-disable-next-line */ }, [tab, sLang, targetChild?.sessionId]);
+  // Background-generate the default (English) script the moment the panel opens, so the Script tab is
+  // instant when the caller needs it (cached per parent/caller; repeated opens don't re-spend).
+  useEffect(() => {
+    const sid = row.children[0]?.sessionId; if (!sid) return;
+    fetch(`/api/admin/parents/script?sessionId=${encodeURIComponent(sid)}&lang=en`).catch(() => {});
+  }, [row]);
 
   // Timeline (merged multi-source feed)
   const [tl, setTl] = useState<(TimelineResult & { ms?: number }) | null>(null);

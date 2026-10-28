@@ -13,6 +13,8 @@ export type GenerateInput = {
   lang: Lang;
   callNo: number;
   caller: string;          // the logged-in operator's name (who I am)
+  callerGender: "f" | "m" | "n";  // for Hinglish self-forms (rahi/raha hoon)
+  banNames?: string[];     // other families' children that must not appear (tests)
   parent: string;
   child: string;
   ageBand: string;
@@ -26,13 +28,14 @@ export type GenerateInput = {
   trialEligible: boolean;
 };
 
-const SYSTEM = (lang: Lang, caller: string) => [
+const selfForm = (g: "f" | "m" | "n") => g === "f" ? "rahi hoon" : g === "m" ? "raha hoon" : "rahe hain";
+const SYSTEM = (lang: Lang, caller: string, gender: "f" | "m" | "n") => [
   `You write a short PHONE SCRIPT for a human caller named "${caller}" at an Indian parenting company`,
   `to read aloud to a parent. The caller sells a gentle 6-week parenting plan. Output STRICT JSON only — no prose, no markdown.`,
   ``,
   `HARD RULES:`,
   lang === "hinglish"
-    ? `- Language: natural spoken HINGLISH in Roman script — the Hindi-English mix Indian urban parents actually speak on the phone. Use "aap" (never "tum"). Warm and respectful. e.g. "Main ${caller} baat kar raha/rahi hoon…", "aapne bataya tha ki…".`
+    ? `- Language: natural spoken HINGLISH in Roman script — the Hindi-English mix Indian urban parents actually speak on the phone. Use "aap" (never "tum"). Warm and respectful. The caller is ${gender === "f" ? "FEMALE" : gender === "m" ? "MALE" : "of unspecified gender"} — self-reference MUST use "${selfForm(gender)}" (e.g. "Main ${caller} baat kar ${selfForm(gender)}…"). Never use the other gender's form.`
     : `- Language: plain, warm spoken Indian English. Short sentences a parent hears clearly on a call.`,
   `- Every fact MUST come from the DATA below. Do NOT invent anything about the child, the parent, or the program.`,
   `- NO promises or guarantees. NO clinical or diagnostic words (never say ADHD, disorder, diagnosis, therapy, spectrum, etc.).`,
@@ -131,27 +134,40 @@ function shape(i: GenerateInput, obj: Record<string, unknown>): CallScript {
   };
 }
 
+function vctx(i: GenerateInput) {
+  return { callNo: i.callNo, trialEligible: i.trialEligible, callerGender: i.callerGender, childNames: [i.child], banNames: i.banNames };
+}
+// All call-script LLM spend is logged under one feature tag so it can be grepped/aggregated.
+function logSpend(i: GenerateInput, inTok: number, outTok: number, outcome: string) {
+  console.log(`[spend] feature=call_script kind=${i.kind} lang=${i.lang} callNo=${i.callNo} in=${inTok} out=${outTok} paise=${reportCostPaise(inTok, outTok)} outcome=${outcome}`);
+}
+
 export async function generateCallScript(i: GenerateInput): Promise<ScriptResult> {
   const client = new Anthropic({ apiKey: reportsApiKey() });
+  const ctx = vctx(i);
   let inTok = 0, outTok = 0;
   try {
     for (let attempt = 0; attempt < 2; attempt++) {
       const res = await client.messages.create({
         model: MODEL, max_tokens: 1400, temperature: 0.3,
-        system: SYSTEM(i.lang, i.caller),
+        system: SYSTEM(i.lang, i.caller, i.callerGender),
         messages: [{ role: "user", content: buildPrompt(i) }],
       });
       inTok += res.usage?.input_tokens ?? 0; outTok += res.usage?.output_tokens ?? 0;
       const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
       let script: CallScript;
       try { script = shape(i, parseJson(text)); } catch { if (attempt === 0) continue; throw new Error("bad_json"); }
-      const v = validateScript(script);
-      if (v.ok) return { script, source: "llm", model: MODEL, inTok, outTok, costPaise: reportCostPaise(inTok, outTok), outcome: "ok", reason: null };
+      const v = validateScript(script, ctx);
+      if (v.ok) { logSpend(i, inTok, outTok, "ok"); return { script, source: "llm", model: MODEL, inTok, outTok, costPaise: reportCostPaise(inTok, outTok), outcome: "ok", reason: null }; }
+      console.log(`[call_script] validator caught: ${v.fails.join("; ")} — attempt ${attempt + 1}${attempt === 0 ? ", retrying" : ", falling back"}`);
       if (attempt === 0) continue; // one retry, then fall back
+      logSpend(i, inTok, outTok, "validator_fail");
       return { script: fallbackScript(i), source: "fallback", model: MODEL, inTok, outTok, costPaise: reportCostPaise(inTok, outTok), outcome: "validator_fail", reason: v.fails.join("; ") };
     }
+    logSpend(i, inTok, outTok, "validator_fail");
     return { script: fallbackScript(i), source: "fallback", model: MODEL, inTok, outTok, costPaise: reportCostPaise(inTok, outTok), outcome: "validator_fail", reason: "no valid draft" };
   } catch (e) {
+    logSpend(i, inTok, outTok, "api_error");
     return { script: fallbackScript(i), source: "fallback", model: null, inTok, outTok, costPaise: reportCostPaise(inTok, outTok), outcome: "api_error", reason: String((e as Error)?.message ?? e).slice(0, 120) };
   }
 }
@@ -159,7 +175,10 @@ export async function generateCallScript(i: GenerateInput): Promise<ScriptResult
 // Deterministic fallback — correct and safe (no LLM), from the stored data + allowed facts.
 export function fallbackScript(i: GenerateInput): CallScript {
   const hin = i.lang === "hinglish";
-  const iAm = hin ? `Namaste, main ${i.caller} baat kar raha hoon` : `Hi, this is ${i.caller}`;
+  const g = i.callerGender;
+  const sakHoon = g === "f" ? "sakti hoon" : g === "m" ? "sakta hoon" : "sakte hain";
+  const detHoon = g === "f" ? "deti hoon" : g === "m" ? "deta hoon" : "dete hain";
+  const iAm = hin ? `Namaste, main ${i.caller} baat kar ${selfForm(i.callerGender)}` : `Hi, this is ${i.caller}`;
   const base: CallScript = {
     kind: i.kind, lang: i.lang, callNo: i.callNo,
     header: { caller: i.caller, parent: i.parent, child: i.child, ageBand: i.ageBand, worry: i.worry,
@@ -167,8 +186,8 @@ export function fallbackScript(i: GenerateInput): CallScript {
     opener: "", sections: [], objections: [],
   };
   const trialLine = i.trialEligible
-    ? (hin ? `Main aapko ${i.child} ke liye 4-din ka free Coach trial bhej sakta hoon — koi payment nahi.` : `I can send you a free 4-day Coach trial for ${i.child} — no payment.`)
-    : (hin ? `Main aapko ${i.child} ka roadmap bhej deta hoon dekhne ke liye.` : `I can send you ${i.child}'s roadmap to look at.`);
+    ? (hin ? `Main aapko ${i.child} ke liye 4-din ka free Coach trial bhej ${sakHoon} — koi payment nahi.` : `I can send you a free 4-day Coach trial for ${i.child} — no payment.`)
+    : (hin ? `Main aapko ${i.child} ka roadmap bhej ${detHoon} dekhne ke liye.` : `I can send you ${i.child}'s roadmap to look at.`);
   const priceLine = hin
     ? `Plan ek baar ka hai — ${PRICING_FACTS.planOnly} (${PRICING_FACTS.perDayOnly}), ya calls ke saath ${PRICING_FACTS.planWithCalls}. ${PRICING_FACTS.refund}.`
     : `The plan is one-time — ${PRICING_FACTS.planOnly} (${PRICING_FACTS.perDayOnly}), or ${PRICING_FACTS.planWithCalls} with guided calls. ${PRICING_FACTS.refund}.`;
@@ -185,7 +204,7 @@ export function fallbackScript(i: GenerateInput): CallScript {
     base.objections = [
       { label: hin ? "Price" : "Price", answer: priceLine },
       { label: hin ? "Ye bhi ek course hai" : "It's another course", answer: hin ? `Ye ${i.child} ke apne jawabon se banta hai — aapne report mein khud dekha.` : `This one starts from ${i.child}'s own answers — you saw it in the report.` },
-      { label: hin ? "Pati/patni se poochna hoga" : "Have to ask my spouse", answer: hin ? `Bilkul. Main aapko report ka link bhej deta hoon jo aap unhe dikha sakte hain. Koi jaldi nahi.` : `Of course. I'll send the report link you can show them. No rush.` },
+      { label: hin ? "Pati/patni se poochna hoga" : "Have to ask my spouse", answer: hin ? `Bilkul. Main aapko report ka link bhej ${detHoon} jo aap unhe dikha sakte hain. Koi jaldi nahi.` : `Of course. I'll send the report link you can show them. No rush.` },
     ];
   } else {
     const lc = i.lastCall;

@@ -21,6 +21,9 @@ function caller(req: NextRequest): string {
   const auth = req.headers.get("authorization") ?? "";
   try { const d = atob(auth.replace(/^Basic\s+/i, "")); const u = d.slice(0, d.indexOf(":")); return u.trim() || "Admin"; } catch { return "Admin"; }
 }
+// Caller gender → correct Hinglish self-forms (rahi/raha hoon). Unknown → neutral. Extend as the team grows.
+const CALLER_GENDER: Record<string, "f" | "m" | "n"> = { shaily: "f", shalini: "f", neha: "f", shashank: "m", admin: "n" };
+const genderOf = (name: string): "f" | "m" | "n" => CALLER_GENDER[name.trim().toLowerCase()] ?? "n";
 const daysAgo = (iso: string) => Math.max(0, Math.round((Date.now() - +new Date(iso)) / 86_400_000));
 const istDateTime = (s: string) => new Date(s).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
@@ -35,7 +38,7 @@ function scrubClinical(text: string | null | undefined): string {
   return kept.join(" ").trim();
 }
 
-async function buildContext(sessionId: string, lang: Lang, callerName: string) {
+async function buildContext(sessionId: string, lang: Lang, callerName: string, callerGender: "f" | "m" | "n") {
   const sql = getSql();
   const arows = (await sql`
     SELECT a.id::text, a.session_id::text, a.phone, a.email, a.parent_name, a.child_name, a.age_band,
@@ -87,7 +90,7 @@ async function buildContext(sessionId: string, lang: Lang, callerName: string) {
   const since = sinceBits.length ? sinceBits.join(", ") : undefined;
 
   const input: GenerateInput = {
-    kind, lang, callNo, caller: callerName,
+    kind, lang, callNo, caller: callerName, callerGender,
     parent: (a.parent_name || "").split(/\s+/)[0] || "there",
     child: a.child_name || "your child", ageBand: a.age_band || "", worry: worryLabel(a.concerns?.[0] ?? ""),
     archetype: a.archetype || "", assessedDaysAgo: daysAgo(a.created_at),
@@ -106,21 +109,27 @@ async function handle(req: NextRequest, regenerate: boolean) {
   if (!UUID_RE.test(sessionId)) return NextResponse.json({ error: "bad_session" }, { status: 400 });
 
   const sql = getSql();
-  const ctx = await withRetry(() => buildContext(sessionId, lang, caller(req)));
+  const callerName = caller(req);
+  const callerGender = genderOf(callerName);
+  const ctx = await withRetry(() => buildContext(sessionId, lang, callerName, callerGender));
   if (!ctx) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  // Cache lookup.
-  const cached = (await withRetry(() => sql`SELECT script, source, model, cost_paise, created_at FROM call_script_cache WHERE parent_key=${ctx.pkey} AND call_no=${ctx.callNo} AND lang=${lang} LIMIT 1`)) as unknown as { script: unknown; source: string; model: string | null; cost_paise: number; created_at: string }[];
+  // The script is stale if a newer call was logged OR the parent's REPORT was regenerated after it.
+  const reportAt = ((await withRetry(() => sql`SELECT created_at FROM report_v2_content WHERE session_id=${sessionId}::uuid ORDER BY created_at DESC LIMIT 1`)) as unknown as { created_at: string }[])[0]?.created_at ?? null;
+
+  // Cache lookup — keyed per caller too (the script says the caller's name + gendered self-forms).
+  const cached = (await withRetry(() => sql`SELECT script, source, model, cost_paise, created_at FROM call_script_cache WHERE parent_key=${ctx.pkey} AND call_no=${ctx.callNo} AND lang=${lang} AND caller=${callerName} LIMIT 1`)) as unknown as { script: unknown; source: string; model: string | null; cost_paise: number; created_at: string }[];
   if (cached[0] && !regenerate) {
-    const stale = !!(ctx.latestCallAt && +new Date(ctx.latestCallAt) > +new Date(cached[0].created_at));
+    const since = +new Date(cached[0].created_at);
+    const stale = !!((ctx.latestCallAt && +new Date(ctx.latestCallAt) > since) || (reportAt && +new Date(reportAt) > since));
     return NextResponse.json({ script: cached[0].script, source: cached[0].source, model: cached[0].model, costPaise: cached[0].cost_paise, cachedAt: cached[0].created_at, stale, callNo: ctx.callNo, kind: ctx.kind });
   }
 
   const r = await generateCallScript(ctx.input);
   await withRetry(() => sql`
-    INSERT INTO call_script_cache (parent_key, session_id, assessment_id, call_no, kind, lang, script, source, model, input_tokens, output_tokens, cost_paise, outcome, reason)
-    VALUES (${ctx.pkey}, ${sessionId}::uuid, ${ctx.assessmentId}::uuid, ${ctx.callNo}, ${ctx.kind}, ${lang}, ${JSON.stringify(r.script)}::json, ${r.source}, ${r.model}, ${r.inTok}, ${r.outTok}, ${r.costPaise}, ${r.outcome}, ${r.reason})
-    ON CONFLICT (parent_key, call_no, lang) DO UPDATE SET
+    INSERT INTO call_script_cache (parent_key, session_id, assessment_id, call_no, kind, lang, caller, script, source, model, input_tokens, output_tokens, cost_paise, outcome, reason)
+    VALUES (${ctx.pkey}, ${sessionId}::uuid, ${ctx.assessmentId}::uuid, ${ctx.callNo}, ${ctx.kind}, ${lang}, ${callerName}, ${JSON.stringify(r.script)}::json, ${r.source}, ${r.model}, ${r.inTok}, ${r.outTok}, ${r.costPaise}, ${r.outcome}, ${r.reason})
+    ON CONFLICT (parent_key, call_no, lang, caller) DO UPDATE SET
       script=EXCLUDED.script, source=EXCLUDED.source, model=EXCLUDED.model, input_tokens=EXCLUDED.input_tokens,
       output_tokens=EXCLUDED.output_tokens, cost_paise=EXCLUDED.cost_paise, outcome=EXCLUDED.outcome, reason=EXCLUDED.reason, updated_at=now(), created_at=now()
   `);

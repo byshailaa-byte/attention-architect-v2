@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS call_script_cache (
   call_no       integer NOT NULL,           -- 1 = first call, 2+ = follow-up
   kind          text NOT NULL CHECK (kind IN ('first','followup')),
   lang          text NOT NULL DEFAULT 'en' CHECK (lang IN ('en','hinglish')),
+  caller        text NOT NULL DEFAULT 'admin',  -- the logged-in operator (script names them + gendered forms)
   script        json NOT NULL,              -- the generated CallScript shape
   source        text NOT NULL CHECK (source IN ('llm','fallback')),
   model         text,
@@ -19,7 +20,7 @@ CREATE TABLE IF NOT EXISTS call_script_cache (
   reason        text,
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (parent_key, call_no, lang)
+  UNIQUE (parent_key, call_no, lang, caller)
 );
 CREATE INDEX IF NOT EXISTS call_script_cache_session_idx ON call_script_cache (session_id);
 
