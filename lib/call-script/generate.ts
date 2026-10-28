@@ -1,0 +1,202 @@
+import "server-only";
+import Anthropic from "@anthropic-ai/sdk";
+import { reportsApiKey } from "@/lib/ai/anthropic-keys";
+import { reportCostPaise } from "@/lib/report-v2/generate";
+import { pricingPromptBlock, PRICING_FACTS } from "./pricing";
+import { validateScript } from "./validate";
+import type { CallScript, Lang, ScriptKind, ScriptResult } from "./types";
+
+const MODEL = "claude-sonnet-4-6";
+
+export type GenerateInput = {
+  kind: ScriptKind;
+  lang: Lang;
+  callNo: number;
+  caller: string;          // the logged-in operator's name (who I am)
+  parent: string;
+  child: string;
+  ageBand: string;
+  worry: string;           // display label
+  archetype: string;
+  assessedDaysAgo: number; // for the gentle old-lead opener
+  report: { seenIt: string; hardPart: string; tryLine: string; tonight: string[]; goal: string } | null;
+  answersSummary: string;  // compact "Q — A" lines
+  lastCall?: { date: string; outcome: string; note: string; nextSteps: string };
+  since?: string;          // journey since last call (follow-up) / since report (first)
+  trialEligible: boolean;
+};
+
+const SYSTEM = (lang: Lang, caller: string) => [
+  `You write a short PHONE SCRIPT for a human caller named "${caller}" at an Indian parenting company`,
+  `to read aloud to a parent. The caller sells a gentle 6-week parenting plan. Output STRICT JSON only — no prose, no markdown.`,
+  ``,
+  `HARD RULES:`,
+  lang === "hinglish"
+    ? `- Language: natural spoken HINGLISH in Roman script — the Hindi-English mix Indian urban parents actually speak on the phone. Use "aap" (never "tum"). Warm and respectful. e.g. "Main ${caller} baat kar raha/rahi hoon…", "aapne bataya tha ki…".`
+    : `- Language: plain, warm spoken Indian English. Short sentences a parent hears clearly on a call.`,
+  `- Every fact MUST come from the DATA below. Do NOT invent anything about the child, the parent, or the program.`,
+  `- NO promises or guarantees. NO clinical or diagnostic words (never say ADHD, disorder, diagnosis, therapy, spectrum, etc.).`,
+  `- NO pressure, NO deadlines, NO discounts. Never say "only this week", "hurry", "limited".`,
+  `- BE BRIEF: each "line" is ONE short spoken sentence (about 8–15 words). Never stack two sentences in a line. The whole script's opener + section lines must read aloud in UNDER ONE MINUTE (~150 words total).`,
+  `- The caller reads the "lines"; "hint" is a short silent note to the caller.`,
+].join("\n");
+
+function firstCallSchema(): string {
+  return [
+    `Return JSON: {`,
+    `  "opener": "<one line: who you are (${"the caller"}), why you're calling — you read their report about the child — said warmly. If the lead is old, gently acknowledge the delay first; never pretend it's fresh.>",`,
+    `  "sections": [`,
+    `    {"title":"One line that'll feel true","seconds":15,"lines":["<name the child's strength AND the hard moment, from the report — something the parent will recognise>"]},`,
+    `    {"title":"Open them up","seconds":20,"lines":["<one question that gets them talking, e.g. What happens at home when …?>"],"hint":"Then listen."},`,
+    `    {"title":"Listen for","lines":["<short thing to listen for>","<another>"],"hint":"Don't read aloud."},`,
+    `    {"title":"The plan, in two lines","seconds":15,"lines":["<what the 6-week plan is, plainly>","<how it fits this child>"]},`,
+    `    {"title":"Next step","lines":["<offer the free trial IF eligible, else the roadmap link or a callback>"]}`,
+    `  ],`,
+    `  "objections": [`,
+    `    {"label":"Price","answer":"<answer using ONLY the allowed commercial facts>"},`,
+    `    {"label":"It's another course","answer":"<this one starts from THIS child's own answers/report>"},`,
+    `    {"label":"Have to ask my husband/wife","answer":"<respect it; offer to share something they can show their spouse; no pressure>"}`,
+    `  ]`,
+    `}`,
+  ].join("\n");
+}
+
+function followupSchema(): string {
+  return [
+    `Return JSON: {`,
+    `  "leftOff": "Where you left off (call ${"N"}, <date>): <last outcome + the gist of the last note, from DATA>",`,
+    `  "since": "Since then: <what they did after the last call, from the journey in DATA — or omit if nothing>",`,
+    `  "opener": "<warm reconnect line that uses something concrete from the last call>",`,
+    `  "sections": [`,
+    `    {"title":"Check the step you gave","seconds":30,"lines":["<ask about the specific next step from last call: did you get a chance to … what happened?>"],"hint":"Worked → go to next step. Didn't → ‘that's useful, tell me what happened.’"},`,
+    `    {"title":"Next step you planned","lines":["<the next step from the last call's notes/next steps>"]},`,
+    `    {"title":"Close","lines":["<offer the trial link if eligible, or set the next callback — no pressure>"]}`,
+    `  ],`,
+    `  "objections": [ {"label":"<the objection from the notes, if any>","answer":"<answer with allowed facts only>"} ]`,
+    `}`,
+  ].join("\n");
+}
+
+function buildPrompt(i: GenerateInput): string {
+  const lines: string[] = [];
+  lines.push(`DATA:`);
+  lines.push(`- Caller (you): ${i.caller}`);
+  lines.push(`- Parent: ${i.parent}`);
+  lines.push(`- Child: ${i.child} (${i.ageBand})`);
+  lines.push(`- What they worry about: ${i.worry}`);
+  lines.push(`- Child's pattern (archetype): ${i.archetype}`);
+  lines.push(`- Assessment was done ${i.assessedDaysAgo} day(s) ago.${i.assessedDaysAgo > 3 ? " THIS IS AN OLD LEAD — the opener must gently acknowledge we're only calling now." : ""}`);
+  if (i.report) {
+    lines.push(`- Report — what they saw: ${i.report.seenIt}`);
+    lines.push(`- Report — the hard part: ${i.report.hardPart}`);
+    if (i.report.tryLine) lines.push(`- Report — the new words to try: ${i.report.tryLine}`);
+    if (i.report.tonight?.length) lines.push(`- Report — tonight's step: ${i.report.tonight[0]}`);
+    if (i.report.goal) lines.push(`- Their goal: ${i.report.goal}`);
+  }
+  if (i.answersSummary) lines.push(`- Their own answers:\n${i.answersSummary}`);
+  if (i.kind === "followup" && i.lastCall) {
+    lines.push(`- Last call (${i.lastCall.date}): outcome ${i.lastCall.outcome}. Note: ${i.lastCall.note || "—"}. Planned next: ${i.lastCall.nextSteps || "—"}.`);
+  }
+  if (i.since) lines.push(`- Journey since: ${i.since}`);
+  lines.push(``);
+  lines.push(pricingPromptBlock(i.trialEligible));
+  lines.push(``);
+  lines.push(i.kind === "first" ? firstCallSchema() : followupSchema());
+  return lines.join("\n");
+}
+
+function parseJson(text: string): Record<string, unknown> {
+  const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  const start = cleaned.indexOf("{"); const end = cleaned.lastIndexOf("}");
+  return JSON.parse(start >= 0 ? cleaned.slice(start, end + 1) : cleaned);
+}
+
+function shape(i: GenerateInput, obj: Record<string, unknown>): CallScript {
+  const secs = Array.isArray(obj.sections) ? obj.sections : [];
+  const objs = Array.isArray(obj.objections) ? obj.objections : [];
+  return {
+    kind: i.kind, lang: i.lang, callNo: i.callNo,
+    header: { caller: i.caller, parent: i.parent, child: i.child, ageBand: i.ageBand, worry: i.worry,
+      builtFrom: i.kind === "first" ? ["Report", "Answers"] : ["Report", "Answers", "Call notes", "Journey"] },
+    leftOff: typeof obj.leftOff === "string" ? obj.leftOff : undefined,
+    since: typeof obj.since === "string" ? obj.since : i.since,
+    opener: String(obj.opener ?? ""),
+    sections: secs.map((s) => {
+      const o = s as Record<string, unknown>;
+      return { title: String(o.title ?? ""), seconds: typeof o.seconds === "number" ? o.seconds : undefined,
+        lines: Array.isArray(o.lines) ? o.lines.map(String) : [], hint: typeof o.hint === "string" ? o.hint : undefined };
+    }),
+    objections: objs.map((o) => { const x = o as Record<string, unknown>; return { label: String(x.label ?? ""), answer: String(x.answer ?? "") }; }),
+  };
+}
+
+export async function generateCallScript(i: GenerateInput): Promise<ScriptResult> {
+  const client = new Anthropic({ apiKey: reportsApiKey() });
+  let inTok = 0, outTok = 0;
+  try {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const res = await client.messages.create({
+        model: MODEL, max_tokens: 1400, temperature: 0.3,
+        system: SYSTEM(i.lang, i.caller),
+        messages: [{ role: "user", content: buildPrompt(i) }],
+      });
+      inTok += res.usage?.input_tokens ?? 0; outTok += res.usage?.output_tokens ?? 0;
+      const text = res.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+      let script: CallScript;
+      try { script = shape(i, parseJson(text)); } catch { if (attempt === 0) continue; throw new Error("bad_json"); }
+      const v = validateScript(script);
+      if (v.ok) return { script, source: "llm", model: MODEL, inTok, outTok, costPaise: reportCostPaise(inTok, outTok), outcome: "ok", reason: null };
+      if (attempt === 0) continue; // one retry, then fall back
+      return { script: fallbackScript(i), source: "fallback", model: MODEL, inTok, outTok, costPaise: reportCostPaise(inTok, outTok), outcome: "validator_fail", reason: v.fails.join("; ") };
+    }
+    return { script: fallbackScript(i), source: "fallback", model: MODEL, inTok, outTok, costPaise: reportCostPaise(inTok, outTok), outcome: "validator_fail", reason: "no valid draft" };
+  } catch (e) {
+    return { script: fallbackScript(i), source: "fallback", model: null, inTok, outTok, costPaise: reportCostPaise(inTok, outTok), outcome: "api_error", reason: String((e as Error)?.message ?? e).slice(0, 120) };
+  }
+}
+
+// Deterministic fallback — correct and safe (no LLM), from the stored data + allowed facts.
+export function fallbackScript(i: GenerateInput): CallScript {
+  const hin = i.lang === "hinglish";
+  const iAm = hin ? `Namaste, main ${i.caller} baat kar raha hoon` : `Hi, this is ${i.caller}`;
+  const base: CallScript = {
+    kind: i.kind, lang: i.lang, callNo: i.callNo,
+    header: { caller: i.caller, parent: i.parent, child: i.child, ageBand: i.ageBand, worry: i.worry,
+      builtFrom: i.kind === "first" ? ["Report", "Answers"] : ["Report", "Answers", "Call notes", "Journey"] },
+    opener: "", sections: [], objections: [],
+  };
+  const trialLine = i.trialEligible
+    ? (hin ? `Main aapko ${i.child} ke liye 4-din ka free Coach trial bhej sakta hoon — koi payment nahi.` : `I can send you a free 4-day Coach trial for ${i.child} — no payment.`)
+    : (hin ? `Main aapko ${i.child} ka roadmap bhej deta hoon dekhne ke liye.` : `I can send you ${i.child}'s roadmap to look at.`);
+  const priceLine = hin
+    ? `Plan ek baar ka hai — ${PRICING_FACTS.planOnly} (${PRICING_FACTS.perDayOnly}), ya calls ke saath ${PRICING_FACTS.planWithCalls}. ${PRICING_FACTS.refund}.`
+    : `The plan is one-time — ${PRICING_FACTS.planOnly} (${PRICING_FACTS.perDayOnly}), or ${PRICING_FACTS.planWithCalls} with guided calls. ${PRICING_FACTS.refund}.`;
+
+  if (i.kind === "first") {
+    const oldAck = i.assessedDaysAgo > 3 ? (hin ? ` Sorry, hum aapko thoda late call kar rahe hain ${i.child} ki report ke baare mein.` : ` Sorry we're only calling now about ${i.child}'s report.`) : "";
+    base.opener = `${iAm}${hin ? "" : ","} ${hin ? "The Human Decision se" : "from The Human Decision"}.${oldAck} ${hin ? `Aapne ${i.child} ke liye jo assessment bhara tha, uski report main dekh raha tha.` : `I was looking at the report from the assessment you did for ${i.child}.`}`;
+    base.sections = [
+      { title: hin ? "Ek baat jo sach lagegi" : "One line that'll feel true", seconds: 15, lines: [i.report?.hardPart || (hin ? `${i.child} ko ${i.worry} mein dikkat hoti hai.` : `${i.child} finds ${i.worry} hard.`)] },
+      { title: hin ? "Baat shuru karein" : "Open them up", seconds: 20, lines: [hin ? `Ghar pe kya hota hai jab ${i.child} ${i.worry} ke time atak jaate hain?` : `What happens at home when ${i.child} gets stuck at ${i.worry}?`], hint: hin ? "Phir suniye." : "Then listen." },
+      { title: hin ? "Plan, do line mein" : "The plan, in two lines", seconds: 15, lines: [hin ? `Ye 6-hafte ka plan aapke liye hai — har hafte ek chhota kadam.` : `It's a 6-week plan for you — one small step each week.`, i.report?.tryLine || (hin ? `${i.child} ke apne pattern se shuru hota hai.` : `It starts from ${i.child}'s own pattern.`)] },
+      { title: hin ? "Agla kadam" : "Next step", lines: [trialLine] },
+    ];
+    base.objections = [
+      { label: hin ? "Price" : "Price", answer: priceLine },
+      { label: hin ? "Ye bhi ek course hai" : "It's another course", answer: hin ? `Ye ${i.child} ke apne jawabon se banta hai — aapne report mein khud dekha.` : `This one starts from ${i.child}'s own answers — you saw it in the report.` },
+      { label: hin ? "Pati/patni se poochna hoga" : "Have to ask my spouse", answer: hin ? `Bilkul. Main aapko report ka link bhej deta hoon jo aap unhe dikha sakte hain. Koi jaldi nahi.` : `Of course. I'll send the report link you can show them. No rush.` },
+    ];
+  } else {
+    const lc = i.lastCall;
+    base.leftOff = lc ? `Where you left off (call ${i.callNo - 1}, ${lc.date}): ${lc.outcome}. ${lc.note || ""}`.trim() : undefined;
+    base.since = i.since;
+    base.opener = `${iAm}${hin ? " wapas" : " again"}, The Human Decision se.${lc?.note ? (hin ? ` Pichhli baar aapne bataya tha: ${lc.note}` : ` Last time you mentioned: ${lc.note}`) : ""}`;
+    base.sections = [
+      { title: hin ? "Jo step diya tha, poochein" : "Check the step you gave", seconds: 30, lines: [hin ? `${i.child} ke saath wo try kar paaye? Kya hua?` : `Did you get a chance to try it with ${i.child}? What happened?`], hint: hin ? "Hua → aage badhein. Nahi hua → 'theek hai, bataiye kya hua.'" : "Worked → move on. Didn't → 'that's useful, tell me what happened.'" },
+      { title: hin ? "Agla kadam" : "Next step you planned", lines: [lc?.nextSteps || trialLine] },
+      { title: hin ? "Band karein" : "Close", lines: [trialLine] },
+    ];
+    base.objections = lc?.note ? [{ label: hin ? "Pichhli baat se" : "From last note", answer: priceLine }] : [];
+  }
+  return base;
+}

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "../crm-theme";
 import { BUCKET_LABEL, type Bucket, type ParentRow, type PanelCall, type PanelReport, type PanelAnswers } from "@/lib/admin/parents/types";
+import type { CallScript } from "@/lib/call-script/types";
 
 // Pill colour per bucket, reusing the theme tokens.
 const PILL: Record<Bucket, { bg: string; fg: string }> = {
@@ -239,7 +240,7 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
   const [detail, setDetail] = useState<{ calls: PanelCall[]; reports: Record<string, PanelReport>; answers: PanelAnswers } | null>(null);
   const [loadErr, setLoadErr] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
-  const [tab, setTab] = useState<"call" | "timeline" | "answers">("call");
+  const [tab, setTab] = useState<"call" | "script" | "timeline" | "answers">("call");
   const [target, setTarget] = useState(row.children[0]?.assessmentId ?? "");
   const [outcome, setOutcome] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -273,6 +274,23 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
   const [offer, setOffer] = useState<{ link: string; msg: string; already: boolean } | null>(null);
   const [confirmTrial, setConfirmTrial] = useState<null | "offer" | "resend">(null);
   const [copied, setCopied] = useState(false);
+  // Call script
+  const [sLang, setSLang] = useState<"en" | "hinglish">("en");
+  const [scriptData, setScriptData] = useState<{ script: CallScript; costPaise: number; source: string; stale: boolean; callNo: number; kind: string } | null>(null);
+  const [sLoading, setSLoading] = useState(false);
+  const [sErr, setSErr] = useState(false);
+  const [openSec, setOpenSec] = useState<Record<number, boolean>>({});
+
+  const fetchScript = async (lang: "en" | "hinglish", regen = false) => {
+    const sid = targetChild?.sessionId; if (!sid) return;
+    setSLoading(true); setSErr(false);
+    try {
+      const res = await fetch(`/api/admin/parents/script?sessionId=${encodeURIComponent(sid)}&lang=${lang}`, regen ? { method: "POST" } : undefined);
+      if (!res.ok) throw new Error("x");
+      setScriptData(await res.json());
+    } catch { setSErr(true); } finally { setSLoading(false); }
+  };
+  useEffect(() => { if (tab === "script") { setScriptData(null); fetchScript(sLang); } /* eslint-disable-next-line */ }, [tab, sLang, targetChild?.sessionId]);
 
   const refetchTrial = async () => {
     const sid = targetChild?.sessionId;
@@ -369,7 +387,7 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
     return <span style={{ background: c.bg, color: c.fg, borderRadius: 999, padding: "2px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>{OUTCOME_LABEL[o] ?? o}</span>;
   };
 
-  const TabBtn = ({ id, children }: { id: "call" | "timeline" | "answers"; children: React.ReactNode }) => (
+  const TabBtn = ({ id, children }: { id: "call" | "script" | "timeline" | "answers"; children: React.ReactNode }) => (
     <button onClick={() => setTab(id)} style={{ border: "none", background: "none", padding: "6px 2px", marginRight: 14, fontSize: 13, fontWeight: tab === id ? 700 : 500, color: tab === id ? T.navy : T.text2, borderBottom: tab === id ? `2px solid ${T.navy}` : "2px solid transparent", cursor: "pointer", fontFamily: T.FONT_BODY }}>{children}</button>
   );
 
@@ -420,6 +438,7 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
         {/* Tabs */}
         <div style={{ borderBottom: `1px solid ${T.divider}`, marginBottom: 8, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
           <TabBtn id="call">Call &amp; notes</TabBtn>
+          <TabBtn id="script">Script</TabBtn>
           <TabBtn id="timeline">Timeline</TabBtn>
           <TabBtn id="answers">Answers</TabBtn>
           <a href={`/report/${targetChild?.sessionId}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 500, color: T.navy, textDecoration: "none", marginRight: 14 }}>Report ↗</a>
@@ -501,6 +520,72 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
               </div>
             ))}
           </>
+        )}
+
+        {tab === "script" && (
+          <div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center" }}>
+              {(["en", "hinglish"] as const).map((l) => (
+                <button key={l} onClick={() => setSLang(l)} style={{ border: `1px solid ${sLang === l ? T.navy : T.inputBorder}`, background: sLang === l ? T.navy : T.card, color: sLang === l ? "#fff" : T.textRow, borderRadius: 999, padding: "6px 14px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: T.FONT_BODY }}>{l === "en" ? "English" : "Hinglish"}</button>
+              ))}
+              <button onClick={() => fetchScript(sLang, true)} disabled={sLoading} style={{ marginLeft: "auto", border: `1px solid ${T.inputBorder}`, background: T.card, color: T.navy, borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: sLoading ? "default" : "pointer" }}>↻ Regenerate</button>
+            </div>
+            {sLoading && <div style={{ color: T.muted, fontSize: 14 }}>Writing the script…</div>}
+            {sErr && !sLoading && <div style={{ color: T.dangerText, fontSize: 13.5 }}>Couldn’t load the script. Try Regenerate.</div>}
+            {scriptData && !sLoading && (() => {
+              const s = scriptData.script;
+              return (
+                <div>
+                  {scriptData.stale && <div style={{ background: T.warmBg, color: T.warmText, borderRadius: 8, padding: "8px 12px", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Updated info since this script — <button onClick={() => fetchScript(sLang, true)} style={{ background: "none", border: "none", color: T.warmText, textDecoration: "underline", cursor: "pointer", fontWeight: 700, padding: 0, fontSize: 13 }}>regenerate</button></div>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 12, fontSize: 11.5, color: T.muted }}>
+                    <span style={{ fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: T.label }}>{s.kind === "first" ? "First call" : `Follow-up · call ${s.callNo}`}</span>
+                    <span>· Built from {s.header.builtFrom.join(" · ")}</span>
+                    <span style={{ marginLeft: "auto", fontWeight: 600 }}>{scriptData.source === "fallback" ? "fallback · " : ""}₹{(scriptData.costPaise / 100).toFixed(2)}/script</span>
+                  </div>
+                  <div style={{ background: T.navy, color: "#fff", borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", opacity: 0.8, marginBottom: 5 }}>OPEN WITH</div>
+                    <div style={{ fontSize: 17, lineHeight: 1.45 }}>{s.opener}</div>
+                  </div>
+                  {(s.leftOff || s.since) && (
+                    <div style={{ background: T.sel, border: `1px solid ${T.cardBorder}`, borderRadius: 10, padding: "11px 14px", marginBottom: 14, fontSize: 14, lineHeight: 1.5, color: T.textRow }}>
+                      {s.leftOff && <div>{s.leftOff}</div>}
+                      {s.since && <div style={{ marginTop: 4 }}>{/^since/i.test(s.since) ? s.since : `Since then: ${s.since}`}</div>}
+                    </div>
+                  )}
+                  {s.sections.map((sec, idx) => {
+                    const open = openSec[idx] !== false;
+                    return (
+                      <div key={idx} style={{ border: `1px solid ${T.cardBorder}`, borderRadius: 10, marginBottom: 8, background: T.card, overflow: "hidden" }}>
+                        <button onClick={() => setOpenSec((p) => ({ ...p, [idx]: !open }))} style={{ width: "100%", textAlign: "left", background: "none", border: "none", padding: "11px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 9, fontFamily: T.FONT_BODY }}>
+                          <span style={{ background: T.navy, color: "#fff", borderRadius: 999, width: 22, height: 22, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{idx + 1}</span>
+                          <span style={{ fontWeight: 700, fontSize: 15, color: T.text }}>{sec.title}</span>
+                          {sec.seconds ? <span style={{ color: T.muted, fontSize: 12 }}>· {sec.seconds}s</span> : null}
+                          <span style={{ marginLeft: "auto", color: T.muted, fontSize: 12 }}>{open ? "▾" : "▸"}</span>
+                        </button>
+                        {open && (
+                          <div style={{ padding: "0 14px 12px 45px" }}>
+                            {sec.lines.map((ln, li) => <div key={li} style={{ fontSize: 15.5, lineHeight: 1.5, color: T.textRow, marginBottom: 5, borderLeft: `3px solid ${T.amber}`, paddingLeft: 11 }}>“{ln}”</div>)}
+                            {sec.hint && <div style={{ fontSize: 12.5, color: T.muted, marginTop: 4, fontStyle: "italic" }}>{sec.hint}</div>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {s.objections.length > 0 && (
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "0.1em", color: T.label, textTransform: "uppercase", marginBottom: 8 }}>Likely objections</div>
+                      {s.objections.map((o, oi) => (
+                        <div key={oi} style={{ marginBottom: 11 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{o.label}</div>
+                          <div style={{ fontSize: 14.5, lineHeight: 1.5, color: T.textRow, borderLeft: `3px solid ${T.cardBorder}`, paddingLeft: 11, marginTop: 2 }}>“{o.answer}”</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
         )}
 
         {tab === "timeline" && (
