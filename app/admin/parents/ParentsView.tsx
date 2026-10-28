@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { T } from "../crm-theme";
 import { BUCKET_LABEL, type Bucket, type ParentRow, type PanelCall, type PanelReport, type PanelAnswers } from "@/lib/admin/parents/types";
 import type { CallScript } from "@/lib/call-script/types";
+import type { TimelineResult } from "@/lib/admin/parents/timeline-types";
 
 // Pill colour per bucket, reusing the theme tokens.
 const PILL: Record<Bucket, { bg: string; fg: string }> = {
@@ -291,6 +292,18 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
     } catch { setSErr(true); } finally { setSLoading(false); }
   };
   useEffect(() => { if (tab === "script") { setScriptData(null); fetchScript(sLang); } /* eslint-disable-next-line */ }, [tab, sLang, targetChild?.sessionId]);
+
+  // Timeline (merged multi-source feed)
+  const [tl, setTl] = useState<(TimelineResult & { ms?: number }) | null>(null);
+  const [tlLoading, setTlLoading] = useState(false);
+  const [tlFilter, setTlFilter] = useState<"all" | "site" | "call" | "message" | "coach">("all");
+  useEffect(() => {
+    if (tab !== "timeline") return;
+    setTl(null); setTlLoading(true); setTlFilter("all");
+    const sids = row.children.map((c) => c.sessionId).join(",");
+    fetch(`/api/admin/parents/timeline?sids=${encodeURIComponent(sids)}`)
+      .then((r) => (r.ok ? r.json() : null)).then((d) => setTl(d)).catch(() => {}).finally(() => setTlLoading(false));
+  }, [tab, row]);
 
   const refetchTrial = async () => {
     const sid = targetChild?.sessionId;
@@ -590,21 +603,66 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
 
         {tab === "timeline" && (
           <div>
-            {(() => {
-              const events: { t: string; text: string; sub?: string }[] = [];
-              for (const c of row.children) {
-                events.push({ t: c.assessedAt, text: `Assessed · ${c.childName}${c.archetype ? ` · ${c.archetype}` : ""}`, sub: c.journey });
-              }
-              for (const cl of detail?.calls ?? []) {
-                events.push({ t: cl.created_at, text: OUTCOME_LABEL[cl.outcome] ?? cl.outcome, sub: cl.notes ?? undefined });
-              }
-              events.sort((a, b) => +new Date(b.t) - +new Date(a.t));
-              return events.length ? events.map((e, i) => (
-                <div key={i} style={{ borderLeft: `3px solid ${T.cardBorder}`, paddingLeft: 11, marginBottom: 11 }}>
-                  <div style={{ fontSize: 13, color: T.textRow }}><span style={{ fontWeight: 600 }}>{e.text}</span> <span style={{ color: T.muted, fontSize: 12 }}>· {fmt(e.t)}</span></div>
-                  {e.sub && <div style={{ fontSize: 12.5, color: T.text2, marginTop: 2 }}>{e.sub}</div>}
+            {tlLoading && <div style={{ color: T.muted, fontSize: 13.5 }}>Loading timeline…</div>}
+            {!tlLoading && !tl && <div style={{ color: T.dangerText, fontSize: 13.5 }}>Couldn’t load the timeline.</div>}
+            {tl && (() => {
+              const ICON: Record<string, string> = { site: "•", call: "📞", message: "💬", coach: "🧭", checkout: "🛒", report: "📄", roadmap: "🗺️", plan: "📋", assess: "✏️", done: "✓", lead: "✦", trial: "🎁", purchase: "₹" };
+              const filtered = tl.events.filter((e) => tlFilter === "all" || e.source === tlFilter);
+              const sumCard = (big: string, small: string) => (
+                <div style={{ flex: "1 1 80px", background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 10, padding: "9px 12px" }}>
+                  <div style={{ fontSize: 19, fontWeight: 700, fontFamily: T.FONT_HEAD }}>{big}</div>
+                  <div style={{ fontSize: 11.5, color: T.muted }}>{small}</div>
                 </div>
-              )) : <div style={{ color: T.muted, fontSize: 12.5 }}>No timeline yet.</div>;
+              );
+              const FILTERS: [typeof tlFilter, string, number][] = [["all", "All", tl.counts.all], ["site", "Site", tl.counts.site], ["call", "Calls", tl.counts.call], ["message", "Messages", tl.counts.message], ["coach", "Coach", tl.counts.coach]];
+              return (
+                <>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+                    {sumCard(String(tl.summary.visits), "visits")}
+                    {sumCard(`${tl.summary.reportApprox ? "~" : ""}${tl.summary.reportMinutes} min`, "on report")}
+                    {sumCard(tl.summary.lastCard ? `Card ${tl.summary.lastCard}` : "—", "last card read")}
+                    {sumCard(String(tl.summary.calls), "calls")}
+                  </div>
+                  {tl.firstCame && (
+                    <div style={{ background: T.sel, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: "8px 12px", fontSize: 12.5, color: T.textRow, marginBottom: 12 }}>
+                      <b>First came from:</b> {[tl.firstCame.source, tl.firstCame.adName ? `“${tl.firstCame.adName}”` : null, tl.firstCame.device].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                    {FILTERS.map(([k, label, n]) => (
+                      <button key={k} onClick={() => setTlFilter(k)} style={{ border: `1px solid ${tlFilter === k ? T.navy : T.inputBorder}`, background: tlFilter === k ? T.navy : T.card, color: tlFilter === k ? "#fff" : T.textRow, borderRadius: 999, padding: "5px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: T.FONT_BODY }}>{label} {n}</button>
+                    ))}
+                  </div>
+                  {filtered.length === 0 && <div style={{ color: T.muted, fontSize: 13 }}>No events in this filter.</div>}
+                  {filtered.map((e, i) => {
+                    const prev = filtered[i - 1];
+                    const dayHeader = !prev || prev.dayKey !== e.dayKey;
+                    const isLastOfVisit = e.visitId && !filtered.slice(i + 1).some((x) => x.visitId === e.visitId);
+                    const v = e.visitId ? tl.visits[e.visitId] : undefined;
+                    return (
+                      <div key={e.id}>
+                        {dayHeader && <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: T.muted, marginTop: i ? 14 : 0, marginBottom: 8 }}>{e.dayLabel}</div>}
+                        <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
+                          <div style={{ width: 54, flexShrink: 0, color: T.muted, fontSize: 12, textAlign: "right", paddingTop: 1 }}>{e.timeLabel}</div>
+                          <div style={{ flexShrink: 0, fontSize: 13, width: 16, textAlign: "center" }}>{ICON[e.icon] ?? "•"}</div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 13.5, color: T.textRow }}>
+                              {e.href ? <a href={e.href} target="_blank" rel="noreferrer" style={{ color: T.navy, fontWeight: 600, textDecoration: "none" }}>{e.title} ↗</a> : <span style={{ fontWeight: 600 }}>{e.title}</span>}
+                              {e.child && <span style={{ marginLeft: 6, background: T.chipFill, color: T.text2, borderRadius: 999, padding: "0 7px", fontSize: 10.5, fontWeight: 700 }}>{e.child}</span>}
+                            </div>
+                            {e.sub && <div style={{ fontSize: 12.5, color: T.text2, marginTop: 1 }}>{e.sub}</div>}
+                            {e.dropOff && <div style={{ border: `1px dashed ${T.dangerText}`, color: T.dangerText, borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 600, marginTop: 6, display: "inline-block" }}>⚑ {e.dropOff}</div>}
+                          </div>
+                        </div>
+                        {isLastOfVisit && v && <div style={{ fontSize: 11.5, color: T.muted, margin: "2px 0 10px 64px", borderTop: `1px dashed ${T.cardBorder}`, paddingTop: 4 }}>Visit {v.index} · {v.source} · {v.range}</div>}
+                      </div>
+                    );
+                  })}
+                  <div style={{ color: T.muted, fontSize: 11.5, marginTop: 14 }}>
+                    {tl.truncated ? `Showing newest ${tl.events.length} of ${tl.total} events. ` : ""}Built live from site · calls · WhatsApp · Coach{typeof tl.ms === "number" ? ` · ${tl.ms}ms` : ""}. Operator/admin views are never shown.
+                  </div>
+                </>
+              );
             })()}
           </div>
         )}

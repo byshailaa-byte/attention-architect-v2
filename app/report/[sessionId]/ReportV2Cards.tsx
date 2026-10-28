@@ -37,6 +37,17 @@ export default function ReportV2Cards(props: Props) {
     track("report_card_view", { card }, sessionId);
   }, [card, sessionId]);
 
+  // Time spent on each card (capped 5 min) — powers the Parent timeline. Emits on card change,
+  // tab-hidden, or unmount.
+  useEffect(() => {
+    let start = Date.now();
+    let done = false;
+    const emit = () => { if (done) return; const ms = Math.min(Date.now() - start, 300_000); if (ms > 500) track("card_dwell_ms", { card, ms }, sessionId); done = true; };
+    const onVis = () => { if (document.hidden) emit(); else { start = Date.now(); done = false; } };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { document.removeEventListener("visibilitychange", onVis); emit(); };
+  }, [card, sessionId]);
+
   const nav = useCallback((n: number, push = true) => {
     const next = clampCard(n);
     if (push) {

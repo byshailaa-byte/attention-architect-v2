@@ -23,4 +23,8 @@ CREATE TABLE IF NOT EXISTS call_script_cache (
 );
 CREATE INDEX IF NOT EXISTS call_script_cache_session_idx ON call_script_cache (session_id);
 
+-- Coach reply language (resolveReplyLanguage), saved per reply so the Parent timeline can show
+-- "Coach · N messages · Day X · Hindi/English". Additive.
+ALTER TABLE coach_messages ADD COLUMN IF NOT EXISTS language text;
+
 INSERT INTO schema_migrations (phase) VALUES ('phase_79_call_script_cache') ON CONFLICT DO NOTHING;

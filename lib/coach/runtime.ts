@@ -156,24 +156,24 @@ export async function getOrCreateOpener(subject: CoachSubjectInput, key: OpenerK
     hindiGuard: hindiGuardFor(subject, ctx.history, ""), // opener is non-streamed + cached → regenerate-once stays
   });
   const ins = key.trialId
-    ? (await sql`INSERT INTO coach_messages (user_id, trial_id, role, content, source, origin, day, model, input_tokens, output_tokens, cost_paise)
-         VALUES (${key.userId}, ${key.trialId}::uuid, 'coach', ${res.text}, 'coach', 'opener', ${key.day}, ${res.model}, ${res.inputTokens}, ${res.outputTokens}, ${res.costPaise}) RETURNING id`)
-    : (await sql`INSERT INTO coach_messages (user_id, role, content, source, origin, day, model, input_tokens, output_tokens, cost_paise)
-         VALUES (${key.userId}, 'coach', ${res.text}, 'coach', 'opener', ${key.day}, ${res.model}, ${res.inputTokens}, ${res.outputTokens}, ${res.costPaise}) RETURNING id`);
+    ? (await sql`INSERT INTO coach_messages (user_id, trial_id, role, content, source, origin, day, model, input_tokens, output_tokens, cost_paise, language)
+         VALUES (${key.userId}, ${key.trialId}::uuid, 'coach', ${res.text}, 'coach', 'opener', ${key.day}, ${res.model}, ${res.inputTokens}, ${res.outputTokens}, ${res.costPaise}, ${ctx.language}) RETURNING id`)
+    : (await sql`INSERT INTO coach_messages (user_id, role, content, source, origin, day, model, input_tokens, output_tokens, cost_paise, language)
+         VALUES (${key.userId}, 'coach', ${res.text}, 'coach', 'opener', ${key.day}, ${res.model}, ${res.inputTokens}, ${res.outputTokens}, ${res.costPaise}, ${ctx.language}) RETURNING id`);
   const id = (ins as unknown as { id: string }[])[0]?.id ?? null;
   return { text: res.text, messageId: id };
 }
 
 // Persist the parent message + the coach reply; returns the coach message id.
-async function persistTurn(k: OpenerKey, userMessage: string, res: { text: string; model: string; inputTokens: number; outputTokens: number; costPaise: number }): Promise<string | null> {
+async function persistTurn(k: OpenerKey, userMessage: string, res: { text: string; model: string; inputTokens: number; outputTokens: number; costPaise: number }, language: string): Promise<string | null> {
   const sql = getSql();
   if (k.trialId) {
     await sql`INSERT INTO coach_messages (user_id, trial_id, role, content, source, origin, day) VALUES (${k.userId}, ${k.trialId}::uuid, 'parent', ${userMessage}, 'coach', 'llm', ${k.day})`;
-    const ins = await sql`INSERT INTO coach_messages (user_id, trial_id, role, content, source, origin, day, model, input_tokens, output_tokens, cost_paise) VALUES (${k.userId}, ${k.trialId}::uuid, 'coach', ${res.text}, 'coach', 'llm', ${k.day}, ${res.model}, ${res.inputTokens}, ${res.outputTokens}, ${res.costPaise}) RETURNING id`;
+    const ins = await sql`INSERT INTO coach_messages (user_id, trial_id, role, content, source, origin, day, model, input_tokens, output_tokens, cost_paise, language) VALUES (${k.userId}, ${k.trialId}::uuid, 'coach', ${res.text}, 'coach', 'llm', ${k.day}, ${res.model}, ${res.inputTokens}, ${res.outputTokens}, ${res.costPaise}, ${language}) RETURNING id`;
     return (ins as unknown as { id: string }[])[0]?.id ?? null;
   }
   await sql`INSERT INTO coach_messages (user_id, role, content, source, origin, day) VALUES (${k.userId}, 'parent', ${userMessage}, 'coach', 'llm', ${k.day})`;
-  const ins = await sql`INSERT INTO coach_messages (user_id, role, content, source, origin, day, model, input_tokens, output_tokens, cost_paise) VALUES (${k.userId}, 'coach', ${res.text}, 'coach', 'llm', ${k.day}, ${res.model}, ${res.inputTokens}, ${res.outputTokens}, ${res.costPaise}) RETURNING id`;
+  const ins = await sql`INSERT INTO coach_messages (user_id, role, content, source, origin, day, model, input_tokens, output_tokens, cost_paise, language) VALUES (${k.userId}, 'coach', ${res.text}, 'coach', 'llm', ${k.day}, ${res.model}, ${res.inputTokens}, ${res.outputTokens}, ${res.costPaise}, ${language}) RETURNING id`;
   return (ins as unknown as { id: string }[])[0]?.id ?? null;
 }
 
@@ -185,7 +185,7 @@ export async function jsonCoachTurn(args: PersistArgs): Promise<{ reply: string;
     ...repeatGuardFor(args.ctx.history, args.userMessage),
     ...{ hindiGuard: hindiGuardFor(args.subject, args.ctx.history, args.userMessage) },
   });
-  const messageId = await persistTurn(args.key, args.userMessage, res);
+  const messageId = await persistTurn(args.key, args.userMessage, res, args.ctx.language);
   await outcomeBackstop(args.key, args.subject, args.userMessage, res.toolCalls).catch(() => {});
         await flagHindiForReview(messageId, res.hindiIssues);
   if (args.onDone) await args.onDone({ text: res.text, errored: res.errored, toolNames: res.toolCalls.map((t) => t.name) });
@@ -252,7 +252,7 @@ export function streamCoachTurn(args: PersistArgs, deps: StreamDeps = {}): Respo
         // Post-generation work, each time-boxed so it can never push the turn past the function limit.
         // A persist timeout/failure means the parent saw a reply that was NOT saved — a lost turn. Never
         // swallow it: log loudly with the subject/trial id so it is visible in the runtime error logs.
-        const messageId = await withTimeout(POST_BUDGET_MS, Promise.resolve(persist(args.key, args.userMessage, res))).catch((e) => {
+        const messageId = await withTimeout(POST_BUDGET_MS, Promise.resolve(persist(args.key, args.userMessage, res, args.ctx.language))).catch((e) => {
           console.error(`[coach/runtime] persist failed/timed out — LOST TURN kind=${args.key.kind} subject=${args.subject.subjectId} trial=${args.key.trialId ?? "-"} day=${args.key.day}: ${(e as Error).message}`);
           return null;
         });

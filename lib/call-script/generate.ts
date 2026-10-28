@@ -61,10 +61,10 @@ function firstCallSchema(): string {
   ].join("\n");
 }
 
-function followupSchema(): string {
+function followupSchema(priorCallNo: number): string {
   return [
     `Return JSON: {`,
-    `  "leftOff": "Where you left off (call ${"N"}, <date>): <last outcome + the gist of the last note, from DATA>",`,
+    `  "leftOff": "Where you left off (call ${priorCallNo}, <date>): <last outcome + the gist of the last note, from DATA>",`,
     `  "since": "Since then: <what they did after the last call, from the journey in DATA — or omit if nothing>",`,
     `  "opener": "<warm reconnect line that uses something concrete from the last call>",`,
     `  "sections": [`,
@@ -81,8 +81,9 @@ function buildPrompt(i: GenerateInput): string {
   const lines: string[] = [];
   lines.push(`DATA:`);
   lines.push(`- Caller (you): ${i.caller}`);
-  lines.push(`- Parent: ${i.parent}`);
-  lines.push(`- Child: ${i.child} (${i.ageBand})`);
+  lines.push(`- Parent (the adult you're calling): ${i.parent}`);
+  lines.push(`- Child (who the report is about): ${i.child} (${i.ageBand})`);
+  lines.push(`  IMPORTANT: ${i.parent} is the parent; ${i.child} is the child. Never swap them. The parent did the assessment ABOUT the child.`);
   lines.push(`- What they worry about: ${i.worry}`);
   lines.push(`- Child's pattern (archetype): ${i.archetype}`);
   lines.push(`- Assessment was done ${i.assessedDaysAgo} day(s) ago.${i.assessedDaysAgo > 3 ? " THIS IS AN OLD LEAD — the opener must gently acknowledge we're only calling now." : ""}`);
@@ -101,7 +102,7 @@ function buildPrompt(i: GenerateInput): string {
   lines.push(``);
   lines.push(pricingPromptBlock(i.trialEligible));
   lines.push(``);
-  lines.push(i.kind === "first" ? firstCallSchema() : followupSchema());
+  lines.push(i.kind === "first" ? firstCallSchema() : followupSchema(i.callNo - 1));
   return lines.join("\n");
 }
 
