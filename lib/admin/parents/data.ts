@@ -45,6 +45,16 @@ const OUTCOME_BUCKET: Record<string, { bucket: Bucket; label: string }> = {
   wrong_number: { bucket: "no_phone", label: "Wrong number" }, purchased: { bucket: "purchased", label: "Purchased" },
 };
 
+// Which bucket a parent lands in. Priority: Purchased > Trial in progress (REAL trial only — a preview
+// trial is not "trialed") > latest call outcome > No phone > New. Pure + exported for the test.
+export function classifyBucket(o: { purchased: boolean; trialActive: boolean; latestOutcome: string | null; hasPhone: boolean }): { bucket: Bucket; statusLabel: string } {
+  if (o.purchased) return { bucket: "purchased", statusLabel: "Purchased" };
+  if (o.trialActive) return { bucket: "trial_in_progress", statusLabel: "Trial in progress" };
+  if (o.latestOutcome) { const ob = OUTCOME_BUCKET[o.latestOutcome] ?? { bucket: "all" as Bucket, label: o.latestOutcome }; return { bucket: ob.bucket, statusLabel: ob.label }; }
+  if (!o.hasPhone) return { bucket: "no_phone", statusLabel: "No phone" };
+  return { bucket: "new", statusLabel: "New" };
+}
+
 // The Neon serverless (HTTP) driver can throw a transient "fetch failed" on a cold/flaky network
 // hop. A single blip should not blank the whole desk — retry a few times with a short backoff.
 async function withRetry<T>(fn: () => Promise<T>, tries = 6): Promise<T> {
@@ -73,7 +83,7 @@ export async function getParents(opts: { includeInternal?: boolean } = {}): Prom
     SELECT a.id::text, a.session_id::text, a.parent_name, a.child_name, a.email, a.phone, a.age_band,
            a.concerns, a.archetype, a.is_internal, a.created_at, a.whatsapp_report_sent_at AS report_sent_at,
            (EXISTS (SELECT 1 FROM purchases p WHERE p.assessment_id = a.id AND p.status='paid')) AS purchased,
-           (EXISTS (SELECT 1 FROM coach_trials t WHERE t.session_id = a.session_id AND t.status='active')) AS trial_active,
+           (EXISTS (SELECT 1 FROM coach_trials t WHERE t.session_id = a.session_id AND t.status='active' AND t.is_preview = false)) AS trial_active,
            lp.max_week AS lms_week, lp.max_day AS lms_day,
            COALESCE(pv.c, 0) AS plan_days,
            (EXISTS (
@@ -129,13 +139,7 @@ export async function getParents(opts: { includeInternal?: boolean } = {}): Prom
     const purchased = group.some((g) => g.purchased);
     const trialActive = group.some((g) => g.trial_active);
 
-    // Bucket priority: Purchased > Trial in progress > latest call outcome > New > No phone.
-    let bucket: Bucket; let statusLabel: string;
-    if (purchased) { bucket = "purchased"; statusLabel = "Purchased"; }
-    else if (trialActive) { bucket = "trial_in_progress"; statusLabel = "Trial in progress"; }
-    else if (latest) { const ob = OUTCOME_BUCKET[latest.outcome] ?? { bucket: "all" as Bucket, label: latest.outcome }; bucket = ob.bucket; statusLabel = ob.label; }
-    else if (!phone) { bucket = "no_phone"; statusLabel = "No phone"; }
-    else { bucket = "new"; statusLabel = "New"; }
+    const { bucket, statusLabel } = classifyBucket({ purchased, trialActive, latestOutcome: latest?.outcome ?? null, hasPhone: !!phone });
 
     const fu = groupCalls.find((c) => c.follow_up_at)?.follow_up_at ?? null;
     rows.push({
