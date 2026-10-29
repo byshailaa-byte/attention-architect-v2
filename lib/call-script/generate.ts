@@ -40,20 +40,20 @@ const SYSTEM = (lang: Lang, caller: string, gender: "f" | "m" | "n") => [
   `- Every fact MUST come from the DATA below. Do NOT invent anything about the child, the parent, or the program.`,
   `- NO promises or guarantees. NO clinical or diagnostic words (never say ADHD, disorder, diagnosis, therapy, spectrum, etc.).`,
   `- NO pressure, NO deadlines, NO discounts. Never say "only this week", "hurry", "limited".`,
-  `- BE BRIEF: each "line" is ONE short spoken sentence (about 8–15 words). Never stack two sentences in a line. The whole script's opener + section lines must read aloud in UNDER ONE MINUTE (~150 words total).`,
-  `- The caller reads the "lines"; "hint" is a short silent note to the caller.`,
+  `- BE BRIEF. WORD BUDGET PER PART (hard): opener ≤ 25 words; EACH section's lines total ≤ 20 words; each objection answer ≤ 25 words. One short sentence per line. Never stack two sentences. Staying inside these keeps the whole call under a minute.`,
+  `- The caller reads the "lines"; "hint" is a short silent note to the caller (not read aloud, not counted).`,
 ].join("\n");
 
-function firstCallSchema(): string {
+function firstCallSchema(trialEligible: boolean): string {
   return [
     `Return JSON: {`,
     `  "opener": "<one line: who you are (${"the caller"}), why you're calling — you read their report about the child — said warmly. If the lead is old, gently acknowledge the delay first; never pretend it's fresh.>",`,
     `  "sections": [`,
     `    {"title":"One line that'll feel true","seconds":15,"lines":["<name the child's strength AND the hard moment, from the report — something the parent will recognise>"]},`,
     `    {"title":"Open them up","seconds":20,"lines":["<one question that gets them talking, e.g. What happens at home when …?>"],"hint":"Then listen."},`,
-    `    {"title":"Listen for","lines":["<short thing to listen for>","<another>"],"hint":"Don't read aloud."},`,
+    `    {"title":"Listen for","lines":[],"hint":"<2–3 short things to listen for — a silent note, NOT read aloud>"},`,
     `    {"title":"The plan, in two lines","seconds":15,"lines":["<what the 6-week plan is, plainly>","<how it fits this child>"]},`,
-    `    {"title":"Next step","lines":["<offer the free trial IF eligible, else the roadmap link or a callback>"]}`,
+    `    {"title":"Next step","lines":["${trialEligible ? "<offer the free 4-day Coach trial — no payment>" : "<send the roadmap link or set a callback. NOT eligible for a trial — do NOT mention any trial, free or paid>"}"]}`,
     `  ],`,
     `  "objections": [`,
     `    {"label":"Price","answer":"<answer using ONLY the allowed commercial facts>"},`,
@@ -64,7 +64,7 @@ function firstCallSchema(): string {
   ].join("\n");
 }
 
-function followupSchema(priorCallNo: number): string {
+function followupSchema(priorCallNo: number, trialEligible: boolean): string {
   return [
     `Return JSON: {`,
     `  "leftOff": "Where you left off (call ${priorCallNo}, <date>): <last outcome + the gist of the last note, from DATA>",`,
@@ -73,7 +73,7 @@ function followupSchema(priorCallNo: number): string {
     `  "sections": [`,
     `    {"title":"Check the step you gave","seconds":30,"lines":["<ask about the specific next step from last call: did you get a chance to … what happened?>"],"hint":"Worked → go to next step. Didn't → ‘that's useful, tell me what happened.’"},`,
     `    {"title":"Next step you planned","lines":["<the next step from the last call's notes/next steps>"]},`,
-    `    {"title":"Close","lines":["<offer the trial link if eligible, or set the next callback — no pressure>"]}`,
+    `    {"title":"Close","lines":["${trialEligible ? "<offer the free trial link, or set the next callback — no pressure>" : "<set the next callback or offer to send the roadmap. NOT eligible for a trial — do NOT mention any trial>"}"]}`,
     `  ],`,
     `  "objections": [ {"label":"<the objection from the notes, if any>","answer":"<answer with allowed facts only>"} ]`,
     `}`,
@@ -105,7 +105,7 @@ function buildPrompt(i: GenerateInput): string {
   lines.push(``);
   lines.push(pricingPromptBlock(i.trialEligible));
   lines.push(``);
-  lines.push(i.kind === "first" ? firstCallSchema() : followupSchema(i.callNo - 1));
+  lines.push(i.kind === "first" ? firstCallSchema(i.trialEligible) : followupSchema(i.callNo - 1, i.trialEligible));
   return lines.join("\n");
 }
 
@@ -137,6 +137,49 @@ function shape(i: GenerateInput, obj: Record<string, unknown>): CallScript {
 function vctx(i: GenerateInput) {
   return { callNo: i.callNo, trialEligible: i.trialEligible, callerGender: i.callerGender, childNames: [i.child], banNames: i.banNames };
 }
+// Spoken = what's read aloud in sequence (opener + section lines); the minute budget applies to this.
+function spokenWords(s: CallScript): number {
+  return [s.opener, ...s.sections.flatMap((x) => x.lines)].join(" ").trim().split(/\s+/).filter(Boolean).length;
+}
+// Length is the only "failure" that's safe to fix WITHOUT another model call: trim extra lines from the
+// wordiest multi-line section until it fits. Keeps ≥1 line per section (the key sentence).
+function trimToFit(s: CallScript, budget = 225): CallScript {
+  const c: CallScript = JSON.parse(JSON.stringify(s));
+  while (spokenWords(c) > budget) {
+    let idx = -1, max = 0;
+    c.sections.forEach((sec, i) => { if (sec.lines.length > 1) { const w = sec.lines.join(" ").split(/\s+/).length; if (w > max) { max = w; idx = i; } } });
+    if (idx === -1) break; // nothing left to trim
+    c.sections[idx].lines.pop();
+  }
+  return c;
+}
+// For an ineligible parent, replace any trial-mentioning line with the roadmap line — in code, no model
+// call (the model occasionally offers a trial despite the instruction).
+const TRIAL_RE = /\b(trial|free 4-day|4-din|4 din|free coach|muft)\b/i;
+function scrubTrial(s: CallScript, i: GenerateInput): CallScript {
+  const hin = s.lang === "hinglish";
+  const det = i.callerGender === "f" ? "deti hoon" : i.callerGender === "m" ? "deta hoon" : "dete hain";
+  const roadmap = hin ? `Main aapko ${i.child} ka roadmap bhej ${det} dekhne ke liye.` : `I can send you ${i.child}'s roadmap to look at.`;
+  const c: CallScript = JSON.parse(JSON.stringify(s));
+  const drop = (t?: string) => (t && TRIAL_RE.test(t) ? "" : t);
+  if (TRIAL_RE.test(c.opener)) c.opener = roadmap;
+  c.leftOff = drop(c.leftOff); c.since = drop(c.since);
+  c.sections.forEach((sec) => { sec.lines = sec.lines.map((l) => (TRIAL_RE.test(l) ? roadmap : l)); });
+  c.objections.forEach((o) => { if (TRIAL_RE.test(o.answer)) o.answer = roadmap; });
+  return c;
+}
+// All safe in-code repairs for a failed draft — never a model call. Only genuinely unsafe content
+// (promise/clinical/pressure the model invented) is left to one retry, then the deterministic fallback.
+function repairScript(s: CallScript, i: GenerateInput, fails: string[]): CallScript {
+  let c: CallScript = JSON.parse(JSON.stringify(s));
+  if (fails.some((f) => f.startsWith("too long"))) c = trimToFit(c);
+  if (!i.trialEligible && fails.some((f) => /trial mentioned/.test(f))) c = scrubTrial(c, i);
+  if (fails.some((f) => /wrong call number/.test(f)) && c.leftOff) c.leftOff = c.leftOff.replace(/call\s+\d+/i, `call ${i.callNo - 1}`);
+  if (fails.some((f) => /does not name the real child/.test(f)) && !new RegExp(i.child, "i").test(c.opener + (c.leftOff ?? ""))) {
+    c.opener = c.opener.replace(/\s*$/, "") + ` It's about ${i.child}.`;
+  }
+  return c;
+}
 // All call-script LLM spend is logged under one feature tag so it can be grepped/aggregated.
 function logSpend(i: GenerateInput, inTok: number, outTok: number, outcome: string) {
   console.log(`[spend] feature=call_script kind=${i.kind} lang=${i.lang} callNo=${i.callNo} in=${inTok} out=${outTok} paise=${reportCostPaise(inTok, outTok)} outcome=${outcome}`);
@@ -159,8 +202,15 @@ export async function generateCallScript(i: GenerateInput): Promise<ScriptResult
       try { script = shape(i, parseJson(text)); } catch { if (attempt === 0) continue; throw new Error("bad_json"); }
       const v = validateScript(script, ctx);
       if (v.ok) { logSpend(i, inTok, outTok, "ok"); return { script, source: "llm", model: MODEL, inTok, outTok, costPaise: reportCostPaise(inTok, outTok), outcome: "ok", reason: null }; }
+      // Safe in-code repairs (NO extra model call): length, ineligible-trial, call-no, child-name.
+      const repaired = repairScript(script, i, v.fails);
+      if (validateScript(repaired, ctx).ok) {
+        console.log(`[call_script] repaired in code (${v.fails.join("; ")}) — shipping`);
+        logSpend(i, inTok, outTok, "ok");
+        return { script: repaired, source: "llm", model: MODEL, inTok, outTok, costPaise: reportCostPaise(inTok, outTok), outcome: "ok", reason: "repaired in code" };
+      }
       console.log(`[call_script] validator caught: ${v.fails.join("; ")} — attempt ${attempt + 1}${attempt === 0 ? ", retrying" : ", falling back"}`);
-      if (attempt === 0) continue; // one retry, then fall back
+      if (attempt === 0) continue; // one retry for anything in-code repair couldn't fix, then fall back
       logSpend(i, inTok, outTok, "validator_fail");
       return { script: fallbackScript(i), source: "fallback", model: MODEL, inTok, outTok, costPaise: reportCostPaise(inTok, outTok), outcome: "validator_fail", reason: v.fails.join("; ") };
     }

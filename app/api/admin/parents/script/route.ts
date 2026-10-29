@@ -11,9 +11,9 @@ import type { Lang } from "@/lib/call-script/types";
 export const dynamic = "force-dynamic";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function withRetry<T>(fn: () => Promise<T>, tries = 6): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, tries = 12): Promise<T> {
   let last: unknown;
-  for (let i = 0; i < tries; i++) { try { return await fn(); } catch (e) { last = e; await new Promise((r) => setTimeout(r, 300 * (i + 1))); } }
+  for (let i = 0; i < tries; i++) { try { return await fn(); } catch (e) { last = e; await new Promise((r) => setTimeout(r, Math.min(300 * (i + 1), 2500))); } }
   throw last;
 }
 
@@ -75,7 +75,9 @@ async function buildContext(sessionId: string, lang: Lang, callerName: string, c
 
   // trial eligibility + "since" journey.
   const paid = ((await sql`SELECT 1 FROM purchases WHERE assessment_id = ANY(${ids}::uuid[]) AND status='paid' LIMIT 1`) as unknown as unknown[]).length > 0;
-  const trialed = ((await sql`SELECT 1 FROM coach_trials WHERE session_id = ${sessionId}::uuid LIMIT 1`) as unknown as unknown[]).length > 0;
+  // A Preview-Coach sandbox trial (is_preview=true) does NOT count as "trialed" — only a REAL trial
+  // makes the parent ineligible for the free offer (matches the Swa fix).
+  const trialed = ((await sql`SELECT 1 FROM coach_trials WHERE session_id = ${sessionId}::uuid AND is_preview = false LIMIT 1`) as unknown as unknown[]).length > 0;
   const sinceAnchor = calls[0]?.created_at ?? a.created_at;
   const planDays = (await sql`
     SELECT count(DISTINCT (fe.created_at AT TIME ZONE 'Asia/Kolkata')::date)::int c
@@ -99,7 +101,7 @@ async function buildContext(sessionId: string, lang: Lang, callerName: string, c
     since, trialEligible: !paid && !trialed,
   };
   const latestActivity = [sinceAnchor, ...(planDays[0]?.c ? [new Date().toISOString()] : [])].sort().pop()!;
-  return { input, pkey, assessmentId: a.id, callNo, kind, latestCallAt: calls[0]?.created_at ?? null, latestActivity };
+  return { input, pkey, assessmentId: a.id, callNo, kind, trialEligible: input.trialEligible, latestCallAt: calls[0]?.created_at ?? null, latestActivity };
 }
 
 async function handle(req: NextRequest, regenerate: boolean) {
@@ -122,7 +124,7 @@ async function handle(req: NextRequest, regenerate: boolean) {
   if (cached[0] && !regenerate) {
     const since = +new Date(cached[0].created_at);
     const stale = !!((ctx.latestCallAt && +new Date(ctx.latestCallAt) > since) || (reportAt && +new Date(reportAt) > since));
-    return NextResponse.json({ script: cached[0].script, source: cached[0].source, model: cached[0].model, costPaise: cached[0].cost_paise, cachedAt: cached[0].created_at, stale, callNo: ctx.callNo, kind: ctx.kind });
+    return NextResponse.json({ script: cached[0].script, source: cached[0].source, model: cached[0].model, costPaise: cached[0].cost_paise, cachedAt: cached[0].created_at, stale, callNo: ctx.callNo, kind: ctx.kind, trialEligible: ctx.trialEligible });
   }
 
   const r = await generateCallScript(ctx.input);
@@ -133,7 +135,7 @@ async function handle(req: NextRequest, regenerate: boolean) {
       script=EXCLUDED.script, source=EXCLUDED.source, model=EXCLUDED.model, input_tokens=EXCLUDED.input_tokens,
       output_tokens=EXCLUDED.output_tokens, cost_paise=EXCLUDED.cost_paise, outcome=EXCLUDED.outcome, reason=EXCLUDED.reason, updated_at=now(), created_at=now()
   `);
-  return NextResponse.json({ script: r.script, source: r.source, model: r.model, costPaise: r.costPaise, cachedAt: new Date().toISOString(), stale: false, callNo: ctx.callNo, kind: ctx.kind });
+  return NextResponse.json({ script: r.script, source: r.source, model: r.model, costPaise: r.costPaise, cachedAt: new Date().toISOString(), stale: false, callNo: ctx.callNo, kind: ctx.kind, trialEligible: ctx.trialEligible });
 }
 
 export async function GET(req: NextRequest) {
