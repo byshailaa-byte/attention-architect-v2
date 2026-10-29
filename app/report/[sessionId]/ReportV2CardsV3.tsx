@@ -83,6 +83,22 @@ export default function ReportV2CardsV3(props: Props) {
     track("report_card_view", { card, layout: "v3" }, sessionId);
   }, [card, sessionId]);
 
+  // Time spent on each card — emitted on card change, when the tab is hidden, or on unmount.
+  // Capped at 5 min so a tab left open overnight can't report 9 hours. Powers the Parent timeline.
+  useEffect(() => {
+    let start = Date.now();
+    let done = false;
+    const emit = () => {
+      if (done) return;
+      const ms = Math.min(Date.now() - start, 300_000);
+      if (ms > 500) track("card_dwell_ms", { card, ms }, sessionId);
+      done = true;
+    };
+    const onVis = () => { if (document.hidden) emit(); else { start = Date.now(); done = false; } };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { document.removeEventListener("visibilitychange", onVis); emit(); };
+  }, [card, sessionId]);
+
   // One history entry per card. ?c=N so reloads land on the same card (page.tsx reads ?c).
   const nav = useCallback((n: number, push = true) => {
     const next = clampV3(n);

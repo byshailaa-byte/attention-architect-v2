@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "../crm-theme";
 import { BUCKET_LABEL, type Bucket, type ParentRow, type PanelCall, type PanelReport, type PanelAnswers } from "@/lib/admin/parents/types";
+import type { CallScript } from "@/lib/call-script/types";
+import type { TimelineResult } from "@/lib/admin/parents/timeline-types";
 
 // Pill colour per bucket, reusing the theme tokens.
 const PILL: Record<Bucket, { bg: string; fg: string }> = {
@@ -239,7 +241,7 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
   const [detail, setDetail] = useState<{ calls: PanelCall[]; reports: Record<string, PanelReport>; answers: PanelAnswers } | null>(null);
   const [loadErr, setLoadErr] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
-  const [tab, setTab] = useState<"call" | "timeline" | "answers">("call");
+  const [tab, setTab] = useState<"call" | "script" | "timeline" | "answers">("call");
   const [target, setTarget] = useState(row.children[0]?.assessmentId ?? "");
   const [outcome, setOutcome] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -273,6 +275,41 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
   const [offer, setOffer] = useState<{ link: string; msg: string; already: boolean } | null>(null);
   const [confirmTrial, setConfirmTrial] = useState<null | "offer" | "resend">(null);
   const [copied, setCopied] = useState(false);
+  // Call script
+  const [sLang, setSLang] = useState<"en" | "hinglish">("en");
+  const [scriptData, setScriptData] = useState<{ script: CallScript; costPaise: number; source: string; stale: boolean; callNo: number; kind: string } | null>(null);
+  const [sLoading, setSLoading] = useState(false);
+  const [sErr, setSErr] = useState(false);
+  const [openSec, setOpenSec] = useState<Record<number, boolean>>({});
+
+  const fetchScript = async (lang: "en" | "hinglish", regen = false) => {
+    const sid = targetChild?.sessionId; if (!sid) return;
+    setSLoading(true); setSErr(false);
+    try {
+      const res = await fetch(`/api/admin/parents/script?sessionId=${encodeURIComponent(sid)}&lang=${lang}`, regen ? { method: "POST" } : undefined);
+      if (!res.ok) throw new Error("x");
+      setScriptData(await res.json());
+    } catch { setSErr(true); } finally { setSLoading(false); }
+  };
+  useEffect(() => { if (tab === "script") { setScriptData(null); fetchScript(sLang); } /* eslint-disable-next-line */ }, [tab, sLang, targetChild?.sessionId]);
+  // Background-generate the default (English) script the moment the panel opens, so the Script tab is
+  // instant when the caller needs it (cached per parent/caller; repeated opens don't re-spend).
+  useEffect(() => {
+    const sid = row.children[0]?.sessionId; if (!sid) return;
+    fetch(`/api/admin/parents/script?sessionId=${encodeURIComponent(sid)}&lang=en`).catch(() => {});
+  }, [row]);
+
+  // Timeline (merged multi-source feed)
+  const [tl, setTl] = useState<(TimelineResult & { ms?: number }) | null>(null);
+  const [tlLoading, setTlLoading] = useState(false);
+  const [tlFilter, setTlFilter] = useState<"all" | "site" | "call" | "message" | "coach">("all");
+  useEffect(() => {
+    if (tab !== "timeline") return;
+    setTl(null); setTlLoading(true); setTlFilter("all");
+    const sids = row.children.map((c) => c.sessionId).join(",");
+    fetch(`/api/admin/parents/timeline?sids=${encodeURIComponent(sids)}`)
+      .then((r) => (r.ok ? r.json() : null)).then((d) => setTl(d)).catch(() => {}).finally(() => setTlLoading(false));
+  }, [tab, row]);
 
   const refetchTrial = async () => {
     const sid = targetChild?.sessionId;
@@ -369,7 +406,7 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
     return <span style={{ background: c.bg, color: c.fg, borderRadius: 999, padding: "2px 8px", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>{OUTCOME_LABEL[o] ?? o}</span>;
   };
 
-  const TabBtn = ({ id, children }: { id: "call" | "timeline" | "answers"; children: React.ReactNode }) => (
+  const TabBtn = ({ id, children }: { id: "call" | "script" | "timeline" | "answers"; children: React.ReactNode }) => (
     <button onClick={() => setTab(id)} style={{ border: "none", background: "none", padding: "6px 2px", marginRight: 14, fontSize: 13, fontWeight: tab === id ? 700 : 500, color: tab === id ? T.navy : T.text2, borderBottom: tab === id ? `2px solid ${T.navy}` : "2px solid transparent", cursor: "pointer", fontFamily: T.FONT_BODY }}>{children}</button>
   );
 
@@ -420,6 +457,7 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
         {/* Tabs */}
         <div style={{ borderBottom: `1px solid ${T.divider}`, marginBottom: 8, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
           <TabBtn id="call">Call &amp; notes</TabBtn>
+          <TabBtn id="script">Script</TabBtn>
           <TabBtn id="timeline">Timeline</TabBtn>
           <TabBtn id="answers">Answers</TabBtn>
           <a href={`/report/${targetChild?.sessionId}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 500, color: T.navy, textDecoration: "none", marginRight: 14 }}>Report ↗</a>
@@ -503,23 +541,134 @@ export function ParentPanel({ row, position, onClose, onListRefresh, onNext }: {
           </>
         )}
 
+        {tab === "script" && (
+          <div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 12, alignItems: "center" }}>
+              {(["en", "hinglish"] as const).map((l) => (
+                <button key={l} onClick={() => setSLang(l)} style={{ border: `1px solid ${sLang === l ? T.navy : T.inputBorder}`, background: sLang === l ? T.navy : T.card, color: sLang === l ? "#fff" : T.textRow, borderRadius: 999, padding: "6px 14px", fontSize: 13.5, fontWeight: 600, cursor: "pointer", fontFamily: T.FONT_BODY }}>{l === "en" ? "English" : "Hinglish"}</button>
+              ))}
+              <button onClick={() => fetchScript(sLang, true)} disabled={sLoading} style={{ marginLeft: "auto", border: `1px solid ${T.inputBorder}`, background: T.card, color: T.navy, borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: sLoading ? "default" : "pointer" }}>↻ Regenerate</button>
+            </div>
+            {sLoading && <div style={{ color: T.muted, fontSize: 14 }}>Writing the script…</div>}
+            {sErr && !sLoading && <div style={{ color: T.dangerText, fontSize: 13.5 }}>Couldn’t load the script. Try Regenerate.</div>}
+            {scriptData && !sLoading && (() => {
+              const s = scriptData.script;
+              return (
+                <div>
+                  {scriptData.stale && <div style={{ background: T.warmBg, color: T.warmText, borderRadius: 8, padding: "8px 12px", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Updated info since this script — <button onClick={() => fetchScript(sLang, true)} style={{ background: "none", border: "none", color: T.warmText, textDecoration: "underline", cursor: "pointer", fontWeight: 700, padding: 0, fontSize: 13 }}>regenerate</button></div>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 12, fontSize: 11.5, color: T.muted }}>
+                    <span style={{ fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: T.label }}>{s.kind === "first" ? "First call" : `Follow-up · call ${s.callNo}`}</span>
+                    <span>· Built from {s.header.builtFrom.join(" · ")}</span>
+                    <span style={{ marginLeft: "auto", fontWeight: 600 }}>{scriptData.source === "fallback" ? "fallback · " : ""}₹{(scriptData.costPaise / 100).toFixed(2)}/script</span>
+                  </div>
+                  <div style={{ background: T.navy, color: "#fff", borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", opacity: 0.8, marginBottom: 5 }}>OPEN WITH</div>
+                    <div style={{ fontSize: 17, lineHeight: 1.45 }}>{s.opener}</div>
+                  </div>
+                  {(s.leftOff || s.since) && (
+                    <div style={{ background: T.sel, border: `1px solid ${T.cardBorder}`, borderRadius: 10, padding: "11px 14px", marginBottom: 14, fontSize: 14, lineHeight: 1.5, color: T.textRow }}>
+                      {s.leftOff && <div>{s.leftOff}</div>}
+                      {s.since && <div style={{ marginTop: 4 }}>{/^since/i.test(s.since) ? s.since : `Since then: ${s.since}`}</div>}
+                    </div>
+                  )}
+                  {s.sections.map((sec, idx) => {
+                    const open = openSec[idx] !== false;
+                    return (
+                      <div key={idx} style={{ border: `1px solid ${T.cardBorder}`, borderRadius: 10, marginBottom: 8, background: T.card, overflow: "hidden" }}>
+                        <button onClick={() => setOpenSec((p) => ({ ...p, [idx]: !open }))} style={{ width: "100%", textAlign: "left", background: "none", border: "none", padding: "11px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 9, fontFamily: T.FONT_BODY }}>
+                          <span style={{ background: T.navy, color: "#fff", borderRadius: 999, width: 22, height: 22, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{idx + 1}</span>
+                          <span style={{ fontWeight: 700, fontSize: 15, color: T.text }}>{sec.title}</span>
+                          {sec.seconds ? <span style={{ color: T.muted, fontSize: 12 }}>· {sec.seconds}s</span> : null}
+                          <span style={{ marginLeft: "auto", color: T.muted, fontSize: 12 }}>{open ? "▾" : "▸"}</span>
+                        </button>
+                        {open && (
+                          <div style={{ padding: "0 14px 12px 45px" }}>
+                            {sec.lines.map((ln, li) => <div key={li} style={{ fontSize: 15.5, lineHeight: 1.5, color: T.textRow, marginBottom: 5, borderLeft: `3px solid ${T.amber}`, paddingLeft: 11 }}>“{ln}”</div>)}
+                            {sec.hint && <div style={{ fontSize: 12.5, color: T.muted, marginTop: 4, fontStyle: "italic" }}>{sec.hint}</div>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {s.objections.length > 0 && (
+                    <div style={{ marginTop: 14 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: "0.1em", color: T.label, textTransform: "uppercase", marginBottom: 8 }}>Likely objections</div>
+                      {s.objections.map((o, oi) => (
+                        <div key={oi} style={{ marginBottom: 11 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{o.label}</div>
+                          <div style={{ fontSize: 14.5, lineHeight: 1.5, color: T.textRow, borderLeft: `3px solid ${T.cardBorder}`, paddingLeft: 11, marginTop: 2 }}>“{o.answer}”</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         {tab === "timeline" && (
           <div>
-            {(() => {
-              const events: { t: string; text: string; sub?: string }[] = [];
-              for (const c of row.children) {
-                events.push({ t: c.assessedAt, text: `Assessed · ${c.childName}${c.archetype ? ` · ${c.archetype}` : ""}`, sub: c.journey });
-              }
-              for (const cl of detail?.calls ?? []) {
-                events.push({ t: cl.created_at, text: OUTCOME_LABEL[cl.outcome] ?? cl.outcome, sub: cl.notes ?? undefined });
-              }
-              events.sort((a, b) => +new Date(b.t) - +new Date(a.t));
-              return events.length ? events.map((e, i) => (
-                <div key={i} style={{ borderLeft: `3px solid ${T.cardBorder}`, paddingLeft: 11, marginBottom: 11 }}>
-                  <div style={{ fontSize: 13, color: T.textRow }}><span style={{ fontWeight: 600 }}>{e.text}</span> <span style={{ color: T.muted, fontSize: 12 }}>· {fmt(e.t)}</span></div>
-                  {e.sub && <div style={{ fontSize: 12.5, color: T.text2, marginTop: 2 }}>{e.sub}</div>}
+            {tlLoading && <div style={{ color: T.muted, fontSize: 13.5 }}>Loading timeline…</div>}
+            {!tlLoading && !tl && <div style={{ color: T.dangerText, fontSize: 13.5 }}>Couldn’t load the timeline.</div>}
+            {tl && (() => {
+              const ICON: Record<string, string> = { site: "•", call: "📞", message: "💬", coach: "🧭", checkout: "🛒", report: "📄", roadmap: "🗺️", plan: "📋", assess: "✏️", done: "✓", lead: "✦", trial: "🎁", purchase: "₹" };
+              const filtered = tl.events.filter((e) => tlFilter === "all" || e.source === tlFilter);
+              const sumCard = (big: string, small: string) => (
+                <div style={{ flex: "1 1 80px", background: T.card, border: `1px solid ${T.cardBorder}`, borderRadius: 10, padding: "9px 12px" }}>
+                  <div style={{ fontSize: 19, fontWeight: 700, fontFamily: T.FONT_HEAD }}>{big}</div>
+                  <div style={{ fontSize: 11.5, color: T.muted }}>{small}</div>
                 </div>
-              )) : <div style={{ color: T.muted, fontSize: 12.5 }}>No timeline yet.</div>;
+              );
+              const FILTERS: [typeof tlFilter, string, number][] = [["all", "All", tl.counts.all], ["site", "Site", tl.counts.site], ["call", "Calls", tl.counts.call], ["message", "Messages", tl.counts.message], ["coach", "Coach", tl.counts.coach]];
+              return (
+                <>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+                    {sumCard(String(tl.summary.visits), "visits")}
+                    {sumCard(`${tl.summary.reportApprox ? "~" : ""}${tl.summary.reportMinutes} min`, "on report")}
+                    {sumCard(tl.summary.lastCard ? `Card ${tl.summary.lastCard}` : "—", "last card read")}
+                    {sumCard(String(tl.summary.calls), "calls")}
+                  </div>
+                  {tl.firstCame && (
+                    <div style={{ background: T.sel, border: `1px solid ${T.cardBorder}`, borderRadius: 8, padding: "8px 12px", fontSize: 12.5, color: T.textRow, marginBottom: 12 }}>
+                      <b>First came from:</b> {[tl.firstCame.source, tl.firstCame.adName ? `“${tl.firstCame.adName}”` : null, tl.firstCame.device].filter(Boolean).join(" · ")}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                    {FILTERS.map(([k, label, n]) => (
+                      <button key={k} onClick={() => setTlFilter(k)} style={{ border: `1px solid ${tlFilter === k ? T.navy : T.inputBorder}`, background: tlFilter === k ? T.navy : T.card, color: tlFilter === k ? "#fff" : T.textRow, borderRadius: 999, padding: "5px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: T.FONT_BODY }}>{label} {n}</button>
+                    ))}
+                  </div>
+                  {filtered.length === 0 && <div style={{ color: T.muted, fontSize: 13 }}>No events in this filter.</div>}
+                  {filtered.map((e, i) => {
+                    const prev = filtered[i - 1];
+                    const dayHeader = !prev || prev.dayKey !== e.dayKey;
+                    const isLastOfVisit = e.visitId && !filtered.slice(i + 1).some((x) => x.visitId === e.visitId);
+                    const v = e.visitId ? tl.visits[e.visitId] : undefined;
+                    return (
+                      <div key={e.id}>
+                        {dayHeader && <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: T.muted, marginTop: i ? 14 : 0, marginBottom: 8 }}>{e.dayLabel}</div>}
+                        <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
+                          <div style={{ width: 54, flexShrink: 0, color: T.muted, fontSize: 12, textAlign: "right", paddingTop: 1 }}>{e.timeLabel}</div>
+                          <div style={{ flexShrink: 0, fontSize: 13, width: 16, textAlign: "center" }}>{ICON[e.icon] ?? "•"}</div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 13.5, color: T.textRow }}>
+                              {e.href ? <a href={e.href} target="_blank" rel="noreferrer" style={{ color: T.navy, fontWeight: 600, textDecoration: "none" }}>{e.title} ↗</a> : <span style={{ fontWeight: 600 }}>{e.title}</span>}
+                              {e.child && <span style={{ marginLeft: 6, background: T.chipFill, color: T.text2, borderRadius: 999, padding: "0 7px", fontSize: 10.5, fontWeight: 700 }}>{e.child}</span>}
+                            </div>
+                            {e.sub && <div style={{ fontSize: 12.5, color: T.text2, marginTop: 1 }}>{e.sub}</div>}
+                            {e.dropOff && <div style={{ border: `1px dashed ${T.dangerText}`, color: T.dangerText, borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 600, marginTop: 6, display: "inline-block" }}>⚑ {e.dropOff}</div>}
+                          </div>
+                        </div>
+                        {isLastOfVisit && v && <div style={{ fontSize: 11.5, color: T.muted, margin: "2px 0 10px 64px", borderTop: `1px dashed ${T.cardBorder}`, paddingTop: 4 }}>Visit {v.index} · {v.source} · {v.range}</div>}
+                      </div>
+                    );
+                  })}
+                  <div style={{ color: T.muted, fontSize: 11.5, marginTop: 14 }}>
+                    {tl.truncated ? `Showing newest ${tl.events.length} of ${tl.total} events. ` : ""}Built live from site · calls · WhatsApp · Coach{typeof tl.ms === "number" ? ` · ${tl.ms}ms` : ""}. Operator/admin views are never shown.
+                  </div>
+                </>
+              );
             })()}
           </div>
         )}
