@@ -12,7 +12,7 @@ export const weekContent: LmsWeekContent = {
   weekTitle: "Getting started without the push",
 
   weeklyReading: {
-    introShared: `This is the first week of a program built specifically for a Storm. It's not a course you sit and watch. It's a small set of things you try in real life — starting this week — and pay attention to what happens.
+    introShared: `This is the first week of a program built specifically for a child like {{child_name}}. It's not a course you sit and watch. It's a small set of things you try in real life — starting this week — and pay attention to what happens.
 
 **One short read to start the week (this page — about 12 minutes).**
 **One tiny action each day (5 minutes or less, in a moment that already happens anyway).**
@@ -23,15 +23,15 @@ That's it. If you do nothing else this week except the daily action, this progra
 
 You don't need to re-read the whole report. Just this, because everything this week builds on it:
 
-**Your child is a Storm.** Their attention is real and powerful — you've seen them lock in completely on something they chose. It's not missing. It just switches *off* the moment something stops feeling like their own idea. That one fact is the lever everything else turns on.
+**{{child_name}} focuses best when {{child_pronoun_subj}} has a real say in what happens.** Their attention is real and powerful — you've seen them lock in completely on something they chose. It's not missing. It just switches *off* the moment something stops feeling like their own idea. That one fact is the lever everything else turns on.
 
 **Why we start here**
 
-Think about where the worst friction happens. For most Storm households, it's not the middle of homework — it's *getting started.* The stand-off. The "just sit down and do it." The fifteen minutes of resistance before a single line gets written.
+Think about where the worst friction happens. For most households like yours, it's not the middle of homework — it's *getting started.* The stand-off. The "just sit down and do it." The fifteen minutes of resistance before a single line gets written.
 
 Here's what's actually happening in that moment, underneath:
 
-Your Storm doesn't resist the work itself. They resist being *placed into it* — on someone else's timing, someone else's terms. The instant homework feels like something happening *to* them, their attention switches off. Not to be difficult. For a Storm, ownership is the on-switch. Without it, the engine doesn't run.
+{{child_name|cap}} doesn't resist the work itself. They resist being *placed into it* — on someone else's timing, someone else's terms. The instant homework feels like something happening *to* them, their attention switches off. Not to be difficult. For a child like {{child_name}}, ownership is the on-switch. Without it, the engine doesn't run.
 
 **This week's one move: Let them choose how to start**
 
@@ -48,7 +48,7 @@ Real opening choices at this age:
 - "Do you want to work at the table or on the floor today?"
 - "Do you want to use the blue pen or the pencil?"
 
-Small enough to feel almost silly. That's fine — at this age even a tiny genuine choice flips the on-switch, because the Storm gets to feel it was *theirs.*
+Small enough to feel almost silly. That's fine — at this age even a tiny genuine choice flips the on-switch, because {{child_name}} gets to feel it was *theirs.*
 
 **Your work:** let the small choice stand, even when it's not what you'd pick. Floor instead of table. Easy subject first. Let it ride.`,
 
@@ -60,7 +60,7 @@ Real opening choices at this age:
 - "Do you want ten minutes to yourself first, then start — or start now and be done earlier?"
 - "Do you want to check answers together at the end, or do it fully on your own and just show me?"
 
-**Your work:** when they choose a plan you think is inefficient, let them run it anyway. A 10–11 Storm learns ownership is real by being allowed to own an imperfect plan — and often it works better than you expected.`,
+**Your work:** when they choose a plan you think is inefficient, let them run it anyway. A 10–11-year-old like {{child_name}} learns ownership is real by being allowed to own an imperfect plan — and often it works better than you expected.`,
 
       "12-14":
 `At 12–14, this is a different situation, and pretending it isn't will backfire. "Table or floor" is patronizing at this age — a teenager's ownership need has grown into *"why are you involved in my homework at all."* So the choice has to be bigger and more real: **the choice is often about your level of involvement itself.**
@@ -70,20 +70,20 @@ Real opening choices at this age:
 - "Do you want to decide when it gets done tonight, as long as it's done — or do you want a set time?"
 - "Do you want me to back off homework completely this week and just be here if you ask?"
 
-Yes — some of these mean genuinely stepping back, possibly a lot. That's not you giving up. For a 14-year-old Storm, offering real autonomy *is* the move. Pushing a teenager who's already pulling away doesn't just fail — it can damage the relationship in ways that are hard to repair, and a teen can withdraw completely in a way an 8-year-old can't.
+Yes — some of these mean genuinely stepping back, possibly a lot. That's not you giving up. For a 14-year-old like {{child_name}}, offering real autonomy *is* the move. Pushing a teenager who's already pulling away doesn't just fail — it can damage the relationship in ways that are hard to repair, and a teen can withdraw completely in a way an 8-year-old can't.
 
 **Your work — and it's the hardest part:** when they take the autonomy you offered and you can see them about to do it badly, hold back anyway, unless something important is truly at risk. The trust you build by *not* stepping in is the thing that makes them let you back in later.`,
     },
 
     moveOutroShared:
-`What makes this work is not the choice itself — it's what it does to the *moment.* You've handed ownership over before the stand-off can start. The Storm's on-switch — *this is mine* — gets flipped by them, not forced by you. And because they chose it, your instinct to push has nothing to push against.
+`What makes this work is not the choice itself — it's what it does to the *moment.* You've handed ownership over before the stand-off can start. {{child_name}}'s on-switch — *this is mine* — gets flipped by them, not forced by you. And because they chose it, your instinct to push has nothing to push against.
 
-**The hard part is yours, not theirs.** Once they choose, you have to actually let them have it. If you override the choice, it stops being real — and a Storm can smell a fake choice instantly, at any age. The entire move depends on you holding back. That's the work this week.`,
+**The hard part is yours, not theirs.** Once they choose, you have to actually let them have it. If you override the choice, it stops being real — and a child like {{child_name}} can smell a fake choice instantly, at any age. The entire move depends on you holding back. That's the work this week.`,
 
     whatWorkingLooksLike:
 `Let's be honest about the size of the win, because a false promise here would break your trust the first night it doesn't come true.
 
-**Homework won't be solved this week.** And you're not trying to change how your child's attention works — that doesn't change, and it isn't the goal. Your Storm will still be a Storm on Sunday.
+**Homework won't be solved this week.** And you're not trying to change how your child's attention works — that doesn't change, and it isn't the goal. The way {{child_pronoun_subj}} focuses won't have changed by Sunday.
 
 What you're looking for is smaller and more important than that: **a few nights where the *start* of homework was less of a fight than usual.** That's it. Maybe two out of five days. Maybe the stand-off was shorter. Maybe they sat down without you asking twice. Maybe you noticed your own urge to push and held it, and something eased.
 
@@ -152,8 +152,8 @@ Next week, we take this same principle off the homework table and into the momen
       title: "Let them pick the harder one, even knowing it won't go well.",
       content: {
         "8-9":   "Offer the choice. Today, if {{child_name}} picks the option you wouldn't — the harder-to-start one, the floor instead of the table — let it ride all the way. Watch what happens. Often it goes fine. Sometimes it doesn't, and that's information too, not a failure.",
-        "10-11": "Offer the choice. Today, if they pick the option you wouldn't have — the harder-to-start one, the messier setup, the \"I've got it, back off\" — let it ride anyway, all the way. A Storm learns ownership is real by being allowed to own an imperfect decision. Watch what happens. Often it goes better than you'd expect. Sometimes it doesn't — and that's real information too, not a failure.",
-        "12-14": "Offer the choice. Today, if {{child_name}} picks the option you wouldn't have — the harder-to-start one, the messier setup, the \"I've got it, back off\" — let it ride anyway, all the way. A Storm learns ownership is real by being allowed to own an imperfect decision. Watch what happens. Often it goes better than you'd expect. Sometimes it doesn't — and that's real information too, not a failure. This is the day to actually honor \"back off\" if that's what they chose. Hardest one. Most important one.",
+        "10-11": "Offer the choice. Today, if they pick the option you wouldn't have — the harder-to-start one, the messier setup, the \"I've got it, back off\" — let it ride anyway, all the way. A child like {{child_name}} learns ownership is real by being allowed to own an imperfect decision. Watch what happens. Often it goes better than you'd expect. Sometimes it doesn't — and that's real information too, not a failure.",
+        "12-14": "Offer the choice. Today, if {{child_name}} picks the option you wouldn't have — the harder-to-start one, the messier setup, the \"I've got it, back off\" — let it ride anyway, all the way. A child like {{child_name}} learns ownership is real by being allowed to own an imperfect decision. Watch what happens. Often it goes better than you'd expect. Sometimes it doesn't — and that's real information too, not a failure. This is the day to actually honor \"back off\" if that's what they chose. Hardest one. Most important one.",
       },
       // nextDayOpening uses day4_reflection to open Day 5.
       // "mixed" and "didnt_land" share the same text per spec ({{#if day4_reflection != "worked"}}).
@@ -174,7 +174,7 @@ Next week, we take this same principle off the homework table and into the momen
       // No nextDayOpening: Weekend uses week_trend computed from all 4 taps (day2–5).
       content: {
         "8-9":   "Offer the choice as usual. Afterward, say one true thing: *\"You decided how to start — that was yours.\"* Short, specific, and honest. At this age, being seen doing their own thing matters a lot.",
-        "10-11": "Offer the choice as usual. Afterward, if the start went even slightly smoother, say one true, specific thing about them — not praise for obeying, but recognition of their ownership: *\"You decided how to start today. That was yours.\"* Keep it small and honest. A Storm doesn't want to be managed; they want to be seen running their own show.",
+        "10-11": "Offer the choice as usual. Afterward, if the start went even slightly smoother, say one true, specific thing about them — not praise for obeying, but recognition of their ownership: *\"You decided how to start today. That was yours.\"* Keep it small and honest. A child like {{child_name}} doesn't want to be managed; they want to be seen running their own show.",
         "12-14": "Offer the choice as usual. Afterward — if anything went slightly better — say one genuine, non-gushing thing: *\"You ran that yourself.\"* No praise inflation. A teenager can smell a managed compliment, and it will cost you the next day.",
       },
       reflection: {

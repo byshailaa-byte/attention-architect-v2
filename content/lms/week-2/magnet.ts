@@ -11,7 +11,7 @@ export const weekContent: LmsWeekContent = {
     moveCalibration: {
       "8-9":  `Sit close during a non-screen activity, doing your own simple thing — reading, folding laundry, anything low-key. Warmth and proximity matter more than any specific activity.`,
       "10-11": `Be present at the start of a non-screen block, and notice — without leaving completely — whether {{child_pronoun_subj}} settles better with you nearby than the screen pull would otherwise allow.`,
-      "12-14": `Offer co-presence, not supervision — both of you doing your own things at the same table. A teen Magnet still benefits from this, but it has to read as company, not monitoring.`,
+      "12-14": `Offer co-presence, not supervision — both of you doing your own things at the same table. A teen {{child_name}} still benefits from this, but it has to read as company, not monitoring.`,
     },
 
     moveOutroShared: `What makes this work is that presence and screens are actually competing for the same job — being reliably there. Screens win by default when nobody else is offering. This week just makes sure someone is.`,
@@ -98,7 +98,7 @@ The screen was standing in for something reliably available. This week, somethin
 
 The screen was never really the point. It was standing in for something that felt reliably available.`,
       "12-14":
-`{{#if week_trend == "mostly_worked"}}Co-presence genuinely competes with an always-on screen — for {{child_name}}, company is a real alternative, not a consolation.{{/if}}{{#if week_trend == "mixed"}}The line is subtle. Peer energy and oversight feel completely different — a teen knows which one is happening.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Did it feel like company or like being watched? For a teen Magnet, that's the whole question — and only one competes with a screen.{{/if}}
+`{{#if week_trend == "mostly_worked"}}Co-presence genuinely competes with an always-on screen — for {{child_name}}, company is a real alternative, not a consolation.{{/if}}{{#if week_trend == "mixed"}}The line is subtle. Peer energy and oversight feel completely different — a teen knows which one is happening.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Did it feel like company or like being watched? For a teenager, that's the whole question — and only one competes with a screen.{{/if}}
 
 Next week, we stretch that same presence across a longer stretch of time.`,
     },

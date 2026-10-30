@@ -8,7 +8,7 @@ export const weekContent: LmsWeekContent = {
   weeklyReading: {
     introShared: `Week 1 tested whether a real, genuine stake — not a manufactured one — changes how fully your child shows up for something. Week 2 tested that same real stake in a screens context. This week asks something harder: does a real stake still carry them through something that takes longer than one sitting, when the payoff or consequence is further away than it was in a quick, contained task?
 
-The thing worth remembering: a Live Wire doesn't lack focus. Focus arrives fully and immediately when something real is genuinely on the line — and fades just as fast when the stake is fake or the payoff feels too far off to matter right now. Weeks 1 and 2 proved a real stake works for something short. This week tests whether it can be built into something longer, and whether it survives the middle stretch where the initial excitement has worn off but the payoff still isn't close.
+The thing worth remembering: a child like {{child_name}} doesn't lack focus. Focus arrives fully and immediately when something real is genuinely on the line — and fades just as fast when the stake is fake or the payoff feels too far off to matter right now. Weeks 1 and 2 proved a real stake works for something short. This week tests whether it can be built into something longer, and whether it survives the middle stretch where the initial excitement has worn off but the payoff still isn't close.
 
 This week's move: find or help create a genuine stake — not manufactured pressure — attached to something that takes more than one sitting to finish. A deadline that actually matters. A person genuinely counting on the outcome. A real consequence tied to whether it gets done.
 

@@ -6,17 +6,17 @@ export const weekContent: LmsWeekContent = {
   weekTitle: "Changing the first small thing",
 
   weeklyReading: {
-    introShared: `Screens are usually the single most fought-over rule in any house — which makes them the highest-value place to hand {{child_name}} real authority. If a Captain gets to genuinely help set the boundary here, in the domain that matters most to both of you, it proves the ownership from Week 1 wasn't just offered on easy, small tasks. This week doesn't loosen the limit. It changes who's holding the pen when it gets drawn.`,
+    introShared: `Screens are usually the single most fought-over rule in any house — which makes them the highest-value place to hand {{child_name}} real authority. If a child like {{child_name}} gets to genuinely help set the boundary here, in the domain that matters most to both of you, it proves the ownership from Week 1 wasn't just offered on easy, small tasks. This week doesn't loosen the limit. It changes who's holding the pen when it gets drawn.`,
 
     moveCalibration: {
       "8-9":  `Ask a simple, real question before announcing the rule: "how much time feels fair to you today?" Use {{child_pronoun_poss}} answer, or negotiate from it genuinely, rather than deciding first and asking after.`,
       "10-11": `A real back-and-forth conversation about the limit, arrived at together — and once set, let {{child_pronoun_obj}} track it {{child_pronoun_poss}} own way rather than you enforcing it.`,
-      "12-14": `Full collaborative negotiation, treated as a real discussion between two people, not a parent granting a concession. A teen Captain will know the difference instantly.`,
+      "12-14": `Full collaborative negotiation, treated as a real discussion between two people, not a parent granting a concession. A teen {{child_name}} will know the difference instantly.`,
     },
 
     moveOutroShared: `What makes this work is that screens are the domain that matters most — so real authority here reads as genuinely real, in a way a small chore never quite proves on its own.`,
 
-    whatWorkingLooksLike: `A good week looks like {{child_name}} actually holding a boundary {{child_pronoun_subj}} helped set, without you having to enforce it. A "bad" week usually means the "negotiation" was decided beforehand and {{child_pronoun_poss}} input was heard but not used — which a Captain detects immediately.`,
+    whatWorkingLooksLike: `A good week looks like {{child_name}} actually holding a boundary {{child_pronoun_subj}} helped set, without you having to enforce it. A "bad" week usually means the "negotiation" was decided beforehand and {{child_pronoun_poss}} input was heard but not used — which a child like {{child_name}} detects immediately.`,
 
     thingToHoldOnto: `Real authority in the hardest domain is the clearest proof it's real anywhere. Next week, we extend that same ownership to something ongoing, not just a single day's limit.`,
   },
@@ -54,7 +54,7 @@ export const weekContent: LmsWeekContent = {
       title: "Same move, and catch the override.",
       content: {
         "8-9":   "Ask, use the answer, hold the limit. And today: if {{child_pronoun_subj}} gives an answer you'd have changed, use it anyway. That's what makes it real.",
-        "10-11": "Same move — and today, notice the urge to quietly override {{child_pronoun_poss}} input after accepting it. A Captain detects that instantly — the override undoes the whole negotiation.",
+        "10-11": "Same move — and today, notice the urge to quietly override {{child_pronoun_poss}} input after accepting it. A child like {{child_name}} detects that instantly — the override undoes the whole negotiation.",
         "12-14": "Same move. Today: resist the override. If {{child_pronoun_poss}} input shaped the limit, let it stay shaped that way — even if it's not what you'd have chosen.",
       },
       reflection: {
@@ -90,15 +90,15 @@ export const weekContent: LmsWeekContent = {
   weekendReview: {
     content: {
       "8-9":
-`{{#if week_trend == "mostly_worked"}}Real say in the hardest rule proves it's real everywhere — {{child_name}} just proved {{child_pronoun_subj}} can hold a boundary {{child_pronoun_subj}} set.{{/if}}{{#if week_trend == "mixed"}}Normal. Genuine negotiation is harder than it sounds — the key is whether {{child_pronoun_poss}} input actually changed something.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Was {{child_pronoun_poss}} say actually used, or just heard? A Captain can tell the difference, and a fake negotiation is worse than no negotiation.{{/if}}
+`{{#if week_trend == "mostly_worked"}}Real say in the hardest rule proves it's real everywhere — {{child_name}} just proved {{child_pronoun_subj}} can hold a boundary {{child_pronoun_subj}} set.{{/if}}{{#if week_trend == "mixed"}}Normal. Genuine negotiation is harder than it sounds — the key is whether {{child_pronoun_poss}} input actually changed something.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Was {{child_pronoun_poss}} say actually used, or just heard? A child like {{child_name}} can tell the difference, and a fake negotiation is worse than no negotiation.{{/if}}
 
 Real authority in the hardest domain is the clearest proof it's real anywhere.`,
       "10-11":
-`{{#if week_trend == "mostly_worked"}}Screens are the domain everyone fights hardest over, which makes real authority here the clearest possible proof it's genuine.{{/if}}{{#if week_trend == "mixed"}}Normal. Genuine negotiation is harder than it sounds — the key question is whether {{child_pronoun_poss}} input actually shaped the outcome.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Was {{child_pronoun_poss}} input actually used, or was the "negotiation" decided before {{child_pronoun_subj}} spoke? A Captain detects that immediately — and a fake negotiation is worse than no negotiation.{{/if}}
+`{{#if week_trend == "mostly_worked"}}Screens are the domain everyone fights hardest over, which makes real authority here the clearest possible proof it's genuine.{{/if}}{{#if week_trend == "mixed"}}Normal. Genuine negotiation is harder than it sounds — the key question is whether {{child_pronoun_poss}} input actually shaped the outcome.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Was {{child_pronoun_poss}} input actually used, or was the "negotiation" decided before {{child_pronoun_subj}} spoke? A child like {{child_name}} detects that immediately — and a fake negotiation is worse than no negotiation.{{/if}}
 
 Next week, we extend that same ownership to something ongoing, not just a single day's limit.`,
       "12-14":
-`{{#if week_trend == "mostly_worked"}}Real authority in the hardest domain proves it's real everywhere — a teen Captain needed to see this exact thing.{{/if}}{{#if week_trend == "mixed"}}Normal. Genuine negotiation between equals takes practice — a teen Captain detects instantly when the outcome was already decided.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Was {{child_pronoun_poss}} input actually used, or just heard? A fake negotiation doesn't just fail — it costs trust. The next one needs to be genuinely open before it starts.{{/if}}
+`{{#if week_trend == "mostly_worked"}}Real authority in the hardest domain proves it's real everywhere — a teenager needed to see this exact thing.{{/if}}{{#if week_trend == "mixed"}}Normal. Genuine negotiation between equals takes practice — a teenager detects instantly when the outcome was already decided.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Was {{child_pronoun_poss}} input actually used, or just heard? A fake negotiation doesn't just fail — it costs trust. The next one needs to be genuinely open before it starts.{{/if}}
 
 Next week, we extend that same ownership to something ongoing, not just a single day's limit.`,
     },

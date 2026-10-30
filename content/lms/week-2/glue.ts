@@ -11,7 +11,7 @@ export const weekContent: LmsWeekContent = {
     moveCalibration: {
       "8-9":  `Keep the connection simple and physical — sit close, name the feeling plainly: "seems like today's been a lot — I'm here." Do this before any screen conversation happens.`,
       "10-11": `A slightly longer, more specific check-in — naming what's actually tense, not just "you okay?" — before addressing screen time at all.`,
-      "12-14": `Real, honest connection with no hidden agenda toward the screen conversation — a teen Glue will sense if the warmth is just a lead-in to a rule enforcement, and that backfires immediately.`,
+      "12-14": `Real, honest connection with no hidden agenda toward the screen conversation — a teenager will sense if the warmth is just a lead-in to a rule enforcement, and that backfires immediately.`,
     },
 
     moveOutroShared: `What makes this work is sequencing. Connection first doesn't excuse unlimited screen time — it just makes sure the boundary conversation isn't the thing {{child_pronoun_subj}}'s actually running from.`,
@@ -55,7 +55,7 @@ export const weekContent: LmsWeekContent = {
       content: {
         "8-9":   "Same — connect first, keep it real. And today: notice if you rushed it to get to the \"screen conversation.\" If you did, that's the thing to catch.",
         "10-11": "Same move — and today, notice whether the connection was genuine or a step on the way to the rule conversation. For {{child_name}}, {{child_pronoun_subj}} can tell the difference.",
-        "12-14": "Same move, keep it honest. A teen Glue will sense if the warmth has strings on it — this only works when there's genuinely no agenda behind it.",
+        "12-14": "Same move, keep it honest. A teen {{child_name}} will sense if the warmth has strings on it — this only works when there's genuinely no agenda behind it.",
       },
       reflection: {
         prompt: "How did today go?",
@@ -98,7 +98,7 @@ The screen was never the actual need. Next week, we make connection-first a dail
 
 The screen was never the actual need. Next week, we build connection-first into something that holds even on harder days.`,
       "12-14":
-`{{#if week_trend == "mostly_worked"}}Screens were often standing in for something that hadn't been addressed — connection first worked because it addressed the actual thing.{{/if}}{{#if week_trend == "mixed"}}Normal. Real connection without strings takes practice, and a teen Glue can detect strings instantly.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Was the connection real, or a lead-in? A teen who senses the warmth is instrumental will close down — which makes the screen more appealing, not less.{{/if}}
+`{{#if week_trend == "mostly_worked"}}Screens were often standing in for something that hadn't been addressed — connection first worked because it addressed the actual thing.{{/if}}{{#if week_trend == "mixed"}}Normal. Real connection without strings takes practice, and a teenager can detect strings instantly.{{/if}}{{#if week_trend == "mostly_didnt_land"}}Was the connection real, or a lead-in? A teen who senses the warmth is instrumental will close down — which makes the screen more appealing, not less.{{/if}}
 
 Next week, we build connection-first into a daily habit that holds even on harder days.`,
     },

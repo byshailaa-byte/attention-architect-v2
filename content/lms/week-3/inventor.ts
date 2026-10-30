@@ -8,7 +8,7 @@ export const weekContent: LmsWeekContent = {
   weeklyReading: {
     introShared: `Week 1 tested whether your child's own way of doing things — not your way, not the "correct" way — actually works when they're given real room to use it, on one task. Week 2 asked whether that same ownership of method could survive around screens. This week hands over something bigger: a whole project, spanning more than one sitting, with the entire approach — not just one step of it — theirs to decide.
 
-What matters here: an Inventor doesn't disengage because a task is hard. They disengage when their own method gets overridden — when the "right way" gets imposed instead of discovered. Weeks 1 and 2 proved that giving real ownership over a single task or moment changes how they show up for it. This week asks something harder: does that ownership hold across something that unfolds over days, with real decision points along the way where it would be easy for you to quietly step back in?
+What matters here: a child like {{child_name}} doesn't disengage because a task is hard. They disengage when their own method gets overridden — when the "right way" gets imposed instead of discovered. Weeks 1 and 2 proved that giving real ownership over a single task or moment changes how they show up for it. This week asks something harder: does that ownership hold across something that unfolds over days, with real decision points along the way where it would be easy for you to quietly step back in?
 
 This week's move: hand over an entire project — something with real stages or steps to it — and let your child own the whole approach, start to finish. Not just the first step. All of it, including the parts that might look inefficient to you as they unfold.
 

@@ -7,13 +7,13 @@ export const weekContent: LmsWeekContent = {
   weekTitle: "Staying with it on an ordinary day",
 
   weeklyReading: {
-    introShared: `This is Week 3 of a program built specifically for a Storm. Week 1 tested one thing: does real ownership over a single task actually change how your child shows up for it. Week 2 asked whether that same ownership holds up around screens — one of the hardest places to hand over control. This week asks something different: does it hold across a whole stretch, not just one moment you set up carefully?
+    introShared: `This is Week 3 of a program built specifically for a child like {{child_name}}. Week 1 tested one thing: does real ownership over a single task actually change how your child shows up for it. Week 2 asked whether that same ownership holds up around screens — one of the hardest places to hand over control. This week asks something different: does it hold across a whole stretch, not just one moment you set up carefully?
 
-Quick recap of what matters: a Storm's attention isn't missing. It switches off the instant something feels like it's being done *to* them rather than *by* them. Ownership is the on-switch. Weeks 1 and 2 proved that's true in a single, contained instance. That's a real result — but a single instance is still something you can engineer. A whole afternoon, with several pieces and real friction along the way, is harder to fake.
+Quick recap of what matters: {{child_name}}'s attention isn't missing. It switches off the instant something feels like it's being done *to* them rather than *by* them. Ownership is the on-switch. Weeks 1 and 2 proved that's true in a single, contained instance. That's a real result — but a single instance is still something you can engineer. A whole afternoon, with several pieces and real friction along the way, is harder to fake.
 
 This week's move: instead of one task with real choice, your child gets a whole routine — several pieces strung together, like an after-school sequence — with real say over the order and pacing of the entire thing. Not "pick which homework to do first." The whole stretch, start to finish, is theirs to run.
 
-Why this matters more than it might seem: a Storm who only gets ownership when you've carefully set it up learns that focus is something you grant, not something they generate. A Storm who holds ownership across a messier, longer stretch — including the part where something goes sideways — is building something closer to a real, durable skill.
+Why this matters more than it might seem: a child like {{child_name}} who only gets ownership when you've carefully set it up learns that focus is something you grant, not something they generate. A child like {{child_name}} who holds ownership across a messier, longer stretch — including the part where something goes sideways — is building something closer to a real, durable skill.
 
 This week may not go as smoothly as Weeks 1 and 2. That's expected, not a sign it isn't working. A single task is easier to protect than a whole afternoon. What you're actually testing this week is whether the ownership generalizes, or whether it was only ever working because the conditions were unusually clean.`,
 

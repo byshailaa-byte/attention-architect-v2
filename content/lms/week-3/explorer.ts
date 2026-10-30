@@ -8,7 +8,7 @@ export const weekContent: LmsWeekContent = {
   weeklyReading: {
     introShared: `Week 1 introduced something simple: a place for new ideas to go instead of getting chased mid-task or lost entirely. Week 2 tested that same system around screens, one of the biggest sources of pulling attention in a new direction. This week asks whether the system becomes something your child reaches for by default — not because you prompted it, but because it's simply how they now handle a new idea showing up at the wrong moment.
 
-The core idea worth holding onto: an Explorer's attention isn't unfocused. It moves toward connections and new ideas constantly, and the actual skill isn't suppressing that movement — it's giving it somewhere to go that doesn't derail what they're already doing. Weeks 1 and 2 proved the system works when it's fresh and prompted. This week tests whether it holds up as a standing habit across a whole week, without reminders.
+The core idea worth holding onto: {{child_name}}'s attention isn't unfocused. It moves toward connections and new ideas constantly, and the actual skill isn't suppressing that movement — it's giving it somewhere to go that doesn't derail what they're already doing. Weeks 1 and 2 proved the system works when it's fresh and prompted. This week tests whether it holds up as a standing habit across a whole week, without reminders.
 
 This week's move: instead of prompting your child to use the capture system for a specific tangent, let it become the default expectation for the entire week — any idea that pulls their attention away from what they're doing gets captured, not chased and not lost, without you having to say anything about it.
 

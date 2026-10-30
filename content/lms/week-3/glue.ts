@@ -8,7 +8,7 @@ export const weekContent: LmsWeekContent = {
   weeklyReading: {
     introShared: `Week 1 tested a specific idea: that connecting with your child before asking anything of them — genuinely, without an agenda — changes what they're able to do afterward. Week 2 tested that same sequence specifically around screens. This week asks whether connection-first can become a daily standard, not just something that happens on the days there's time for it.
 
-The thing worth remembering: for a Glue, connection isn't separate from focus — it's the actual precondition for it. When the relationship feels unsettled, focus doesn't fully arrive, no matter how the task itself is structured. Weeks 1 and 2 proved that connecting first, even briefly, changes what becomes possible next. This week tests whether that holds up on the days it's genuinely inconvenient — the busy days, the rushed mornings, the days connection is the first thing that feels expendable.
+The thing worth remembering: for a child like {{child_name}}, connection isn't separate from focus — it's the actual precondition for it. When the relationship feels unsettled, focus doesn't fully arrive, no matter how the task itself is structured. Weeks 1 and 2 proved that connecting first, even briefly, changes what becomes possible next. This week tests whether that holds up on the days it's genuinely inconvenient — the busy days, the rushed mornings, the days connection is the first thing that feels expendable.
 
 This week's move: every day this week, before any task or request, spend a few real minutes connecting with your child first — no agenda, no lead-in to what you actually need from them. Just presence and conversation, and only then the task.
 

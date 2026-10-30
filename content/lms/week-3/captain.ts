@@ -8,7 +8,7 @@ export const weekContent: LmsWeekContent = {
   weeklyReading: {
     introShared: `Week 1 tested whether your child leads differently when a decision is genuinely theirs to make, not just theirs to be consulted on. Week 2 tested that same real ownership around screens. This week hands over something bigger: an ongoing responsibility — something that needs tending over the whole week, not decided once and finished.
 
-What matters here: a Captain thrives on real ownership, not the appearance of it. A single decision, made once, is a different kind of test than a responsibility that has to be carried day after day, including on the days it would be easier for you to quietly take it back. Weeks 1 and 2 proved that real ownership of a single moment changes how your child shows up for it. This week asks whether that holds when the responsibility doesn't end after one decision.
+What matters here: a child like {{child_name}} thrives on real ownership, not the appearance of it. A single decision, made once, is a different kind of test than a responsibility that has to be carried day after day, including on the days it would be easier for you to quietly take it back. Weeks 1 and 2 proved that real ownership of a single moment changes how your child shows up for it. This week asks whether that holds when the responsibility doesn't end after one decision.
 
 This week's move: hand over something that needs leading over time — organizing something for the week, being in charge of a recurring task, managing something with more than one moving piece — and let it be genuinely theirs to run, not just theirs to have been assigned.
 

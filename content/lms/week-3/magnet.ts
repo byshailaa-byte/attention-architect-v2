@@ -8,7 +8,7 @@ export const weekContent: LmsWeekContent = {
   weeklyReading: {
     introShared: `Week 1 tested something quiet: whether simply being nearby, without offering guidance or correction, changed how your child engaged with what they were doing. Week 2 tested that same steady presence around screens. This week asks whether that presence can extend across a longer stretch — more than one activity, more time — without turning into supervision somewhere along the way.
 
-What's worth holding onto: a Magnet's attention isn't dependent on your input. It's supported by your presence itself — the fact that you're there is the resource, not what you say while you're there. Weeks 1 and 2 proved this works for a single, contained stretch. This week tests whether it holds for longer, because the longer the stretch, the stronger the pull to eventually say something — a suggestion, a check-in, a small correction — that quietly turns presence into supervision.
+What's worth holding onto: {{child_name}}'s attention isn't dependent on your input. It's supported by your presence itself — the fact that you're there is the resource, not what you say while you're there. Weeks 1 and 2 proved this works for a single, contained stretch. This week tests whether it holds for longer, because the longer the stretch, the stronger the pull to eventually say something — a suggestion, a check-in, a small correction — that quietly turns presence into supervision.
 
 This week's move: sit with your child through a longer stretch than usual, spanning more than one activity if possible, without offering guidance, correction, or check-ins along the way. The presence is the whole point. Anything added on top of it — even something well-meant — dilutes what makes it work.
 
