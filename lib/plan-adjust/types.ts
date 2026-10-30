@@ -16,6 +16,7 @@ export type AdjustedStep = {
   exactWords: string[];  // 1–2 lines the parent says TO the child, verbatim — rendered in quotes
   notice: string;        // what to watch for afterwards
   minutes: number;       // 1–5
+  banner?: string;       // the ONLY place a Coach nudge may go (two didn't-work in a row). Empty otherwise.
 };
 
 export type AdjustOrigin = "auto" | "coach";

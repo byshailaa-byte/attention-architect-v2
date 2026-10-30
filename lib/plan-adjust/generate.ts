@@ -14,6 +14,7 @@ const MODEL = "claude-sonnet-4-6";
 export type GenInput = {
   childName: string;
   ageBand: string;
+  pronoun: string;        // "he/him/his" | "she/her/her" | "they/them/their" — so pronouns agree
   patternPlain: string;   // the child's pattern in plain, NAME-FREE words (strength + pull), never "Storm"
   worryLabel: string;     // plain worry ("starting homework")
   week: number;
@@ -23,7 +24,7 @@ export type GenInput = {
   priorOutcome: PlanOutcome;
   priorNote: string | null;
   directive: string;      // from planTomorrow()
-  limitTopic?: boolean;   // the step is about a limit (screens/time/money) → negotiate, don't rubber-stamp
+  limitTopic?: boolean;   // the step SETS a limit (screens/time/money) → negotiate, don't rubber-stamp
 };
 
 export type GenResult = {
@@ -31,6 +32,7 @@ export type GenResult = {
   source: AdjustSource;   // 'llm' when the model's step passed; 'fallback' when it didn't
   validatorOk: boolean;
   retryUsed: boolean;
+  firstIssues: string[];  // why the first attempt was rejected (empty if it passed first time)
   model: string;
   inputTokens: number;
   outputTokens: number;
@@ -41,16 +43,17 @@ export type ModelCall = (system: string, user: string) => Promise<{ step: Adjust
 
 const EMIT_TOOL: Anthropic.Tool = {
   name: "emit_step",
-  description: "Emit the top opening line AND the single adjusted step for this day.",
+  description: "Emit the opening line AND the single adjusted step for this day.",
   input_schema: {
     type: "object",
     properties: {
-      opening: { type: "string", description: "one short sentence to the parent above the step, agreeing with how yesterday went and what today does" },
+      opening: { type: "string", description: "one short sentence to the PARENT above the step: agree with how yesterday went and name what today does. NEVER mention the Coach here." },
       title: { type: "string", description: "short action title, same skill as the base day" },
       moment: { type: "string", description: "the everyday moment it slots into, e.g. 'when homework starts'" },
-      exact_words: { type: "array", items: { type: "string" }, description: "1–2 lines the parent says TO the child, verbatim — second person, no observations" },
-      notice: { type: "string", description: "what to watch for afterwards" },
+      exact_words: { type: "array", items: { type: "string" }, description: "1–2 lines the parent says TO the child, verbatim, second person — no names, no he/she, no observations, no brackets, no Coach" },
+      notice: { type: "string", description: "what to watch for afterwards (this is an observation, so he/she is fine here)" },
       minutes: { type: "number", description: "1 to 5" },
+      banner: { type: "string", description: "leave EMPTY unless told to add a Coach nudge (two didn't-work days in a row). The ONLY place the Coach may be mentioned." },
     },
     required: ["opening", "title", "moment", "exact_words", "notice", "minutes"],
   },
@@ -74,6 +77,7 @@ const defaultModelCall: ModelCall = async (system, user) => {
     exactWords: normalizeExactWords(Array.isArray(inp.exact_words) ? inp.exact_words.map(String) : []),
     notice: String(inp.notice ?? "").trim(),
     minutes: Number(inp.minutes ?? 5),
+    banner: typeof inp.banner === "string" && inp.banner.trim() ? inp.banner.trim() : undefined,
   } : null;
   return { step, inputTokens: res.usage?.input_tokens ?? 0, outputTokens: res.usage?.output_tokens ?? 0, model: res.model };
 };
@@ -81,24 +85,37 @@ const defaultModelCall: ModelCall = async (system, user) => {
 function buildSystem(i: GenInput): string {
   return [
     "You adjust ONE day of a 5-minute-a-day attention plan for a parent to do with their child.",
-    "You are given the base step for this day and how yesterday actually went. Produce: (1) a one-sentence",
-    "opening to the parent that agrees with yesterday's outcome and names what today does, and (2) the adjusted step.",
-    "Keep the SAME skill and the SAME week as the base step. Keep it to 5 minutes or less.",
-    "EXACT WORDS are what the parent literally SAYS TO the child — second person ('you…'). They must NOT:",
-    "- mention the Coach, 'yourself', 'you might', or any observation ('watch whether…', 'notice if…')",
-    "- contain parentheses or stage directions",
-    "- refer to the child in the third person or by name (say it TO them).",
-    "Put nudges and what-to-watch in the opening or the notice, never in the exact words.",
-    i.limitTopic ? "This step touches a limit (screens/time/money): negotiate honestly — do NOT rubber-stamp whatever number the child names ('ok, let's go with that')." : "",
-    i.priorOutcome === "didnt_land" ? "Yesterday did not land, so make today MEASURABLY smaller: at most two short spoken lines and ≤3 minutes." : "",
-    "Never: clinical/diagnostic/severity words; promises or guarantees; price or selling; a number not in the base step; the child's 'type'/pattern name. Never blame the parent.",
-    "Emit with the emit_step tool only.",
+    "You are given the base step for today and how yesterday went. Emit, via the emit_step tool, an opening + the adjusted step.",
+    "Keep the SAME skill and SAME week as the base step; 5 minutes or less.",
+    "LENGTHS — stay within these (they are hard limits, keep headroom):",
+    "- opening ≤ 40 words · title ≤ 10 words · moment ≤ 15 words · notice ≤ 25 words · each spoken line ≤ 25 words.",
+    "",
+    "EXACT WORDS = the words the parent literally SAYS TO the child. They must be:",
+    "- second person ('you…'), spoken straight to the child",
+    "- NO child's name, NO he/she/they about the child",
+    "- NO Coach, NO 'yourself', NO 'you might'",
+    "- NO brackets, parentheses, or stage directions",
+    "Observations and what-to-watch go in `notice` (the child's pronoun is fine there). The opening speaks to the parent.",
+    `The PARENT is always addressed as "you" — never give the parent a pronoun (no "she"/"he" for the parent).`,
+    "",
+    "GOOD exact words:",
+    '  "You pick which one to start with."',
+    '  "Two minutes, then we switch off — I\'ll say it once."',
+    "BAD exact words (never do these):",
+    '  "Watch whether he settles." (that is an observation → put it in notice)',
+    '  "Sit with him, then step away. (meaning stay close)" (third person + stage direction)',
+    "",
+    i.limitTopic ? "This step SETS a limit (screens/time/money): negotiate honestly — do NOT rubber-stamp whatever the child names ('ok, let's go with that' / 'whatever you want'). Land on something together." : "",
+    i.priorOutcome === "didnt_land" ? "Yesterday did not land → make today MEASURABLY smaller: at most TWO short spoken lines and ≤3 minutes." : "",
+    "The opening NEVER mentions the Coach. If told to add a Coach nudge, put it ONLY in `banner`.",
+    "NUMBERS: write any number in words ('two minutes', not '2'; 'thirty seconds', not '30'), and never introduce a count or duration that isn't already in the base step. The `minutes` field is the only numeral.",
+    "Never: clinical/diagnostic/severity words; promises or guarantees; price or selling; the child's 'type'/pattern name. Never blame the parent.",
   ].filter(Boolean).join("\n");
 }
 
 function buildUser(i: GenInput): string {
   return [
-    `Child: ${i.childName}, age ${i.ageBand}.`,
+    `Child: ${i.childName}, age ${i.ageBand}. Use these pronouns for ${i.childName}: ${i.pronoun}.`,
     `How ${i.childName}'s attention tends to work (plain, for you — never repeat a label): ${i.patternPlain}`,
     `What the parent came worried about: ${i.worryLabel}.`,
     `This is Week ${i.week}, Day ${i.day}.`,
@@ -117,6 +134,7 @@ export async function generateAdjustedStep(i: GenInput, modelCall: ModelCall = d
   let r = await modelCall(system, buildUser(i)).catch(() => ({ step: null as AdjustedStep | null, inputTokens: 0, outputTokens: 0, model: MODEL }));
   inputTokens += r.inputTokens; outputTokens += r.outputTokens; model = r.model || model;
   let v = r.step ? validateStep(r.step, i.baseText, vctx) : { ok: false, issues: ["model emitted no step"] };
+  const firstIssues = v.ok ? [] : [...v.issues];
 
   if (!v.ok) {
     retryUsed = true;
@@ -126,16 +144,16 @@ export async function generateAdjustedStep(i: GenInput, modelCall: ModelCall = d
     const v2 = r2.step ? validateStep(r2.step, i.baseText, vctx) : { ok: false, issues: ["model emitted no step"] };
     if (v2.ok && r2.step) { r = r2; v = v2; }
     else {
-      const step = fallbackStep(i.baseTitle, i.baseText, i.priorOutcome);
+      const step = fallbackStep(i.baseTitle, i.baseText, i.priorOutcome, i.childName);
       const paise = costPaise(model, inputTokens, outputTokens);
       log(i, "fallback", false, true, inputTokens, outputTokens, paise);
-      return { step, source: "fallback", validatorOk: false, retryUsed, model, inputTokens, outputTokens, costPaise: paise };
+      return { step, source: "fallback", validatorOk: false, retryUsed, firstIssues, model, inputTokens, outputTokens, costPaise: paise };
     }
   }
 
   const paise = costPaise(model, inputTokens, outputTokens);
   log(i, "llm", true, retryUsed, inputTokens, outputTokens, paise);
-  return { step: r.step!, source: "llm", validatorOk: true, retryUsed, model, inputTokens, outputTokens, costPaise: paise };
+  return { step: r.step!, source: "llm", validatorOk: true, retryUsed, firstIssues, model, inputTokens, outputTokens, costPaise: paise };
 }
 
 function log(i: GenInput, source: string, ok: boolean, retry: boolean, inTok: number, outTok: number, paise: number): void {

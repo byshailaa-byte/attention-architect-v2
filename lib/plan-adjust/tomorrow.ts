@@ -39,7 +39,7 @@ export function planTomorrow(prior: PlanOutcome | null, streak: number): Tomorro
       directive:
         "Yesterday's step DID NOT land. Give a SMALLER version of the same skill — easier, shorter, lower-stakes — OR move it to a calmer, better moment in the day. Make the ask clearly gentler than yesterday. Same skill, same week. Still ≤5 minutes." +
         (coach
-          ? " This is the SECOND day in a row that didn't land: in the opening, gently acknowledge that two hard days is normal and the step is now very small — but do NOT mention the Coach in the opening (a separate banner already offers that, so mentioning it here would repeat it)."
+          ? " This is the SECOND day in a row that didn't land. In the opening, gently acknowledge that two hard days is normal and the step is now very small — but do NOT mention the Coach in the opening. Put the Coach suggestion ONLY in the `banner` field (one short line, e.g. 'Two tough days in a row — it may help to talk it through with your Coach.')."
           : ""),
       showCoachLine: coach,
       // The pill never mentions the Coach — the banner (showCoachLine) carries that once, so there's

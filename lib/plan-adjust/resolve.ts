@@ -12,9 +12,13 @@ import { validateStep } from "./validate";
 import type { AdjustedStep, AdjustOrigin, AdjustSource, PlanOutcome, ResolvedStep } from "./types";
 import { toPlanOutcome } from "./types";
 
-// A step touches a limit (screens / time / money) → the Coach must negotiate, not rubber-stamp.
+// Only a step that SETS or negotiates a quantified RULE — screen-time, money, or a time cap — triggers
+// the stricter "negotiate, don't rubber-stamp" check. A homework-start, reminders, or notepad step is
+// NOT a limit topic just because it mentions "time" or a screen. Driven by the step text, not the worry.
 export function isLimitTopic(worryLabel: string, baseText: string): boolean {
-  return /\bscreen|phone|tablet|\btime\b|minutes|money|allowance|pocket|device|gaming|\btv\b/i.test(`${worryLabel} ${baseText}`);
+  const t = `${worryLabel} ${baseText}`.toLowerCase();
+  if (/\b(allowance|pocket[- ]?money|spending money|how much money)\b/.test(t)) return true;
+  return /\b(screen[- ]?time|time limit|time cap|cut[- ]?off time|how much (time|screen|longer)|how long (can|should|is)|set (a )?(screen |time )?(limit|rule)|propose (a |the )?(screen |time )?rule|minutes? (of|on) (screen|the (tablet|phone|tv|console)))\b/.test(t);
 }
 
 // The next plan day a parent will reach after (week, day): the next day in the week, else Day 1 of the
@@ -28,6 +32,11 @@ export function nextPlanDay(week: number, day: number): { week: number; day: num
 // The trial is a fixed 4-day quick start. The next quick-start day, or null after day 4.
 export function trialNextDay(day: number): number | null {
   return day >= 1 && day < 4 ? day + 1 : null;
+}
+
+// A compact pronoun hint for the generator so every pronoun agrees with the seeded child_gender.
+export function pronounHint(gender: Gender): string {
+  return gender === "boy" ? "he/him/his" : gender === "girl" ? "she/her/her" : "they/them/their";
 }
 
 // The child's pattern in plain, NAME-FREE words (strength + pull), filled for gender. Never a label.
@@ -130,7 +139,8 @@ export async function resolveForDay(input: ResolveInput, modelCall?: ModelCall):
   const tomorrow = planTomorrow(prior, streak);
   const gen = await generateAdjustedStep(
     {
-      childName: input.childName, ageBand: input.ageBand, patternPlain: patternPlain(input.archetype, input.gender),
+      childName: input.childName, ageBand: input.ageBand, pronoun: pronounHint(input.gender),
+      patternPlain: patternPlain(input.archetype, input.gender),
       worryLabel: input.worryLabel, week: input.week, day: input.day,
       baseTitle: input.baseTitle, baseText: input.baseText,
       priorOutcome: prior, priorNote: note, directive: tomorrow.directive,
@@ -150,6 +160,33 @@ export async function resolveForDay(input: ResolveInput, modelCall?: ModelCall):
     step: gen.step, origin: "auto", source: gen.source, reason: null, priorOutcome: prior,
     showCoachLine: tomorrow.showCoachLine, validatorOk: gen.validatorOk, retryUsed: gen.retryUsed,
   };
+}
+
+// Pre-generate the NEXT day's adjusted step as soon as today's outcome is tapped, so the unlock only
+// reads the cache and a retry never makes the parent wait. Best-effort; same-week only (a cross-week
+// unlock regenerates on first view). Safe to call fire-and-forget.
+export async function pregenerateNextDay(userId: string, week: number, day: number): Promise<void> {
+  if (day < 1 || day >= 5) return; // next day in the same week only
+  const nextDay = day + 1;
+  const { loadLmsUserContextById } = await import("@/lib/lms/user-context");
+  const { getLmsWeekContent, getDayCard } = await import("@/lib/lms/content");
+  const { fillLmsContent } = await import("@/lib/lms/render");
+  const { CONCERN_CARD_LABELS } = await import("@/lib/concerns");
+  const ctx = await loadLmsUserContextById(userId);
+  if (!ctx) return;
+  const content = getLmsWeekContent(ctx.archetype, week, ctx.ageBand);
+  const card = content ? getDayCard(content, nextDay) : null;
+  if (!card) return;
+  const sql = getSql();
+  const wr = (await sql`SELECT concerns FROM assessments WHERE id = ${ctx.assessmentId}::uuid LIMIT 1`.catch(() => [])) as unknown as { concerns: string[] | null }[];
+  const worryKey = wr[0]?.concerns?.[0] ?? null;
+  const worryLabel = (worryKey && CONCERN_CARD_LABELS[worryKey]) || "staying focused";
+  const fill = (s: string) => fillLmsContent(s, ctx.childName, ctx.childGender);
+  await resolveForDay({
+    userId, assessmentId: ctx.assessmentId, archetype: ctx.archetype, ageBand: ctx.ageBand,
+    childName: ctx.childName, gender: ctx.childGender, worryLabel, week, day: nextDay,
+    baseTitle: fill(card.title), baseText: fill(card.content[ctx.ageBand]),
+  }).catch((e) => console.error("[plan-adjust] pregenerate failed:", (e as Error).message));
 }
 
 // A4 — the Coach writes a validated override for the next unlocked day. Returns ok only after the DB

@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { verifySessionToken, COOKIE_NAME } from "@/lib/auth/session";
+import { pregenerateNextDay } from "@/lib/plan-adjust/resolve";
 import { blockIfAdminView } from "@/lib/lms/admin-view-guard";
 import { storeReflection, getActiveAssessmentId } from "@/lib/lms/progress";
 import { checkUnlocked } from "@/lib/lms/unlock-gate";
@@ -41,6 +42,10 @@ export async function POST(req: NextRequest) {
     }
 
     await storeReflection(userId, week, day, outcome, note);
+
+    // Pre-generate tomorrow's adjusted step now (after the response flushes), so the unlock reads cache
+    // and a retry never makes the parent wait. Best-effort; same-week only.
+    after(() => pregenerateNextDay(userId, week, day).catch(() => {}));
 
     // Fire lms_reflection_submitted using assessment session_id if available
     const assessmentId = await getActiveAssessmentId(userId);

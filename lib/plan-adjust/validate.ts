@@ -67,7 +67,10 @@ export function validateStep(step: AdjustedStep, baseText: string, ctx: Validate
     if (ctx.limitTopic && UNCONDITIONAL.test(line)) issues.push(`unconditional agreement on a limit — negotiate honestly instead: "${line}"`);
   }
 
-  const all = [step.opening, step.title, step.moment, step.notice, ...lines].join("  ");
+  // The Coach is mentioned ONLY in the banner — never in the opening (that would duplicate the banner).
+  if (/\bcoach\b/i.test(step.opening)) issues.push("the opening must not mention the Coach — put any Coach nudge in the banner");
+
+  const all = [step.opening, step.title, step.moment, step.notice, ...lines, step.banner ?? ""].join("  ");
   if (BANNED.test(all)) issues.push(`banned/clinical/promissory word: "${all.match(BANNED)?.[0]}"`);
   if (SELLING.test(all)) issues.push(`price/selling language: "${all.match(SELLING)?.[0]}"`);
   if (PATTERN_NAMES.test(all)) issues.push(`pattern name leaked: "${all.match(PATTERN_NAMES)?.[0]}"`);

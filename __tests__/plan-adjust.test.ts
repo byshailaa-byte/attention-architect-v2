@@ -84,10 +84,26 @@ describe("C — negotiate on limits (#10)", () => {
     expect(validateStep({ ...GOOD, exactWords: ["Whatever you want for screen time is fine."] }, "screens", { week: 1, limitTopic: true }).ok).toBe(false));
   it("allows an honest negotiation line", () =>
     expect(validateStep({ ...GOOD, exactWords: ["How much feels fair? Let's see if we can meet in the middle."] }, "screens", { week: 1, limitTopic: true }).ok).toBe(true));
-  it("isLimitTopic detects screens/time/money", () => {
-    expect(isLimitTopic("screen-off battles", "")).toBe(true);
-    expect(isLimitTopic("starting homework", "offer a choice")).toBe(false);
+});
+
+describe("1 — limit-topic detector only fires on an actual RULE", () => {
+  it("screen-time negotiation IS a limit topic", () => {
+    expect(isLimitTopic("screen time limits", "how much time feels fair to you today?")).toBe(true);
+    expect(isLimitTopic("", "let them propose the screen rule")).toBe(true);
+    expect(isLimitTopic("pocket money", "")).toBe(true);
   });
+  it("homework-start / reminders / notepad / screen-OFF are NOT limit topics", () => {
+    expect(isLimitTopic("starting homework", "offer a choice before homework")).toBe(false);
+    expect(isLimitTopic("needing reminders", "keep a notepad next to the work")).toBe(false);
+    expect(isLimitTopic("screen-off battles", "sit nearby without steering what they're doing")).toBe(false);
+  });
+});
+
+describe("3 — the opening never mentions the Coach", () => {
+  it("rejects a Coach mention in the opening", () =>
+    expect(validateStep({ ...GOOD, opening: "Two hard days — talk to your Coach, then try this." }, BASE, { week: 1 }).ok).toBe(false));
+  it("allows the Coach in the banner", () =>
+    expect(validateStep({ ...GOOD, banner: "It may help to talk it through with your Coach." }, BASE, { week: 1 }).ok).toBe(true));
 });
 
 describe("C — a didnt_land adjust must be measurably smaller", () => {
@@ -187,7 +203,7 @@ describe("A4 — adjust_next_step gating (paid + REAL trial, not preview)", () =
 
 function genInput(outcome: "worked" | "partly" | "didnt_land") {
   return {
-    childName: "Aarav", ageBand: "10-11", patternPlain: "Full of energy. Pulled toward screens.",
+    childName: "Aarav", ageBand: "10-11", pronoun: "he/him/his", patternPlain: "Full of energy. Pulled toward screens.",
     worryLabel: "starting homework", week: 1, day: 3, baseTitle: "Offer the first choice",
     baseText: BASE, priorOutcome: outcome, priorNote: null, directive: planTomorrow(outcome, 1).directive,
   };

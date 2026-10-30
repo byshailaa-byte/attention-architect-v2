@@ -168,9 +168,9 @@ function AdjustedStepCard({ adjusted, day }: { adjusted: ResolvedStep; day: numb
     : `Adjusted for you: ${planTomorrow(priorOutcome, showCoachLine ? 2 : 1).adjustedForYou}`;
   return (
     <section style={{ background: V2.white, border: `1px solid ${V2.line}`, borderRadius: 18, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
-      {showCoachLine && origin !== "coach" && (
+      {(step.banner || (showCoachLine && origin !== "coach")) && (
         <Link href="/lms-v2/coach" style={{ display: "block", background: V2.tintPurple, border: "1px solid #DDD3EE", borderRadius: 12, padding: "12px 14px", fontSize: 13.5, fontWeight: 600, color: "#4A3470", textDecoration: "none" }}>
-          Two tough days in a row — it may help to talk it through with your Coach →
+          {step.banner || "Two tough days in a row — it may help to talk it through with your Coach"} →
         </Link>
       )}
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: V2.darkGold }}>{eyebrow}</div>
