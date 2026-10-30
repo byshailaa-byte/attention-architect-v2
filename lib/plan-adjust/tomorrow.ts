@@ -39,12 +39,12 @@ export function planTomorrow(prior: PlanOutcome | null, streak: number): Tomorro
       directive:
         "Yesterday's step DID NOT land. Give a SMALLER version of the same skill — easier, shorter, lower-stakes — OR move it to a calmer, better moment in the day. Make the ask clearly gentler than yesterday. Same skill, same week. Still ≤5 minutes." +
         (coach
-          ? " This is the SECOND day in a row that didn't land, so open by gently suggesting the parent talk it through with their Coach before trying again."
+          ? " This is the SECOND day in a row that didn't land: in the opening, gently acknowledge that two hard days is normal and the step is now very small — but do NOT mention the Coach in the opening (a separate banner already offers that, so mentioning it here would repeat it)."
           : ""),
       showCoachLine: coach,
-      adjustedForYou: coach
-        ? "a smaller version — and it may help to talk to your Coach"
-        : "a smaller version, for a better moment",
+      // The pill never mentions the Coach — the banner (showCoachLine) carries that once, so there's
+      // no duplicate. The pill is just the shape of the change.
+      adjustedForYou: "a smaller version, for a better moment",
     };
   }
   // No prior outcome (first day, or nothing tapped yet) → the base step, unadjusted.

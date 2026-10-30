@@ -92,13 +92,20 @@ export async function buildTrialSubject(trial: CoachTrial, userCtx: LmsUserConte
   const hardPartRaw = report?.hardPart
     || composeFallback(userCtx.archetype, worryKey ?? "", userCtx.childName, userCtx.childGender).hardPart;
 
+  // A Coach override for this quick-start day (written by adjust_next_step) becomes today's step source.
+  const ovUserId = trial.user_id ?? userCtx.userId;
+  let srcRaw = stepSourceRaw, titleRaw = today?.title ?? "";
+  const ov = (await sql`SELECT step FROM plan_adjustments WHERE user_id=${ovUserId} AND week=0 AND day=${day} AND origin='coach' ORDER BY updated_at DESC LIMIT 1`.catch(() => [])) as unknown as { step: { title?: string; moment?: string; exactWords?: string[]; notice?: string } }[];
+  if (ov[0]?.step) { const s = ov[0].step; srcRaw = [s.title, s.moment, ...(s.exactWords ?? []), s.notice].filter(Boolean).join(" — "); titleRaw = s.title ?? titleRaw; }
+
   return {
     kind: "trial", subjectId: trial.id, assessmentId: userCtx.assessmentId ?? null,
     mode: "trial", parentFirst, child: userCtx.childName, childGender: userCtx.childGender,
     ageBand: userCtx.ageBand, archetype: userCtx.archetype, worryKey, worryLabel,
     parentPattern: userCtx.parentPattern,
     hardPartRaw, archetypeDescRaw: archetypeDesc(userCtx.archetype, userCtx.childName, userCtx.childGender),
-    stepSourceRaw, stepTitleRaw: today?.title ?? "", supportEmail: ENTITY.supportEmail, week: 1, day,
+    stepSourceRaw: srcRaw, stepTitleRaw: titleRaw, supportEmail: ENTITY.supportEmail, week: 1, day,
+    userId: ovUserId, sessionId, isPreview: trial.is_preview,
   };
 }
 
@@ -126,6 +133,7 @@ export async function buildPaidSubject(ctx: LmsUserContext, message: string): Pr
     hardPartRaw, archetypeDescRaw: archetypeDesc(ctx.archetype, ctx.childName, ctx.childGender),
     stepSourceRaw: fillLmsContent(old.dayText, ctx.childName, ctx.childGender), stepTitleRaw: old.tonightStep,
     supportEmail: ENTITY.supportEmail, week: old.week, day: old.day,
+    userId: ctx.userId, sessionId: r?.session_id ?? null, isPreview: false,
   };
 }
 

@@ -26,14 +26,15 @@ export const V2 = {
 export const HEAD = "'Newsreader', Georgia, serif";
 export const BODY = "'Figtree', system-ui, sans-serif";
 
+// Labels match the v3 page: Worked / Partly / Didn't work. Stored enum values are unchanged.
 export const OUTCOMES: { value: "worked" | "mixed" | "didnt_land"; label: string }[] = [
   { value: "worked", label: "Worked" },
-  { value: "mixed", label: "Mixed" },
-  { value: "didnt_land", label: "Didn't land" },
+  { value: "mixed", label: "Partly" },
+  { value: "didnt_land", label: "Didn't work" },
 ];
 
 export const OUTCOME_LABEL: Record<string, string> = {
   worked: "Worked",
-  mixed: "Mixed",
-  didnt_land: "Didn't land",
+  mixed: "Partly",
+  didnt_land: "Didn't work",
 };

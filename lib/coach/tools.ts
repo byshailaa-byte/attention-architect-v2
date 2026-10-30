@@ -10,8 +10,9 @@ import { appendMemoryNote, setLanguagePref } from "@/lib/coach/memory";
 import { getSql } from "@/lib/db/client";
 import { getLmsWeekContent, getDayCard } from "@/lib/lms/content";
 import { fillLmsContent } from "@/lib/lms/render";
+import { resolveTrialDays } from "@/lib/coach-trial/content";
 import { fallbackStep } from "@/lib/plan-adjust/fallback";
-import { writeCoachOverride, nextPlanDay } from "@/lib/plan-adjust/resolve";
+import { writeCoachOverride, nextPlanDay, trialNextDay } from "@/lib/plan-adjust/resolve";
 import type { AdjustedStep } from "@/lib/plan-adjust/types";
 import type { AgeBand } from "@/content/types";
 import type { Gender } from "@/lib/report/pronouns";
@@ -22,11 +23,15 @@ export type ToolSubject = {
   assessmentId: string | null;
   week: number;             // paid week (1 for trial)
   day: number;              // current day
-  // Child facts for adjust_next_step (paid only): used to build the base step for the next day.
+  // Child facts for adjust_next_step: used to build the base step for the next day.
   archetype?: string;
   ageBand?: string;
   childName?: string;
   childGender?: Gender;
+  worryLabel?: string;
+  userId?: string;          // the parent's user id (paid: == subjectId; trial: trial.user_id)
+  sessionId?: string | null;// for resolveTrialDays on a trial adjust
+  isPreview?: boolean;      // true = admin sandbox trial → adjust_next_step is refused
 };
 
 // Anthropic tool definitions (JSON Schema inputs).
@@ -183,41 +188,52 @@ export async function runCoachTool(subject: ToolSubject, name: string, input: Re
         return ok(name, input, "noted");
       }
       case "adjust_next_step": {
-        // Paid only — the trial has a fixed 4-day quick start, not the adjustable plan.
-        if (subject.kind !== "paid") return bad(name, input, "the adjustable plan is only on the full plan, not the trial");
+        // Available on the paid plan and to REAL trial parents — never a preview (sandbox) trial.
+        if (subject.kind === "trial" && subject.isPreview) return bad(name, input, "adjust_next_step is not available in the preview sandbox");
         const reason = typeof input.reason === "string" ? input.reason.trim().slice(0, 160) : "";
         if (!reason) return bad(name, input, "a short reason is required (the parent sees it)");
         if (!subject.archetype || !subject.ageBand || !subject.childName) return bad(name, input, "missing child context");
-
-        const target = nextPlanDay(subject.week, subject.day);
-        if (!target) return bad(name, input, "there is no next day to adjust");
-
-        // Base step for the NEXT day → merge the coach's patch → validate on write.
-        const content = getLmsWeekContent(subject.archetype, target.week, subject.ageBand as AgeBand);
-        const dayCard = content ? getDayCard(content, target.day) : null;
-        if (!dayCard) return bad(name, input, "could not load the next day's base step");
         const fill = (s: string) => fillLmsContent(s, subject.childName!, subject.childGender ?? null);
-        const baseTitle = fill(dayCard.title);
-        const baseText = fill(dayCard.content[subject.ageBand as AgeBand] ?? "");
-        const base = fallbackStep(baseTitle, baseText);
 
+        // Build the base step for the NEXT day — paid = next LMS day; trial = next of the 4 quick-start days.
+        let targetWeek: number, targetDay: number, baseTitle: string, baseText: string;
+        if (subject.kind === "paid") {
+          const t = nextPlanDay(subject.week, subject.day);
+          if (!t) return bad(name, input, "there is no next day to adjust");
+          const content = getLmsWeekContent(subject.archetype, t.week, subject.ageBand as AgeBand);
+          const card = content ? getDayCard(content, t.day) : null;
+          if (!card) return bad(name, input, "could not load the next day's base step");
+          targetWeek = t.week; targetDay = t.day;
+          baseTitle = fill(card.title); baseText = fill(card.content[subject.ageBand as AgeBand] ?? "");
+        } else {
+          const t = trialNextDay(subject.day);
+          if (!t) return bad(name, input, "there is no next quick-start day to adjust");
+          const cards = await resolveTrialDays({ sessionId: subject.sessionId ?? "", archetype: subject.archetype, ageBand: subject.ageBand as AgeBand, childName: subject.childName, gender: subject.childGender ?? null });
+          const card = cards[t - 1];
+          if (!card) return bad(name, input, "could not load the next quick-start step");
+          targetWeek = 0; targetDay = t; // week 0 marks a trial override (no collision with paid weeks 1–6)
+          baseTitle = card.title ?? "Next step";
+          baseText = card.source === "report" ? [card.instead ? `Instead of: ${card.instead}` : "", card.say ? `Try: ${card.say}` : "", ...(card.steps ?? [])].filter(Boolean).join(" ") : (card.body ?? "");
+        }
+
+        const base = fallbackStep(baseTitle, baseText, "partly", subject.childName);
         const patch = (input.step_patch ?? {}) as Record<string, unknown>;
         const merged: AdjustedStep = {
+          opening: typeof patch.opening === "string" && patch.opening.trim() ? patch.opening.trim() : "You and your Coach worked this out together — here's the step.",
           title: typeof patch.title === "string" && patch.title.trim() ? patch.title.trim() : base.title,
           moment: typeof patch.moment === "string" && patch.moment.trim() ? patch.moment.trim() : base.moment,
-          exactWords: Array.isArray(patch.exact_words) && patch.exact_words.length
-            ? patch.exact_words.map((w) => String(w).trim()).filter(Boolean)
-            : base.exactWords,
+          exactWords: Array.isArray(patch.exact_words) && patch.exact_words.length ? patch.exact_words.map((w) => String(w).trim()).filter(Boolean) : base.exactWords,
           notice: typeof patch.notice === "string" && patch.notice.trim() ? patch.notice.trim() : base.notice,
           minutes: Number.isFinite(Number(patch.minutes)) ? Number(patch.minutes) : base.minutes,
         };
 
         const res = await writeCoachOverride({
-          userId: subject.subjectId, assessmentId: subject.assessmentId,
-          week: target.week, day: target.day, step: merged, reason, baseText,
+          userId: subject.userId ?? subject.subjectId, assessmentId: subject.assessmentId,
+          week: targetWeek, day: targetDay, step: merged, reason, baseText,
+          childName: subject.childName, worryLabel: subject.worryLabel,
         });
         if (!res.ok) return bad(name, input, `step not saved (${res.issue ?? "invalid"}) — do NOT tell the parent it's updated`);
-        return ok(name, input, `next step (Week ${target.week} Day ${target.day}) updated for the parent`);
+        return ok(name, input, `next step (${subject.kind === "paid" ? `Week ${targetWeek} Day ${targetDay}` : `quick-start day ${targetDay}`}) updated for the parent`);
       }
       default:
         return bad(name, input, "unknown tool");

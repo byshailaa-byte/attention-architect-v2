@@ -17,6 +17,8 @@ export default function V2DayActions({
   day,
   childName,
   reflectionPrompt,
+  observationPrompt,
+  observationOptions,
   alreadyComplete,
   existingReflection,
   nextHref,
@@ -25,7 +27,9 @@ export default function V2DayActions({
   week: number;
   day: number;
   childName: string;
-  reflectionPrompt: string | null; // null = Day 1 (observe only)
+  reflectionPrompt: string | null; // days 2–5 ("How did it go?")
+  observationPrompt?: string | null; // Day 1 observation tap ("What did you notice?")
+  observationOptions?: { value: ReflectionOutcome; label: string }[]; // Day 1 labels (Calm / Some pushback / Big fight)
   alreadyComplete: boolean;
   existingReflection: ReflectionOutcome | null;
   nextHref: string;
@@ -33,7 +37,13 @@ export default function V2DayActions({
 }) {
   const router = useRouter();
   const readOnly = useReadOnly();
-  const needsReflection = reflectionPrompt !== null; // days 2–5
+  // A tap is required on days 2–5 (reflection) and on Day 1 (observation — stored under the same enum
+  // so Day 2 adapts from it: Calm→worked→step further, Some pushback→mixed→tweak, Big fight→didnt_land→smaller).
+  const isObservation = !reflectionPrompt && !!observationPrompt;
+  const tapPrompt = reflectionPrompt ?? observationPrompt ?? null;
+  const tapOptions = isObservation ? (observationOptions ?? OUTCOMES) : OUTCOMES;
+  const needsReflection = tapPrompt !== null;
+  const labelFor = (o: ReflectionOutcome) => (isObservation ? tapOptions.find((x) => x.value === o)?.label : OUTCOME_LABEL[o]) ?? OUTCOME_LABEL[o];
   const [selected, setSelected] = useState<ReflectionOutcome | null>(existingReflection);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -95,14 +105,14 @@ export default function V2DayActions({
         <div style={{ display: "flex", alignItems: "center", gap: 10, background: V2.tintGreen, border: `1px solid rgba(47,93,58,0.3)`, borderRadius: 14, padding: "14px 18px" }}>
           <span style={{ fontSize: 18, color: V2.green, fontWeight: 800 }}>✓</span>
           <span style={{ fontSize: 15, fontWeight: 600, color: V2.greenInk }}>
-            Done{existingReflection ? ` · you recorded "${OUTCOME_LABEL[existingReflection]}"` : ""}
+            Done{existingReflection ? ` · you recorded "${labelFor(existingReflection)}"` : ""}
           </span>
         </div>
 
         <section style={{ background: V2.white, border: `1px solid ${V2.line}`, borderRadius: 16, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ fontWeight: 700, fontSize: 16, color: V2.navy }}>Done. How did it go?</div>
           <div style={{ display: "flex", gap: 8 }}>
-            {[["worked", "It worked"], ["sort_of", "Sort of"], ["didnt_work", "Didn't work"]].map(([val, label]) => {
+            {[["worked", "Worked"], ["sort_of", "Partly"], ["didnt_work", "Didn't work"]].map(([val, label]) => {
               const on = outcome === val;
               return (
                 <button key={val} type="button" disabled={readOnly} title={readOnly ? READ_ONLY_TOOLTIP : undefined} onClick={() => saveOutcome(val)}
@@ -130,10 +140,10 @@ export default function V2DayActions({
     <>
       {needsReflection && (
         <section style={{ background: V2.white, border: `1px solid ${V2.line}`, borderRadius: 18, padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: V2.dim }}>RECORD · TONIGHT</div>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: V2.navy }}>{reflectionPrompt}</h2>
-          <div role="group" aria-label="How did it go" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-            {OUTCOMES.map((o) => {
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: V2.dim }}>{isObservation ? "OBSERVE · TODAY" : "RECORD · TONIGHT"}</div>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: V2.navy }}>{tapPrompt}</h2>
+          <div role="group" aria-label={isObservation ? "What did you notice" : "How did it go"} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+            {tapOptions.map((o) => {
               const on = selected === o.value;
               return (
                 <button key={o.value} type="button" aria-pressed={on} onClick={() => setSelected(o.value)}

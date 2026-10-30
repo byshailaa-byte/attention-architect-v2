@@ -19,6 +19,17 @@ export type LmsUserContext = {
   onboardingCompleted: boolean;
 };
 
+// The Neon serverless (HTTP) driver can throw a transient "fetch failed" / DNS blip on a cold or flaky
+// local network hop. A single blip should not 500 the whole LMS page — retry a few times with backoff.
+// (Matches the Parents-desk withRetry; prod/Vercel rarely hits this but the retry is harmless there.)
+async function withRetry<T>(fn: () => Promise<T>, tries = 6): Promise<T> {
+  let last: unknown;
+  for (let i = 0; i < tries; i++) {
+    try { return await fn(); } catch (e) { last = e; await new Promise((r) => setTimeout(r, 300 * (i + 1))); }
+  }
+  throw last;
+}
+
 function normalizeGender(raw: string | null): Gender {
   if (!raw) return null;
   const v = raw.toLowerCase();
@@ -33,7 +44,7 @@ function normalizeGender(raw: string | null): Gender {
 // Used by the Coach API (route handlers can't redirect()).
 export async function loadLmsUserContextById(userId: string): Promise<LmsUserContext | null> {
   const sql = getSql();
-  const [rows, userRows] = await Promise.all([
+  const [rows, userRows] = await withRetry(() => Promise.all([
     sql`
       SELECT a.id, a.child_name, a.child_gender, a.age_band, a.archetype, a.parent_pattern, a.weakest_two
       FROM assessments a JOIN purchases p ON p.assessment_id = a.id
@@ -41,7 +52,7 @@ export async function loadLmsUserContextById(userId: string): Promise<LmsUserCon
       ORDER BY p.created_at DESC LIMIT 1
     ` as unknown as Promise<{ id: string; child_name: string; child_gender: string | null; age_band: AgeBand; archetype: string; parent_pattern: string; weakest_two: string[] | null }[]>,
     sql`SELECT onboarding_completed_at FROM users WHERE id = ${userId}` as unknown as Promise<{ onboarding_completed_at: Date | null }[]>,
-  ]);
+  ]));
   if (rows.length === 0) return null;
   const a = rows[0];
   return {
@@ -71,7 +82,7 @@ export async function getLmsUserContext(): Promise<LmsUserContext> {
   }
 
   const sql = getSql();
-  const [rows, userRows] = await Promise.all([
+  const [rows, userRows] = await withRetry(() => Promise.all([
     sql`
       SELECT
         a.id,
@@ -97,7 +108,7 @@ export async function getLmsUserContext(): Promise<LmsUserContext> {
       weakest_two: string[] | null;
     }[]>,
     sql`SELECT onboarding_completed_at FROM users WHERE id = ${userId}` as unknown as Promise<{ onboarding_completed_at: Date | null }[]>,
-  ]);
+  ]));
 
   if (rows.length === 0) {
     if (imp) throw new Error("Impersonated user has no paid assessment");

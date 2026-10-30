@@ -12,12 +12,22 @@ import { validateStep } from "./validate";
 import type { AdjustedStep, AdjustOrigin, AdjustSource, PlanOutcome, ResolvedStep } from "./types";
 import { toPlanOutcome } from "./types";
 
+// A step touches a limit (screens / time / money) → the Coach must negotiate, not rubber-stamp.
+export function isLimitTopic(worryLabel: string, baseText: string): boolean {
+  return /\bscreen|phone|tablet|\btime\b|minutes|money|allowance|pocket|device|gaming|\btv\b/i.test(`${worryLabel} ${baseText}`);
+}
+
 // The next plan day a parent will reach after (week, day): the next day in the week, else Day 1 of the
 // next week. null at Week 6 Day 5 (end of plan). Days are 1–5 (the weekend review isn't adjusted).
 export function nextPlanDay(week: number, day: number): { week: number; day: number } | null {
   if (day < 5) return { week, day: day + 1 };
   if (week < 6) return { week: week + 1, day: 1 };
   return null;
+}
+
+// The trial is a fixed 4-day quick start. The next quick-start day, or null after day 4.
+export function trialNextDay(day: number): number | null {
+  return day >= 1 && day < 4 ? day + 1 : null;
 }
 
 // The child's pattern in plain, NAME-FREE words (strength + pull), filled for gender. Never a label.
@@ -124,6 +134,7 @@ export async function resolveForDay(input: ResolveInput, modelCall?: ModelCall):
       worryLabel: input.worryLabel, week: input.week, day: input.day,
       baseTitle: input.baseTitle, baseText: input.baseText,
       priorOutcome: prior, priorNote: note, directive: tomorrow.directive,
+      limitTopic: isLimitTopic(input.worryLabel, input.baseText),
     },
     modelCall,
   );
@@ -146,9 +157,13 @@ export async function resolveForDay(input: ResolveInput, modelCall?: ModelCall):
 // step (base merged with the coach's patch) — the caller validates; we re-validate defensively here.
 export async function writeCoachOverride(o: {
   userId: string; assessmentId: string | null; week: number; day: number;
-  step: AdjustedStep; reason: string; baseText: string;
+  step: AdjustedStep; reason: string; baseText: string; childName?: string; worryLabel?: string;
 }): Promise<{ ok: boolean; issue?: string }> {
-  const v = validateStep(o.step, o.baseText, { week: o.week });
+  // Coach overrides are held to the exact-words + content rules (but not the didnt_land sizing rule —
+  // the Coach decides the shape with the parent).
+  const v = validateStep(o.step, o.baseText, {
+    week: o.week, childName: o.childName, limitTopic: isLimitTopic(o.worryLabel ?? "", o.baseText),
+  });
   if (!v.ok) return { ok: false, issue: v.issues.join("; ") };
   const sql = getSql();
   try {

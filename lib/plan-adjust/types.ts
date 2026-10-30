@@ -9,9 +9,11 @@ export type PlanOutcome = "worked" | "partly" | "didnt_land";
 // The structured step. Rendered as: title, "at <moment>", the exact words in quotes, what to notice,
 // and a ≤5-minute promise. Nothing clinical, no price/selling, no invented numbers, no pattern names.
 export type AdjustedStep = {
+  opening: string;       // the short top paragraph shown above the step — generated WITH the step so
+                         // the two never contradict (replaces the base day's nextDayOpening fork)
   title: string;         // short — the action, same skill as the base day
   moment: string;        // the everyday moment it slots into ("at screen-off", "when homework starts")
-  exactWords: string[];  // 1–2 lines the parent says, verbatim — rendered in quotes
+  exactWords: string[];  // 1–2 lines the parent says TO the child, verbatim — rendered in quotes
   notice: string;        // what to watch for afterwards
   minutes: number;       // 1–5
 };

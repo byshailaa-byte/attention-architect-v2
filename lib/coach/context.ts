@@ -64,6 +64,9 @@ export type CoachSubjectInput = {
   supportEmail: string;
   week: number;               // paid week (1 for trial)
   day: number;                // current day (trial 1..4; paid day)
+  userId?: string;            // parent's user id (for adjust_next_step overrides)
+  sessionId?: string | null;  // for resolveTrialDays on a trial adjust
+  isPreview?: boolean;        // admin sandbox trial → adjust_next_step refused
 };
 
 export type AssembledContext = {
@@ -158,8 +161,9 @@ export async function assembleCoachContext(input: CoachSubjectInput, latestMessa
 
   const system = system0 + lines.join("\n") + conversationSoFar(history, input.parentFirst) + formatGoldForPrompt(gold) + formatWorksStat(stat, input.child);
 
-  // adjust_next_step is paid-only (the trial has a fixed 4-day quick start, not the adjustable plan).
-  const tools = input.kind === "paid" ? COACH_TOOLS : COACH_TOOLS.filter((t) => t.name !== "adjust_next_step");
+  // adjust_next_step: paid, and REAL (non-preview) trial parents. Preview sandbox trials never get it.
+  const allowAdjust = input.kind === "paid" || (input.kind === "trial" && !input.isPreview);
+  const tools = allowAdjust ? COACH_TOOLS : COACH_TOOLS.filter((t) => t.name !== "adjust_next_step");
 
   return {
     system,
@@ -169,6 +173,7 @@ export async function assembleCoachContext(input: CoachSubjectInput, latestMessa
       kind: input.kind, subjectId: input.subjectId, assessmentId: input.assessmentId,
       week: input.week, day: input.day,
       archetype: input.archetype, ageBand: input.ageBand, childName: input.child, childGender: input.childGender,
+      worryLabel: input.worryLabel, userId: input.userId, sessionId: input.sessionId, isPreview: input.isPreview,
     },
     language,
   };

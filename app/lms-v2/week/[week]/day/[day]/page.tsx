@@ -110,11 +110,19 @@ export default async function DayPage({ params }: { params: Promise<{ week: stri
     <div style={{ fontFamily: BODY, color: V2.navy, minHeight: "100dvh", background: V2.cream }}>
       {Header}
       <div style={{ padding: "20px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
-        {fork && (
-          <div className="v2-prose" style={{ background: V2.tintPurple, border: "1px solid #DDD3EE", borderRadius: 12, padding: "14px 18px", fontSize: 14, color: "#4A3470" }} dangerouslySetInnerHTML={{ __html: renderMarkdown(fork) }} />
+        {/* When an adjusted step exists, its own opening replaces the base day's fork so the two can't
+            contradict. Otherwise show the base nextDayOpening fork. */}
+        {adjusted ? (
+          adjusted.step.opening && (
+            <div style={{ background: V2.tintPurple, border: "1px solid #DDD3EE", borderRadius: 12, padding: "14px 18px", fontSize: 14, color: "#4A3470" }}>{adjusted.step.opening}</div>
+          )
+        ) : (
+          fork && (
+            <div className="v2-prose" style={{ background: V2.tintPurple, border: "1px solid #DDD3EE", borderRadius: 12, padding: "14px 18px", fontSize: 14, color: "#4A3470" }} dangerouslySetInnerHTML={{ __html: renderMarkdown(fork) }} />
+          )
         )}
         {adjusted ? (
-          <AdjustedStepCard adjusted={adjusted} eyebrow={eyebrow} />
+          <AdjustedStepCard adjusted={adjusted} day={day} />
         ) : (
           <section style={{ background: V2.white, border: `1px solid ${V2.line}`, borderRadius: 18, padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: V2.darkGold }}>{eyebrow}</div>
@@ -128,6 +136,8 @@ export default async function DayPage({ params }: { params: Promise<{ week: stri
           day={day}
           childName={ctx.childName}
           reflectionPrompt={dayCard.reflection ? "How did it go?" : null}
+          observationPrompt={day === 1 ? "What did you notice?" : null}
+          observationOptions={day === 1 ? [{ value: "worked", label: "Calm" }, { value: "mixed", label: "Some pushback" }, { value: "didnt_land", label: "Big fight" }] : undefined}
           alreadyComplete={alreadyComplete}
           existingReflection={existingReflection}
           nextHref={nextHref}
@@ -149,8 +159,10 @@ function momentLine(moment: string): string {
 
 // The adjusted step card (Part A). Shows WHY it changed, then the step in the same shape parents know:
 // title, the everyday moment, the exact words in quotes, what to notice, and a ≤5-min promise.
-function AdjustedStepCard({ adjusted, eyebrow }: { adjusted: ResolvedStep; eyebrow: string }) {
+function AdjustedStepCard({ adjusted, day }: { adjusted: ResolvedStep; day: number }) {
   const { step, origin, reason, priorOutcome, showCoachLine } = adjusted;
+  // Header minutes come from the step itself (C): "ABOUT N MIN" matches step.minutes.
+  const eyebrow = `TRY · DAY ${day} · ABOUT ${step.minutes} MIN`;
   const line = origin === "coach"
     ? `Updated by your Coach: ${reason ?? ""}`
     : `Adjusted for you: ${planTomorrow(priorOutcome, showCoachLine ? 2 : 1).adjustedForYou}`;

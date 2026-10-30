@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
     if (!Number.isInteger(week) || !Number.isInteger(day)) {
       return NextResponse.json({ error: "week and day must be integers" }, { status: 400 });
     }
-    if (day < 2 || day > 5) {
-      return NextResponse.json({ error: "Reflections are for days 2–5 only" }, { status: 400 });
+    if (day < 1 || day > 5) {
+      return NextResponse.json({ error: "Reflections are for days 1–5 only" }, { status: 400 });
     }
     if (!VALID_OUTCOMES.includes(outcome)) {
       return NextResponse.json({ error: "Invalid outcome" }, { status: 400 });
