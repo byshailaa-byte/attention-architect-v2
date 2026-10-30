@@ -8,6 +8,13 @@ import { OUTCOMES, TRIGGERS, type Outcome, type Trigger, recordPaidOutcome, reco
 import { recordTrackedNumber } from "@/lib/coach/numbers";
 import { appendMemoryNote, setLanguagePref } from "@/lib/coach/memory";
 import { getSql } from "@/lib/db/client";
+import { getLmsWeekContent, getDayCard } from "@/lib/lms/content";
+import { fillLmsContent } from "@/lib/lms/render";
+import { fallbackStep } from "@/lib/plan-adjust/fallback";
+import { writeCoachOverride, nextPlanDay } from "@/lib/plan-adjust/resolve";
+import type { AdjustedStep } from "@/lib/plan-adjust/types";
+import type { AgeBand } from "@/content/types";
+import type { Gender } from "@/lib/report/pronouns";
 
 export type ToolSubject = {
   kind: "paid" | "trial";
@@ -15,6 +22,11 @@ export type ToolSubject = {
   assessmentId: string | null;
   week: number;             // paid week (1 for trial)
   day: number;              // current day
+  // Child facts for adjust_next_step (paid only): used to build the base step for the next day.
+  archetype?: string;
+  ageBand?: string;
+  childName?: string;
+  childGender?: Gender;
 };
 
 // Anthropic tool definitions (JSON Schema inputs).
@@ -94,6 +106,29 @@ export const COACH_TOOLS: Anthropic.Tool[] = [
       required: ["note"],
     },
   },
+  {
+    name: "adjust_next_step",
+    description:
+      "Change the parent's NEXT plan day when you and they have agreed a better version of the step — smaller, a different moment, or different wording. Only call this AFTER you've understood what went wrong. The parent will see 'Updated by your Coach: <reason>' on that day. Give the full step so it stands on its own. Keep the same skill and week; ≤5 minutes; plain words; no clinical terms, no promises, no invented numbers.",
+    input_schema: {
+      type: "object",
+      properties: {
+        reason: { type: "string", description: "one short line the parent will see, e.g. 'we're trying the warning before a new level starts'" },
+        step_patch: {
+          type: "object",
+          description: "the fields of the next step to change (anything you omit keeps the base step's version)",
+          properties: {
+            title: { type: "string" },
+            moment: { type: "string", description: "the everyday moment, e.g. 'at screen-off'" },
+            exact_words: { type: "array", items: { type: "string" }, description: "1–2 lines the parent says, verbatim" },
+            notice: { type: "string", description: "what to watch for" },
+            minutes: { type: "number", description: "1 to 5" },
+          },
+        },
+      },
+      required: ["reason", "step_patch"],
+    },
+  },
 ];
 
 export type ToolCallRecord = { name: string; input: unknown; ok: boolean; detail: string };
@@ -146,6 +181,43 @@ export async function runCoachTool(subject: ToolSubject, name: string, input: Re
         if (!note.trim()) return bad(name, input, "empty note");
         await appendMemoryNote(subject.kind, subject.subjectId, note);
         return ok(name, input, "noted");
+      }
+      case "adjust_next_step": {
+        // Paid only — the trial has a fixed 4-day quick start, not the adjustable plan.
+        if (subject.kind !== "paid") return bad(name, input, "the adjustable plan is only on the full plan, not the trial");
+        const reason = typeof input.reason === "string" ? input.reason.trim().slice(0, 160) : "";
+        if (!reason) return bad(name, input, "a short reason is required (the parent sees it)");
+        if (!subject.archetype || !subject.ageBand || !subject.childName) return bad(name, input, "missing child context");
+
+        const target = nextPlanDay(subject.week, subject.day);
+        if (!target) return bad(name, input, "there is no next day to adjust");
+
+        // Base step for the NEXT day → merge the coach's patch → validate on write.
+        const content = getLmsWeekContent(subject.archetype, target.week, subject.ageBand as AgeBand);
+        const dayCard = content ? getDayCard(content, target.day) : null;
+        if (!dayCard) return bad(name, input, "could not load the next day's base step");
+        const fill = (s: string) => fillLmsContent(s, subject.childName!, subject.childGender ?? null);
+        const baseTitle = fill(dayCard.title);
+        const baseText = fill(dayCard.content[subject.ageBand as AgeBand] ?? "");
+        const base = fallbackStep(baseTitle, baseText);
+
+        const patch = (input.step_patch ?? {}) as Record<string, unknown>;
+        const merged: AdjustedStep = {
+          title: typeof patch.title === "string" && patch.title.trim() ? patch.title.trim() : base.title,
+          moment: typeof patch.moment === "string" && patch.moment.trim() ? patch.moment.trim() : base.moment,
+          exactWords: Array.isArray(patch.exact_words) && patch.exact_words.length
+            ? patch.exact_words.map((w) => String(w).trim()).filter(Boolean)
+            : base.exactWords,
+          notice: typeof patch.notice === "string" && patch.notice.trim() ? patch.notice.trim() : base.notice,
+          minutes: Number.isFinite(Number(patch.minutes)) ? Number(patch.minutes) : base.minutes,
+        };
+
+        const res = await writeCoachOverride({
+          userId: subject.subjectId, assessmentId: subject.assessmentId,
+          week: target.week, day: target.day, step: merged, reason, baseText,
+        });
+        if (!res.ok) return bad(name, input, `step not saved (${res.issue ?? "invalid"}) — do NOT tell the parent it's updated`);
+        return ok(name, input, `next step (Week ${target.week} Day ${target.day}) updated for the parent`);
       }
       default:
         return bad(name, input, "unknown tool");

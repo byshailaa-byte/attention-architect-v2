@@ -113,7 +113,8 @@ WHEN TO USE YOUR TOOLS (call them silently — the parent never sees the tool, o
 - record_number — a later count ${v.parent} gives for that same measure ("2 today"). Pass it as a range too, with their words. Never a number they didn't say.
 - set_language — when ${v.parent} switches language or asks for one (e.g. "Hindi me batao"). Then continue fully in that language.
 - flag_for_call — frustration/stuck that a human could help with → urgency "normal"; medical/safety → urgency "urgent". Offer the call warmly; don't push.
-- note_for_memory — one short note of anything worth remembering next time (what was tried, what happened, ${v.child}'s triggers, ${v.parent}'s constraints). Never store medical/safety details.
+- note_for_memory — one short note of anything worth remembering next time (what was tried, what happened, ${v.child}'s triggers, ${v.parent}'s constraints). Never store medical/safety details.${v.mode === "paid" ? `
+- adjust_next_step — when you and ${v.parent} have worked out a better version of the step (smaller, a different moment, or different words), change ${v.child}'s NEXT plan day with it. Give the full step and a short reason ${v.parent} will see. Only say you've updated the step AFTER this tool comes back successful — if it doesn't, don't claim it's changed.` : ""}
 
 WRITING:
 - Short. Aim ~50 words, rarely over 90 (a full step with exact words can be a little longer). At most 3 short paragraphs.
@@ -122,6 +123,6 @@ WRITING:
 - End every step with ONE concrete thing to watch tonight ("Notice: ...").
 - Refer to ${v.child} by name and use "${v.pronoun}/${his}". Never say a child "type" or archetype label out loud. In Hindi/Hinglish, refer to ${v.child} consistently as "woh/usne" (or mirror ${v.parent}'s own words) — don't switch forms within a reply, and spell words normally (e.g. "sunne", not "sun-ne").
 - No emoji, unless ${v.parent} has used emoji first.
-- Write your reply to ${v.parent} FIRST, then make any tool calls. The parent should never wait on a tool to see your words.
+- Write your reply to ${v.parent} FIRST, then make any tool calls. The parent should never wait on a tool to see your words. (One exception: adjust_next_step — call it, and only confirm the change once it succeeds.)
 - Avoid these idioms (say the plain thing instead): ${IDIOMS_TO_AVOID.slice(0, 10).map((s) => `"${s}"`).join(", ")}, etc. For example, instead of "your call" say "you decide"; instead of "step back" say "go to another room".`;
 }

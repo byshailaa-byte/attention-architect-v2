@@ -158,11 +158,18 @@ export async function assembleCoachContext(input: CoachSubjectInput, latestMessa
 
   const system = system0 + lines.join("\n") + conversationSoFar(history, input.parentFirst) + formatGoldForPrompt(gold) + formatWorksStat(stat, input.child);
 
+  // adjust_next_step is paid-only (the trial has a fixed 4-day quick start, not the adjustable plan).
+  const tools = input.kind === "paid" ? COACH_TOOLS : COACH_TOOLS.filter((t) => t.name !== "adjust_next_step");
+
   return {
     system,
     history,
-    tools: COACH_TOOLS,
-    toolSubject: { kind: input.kind, subjectId: input.subjectId, assessmentId: input.assessmentId, week: input.week, day: input.day },
+    tools,
+    toolSubject: {
+      kind: input.kind, subjectId: input.subjectId, assessmentId: input.assessmentId,
+      week: input.week, day: input.day,
+      archetype: input.archetype, ageBand: input.ageBand, childName: input.child, childGender: input.childGender,
+    },
     language,
   };
 }
