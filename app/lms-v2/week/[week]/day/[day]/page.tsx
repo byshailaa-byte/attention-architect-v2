@@ -138,6 +138,15 @@ export default async function DayPage({ params }: { params: Promise<{ week: stri
   );
 }
 
+// "At <moment>." — but if the moment already opens with a time word ("when…", "right as…", "two
+// minutes before…"), read it as its own sentence instead of the awkward "At when…".
+function momentLine(moment: string): string {
+  const m = moment.trim();
+  const leadsWithTime = /^(at|when|right|during|before|after|in|on|as|once|first thing|two|three|five|ten|a few|just)\b/i.test(m);
+  const s = leadsWithTime ? m.charAt(0).toUpperCase() + m.slice(1) : `At ${m}`;
+  return /[.?!]$/.test(s) ? s : s + ".";
+}
+
 // The adjusted step card (Part A). Shows WHY it changed, then the step in the same shape parents know:
 // title, the everyday moment, the exact words in quotes, what to notice, and a ≤5-min promise.
 function AdjustedStepCard({ adjusted, eyebrow }: { adjusted: ResolvedStep; eyebrow: string }) {
@@ -157,7 +166,7 @@ function AdjustedStepCard({ adjusted, eyebrow }: { adjusted: ResolvedStep; eyebr
         {line}
       </div>
       <h1 style={{ margin: 0, fontFamily: HEAD, fontSize: 26, lineHeight: 1.18, fontWeight: 600 }}>{step.title}</h1>
-      <p style={{ margin: 0, fontSize: 15, color: V2.dim }}>At {step.moment}.</p>
+      <p style={{ margin: 0, fontSize: 15, color: V2.dim }}>{momentLine(step.moment)}</p>
       <div style={{ borderLeft: `3px solid ${V2.gold}`, paddingLeft: 14, display: "flex", flexDirection: "column", gap: 6 }}>
         {step.exactWords.map((w, i) => (
           <p key={i} style={{ margin: 0, fontSize: 16.5, lineHeight: 1.4, fontWeight: 500 }}>&ldquo;{w}&rdquo;</p>
