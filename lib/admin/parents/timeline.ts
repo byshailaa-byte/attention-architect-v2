@@ -106,6 +106,7 @@ export async function getParentTimeline(input: TimelineInput): Promise<TimelineR
       // ----- collapse within this visit -----
       const noise = group.filter((g) => NOISE.has(g.event_type));
       const cards = group.filter((g) => g.event_type === "report_card_view").map((g) => ({ card: num(g.metadata, "card") ?? 1, t: g.created_at }));
+      const v3cards = group.filter((g) => g.event_type === "report_v3_card_view").map((g) => num(g.metadata, "card") ?? 1);
       const dwell = group.filter((g) => g.event_type === "card_dwell_ms");
       const complete = group.find((g) => g.event_type === "assessment_complete");
       const started = group.find((g) => g.event_type === "assessment_started" || g.event_type === "landing_view");
@@ -133,9 +134,27 @@ export async function getParentTimeline(input: TimelineInput): Promise<TimelineR
         }
         const mins = Math.max(1, Math.round(secs / 60));
         events.push(mkEvent({ t: cards[cards.length - 1].t, source: "site", icon: "report", title: `Read report · cards ${lo}–${hi} of ${total}`, sub: `${approx ? "~" : ""}${mins} min · last card ${hi}`, approx, child: tag(sid), visitId: vid }));
+      } else if (v3cards.length) {
+        const hi = Math.max(...v3cards);
+        const secs = dwell.reduce((s, d) => s + Math.min(num(d.metadata, "ms") ?? 0, CAP_MS), 0) / 1000;
+        const mins = Math.max(1, Math.round(secs / 60));
+        events.push(mkEvent({ t: group[group.length - 1].created_at, source: "site", icon: "report", title: `Read report · cards 1–${hi} of 6`, sub: secs ? `~${mins} min · last card ${hi}` : undefined, approx: true, child: tag(sid), visitId: vid }));
       } else if (group.some((g) => g.event_type === "report_view" || g.event_type === "report_v2_view")) {
         const rv = group.find((g) => g.event_type === "report_view" || g.event_type === "report_v2_view")!;
         events.push(mkEvent({ t: rv.created_at, source: "site", icon: "report", title: "Opened report", child: tag(sid), visitId: vid }));
+      }
+      // v3 report interactions — readable labels (Part D).
+      {
+        const tap = group.find((g) => g.event_type === "tonight_outcome");
+        if (tap) {
+          const o = String(tap.metadata?.outcome ?? "");
+          const lbl = o === "worked" ? "Worked" : o === "mixed" ? "Partly" : o === "didnt_land" ? "Didn't work" : o;
+          events.push(mkEvent({ t: tap.created_at, source: "site", icon: "report", title: `Card 5 · tapped ${lbl}`, child: tag(sid), visitId: vid }));
+        }
+        const skip = group.find((g) => g.event_type === "skip_to_plan");
+        if (skip) events.push(mkEvent({ t: skip.created_at, source: "site", icon: "plan", title: "Skipped to the plan", sub: `from Card ${num(skip.metadata, "from_card") ?? "?"}`, child: tag(sid), visitId: vid }));
+        const secsSeen = [...new Set(group.filter((g) => g.event_type === "plan_section_view").map((g) => String(g.metadata?.section ?? "")).filter(Boolean))];
+        if (secsSeen.length) events.push(mkEvent({ t: group[group.length - 1].created_at, source: "site", icon: "plan", title: "Scrolled the plan", sub: secsSeen.join(", "), child: tag(sid), visitId: vid }));
       }
       // These collapse to ONE row per visit (a parent who re-opens the plan 30× is one "Opened plan").
       {

@@ -21,7 +21,13 @@ export type GenerateInput = {
   worry: string;           // display label
   archetype: string;
   assessedDaysAgo: number; // for the gentle old-lead opener
-  report: { seenIt: string; hardPart: string; tryLine: string; tonight: string[]; goal: string } | null;
+  // v3 facts (Part C): the caller reads these — pattern line / strength / stuck / pull / today→toward /
+  // tonight's step (still from report_v2) + the Card-5 tap. No report_v2 seenIt/hardPart/tryLine/goal.
+  report: {
+    patternLine: string; strength: string; stuck: string; pull: string;
+    todayToward: [string, string][]; tonightStep: string;
+    tonightTap: "worked" | "mixed" | "didnt_land" | null;
+  } | null;
   answersSummary: string;  // compact "Q — A" lines
   lastCall?: { date: string; outcome: string; note: string; nextSteps: string };
   since?: string;          // journey since last call (follow-up) / since report (first)
@@ -91,11 +97,13 @@ function buildPrompt(i: GenerateInput): string {
   lines.push(`- Child's pattern (archetype): ${i.archetype}`);
   lines.push(`- Assessment was done ${i.assessedDaysAgo} day(s) ago.${i.assessedDaysAgo > 3 ? " THIS IS AN OLD LEAD — the opener must gently acknowledge we're only calling now." : ""}`);
   if (i.report) {
-    lines.push(`- Report — what they saw: ${i.report.seenIt}`);
-    lines.push(`- Report — the hard part: ${i.report.hardPart}`);
-    if (i.report.tryLine) lines.push(`- Report — the new words to try: ${i.report.tryLine}`);
-    if (i.report.tonight?.length) lines.push(`- Report — tonight's step: ${i.report.tonight[0]}`);
-    if (i.report.goal) lines.push(`- Their goal: ${i.report.goal}`);
+    lines.push(`- How ${i.child} focuses (pattern, plain — NEVER say a "type" or label aloud): ${i.report.patternLine}`);
+    lines.push(`- ${i.child}'s strength: ${i.report.strength}`);
+    lines.push(`- Where ${i.child} gets stuck: ${i.report.stuck}`);
+    lines.push(`- What pulls ${i.child} away: ${i.report.pull}`);
+    if (i.report.todayToward.length) lines.push(`- Today → what the plan works toward: ${i.report.todayToward.slice(0, 2).map(([a, b]) => `${a} → ${b}`).join("; ")}`);
+    if (i.report.tonightStep) lines.push(`- The free step they can try tonight: ${i.report.tonightStep}`);
+    if (i.report.tonightTap) lines.push(`- They already tried tonight's step and tapped "${i.report.tonightTap === "worked" ? "Worked" : i.report.tonightTap === "mixed" ? "Partly" : "Didn't work"}" — acknowledge that warmly.`);
   }
   if (i.answersSummary) lines.push(`- Their own answers:\n${i.answersSummary}`);
   if (i.kind === "followup" && i.lastCall) {
@@ -246,9 +254,9 @@ export function fallbackScript(i: GenerateInput): CallScript {
     const oldAck = i.assessedDaysAgo > 3 ? (hin ? ` Sorry, hum aapko thoda late call kar rahe hain ${i.child} ki report ke baare mein.` : ` Sorry we're only calling now about ${i.child}'s report.`) : "";
     base.opener = `${iAm}${hin ? "" : ","} ${hin ? "The Human Decision se" : "from The Human Decision"}.${oldAck} ${hin ? `Aapne ${i.child} ke liye jo assessment bhara tha, uski report main dekh raha tha.` : `I was looking at the report from the assessment you did for ${i.child}.`}`;
     base.sections = [
-      { title: hin ? "Ek baat jo sach lagegi" : "One line that'll feel true", seconds: 15, lines: [i.report?.hardPart || (hin ? `${i.child} ko ${i.worry} mein dikkat hoti hai.` : `${i.child} finds ${i.worry} hard.`)] },
+      { title: hin ? "Ek baat jo sach lagegi" : "One line that'll feel true", seconds: 15, lines: [i.report?.stuck || (hin ? `${i.child} ko ${i.worry} mein dikkat hoti hai.` : `${i.child} finds ${i.worry} hard.`)] },
       { title: hin ? "Baat shuru karein" : "Open them up", seconds: 20, lines: [hin ? `Ghar pe kya hota hai jab ${i.child} ${i.worry} ke time atak jaate hain?` : `What happens at home when ${i.child} gets stuck at ${i.worry}?`], hint: hin ? "Phir suniye." : "Then listen." },
-      { title: hin ? "Plan, do line mein" : "The plan, in two lines", seconds: 15, lines: [hin ? `Ye 6-hafte ka plan aapke liye hai — har hafte ek chhota kadam.` : `It's a 6-week plan for you — one small step each week.`, i.report?.tryLine || (hin ? `${i.child} ke apne pattern se shuru hota hai.` : `It starts from ${i.child}'s own pattern.`)] },
+      { title: hin ? "Plan, do line mein" : "The plan, in two lines", seconds: 15, lines: [hin ? `Ye 6-hafte ka plan aapke liye hai — har hafte ek chhota kadam.` : `It's a 6-week plan for you — one small step each week.`, i.report?.patternLine || (hin ? `${i.child} ke apne pattern se shuru hota hai.` : `It starts from ${i.child}'s own pattern.`)] },
       { title: hin ? "Agla kadam" : "Next step", lines: [trialLine] },
     ];
     base.objections = [

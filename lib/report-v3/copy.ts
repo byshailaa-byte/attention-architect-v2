@@ -151,9 +151,9 @@ export const CARD6 = {
   ],
   chatLabel: "Example conversation with the Attention Coach, in Hindi or English",
   chat: [
-    ["P", "He threw the tablet and walked off 😞"],
+    ["P", "{He} threw the tablet and walked off 😞"],
     ["C", "That's useful to know. What was on the screen just before you spoke?"],
-    ["P", "He was about to finish a level"],
+    ["P", "{He} {s:was|were} about to finish a level"],
     ["C", "That explains a lot. Tomorrow, try the warning before a new level starts. I've updated your step."],
   ],
   button: "See {Name}'s six-week plan ↓",

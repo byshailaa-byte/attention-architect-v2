@@ -1,0 +1,12 @@
+## 10-run (after fix) — pass/fallback · rule · words · ₹
+ 1 PASS  first  en       Shaily   words=119 ₹ 1.08  ok
+ 2 PASS  first  hinglish Shaily   words=110 ₹ 1.18  ok
+ 3 PASS  first  en       Shashank words=117 ₹ 1.02  ok
+ 4 PASS  first  hinglish Shashank words=122 ₹ 1.16  ok
+ 5 PASS  follow en       Shaily   words= 80 ₹ 1.00  ok
+ 6 PASS  follow hinglish Shaily   words= 69 ₹ 2.14  ok
+ 7 PASS  follow en       Shashank words=154 ₹ 1.07  ok (repaired in code)
+ 8 PASS  follow hinglish Shashank words=136 ₹ 1.19  ok (repaired in code)
+ 9 PASS  first  en       Shashank words=109 ₹ 1.05  ok
+10 PASS  follow hinglish Shashank words= 78 ₹ 1.06  ok
+FALLBACKS: 0/10   (target ≤ 1/10)

@@ -6,6 +6,7 @@ import { personKey } from "@/lib/admin/call-queue";
 import { QUESTIONS_BY_ID } from "@/lib/engine/questions";
 import { worryLabel } from "@/lib/admin/crm/logic";
 import { generateCallScript, type GenerateInput } from "@/lib/call-script/generate";
+import { buildV3CallFacts } from "@/lib/report-v3/facts";
 import type { Lang } from "@/lib/call-script/types";
 
 export const dynamic = "force-dynamic";
@@ -42,9 +43,9 @@ async function buildContext(sessionId: string, lang: Lang, callerName: string, c
   const sql = getSql();
   const arows = (await sql`
     SELECT a.id::text, a.session_id::text, a.phone, a.email, a.parent_name, a.child_name, a.age_band,
-           a.archetype, a.concerns, a.created_at, a.answers, a.report_v2_goal
+           a.child_gender, a.archetype, a.concerns, a.created_at, a.answers, a.report_v2_goal
     FROM assessments a WHERE a.session_id = ${sessionId}::uuid LIMIT 1
-  `) as unknown as { id: string; session_id: string; phone: string | null; email: string | null; parent_name: string | null; child_name: string | null; age_band: string | null; archetype: string | null; concerns: string[] | null; created_at: string; answers: Record<string, unknown> | null; report_v2_goal: string | null }[];
+  `) as unknown as { id: string; session_id: string; phone: string | null; email: string | null; parent_name: string | null; child_name: string | null; age_band: string | null; child_gender: string | null; archetype: string | null; concerns: string[] | null; created_at: string; answers: Record<string, unknown> | null; report_v2_goal: string | null }[];
   const a = arows[0];
   if (!a) return null;
   const pkey = personKey(a.phone, a.email) ?? `a:${a.id}`;
@@ -57,12 +58,13 @@ async function buildContext(sessionId: string, lang: Lang, callerName: string, c
   const callNo = calls.length + 1;
   const kind = calls.length === 0 ? "first" : "followup";
 
-  // Report talking points.
-  const cr = (await sql`SELECT content FROM report_v2_content WHERE session_id = ${sessionId}::uuid LIMIT 1`) as unknown as { content: Record<string, unknown> }[];
-  const c = cr[0]?.content ?? null;
-  const str = (k: string) => (c && typeof c[k] === "string" ? (c[k] as string) : "");
-  const sw = (c?.switch ?? {}) as Record<string, unknown>;
-  const report = c ? { seenIt: str("seenIt") || str("headline"), hardPart: str("hardPart"), tryLine: typeof sw.try === "string" ? sw.try : "", tonight: Array.isArray(c.tonight) ? (c.tonight as string[]) : [], goal: str("goal") } : null;
+  // Report talking points — now v3 facts (Part C). The caller reads pattern line / strength / stuck /
+  // pull / today→toward / tonight step + the Card-5 tap. report_v2 is only consulted (inside
+  // buildV3CallFacts) for tonight's step; its seenIt/hardPart/tryLine/goal are no longer used here.
+  const report = await buildV3CallFacts(sessionId, {
+    child_name: a.child_name, child_gender: a.child_gender, age_band: a.age_band ?? "",
+    archetype: a.archetype, concerns: a.concerns,
+  });
 
   // Answers summary (a few key ones → plain Q — A).
   const ans = a.answers ?? {};

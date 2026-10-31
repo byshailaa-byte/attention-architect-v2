@@ -3,6 +3,7 @@
 // lib/report-v3/copy.ts (filled per child); the ONLY generated bit is tonight's step (Card 5), passed
 // in `facts`. No pattern names, no scores/tiers, pronouns from child_gender. Matches the approved mockup.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { track } from "@/lib/analytics/track";
 import {
   PATTERN_LINE, STRENGTH, PULL, STUCK, TODAY_TOWARD,
   CARD1, CARD2, CARD3, CARD4, CARD5, CARD6,
@@ -44,7 +45,7 @@ const TAP_LABEL: [string, "worked" | "mixed" | "didnt_land", keyof typeof CARD5.
   ["Worked", "worked", "worked"], ["Partly", "mixed", "partly"], ["Didn't work", "didnt_land", "didnt"],
 ];
 
-export default function ReportV3({ sessionId, facts, week1Days }: { sessionId: string; facts: V3Facts; week1Days: Week1Day[] }) {
+export default function ReportV3({ sessionId, facts, week1Days, focusWeeks }: { sessionId: string; facts: V3Facts; week1Days: Week1Day[]; focusWeeks: number[] }) {
   const f = useCallback((s: string) => fillV3(s, facts.name, facts.gender, facts.band), [facts]);
   const [card, setCard] = useState(0);
   const planRef = useRef<HTMLDivElement>(null);
@@ -52,6 +53,31 @@ export default function ReportV3({ sessionId, facts, week1Days }: { sessionId: s
 
   const go = useCallback((n: number) => setCard((c) => Math.min(TOTAL - 1, Math.max(0, n))), []);
   const toPlan = useCallback(() => planRef.current?.scrollIntoView({ behavior: "smooth" }), []);
+  // "Skip to the plan" link (Part D) — a DB-only event with the card skipped from. Card 6's button is
+  // the normal flow, so it uses toPlan() without firing skip.
+  const skipToPlan = useCallback(() => { track("skip_to_plan", { from_card: card + 1 }, sessionId); toPlan(); }, [card, sessionId, toPlan]);
+
+  // ── Tracking (Part D). GA/Meta parity: report_view (GA4 only, variant v3, NO child data; the DB row
+  // is written server-side so db:false here). All v3-specific events are DB-only (not in the catalog).
+  useEffect(() => { track("report_view", { variant: "v3" }, sessionId, { db: false }); }, [sessionId]);
+  const seen = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    if (!seen.current.has(card)) { seen.current.add(card); track("report_v3_card_view", { card: card + 1 }, sessionId); }
+    const enter = Date.now();
+    return () => { const ms = Math.min(60_000, Date.now() - enter); if (ms > 300) track("card_dwell_ms", { card: card + 1, ms }, sessionId); };
+  }, [card, sessionId]);
+  // plan_section_view — fire once per scroll section when it comes into view.
+  useEffect(() => {
+    const fired = new Set<string>();
+    const io = new IntersectionObserver((es) => {
+      for (const e of es) {
+        const name = (e.target as HTMLElement).dataset.section;
+        if (e.isIntersecting && name && !fired.has(name)) { fired.add(name); track("plan_section_view", { section: name }, sessionId); }
+      }
+    }, { threshold: 0.3 });
+    document.querySelectorAll<HTMLElement>("[data-section]").forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [sessionId]);
 
   // Keyboard: ← / → move between cards.
   useEffect(() => {
@@ -83,7 +109,7 @@ export default function ReportV3({ sessionId, facts, week1Days }: { sessionId: s
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5, color: C.dim }}>
             <span>{card + 1} of {TOTAL}</span>
-            <button onClick={toPlan} style={linkBtn}>Skip to the plan ↓</button>
+            <button onClick={skipToPlan} style={linkBtn}>Skip to the plan ↓</button>
           </div>
         </div>
         {/* current card */}
@@ -94,13 +120,13 @@ export default function ReportV3({ sessionId, facts, week1Days }: { sessionId: s
 
       {/* ── Scroll (same page) ── */}
       <div ref={planRef} style={{ maxWidth: 520, margin: "0 auto", padding: "8px 18px 64px", display: "flex", flexDirection: "column", gap: 28 }}>
-        <Ladder f={f} />
-        <Weeks f={f} week1Days={week1Days} />
-        <Support f={f} />
-        <Plans f={f} />
-        <Testimonials />
-        <Faq f={f} />
-        <FinalCta f={f} />
+        <div data-section="ladder"><Ladder f={f} focusWeeks={focusWeeks} /></div>
+        <div data-section="weeks"><Weeks f={f} week1Days={week1Days} focusWeeks={focusWeeks} /></div>
+        <div data-section="support"><Support f={f} /></div>
+        <div data-section="plans"><Plans f={f} /></div>
+        <div data-section="testimonials"><Testimonials /></div>
+        <div data-section="faq"><Faq f={f} /></div>
+        <div data-section="final_cta"><FinalCta f={f} /></div>
       </div>
     </div>
   );
@@ -111,14 +137,16 @@ function Card({ index, f, facts, sessionId, onNext, onPlan }: { index: number; f
   const dark = index === 0 || index === 2 || index === 5;
   const bg = dark ? C.navy : C.white;
   const fg = dark ? C.white : C.ink;
+  // flex:1 fills the deck area; justify-center keeps content vertically centred so a light card (Card 1)
+  // has no large empty block — balanced space top and bottom, with the button just under the content.
   const shell: React.CSSProperties = {
     flex: 1, background: bg, color: fg, border: dark ? "none" : `1px solid ${C.line}`, borderRadius: 22,
-    padding: 24, display: "flex", flexDirection: "column", gap: 14, minHeight: 540,
+    padding: 24, display: "flex", flexDirection: "column", justifyContent: "center", gap: 14, minHeight: 460,
   };
   const eyebrow = (t: string) => <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", color: dark ? C.gold : C.darkGold }}>{t}</div>;
   const nextBtn = (label: string, gold = false) => (
     <button onClick={index === 5 ? onPlan : onNext}
-      style={{ marginTop: "auto", minHeight: 52, borderRadius: 12, border: 0, cursor: "pointer", fontFamily: BODY, fontSize: 16, fontWeight: 700,
+      style={{ marginTop: 10, minHeight: 52, borderRadius: 12, border: 0, cursor: "pointer", fontFamily: BODY, fontSize: 16, fontWeight: 700,
         background: gold ? C.gold : dark ? C.white : C.navy, color: gold ? C.navy : dark ? C.navy : C.white }}>{label}</button>
   );
   const H = (t: string, size = 27) => <h1 style={{ margin: 0, fontFamily: HEAD, fontSize: size, lineHeight: 1.16, fontWeight: 600 }}>{t}</h1>;
@@ -205,6 +233,7 @@ function Card5({ shell, eyebrow, H, nextBtn, f, facts, sessionId }: any) {
     setTapped(key);
     // Stored only — the plan hasn't started, so nothing is pre-generated. DB-only, no child data.
     fetch("/api/report-v3/tonight", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId, outcome: enumVal }) }).catch(() => {});
+    track("tonight_outcome", { outcome: enumVal }, sessionId);
   };
   return (
     <div style={shell}>
@@ -238,34 +267,46 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 // ── Scroll sections ──
-function Ladder({ f }: { f: (s: string) => string }) {
+function Ladder({ f, focusWeeks }: { f: (s: string) => string; focusWeeks: number[] }) {
+  // Reads as a climb: each rung steps up and to the right (rising staircase), week 1 at the bottom.
+  const rows = LADDER.map((rung, i) => ({ rung, week: i + 1, i })).reverse();
   return (
     <div>
       <SectionLabel>THE SIX-WEEK CLIMB</SectionLabel>
-      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-        {LADDER.map((rung, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: i < LADDER.length - 1 ? `1px dashed ${C.line2}` : "none" }}>
-            <div style={{ width: 26, height: 26, borderRadius: "50%", background: i === 0 ? C.gold : C.tintGold, color: C.navy, fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</div>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>{rung}</div>
-            {i === 0 && <span style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 700, color: C.darkGold, background: C.tintGold, borderRadius: 999, padding: "3px 10px" }}>{LADDER_START_NOTE}</span>}
-          </div>
-        ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {rows.map(({ rung, week, i }) => {
+          const focus = focusWeeks.includes(week);
+          return (
+            <div key={week} style={{ marginLeft: i * 18, display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
+              background: focus ? C.tintGold : C.white, border: `1px solid ${focus ? C.gold : C.line}`, borderRadius: 12 }}>
+              <div style={{ width: 24, height: 24, borderRadius: "50%", background: week === 1 || focus ? C.gold : C.tintGold, color: C.navy, fontSize: 12.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{week}</div>
+              <div style={{ fontSize: 14.5, fontWeight: 600 }}>{rung}</div>
+              {week === 1 && <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, color: C.darkGold, background: C.tintGold, borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" }}>{LADDER_START_NOTE}</span>}
+              {focus && week !== 1 && <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, color: C.darkGold, whiteSpace: "nowrap" }}>★ Matters most</span>}
+              {focus && week === 1 && <span style={{ fontSize: 11, fontWeight: 700, color: C.darkGold }}>★</span>}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function Weeks({ f, week1Days }: { f: (s: string) => string; week1Days: Week1Day[] }) {
+function Weeks({ f, week1Days, focusWeeks }: { f: (s: string) => string; week1Days: Week1Day[]; focusWeeks: number[] }) {
   return (
     <div>
       <SectionLabel>{f("{NAME}'S SIX-WEEK PLAN")}</SectionLabel>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {WEEKS.map((w, i) => {
           const open = i === 0;
+          const focus = focusWeeks.includes(w.n);
           return (
-            <div key={w.n} style={{ border: `1px solid ${C.line}`, borderRadius: 16, background: open ? C.white : C.tintGold, overflow: "hidden" }}>
+            <div key={w.n} style={{ border: `1px solid ${focus ? C.gold : C.line}`, borderRadius: 16, background: open ? C.white : focus ? C.tintGold : C.tintGold, overflow: "hidden" }}>
               <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: C.darkGold }}>WEEK {w.n}{open ? " · THIS WEEK" : ""}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: C.darkGold }}>WEEK {w.n}{open ? " · THIS WEEK" : ""}</div>
+                  {focus && <div style={{ fontSize: 11, fontWeight: 800, color: C.darkGold, whiteSpace: "nowrap" }}>{f("★ Matters most for {NAME}")}</div>}
+                </div>
                 <div style={{ fontSize: 17, fontWeight: 700, fontFamily: HEAD }}>{w.title}</div>
                 <div style={{ fontSize: 14, color: C.ink }}>{f(w.line)}</div>
                 <div style={{ fontSize: 13.5, color: C.greenInk, fontWeight: 600 }}>→ {f(w.gain)}</div>
@@ -334,7 +375,7 @@ function Testimonials() {
         {TESTIMONIALS.map((t, i) => (
           <div key={i} style={{ border: `1px solid ${C.line}`, borderRadius: 14, padding: 16, background: C.white }}>
             <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5 }}>“{t.quote}”</p>
-            <div style={{ marginTop: 8, fontSize: 12.5, color: C.dim }}><b style={{ color: C.ink }}>{t.who}</b> · {t.detail}</div>
+            <div style={{ marginTop: 8, fontSize: 12.5, color: C.dim }}><b style={{ color: C.ink }}>{t.who}</b> · {t.detail.replace(/\bSon\b/g, "son").replace(/\bDaughter\b/g, "daughter")}</div>
           </div>
         ))}
       </div>

@@ -16,7 +16,7 @@ const ctx = (over: Partial<ValidateCtx> = {}): ValidateCtx => ({ callNo: 3, tria
 const gi = (over: Partial<GenerateInput> = {}): GenerateInput => ({
   kind: "first", lang: "en", callNo: 1, caller: "Shaily", callerGender: "f", parent: "Asha", child: "Aarav",
   ageBand: "10-11", worry: "homework", archetype: "The All-In Kid", assessedDaysAgo: 1,
-  report: { seenIt: "x", hardPart: "y", tryLine: "z", tonight: ["t"], goal: "g" }, answersSummary: "", trialEligible: true, ...over,
+  report: { patternLine: "Aarav focuses best when he has a say.", strength: "Goes deep", stuck: "Starting homework", pull: "Screens", todayToward: [["Battle to start", "One calm cue"]], tonightStep: "Offer a choice", tonightTap: null }, answersSummary: "", trialEligible: true, ...over,
 });
 
 describe("call-script validator", () => {
