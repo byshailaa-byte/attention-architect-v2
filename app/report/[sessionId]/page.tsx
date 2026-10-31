@@ -15,6 +15,7 @@ import { fetchPublishedNarrativeReport } from "@/lib/report/fetch-narrative";
 import { resolveChildPronoun, CHILD_NAME_FALLBACK } from "@/lib/report/pronouns";
 import type { Gender } from "@/lib/report/pronouns";
 import ReportV2 from "./ReportV2";
+import ReportV3Server from "./ReportV3Server";
 import { parseCardParam } from "@/lib/report-v2/cards-nav";
 
 type Params = Promise<{ sessionId: string }>;
@@ -101,6 +102,19 @@ export default async function ReportPage({
   }
 
   const row = rows[0];
+
+  // ── Report + Roadmap v3 is the DEFAULT for every report link. The old UI (v2 / narrative / gated /
+  // simplified) is reachable ONLY by an operator (aa_internal cookie) at ?report=legacy — a parent can
+  // never reach it by URL. Kept for 2 weeks after deploy, then removed. (Part D link routing.)
+  const isOperator = await isOperatorRequest();
+  const legacy = (report ?? "") === "legacy" && isOperator;
+  if (!legacy) {
+    after(async () => {
+      if (isOperator) { await logAdminView("report", sessionId, `/report/${sessionId}`); return; }
+      await trackServer("report_view", { variant: "v3", archetype: row.archetype }, { sessionId });
+    });
+    return <ReportV3Server sessionId={sessionId} row={row} />;
+  }
 
   // Report v2 (?report=v2) — also auto-opens for sessions that came through ?flow=v2.
   // Default report stays v1; this is opt-in. flow_sessions may be absent on very old
